@@ -1,73 +1,53 @@
-<p align="center">
-  <a href="https://www.medusajs.com">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://user-images.githubusercontent.com/59018053/229103275-b5e482bb-4601-46e6-8142-244f531cebdb.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://user-images.githubusercontent.com/59018053/229103726-e5b529a3-9b3f-4970-8a1f-c6af37f087bf.svg">
-    <img alt="Medusa logo" src="https://user-images.githubusercontent.com/59018053/229103726-e5b529a3-9b3f-4970-8a1f-c6af37f087bf.svg">
-    </picture>
-  </a>
-</p>
-<h1 align="center">
-  Medusa
-</h1>
+# Real Valor — E-commerce de Moda Feminina (Medusa v2)
 
-<h4 align="center">
-  <a href="https://docs.medusajs.com">Documentation</a> |
-  <a href="https://www.medusajs.com">Website</a>
-</h4>
+Este repositório contém a infraestrutura e o backend headless da **Real Valor**, construído sobre o **Medusa v2**, configurado para o mercado brasileiro e otimizado para **Guest Checkout (compra sem senha via CPF + E-mail + WhatsApp)**.
 
-<p align="center">
-  Building blocks for digital commerce
-</p>
-<p align="center">
-  <a href="https://github.com/medusajs/medusa/blob/develop/LICENSE">
-    <img src="https://img.shields.io/badge/license-open--core-blue.svg" alt="Medusa uses an open-core licensing model." />
-  </a>
-  <a href="https://github.com/medusajs/medusa/blob/develop/CONTRIBUTING.md">
-    <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" alt="PRs welcome!" />
-  </a>
- <p align="center">
-  <a href="https://twitter.com/intent/follow?screen_name=medusajs">
-    <img src="https://img.shields.io/twitter/follow/medusajs.svg?label=Follow%20@medusajs" alt="Follow @medusajs" />
-  <a href="https://discord.gg/medusajs">
-    <img src="https://img.shields.io/badge/chat-on%20discord-7289DA.svg" alt="Discord Chat" />
-  </a>
-</p>
+---
 
-## Getting Started
+## 🚀 Como Subir o Projeto Localmente com 1 Comando
 
-The fastest way to get started is with [Medusa Cloud](https://medusajs.com/cloud/). It provides a managed environment optimized for Medusa applications, with automated deployments, scaling, and maintenance. [Get started on Medusa Cloud](https://cloud.medusajs.com)
+### Pré-requisitos:
+- Docker e Docker Compose instalados.
 
-To set up a Medusa application locally, visit the [Documentation](https://docs.medusajs.com/learn).
+### 1. Iniciar os Serviços
+Na raiz do projeto (`real_valor`):
 
-## About Medusa
+```bash
+docker compose up -d
+```
+ou
+```bash
+make up
+```
 
-Medusa is a commerce platform with a built-in framework for customization that allows you to build custom commerce applications without reinventing core commerce logic. The framework and modules can be used to support advanced B2B or DTC commerce stores, marketplaces, distributor platforms, PoS systems, service businesses, or similar solutions that need foundational commerce primitives. Medusa's core commerce modules are open-source and freely available on npm. Enterprise Edition features are identified separately in the repository.
+Isso inicializará:
+- **PostgreSQL 16** (`real_valor_postgres`) na porta `5434`
+- **Redis 7** (`real_valor_redis`) na porta `6381`
+- **Backend Medusa v2** (`real_valor_backend`) na porta `9000`
 
-Learn more about [Medusa’s architecture](https://docs.medusajs.com/learn/advanced-development/architecture/overview) and [commerce modules](https://docs.medusajs.com/resources/commerce-modules) in the Docs.
+### 2. Acessos
+- **Medusa Admin (Painel Administrativo)**: [http://localhost:9000/app](http://localhost:9000/app)
+  - **E-mail padrão**: `admin@realvalor.com.br`
+  - **Senha padrão**: `admin123456`
+- **Store API**: [http://localhost:9000/store](http://localhost:9000/store)
+- **Endpoint Rastreamento de Pedido sem Login**: `GET http://localhost:9000/store/orders/track?display_id=1&cpf=00000000000`
+- **Endpoint Info da Loja**: `GET http://localhost:9000/store/custom/checkout-info`
 
-## Upgrades & Integrations
+### 3. Popular o Catálogo de Roupas Femininas (Seed)
+Para cadastrar as categorias (*Vestidos*, *Blusas*, *Calças*, *Conjuntos*), opções de cores e tamanhos (P, M, G, GG), estoques e métodos de frete (PAC e SEDEX):
 
-Follow the [Release Notes](https://github.com/medusajs/medusa/releases) to keep your Medusa project up-to-date.
+```bash
+docker compose exec backend yarn seed
+# ou
+make seed
+```
 
-Check out all [available Medusa integrations](https://medusajs.com/integrations/).
+---
 
-## Community & Contributions
+## 🛠️ Arquitetura do Backend
 
-The core team is available in [GitHub Discussions](https://github.com/medusajs/medusa/discussions), where you can create issues, share ideas, and discuss roadmap.
-
-Our [Contribution Guide](https://github.com/medusajs/medusa/blob/develop/CONTRIBUTING.md) describes how to contribute to the codebase and Docs.
-
-Join our [Discord server](https://discord.gg/medusajs) to meet and discuss with more than 14,000 other community members.
-
-## Other channels
-
-- [GitHub Issues](https://github.com/medusajs/medusa/issues)
-- [Community Discord](https://discord.gg/medusajs)
-- [Twitter](https://twitter.com/medusajs)
-- [LinkedIn](https://www.linkedin.com/company/medusajs)
-- [Medusa Blog](https://medusajs.com/blog/)
-
-## License
-
-Medusa uses an open-core model. The core is licensed under the [MIT License](https://github.com/medusajs/medusa/blob/develop/LICENSE). The RBAC-based Enterprise Edition materials identified in [ENTERPRISE-LICENSE.md](https://github.com/medusajs/medusa/blob/develop/ENTERPRISE-LICENSE.md) require a commercial agreement with MedusaJS, Inc.
+- `backend/src/subscribers/order-customer-indexer.ts`: Indexa e cataloga clientes automaticamente a cada pedido concluído sem exigir cadastro prévio ou senha, usando **E-mail + CPF**.
+- `backend/src/api/store/orders/track/route.ts`: Permite ao consumidor final rastrear status de entrega, transportadora e itens do pedido apenas com o Número do Pedido + CPF ou E-mail.
+- `backend/src/api/store/custom/checkout-info/route.ts`: Retorna regras de parcelamento, desconto no PIX e dados cadastrais da loja.
+- `backend/src/scripts/seed.ts`: Seed completo parametrizado para moeda BRL, frete nacional, fotos e metadados de roupas femininas (Guia de Medidas e Composição).
+- `backend/medusa-config.ts`: Estrutura modular preparada para conectar plugins de pagamento e frete assim que definidos.

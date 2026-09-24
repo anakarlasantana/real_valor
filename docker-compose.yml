@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: real_valor_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-real_valor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-real_valor_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-real_valor_db}
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - real_valor_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-real_valor} -d ${POSTGRES_DB:-real_valor_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - real_valor_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: real_valor_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6381}:6379"
+    volumes:
+      - real_valor_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - real_valor_net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: real_valor_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 9000
+      DATABASE_URL: postgres://${POSTGRES_USER:-real_valor}:${POSTGRES_PASSWORD:-real_valor_pass}@postgres:5432/${POSTGRES_DB:-real_valor_db}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-real_valor_jwt_secret_key_medusa_v2_2026}
+      COOKIE_SECRET: ${COOKIE_SECRET:-real_valor_cookie_secret_key_medusa_v2_2026}
+      STORE_CORS: ${STORE_CORS:-http://localhost:3000,http://127.0.0.1:3000}
+      ADMIN_CORS: ${ADMIN_CORS:-http://localhost:9000,http://localhost:5173,http://127.0.0.1:9000,http://127.0.0.1:5173}
+      AUTH_CORS: ${AUTH_CORS:-http://localhost:3000,http://localhost:9000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:9000}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@realvalor.com.br}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123456}
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./backend/src:/app/src
+    networks:
+      - real_valor_net
+
+volumes:
+  real_valor_pgdata:
+    name: real_valor_pgdata
+  real_valor_redisdata:
+    name: real_valor_redisdata
+
+networks:
+  real_valor_net:
+    name: real_valor_net
