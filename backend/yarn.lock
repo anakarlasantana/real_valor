@@ -12944,32 +12944,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"medusa-starter-default@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "medusa-starter-default@workspace:."
-  dependencies:
-    "@medusajs/admin-sdk": "npm:2.18.0"
-    "@medusajs/cli": "npm:2.18.0"
-    "@medusajs/framework": "npm:2.18.0"
-    "@medusajs/medusa": "npm:2.18.0"
-    "@medusajs/test-utils": "npm:2.18.0"
-    "@swc/core": "npm:^1.7.28"
-    "@swc/jest": "npm:^0.2.36"
-    "@types/jest": "npm:^29.5.13"
-    "@types/node": "npm:^20.12.11"
-    "@types/react": "npm:^18.3.2"
-    "@types/react-dom": "npm:^18.2.25"
-    jest: "npm:^29.7.0"
-    prop-types: "npm:^15.8.1"
-    react: "npm:^18.3.1"
-    react-dom: "npm:^18.3.1"
-    ts-node: "npm:^10.9.2"
-    typescript: "npm:^5.6.2"
-    vite: "npm:^5.4.14"
-    yalc: "npm:^1.0.0-pre.53"
-  languageName: unknown
-  linkType: soft
-
 "merge-descriptors@npm:1.0.3":
   version: 1.0.3
   resolution: "merge-descriptors@npm:1.0.3"
@@ -14801,6 +14775,32 @@ __metadata:
   checksum: 10c0/6fa848cf63d1b82ab4e985f4cf72bd55b7dcfd8e0a376905804e48c3634b7e749170940ba77b32804d5fe93b3cc521aa95a8d7e7d725f830da6d93f3669ce66b
   languageName: node
   linkType: hard
+
+"real-valor-backend@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "real-valor-backend@workspace:."
+  dependencies:
+    "@medusajs/admin-sdk": "npm:2.18.0"
+    "@medusajs/cli": "npm:2.18.0"
+    "@medusajs/framework": "npm:2.18.0"
+    "@medusajs/medusa": "npm:2.18.0"
+    "@medusajs/test-utils": "npm:2.18.0"
+    "@swc/core": "npm:^1.7.28"
+    "@swc/jest": "npm:^0.2.36"
+    "@types/jest": "npm:^29.5.13"
+    "@types/node": "npm:^20.12.11"
+    "@types/react": "npm:^18.3.2"
+    "@types/react-dom": "npm:^18.2.25"
+    jest: "npm:^29.7.0"
+    prop-types: "npm:^15.8.1"
+    react: "npm:^18.3.1"
+    react-dom: "npm:^18.3.1"
+    ts-node: "npm:^10.9.2"
+    typescript: "npm:^5.6.2"
+    vite: "npm:^5.4.14"
+    yalc: "npm:^1.0.0-pre.53"
+  languageName: unknown
+  linkType: soft
 
 "rechoir@npm:^0.8.0":
   version: 0.8.0

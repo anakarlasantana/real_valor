@@ -1,53 +1,45 @@
-# Real Valor — E-commerce de Moda Feminina (Medusa v2)
+# Real Valor — E-commerce de Moda Feminina (Medusa v2 + Next.js 15)
 
-Este repositório contém a infraestrutura e o backend headless da **Real Valor**, construído sobre o **Medusa v2**, configurado para o mercado brasileiro e otimizado para **Guest Checkout (compra sem senha via CPF + E-mail + WhatsApp)**.
+Este projeto implementa a loja virtual de moda feminina **Real Valor**, baseada no ecossistema **Medusa v2** (backend headless) com storefront em **Next.js 15 (App Router)** e banco de dados PostgreSQL containerizado.
 
 ---
 
-## 🚀 Como Subir o Projeto Localmente com 1 Comando
+## 🚀 Como Iniciar Tudo com 1 Comando
 
-### Pré-requisitos:
-- Docker e Docker Compose instalados.
-
-### 1. Iniciar os Serviços
-Na raiz do projeto (`real_valor`):
+Para subir o banco de dados PostgreSQL, o cache Redis, o backend Medusa v2 e a loja em Next.js:
 
 ```bash
-docker compose up -d
-```
-ou
-```bash
-make up
+./start.sh
 ```
 
-Isso inicializará:
-- **PostgreSQL 16** (`real_valor_postgres`) na porta `5434`
-- **Redis 7** (`real_valor_redis`) na porta `6381`
-- **Backend Medusa v2** (`real_valor_backend`) na porta `9000`
-
-### 2. Acessos
-- **Medusa Admin (Painel Administrativo)**: [http://localhost:9000/app](http://localhost:9000/app)
-  - **E-mail padrão**: `admin@realvalor.com.br`
-  - **Senha padrão**: `admin123456`
-- **Store API**: [http://localhost:9000/store](http://localhost:9000/store)
-- **Endpoint Rastreamento de Pedido sem Login**: `GET http://localhost:9000/store/orders/track?display_id=1&cpf=00000000000`
-- **Endpoint Info da Loja**: `GET http://localhost:9000/store/custom/checkout-info`
-
-### 3. Popular o Catálogo de Roupas Femininas (Seed)
-Para cadastrar as categorias (*Vestidos*, *Blusas*, *Calças*, *Conjuntos*), opções de cores e tamanhos (P, M, G, GG), estoques e métodos de frete (PAC e SEDEX):
-
+Para encerrar todos os serviços:
 ```bash
-docker compose exec backend yarn seed
-# ou
-make seed
+./stop.sh
 ```
 
 ---
 
-## 🛠️ Arquitetura do Backend
+## 🌐 Endereços de Acesso
 
-- `backend/src/subscribers/order-customer-indexer.ts`: Indexa e cataloga clientes automaticamente a cada pedido concluído sem exigir cadastro prévio ou senha, usando **E-mail + CPF**.
-- `backend/src/api/store/orders/track/route.ts`: Permite ao consumidor final rastrear status de entrega, transportadora e itens do pedido apenas com o Número do Pedido + CPF ou E-mail.
-- `backend/src/api/store/custom/checkout-info/route.ts`: Retorna regras de parcelamento, desconto no PIX e dados cadastrais da loja.
-- `backend/src/scripts/seed.ts`: Seed completo parametrizado para moeda BRL, frete nacional, fotos e metadados de roupas femininas (Guia de Medidas e Composição).
-- `backend/medusa-config.ts`: Estrutura modular preparada para conectar plugins de pagamento e frete assim que definidos.
+| Serviço | URL | Credenciais / Notas |
+| :--- | :--- | :--- |
+| **Loja Storefront (Next.js)** | [http://localhost:8000](http://localhost:8000) | Vitrine e catálogo nacional (BRL) |
+| **Catálogo de Roupas** | [http://localhost:8000/br/store](http://localhost:8000/br/store) | Vestidos, Camisas e Alfaiataria |
+| **Painel Admin Medusa v2** | [http://localhost:9000/app](http://localhost:9000/app) | **E-mail**: `admin@realvalor.com.br`<br>**Senha**: `admin123456` |
+| **Store API** | [http://localhost:9000/store](http://localhost:9000/store) | API REST consumida pelo frontend |
+
+---
+
+## 👗 Funcionalidades Ativas
+
+1. **Catálogo Real Valor (Moda Feminina)**:
+   - Produtos cadastrados com fotos em alta definição, tabela de medidas (Guia de tamanhos P, M, G, GG), etiqueta "Pronta Entrega" e composição do tecido.
+   - Categorias cadastradas: *Vestidos*, *Blusas & Camisas*, *Calças & Alfaiataria*, *Conjuntos*.
+2. **Moeda e Região**:
+   - Moeda padrão: **BRL (R$)**.
+   - Frete configurado para todo o Brasil (Econômico - PAC e Expresso - SEDEX).
+3. **Guest Checkout (Sem Fricção de Login)**:
+   - Subscriber de catalogação automática do cliente (`src/subscribers/order-customer-indexer.ts`) utilizando E-mail + CPF.
+   - Endpoint de rastreamento de compras sem necessidade de senha: `GET /store/orders/track?display_id=X&cpf=...`.
+4. **Arquitetura Modular**:
+   - `backend/medusa-config.ts` estruturado de forma desacoplada para conexão de plugins de pagamento (ex: Mercado Pago) e frete assim que definidos.
