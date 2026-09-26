@@ -246,7 +246,16 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       help: "Opacidade do overlay escuro no lado do texto.",
     },
   ],
-  benefits: [{ name: "items", label: "Itens", kind: "list:benefit" }],
+  benefits: [
+    {
+      name: "items",
+      label: "Itens",
+      kind: "list:benefit",
+      // O layout da faixa acompanha a contagem — o lojista não precisa
+      // recorrer a um número "certo" (2 ou 4) para a faixa ficar bonita.
+      help: "A faixa se adapta à quantidade: 2 por linha no celular e de 5 a 7 por linha no desktop, conforme a largura da tela. O que sobrar de uma linha ocupa a linha inteira.",
+    },
+  ],
   collections: [
     { name: "eyebrow", label: "Eyebrow", kind: "text" },
     { name: "title", label: "Título", kind: "text", required: true },
@@ -268,7 +277,14 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
   editorial: [
     { name: "script", label: "Frase manuscrita", kind: "text" },
     { name: "title", label: "Título", kind: "text", required: true },
-    { name: "body", label: "Texto", kind: "textarea" },
+    {
+      name: "body",
+      label: "Texto (conceito e história)",
+      kind: "textarea",
+      // A ajuda repete o casamento com o item do menu de propósito: é o
+      // que o lojista procura ao abrir o formulário.
+      help: 'Conteúdo da seção "Sobre": conceito da marca, história e valores. O item "Sobre" do menu rola até aqui.',
+    },
     { name: "ctaLabel", label: "Texto do botão", kind: "text" },
     { name: "ctaHref", label: "Link do botão", kind: "text" },
     { name: "imageUrl", label: "Imagem (URL)", kind: "text" },

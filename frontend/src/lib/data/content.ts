@@ -29,9 +29,9 @@ type ContentResponse = {
  * (`GET /store/content`).
  *
  * The contract and the defaults live in `lib/content/home-sections.ts`,
- * which mirrors `backend/src/modules/content/contract.ts`. A parity
- * test in `lib/content/__tests__/contract-parity.test.ts` fails if the
- * two drift apart.
+ * which mirrors `backend/src/modules/content/contract.ts`. The parity
+ * guard `scripts/check-contract-parity.mjs` fails if the two drift
+ * apart.
  *
  * A content failure must never take the storefront down, so every
  * error path falls back to `DEFAULT_HOME_SECTIONS`.

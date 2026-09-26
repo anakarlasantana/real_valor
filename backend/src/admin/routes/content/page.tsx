@@ -54,7 +54,9 @@ const TYPE_LABELS: Record<string, string> = {
   benefits: "Faixa de benefícios",
   collections: "Coleções em destaque",
   featured: "Peças em destaque",
-  editorial: "Bloco editorial",
+  // O nome é o do item do menu, não o do protótipo: é este bloco que o
+  // "Sobre" da navbar rola (a âncora é o `id` da seção, não o rótulo).
+  editorial: "Sobre",
   instagram: "Instagram",
 }
 
@@ -188,7 +190,9 @@ const ContentPage = () => {
                     {TYPE_LABELS[section.type] ?? section.type}
                   </Text>
                   <Text size="xsmall" className="text-ui-fg-subtle">
-                    {section.id} · {section.type}
+                    {/* `#id` é a âncora que o menu usa: um Destino
+                        `/#editorial` rola até esta seção. */}
+                    #{section.id} · {section.type}
                   </Text>
                 </div>
               </div>

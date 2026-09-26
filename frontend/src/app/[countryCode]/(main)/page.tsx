@@ -13,6 +13,7 @@ import FeaturedProducts from "@modules/home/components/featured-products"
 import Hero from "@modules/home/components/hero"
 import InstagramGrid from "@modules/home/components/instagram-grid"
 import { HttpTypes } from "@medusajs/types"
+import { type ReactNode } from "react"
 
 export const metadata: Metadata = {
   title: "A alfaiataria que valoriza você, não o seu status",
@@ -29,6 +30,11 @@ export const metadata: Metadata = {
  * starts returning admin-managed blocks, this file does not change at
  * all. `DEFAULT_HOME_SECTIONS` guarantees the storefront renders today,
  * before that endpoint exists.
+ *
+ * Each rendered section is also wrapped in an element carrying the
+ * section `id`: that id is the scroll anchor the header menu points at
+ * (`/#editorial` is the "Sobre" item), so the wrapper has to exist for
+ * every section — see `renderSection`.
  *
  * Only `hero` and `featured` need commerce data (the current region),
  * which is why a missing region degrades those two sections instead of
@@ -73,14 +79,28 @@ export default async function Home(props: {
 
   return (
     <>
-      {sections.map((section) => (
-        <SectionRenderer
-          key={section.id}
-          section={section}
-          region={region}
-          selectedFilter={selectedFilter}
-        />
-      ))}
+      {sections.map((section) => {
+        const body = renderSection(section, region, selectedFilter)
+
+        // Seção sem corpo (chrome do site, ou `featured` sem região) não
+        // vira âncora vazia no meio da página.
+        if (!body) {
+          return null
+        }
+
+        // O `id` da seção no CMS **é** a âncora do menu: o `/#editorial`
+        // do item "Sobre", por exemplo, é resolvido por
+        // `getElementById("editorial")`. Fica aqui, e não em cada
+        // componente, para que toda seção — inclusive as que ainda não
+        // existem — seja um alvo válido sem depender de alguém lembrar de
+        // repetir o id no JSX. `.rv-anchor` (brand.css) compensa o
+        // cabeçalho fixo.
+        return (
+          <div key={section.id} id={section.id} className="rv-anchor">
+            {body}
+          </div>
+        )
+      })}
     </>
   )
 }
@@ -94,16 +114,16 @@ export default async function Home(props: {
  * home: são chrome do site, resolvidos pelo layout (barra superior e
  * cabeçalho). Por isso os dois caem em `null` aqui — devolver os dois
  * duplicaria a barra e o cabeçalho no corpo da página.
+ *
+ * Devolve `null` (em vez de JSX) para que o chamador consiga distinguir
+ * "nada a renderizar" de "seção renderizada" e só embrulhar a segunda na
+ * âncora.
  */
-function SectionRenderer({
-  section,
-  region,
-  selectedFilter,
-}: {
-  section: HomeSection
-  region: HttpTypes.StoreRegion | null
+function renderSection(
+  section: HomeSection,
+  region: HttpTypes.StoreRegion | null,
   selectedFilter?: string
-}) {
+): ReactNode {
   switch (section.type) {
     case "announcement":
       // Rendered by the layout as site chrome, so it is skipped here to

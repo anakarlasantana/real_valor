@@ -52,6 +52,47 @@ fallback do storefront e que o editor do admin
 tipo de lista, com as mesmas chaves de ícone do storefront. **Rode isto
 depois de qualquer alteração no contrato.**
 
+## Regras de layout
+
+A quantidade de itens de uma lista é decisão do lojista, não do código. Toda
+seção que consome um `list:*` precisa continuar íntegra com 1, 2 ou 7 itens —
+por isso **nenhuma delas fixa colunas** (`grid-cols-4`). Foi assim que a faixa
+de benefícios quebrava: com três itens, três das quatro colunas ficavam
+ocupadas e a faixa terminava com um quarto vazio de sobra; com cinco, o quinto
+item caía numa segunda linha sem divisórias.
+
+A `benefits` é a referência: uma linha flex que quebra sozinha, com `basis`
+sensível à largura (2 por linha no celular, `11rem` no desktop) e `grow`, de
+modo que a última linha **sempre se preenche** — no desktop cabem 5 a 7 itens
+por linha (conforme a largura) e o item que sobra vira uma linha inteira, sem
+buraco. As divisórias são o `gap` de 1px do container deixando o fundo
+(`rv-border`) aparecer: isso mantém o fio correto nos **dois** eixos depois da
+quebra, o que `divide-x`/`divide-y` não faz (eles só acertam em linha única).
+
+Só a contagem exata de colunas por breakpoint seria motivo para partir para
+classes por quantidade; até agora nenhuma seção precisou disso.
+
+## Âncoras do menu (`#`)
+
+Um item do menu com `href` começando em `/#` é uma âncora: `/#editorial` significa "role até o
+elemento de `id="editorial"`". Quem embrulha cada seção da home nesse `id` é o registro em
+`frontend/src/app/[countryCode]/(main)/page.tsx` (`div[id={section.id}]`), e a classe
+`.rv-anchor` de `frontend/src/styles/brand.css` guarda os 5rem do cabeçalho fixo (`h-20`) para o
+topo da seção não nascer escondido atrás dele — a barra de anúncio não é sticky, então 5rem é o
+offset completo.
+
+Consequências práticas:
+
+- **O `id` é a chave da seção no banco, não o nome que ela mostra na loja.** A seção `editorial`
+  aparece como **Sobre** no admin porque "Sobre" é o nome do item de menu que aponta para ela.
+  Renomear o `id` é migration de dados e quebra todo `/#id` que aponte para o bloco.
+- Âncora é gerada **para toda seção**, de qualquer tipo, a partir de `section.id` — uma seção nova
+  já nasce endereçável, sem código por componente. Seções sem corpo (`announcement`, `nav` e
+  `featured` sem região) não viram âncora vazia.
+- O `href` guardado no CMS é `/#editorial`, sem país; quem prefixa `/{país}` é o `nav-link` na
+  renderização. Já na home o clique é interceptado e rola suave (`scrollIntoView`); vindo de outra
+  rota o navegador recarrega já no fragmento.
+
 ## API
 
 | Rota | Auth | Para quê |

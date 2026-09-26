@@ -2,11 +2,25 @@ import { resolveIcon } from "@lib/content/icons"
 import { type BenefitsSection } from "@lib/content/home-sections"
 
 /**
- * Benefits bar — four reassurance items right under the hero.
+ * Benefits bar — reassurance items right under the hero.
  *
- * 4 columns on desktop, 2×2 on mobile, separated by hairline dividers
- * as in the prototype. Icons are resolved from a string key so the CMS
- * can drive them without shipping code (see `lib/content/icons.ts`).
+ * A quantidade de itens vem do CMS (lista `items`, editável em
+ * **Conteúdo da vitrine**), então a faixa não pode assumir quatro colunas:
+ * com 1, 2, 5 ou 9 itens um `grid-cols-4` fixo deixava a linha pela metade
+ * e o item excedente órfão numa segunda linha sem divisórias.
+ *
+ * No lugar, os itens são uma linha flex que quebra sozinha, com um `basis`
+ * sensível à largura disponível — dois por linha no celular, 11rem no
+ * desktop — e `grow` para a última linha sempre se preencher (um quinto
+ * item sozinho vira uma linha inteira, em vez de deixar buraco). As
+ * divisórias são o `gap` de 1px deixando aparecer o fundo do container:
+ * assim continuam corretas nos **dois** eixos em qualquer contagem, o que
+ * `divide-x`/`divide-y` não consegue depois que a linha quebra.
+ *
+ * O número de colunas não é calculado em JS de propósito: a mesma faixa
+ * precisa se comportar bem em 375px e em 1440px, e isso é trabalho do
+ * layout, não do componente. Icons are resolved from a string key so the
+ * CMS can drive them without shipping code (see `lib/content/icons.ts`).
  */
 export default function BenefitsBar({
   items,
@@ -23,14 +37,19 @@ export default function BenefitsBar({
       className="w-full border-b border-rv-border bg-rv-surface"
     >
       <div className="rv-container">
-        <ul className="grid grid-cols-2 divide-x divide-y divide-rv-border small:grid-cols-4 small:divide-y-0">
+        <ul
+          data-testid="benefits-bar"
+          data-count={items.length}
+          className="flex flex-wrap gap-px bg-rv-border"
+        >
           {items.map((item, index) => {
             const Icon = resolveIcon(item.icon)
 
             return (
               <li
                 key={`${item.title}-${index}`}
-                className="flex flex-col items-center gap-2 px-4 py-6 text-center small:py-8"
+                data-testid="benefit-item"
+                className="flex grow basis-[calc(50%_-_1px)] flex-col items-center justify-center gap-2 bg-rv-surface px-4 py-6 text-center small:basis-[11rem] small:py-8"
               >
                 <Icon
                   className="h-5 w-5 text-rv-rose"

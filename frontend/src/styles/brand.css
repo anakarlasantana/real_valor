@@ -103,6 +103,18 @@ body {
   font-weight: 600;
 }
 
+/*
+ * Alvo de âncora do menu: `/#hero`, `/#collections`, `/#editorial`…
+ *
+ * O cabeçalho é `sticky top-0` com `h-20` (5rem) — sem esta margem, a
+ * seção rolada para cima começa debaixo dele e o título some. A barra
+ * de anúncio não é sticky, então 5rem é o offset completo. Quem aplica
+ * a classe é o registro de seções da home (`(main)/page.tsx`).
+ */
+.rv-anchor {
+  scroll-margin-top: 5rem;
+}
+
 .rv-container {
   width: 100%;
   max-width: 1440px;

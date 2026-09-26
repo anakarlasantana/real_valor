@@ -197,6 +197,11 @@ do storefront (`frontend/src/lib/content/home-sections.ts`):
 O `href` **define** o comportamento — não existe campo "modo": `#id`/`/#id` rola, `/rota` é
 interno, `https://` abre em nova aba e `mailto:`/`tel:` vai para o handler do sistema.
 
+A âncora entrega de verdade: cada seção da home vira um alvo de `id` no registro de seções
+(`(main)/page.tsx`, `div[id={section.id}]` + `.rv-anchor` em `brand.css` para o topo não ficar sob
+o cabeçalho fixo). "Sobre" é o caso canônico — o bloco `editorial` é rotulado **Sobre** no admin
+desde 2026-09-26 (ver §5).
+
 **O que resta:** o *destino* dos itens de conteúdo. "Sobre" aponta para a seção editorial e
 "Contatos" para um `mailto:` — os dois funcionam e são editáveis, mas continuam sendo desvios
 enquanto as páginas institucionais do item 2.3 não existirem. A troca é edição no admin, não
@@ -503,6 +508,8 @@ Registrado para evitar retrabalho — foram levantados como suspeita e **não** 
 | `medusa build` falhava com TS2339 | `src/subscribers/order-customer-indexer.ts:53` | ✅ **Corrigido** — `let targetCustomer = null` deixava o TS inferir o tipo `null`, rejeitando as atribuições de `CustomerDTO`. 9 erros `tsc` que quebravam `yarn build` e o build da imagem de produção |
 | Postgres exige TLS | `docker-compose.yml` (DATABASE_URL) | ✅ **Corrigido** — o Medusa forçava `ssl: { rejectUnauthorized: false }` por heurística de URL. `?sslmode=disable` resolve (ver nota abaixo) |
 | Cabeçalho fixo no código (`NAV_LINKS`, `SideMenuItems`, ícones estáticos) | `grep -rn 'NAV_LINKS\|SideMenuItems' frontend/src` + `curl localhost:8000/br` | ✅ **Resolvido em 2026-09-26** — zero ocorrências; o menu vem do bloco `nav` do CMS (ver 2.2) e o HTML traz `data-testid="início-link"` etc. |
+| Faixa de benefícios com colunas fixas (`grid-cols-4`) | Contagem real do CMS (1, 2, 3, 4, 5 e 8 itens) medida no Chrome headless via CDP, em 375–1920px | ✅ **Corrigido em 2026-09-26** — a faixa é agnóstica ao nº de itens: 1 item = linha inteira, 5 = 5 em linha no desktop, no celular quebra de 2 em 2. Zero rolagem horizontal e nenhuma linha com sobra de fundo |
+| Âncoras do menu sem alvo no DOM | `curl localhost:8000/br` (procurando os `id`) + clique real no Chrome headless via CDP | ✅ **Corrigido em 2026-09-26** — `/#hero`, `/#collections` e `/#editorial` eram documentados, mas nenhum elemento tinha esses `id`: o `nav-link` fazia `preventDefault()` e rolava zero. Agora o registro de seções embrulha cada seção em `div[id={section.id}]` e `.rv-anchor` (`brand.css`) compensa o cabeçalho fixo — "Sobre" (bloco `editorial`) rola até a seção com o topo 80px abaixo do header |
 
 ---
 
