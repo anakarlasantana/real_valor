@@ -1,0 +1,17 @@
+{
+  "id": "natal",
+  "label": "Natal",
+  "dateRange": {
+    "start": "11-15",
+    "end": "12-26"
+  },
+  "colors": {
+    "rose": "#8E3B3B",
+    "offwhite": "#FAF5EF",
+    "dourado": "#D8B26A"
+  },
+  "fonts": {},
+  "assets": {
+    "heroImage": "/brand/hero-natal.jpg"
+  }
+}

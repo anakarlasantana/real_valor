@@ -1,0 +1,157 @@
+# =============================================================================
+# Real Valor — Docker Compose (OVERLAY de DESENVOLVIMENTO)
+# =============================================================================
+# ATENCAO — este arquivo NAO e carregado por acidente. O Docker Compose le,
+# POR CONVENCAO, `docker-compose.yml` + `docker-compose.override.yml` quando
+# nenhum `-f` e informado. Informar `-f` DESLIGA essa convencao. E exatamente
+# essa diferenca que separa os dois modos:
+#
+#     docker compose up -d                          -> DESENVOLVIMENTO (este)
+#     docker compose -f docker-compose.yml up -d     -> PRODUCAO (sem este)
+#
+# O Makefile encapsula os dois para nao haver duvida:
+#     make up            # DEV   (docker compose up -d)
+#     make up PROD=1     # PROD  (docker compose -f docker-compose.yml up -d)
+#
+# Nao existe mais `start.sh`/`stop.sh`, `--env-file`, nem
+# `docker-compose.dev.yml`/`docker-compose.prod.yml`: a base e UNICA e o modo
+# dev e este overlay. O Compose le o `.env` da raiz automaticamente.
+#
+# -----------------------------------------------------------------------------
+# O QUE ESTE OVERLAY MUDA (e por que)
+# -----------------------------------------------------------------------------
+# 1. ESTAGIO `dev` DOS DOIS REPOS (`target: dev`).
+#    Os Dockerfiles sao multi-stage e o ULTIMO estagio e sempre o de producao
+#    (`runner`, enxuto, sem devDependencies). Se o estagio nao fosse fixado,
+#    `docker compose up` construiria a imagem de PRODUCAO e depois tentaria
+#    rodar `yarn dev` nela — que e justamente o bug de "perfil errado" que esta
+#    base foi feita para nao repetir.
+#      backend  -> estagio `dev`  (mantem ts-node/devDependencies: `medusa
+#                                  develop` compila `medusa-config.ts` em runtime)
+#      frontend -> estagio `dev`  (COPIA do codigo-fonte + devDependencies:
+#                                  o `runner` standalone nao tem os binarios de
+#                                  dev nem o Yarn 4 exigido por `packageManager`)
+#
+# 2. COMANDOS DE DEV — modo watch em vez do artefato compilado:
+#      backend  -> `yarn dev`  = `medusa develop` (watch + hot reload + admin Vite)
+#      frontend -> `yarn dev`  = `next dev --turbopack -p 8000`
+#
+# 3. BIND MOUNTS DO CODIGO — o codigo do HOST entra no container, que e o que
+#    torna o hot reload util: editar no host reflete no container. Em producao
+#    nada disso existe; a imagem imutavel e a fonte da verdade.
+#
+# 4. VOLUME ANONIMO PARA node_modules — ponto CRITICO.
+#    `./backend:/app` esconderia o `node_modules` construido DENTRO da imagem
+#    (com binarios compilados para a plataforma do container), substituindo-o
+#    pelo do host. Se o host for outra plataforma/libc (ex.: macOS/glibc vs
+#    alpine/musl), os binarios ficam incompativeis e nada sobe.
+#    O volume anonimo declarado DEPOIS do bind mount tem precedencia e preserva
+#    o `node_modules` da imagem, isolando-o do bind mount.
+#
+# 5. NODE_ENV=development — habilita mensagens de erro detalhadas, o admin do
+#    Medusa em modo de desenvolvimento e o hot reload do Next. O Medusa so
+#    serve o admin COMPILADO quando NODE_ENV=production — por isso producao
+#    nunca usa este overlay.
+#
+# 6. `RUN_MIGRATIONS=0` por padrao: migrations sao aplicadas UMA vez, de
+#    proposito (`make migrate`), para nao rodar em todo restart do container.
+#    O banco de dev fica estavel e o `seed` continua valido.
+#
+# 7. TAG DE IMAGEM PROPRIA (`real_valor_*:dev`). A base usa
+#    `real_valor_*:${REAL_VALOR_TAG:-local}`; se o dev escrevesse na MESMA tag,
+#    um `docker compose up` em dev reaproveitaria silenciosamente a imagem de
+#    producao (os dois modos nunca reconstroem o que ja existe) e o dev rodaria
+#    codigo de producao — ou vice-versa. Tags distintas mantem os dois modos
+#    independentes na mesma maquina.
+#
+# 8. Limites de recurso proprios: `next dev --turbopack` + `medusa develop`
+#    consomem mais memoria que os processos de producao, mas continuam
+#    limitados para nao derrubar as outras stacks da maquina (`devops_*`).
+#
+# -----------------------------------------------------------------------------
+# POR QUE `yarn dev` FUNCIONA SEM RECONSTRUIR A IMAGEM
+# -----------------------------------------------------------------------------
+# Os binarios (`medusa`, `next`) ja estao em `node_modules` dentro da imagem e
+# ficam acessiveis via PATH. O bind mount substitui apenas o codigo-fonte.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Backend em modo desenvolvimento
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      # `dev` preserva as devDependencies (ts-node), obrigatorias para o
+      # `medusa develop` carregar `medusa-config.ts` e os modulos TypeScript.
+      # O estagio `runner` (producao) e enxuto e NAO serve para dev.
+      target: dev
+    image: real_valor_backend:${REAL_VALOR_TAG:-dev}
+    # `medusa develop` = modo dev do Medusa v2 (watch + hot reload + admin Vite).
+    command: ["yarn", "dev"]
+    environment:
+      NODE_ENV: development
+      # Em dev as migrations NAO rodam a cada restart — aplique sob demanda
+      # com `make migrate`. Evita reexecutar migracoes a cada `up`.
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-0}
+    volumes:
+      # Codigo do host -> container (habilita o hot reload).
+      - ./backend/src:/app/src
+      # Config e scripts tambem observados em dev.
+      - ./backend/medusa-config.ts:/app/medusa-config.ts:ro
+      - ./backend/package.json:/app/package.json:ro
+      # Volume ANONIMO: declarado por ULTIMO de proposito, para ter precedencia
+      # sobre os bind mounts acima e preservar o node_modules da imagem.
+      - /app/node_modules
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # Frontend em modo desenvolvimento
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      # `dev` copia o codigo-fonte e mantem as devDependencies + o Yarn 4 do
+      # projeto. O estagio `runner` (standalone) e enxuto de proposito e nao
+      # tem o que o `next dev` precisa: usa-lo em dev foi o bug corrigido aqui.
+      target: dev
+    image: real_valor_frontend:${REAL_VALOR_TAG:-dev}
+    # `next dev --turbopack -p 8000` (script `dev` do package.json).
+    command: ["yarn", "dev"]
+    environment:
+      NODE_ENV: development
+      # O Next precisa saber a origem para validar Server Actions em dev.
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:8000}
+      # Aponta o servidor dev para o backend da rede interna.
+      MEDUSA_BACKEND_URL: ${MEDUSA_INTERNAL_BACKEND_URL:-http://backend:9000}
+    volumes:
+      # Codigo do host -> container. Isso SUBSTITUI o codigo copiado na imagem;
+      # em dev o servidor e o `next dev`, nao o `server.js` standalone.
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      # Temas: lidos em RUNTIME por src/lib/theme.ts (fs.readdirSync). Montar
+      # permite criar/ajustar temas sem reconstruir a imagem.
+      - ./frontend/themes:/app/themes
+      # Arquivos de configuracao do build do Next.
+      - ./frontend/next.config.js:/app/next.config.js:ro
+      - ./frontend/postcss.config.js:/app/postcss.config.js:ro
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./frontend/tsconfig.json:/app/tsconfig.json:ro
+      - ./frontend/package.json:/app/package.json:ro
+      # Volume ANONIMO (por ultimo): preserva o node_modules da imagem e evita
+      # conflito de binarios entre host e container.
+      - /app/node_modules
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+        reservations:
+          memory: 512M
+

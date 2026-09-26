@@ -2,9 +2,12 @@ import { Metadata } from "next"
 
 import { listCartOptions, retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
+import { getHomeSections } from "@lib/data/content"
 import { getBaseURL } from "@lib/util/env"
 import { StoreCartShippingOption } from "@medusajs/types"
+import { announceSections } from "@lib/content/home-sections"
 import CartMismatchBanner from "@modules/layout/components/cart-mismatch-banner"
+import AnnouncementBar from "@modules/home/components/announcement-bar"
 import Footer from "@modules/layout/templates/footer"
 import Nav from "@modules/layout/templates/nav"
 import FreeShippingPriceNudge from "@modules/shipping/components/free-shipping-price-nudge"
@@ -14,8 +17,18 @@ export const metadata: Metadata = {
 }
 
 export default async function PageLayout(props: { children: React.ReactNode }) {
-  const customer = await retrieveCustomer()
-  const cart = await retrieveCart()
+  const [customer, cart, sections] = await Promise.all([
+    retrieveCustomer(),
+    retrieveCart(),
+    // O anúncio é conteúdo, então vem do módulo Content como as demais
+    // seções — mas é renderizado aqui, e não na home, porque aparece em
+    // todas as rotas da loja.
+    getHomeSections().catch((error) => {
+      console.error("Falha ao carregar o conteúdo do layout:", error)
+      return []
+    }),
+  ])
+
   let shippingOptions: StoreCartShippingOption[] = []
 
   if (cart) {
@@ -26,6 +39,9 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
 
   return (
     <>
+      <AnnouncementBar
+        text={announceSections(sections)?.text ?? "Frete seguro para todo o Brasil"}
+      />
       <Nav />
       {customer && cart && (
         <CartMismatchBanner customer={customer} cart={cart} />

@@ -1,0 +1,40 @@
+# =============================================================================
+# Real Valor — contexto de build do STOREFRONT (Catalogo)
+# =============================================================================
+
+# Dependencias (reinstaladas dentro da imagem)
+node_modules
+.yarn/cache
+.yarn/install-state.gz
+.yarn/unplugged
+
+# Artefatos de build (gerados dentro da imagem)
+.next
+out
+build
+coverage
+jest-coverage
+
+# Controle de versao
+.git
+.github
+
+# Segredos — NUNCA entram na imagem
+.env
+.env.local
+.env.*.local
+
+# ATENCAO: `themes/` e `public/` NAO sao ignorados de proposito.
+# `src/lib/theme.ts` faz `fs.readdirSync(THEMES_DIR)` em RUNTIME e `public/`
+# contem os assets da marca. Ambos precisam estar na imagem, senao o
+# storefront cai silenciosamente no tema default.
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Metadados OS
+.DS_Store
+Thumbs.db

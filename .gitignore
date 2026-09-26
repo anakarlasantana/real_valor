@@ -6,9 +6,12 @@ build/
 .next/
 
 # Environment files
+# O Compose le o `.env` da RAIZ automaticamente (ver docker-compose.yml): e ali
+# que ficam os segredos locais. O unico arquivo versionado e o exemplo.
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # Logs
 npm-debug.log*

@@ -1,9 +1,7 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { getCategoryByHandle, listCategories } from "@lib/data/categories"
-import { listRegions } from "@lib/data/regions"
-import { StoreRegion } from "@medusajs/types"
+import { getCategoryByHandle } from "@lib/data/categories"
 import CategoryTemplate from "@modules/categories/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 
@@ -15,32 +13,23 @@ type Props = {
   }>
 }
 
-export async function generateStaticParams() {
-  const product_categories = await listCategories()
-
-  if (!product_categories) {
-    return []
-  }
-
-  const countryCodes = await listRegions().then((regions: StoreRegion[]) =>
-    regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
-  )
-
-  const categoryHandles = product_categories.map(
-    (category: any) => category.handle
-  )
-
-  const staticParams = countryCodes
-    ?.map((countryCode: string | undefined) =>
-      categoryHandles.map((handle: any) => ({
-        countryCode,
-        category: [handle],
-      }))
-    )
-    .flat()
-
-  return staticParams
-}
+/**
+ * Teto de revalidacao do segmento (1h).
+ *
+ * Nao existe `generateStaticParams()` aqui de proposito. Ele chamava a Store API
+ * (`listCategories` e `listRegions`) durante o `next build`, o que quebrava o
+ * build da imagem: sem um backend Medusa no ar o `docker compose build frontend`
+ * abortava com
+ *   "Failed to collect page data for /[countryCode]/categories/[...category]"
+ * (e exigia anexar o builder a `real_valor_net`, opcao `network` que o BuildKit
+ * nao suporta). A lista de categorias muda em runtime, nao no build: pre-render
+ * so serve envelhecido. Sem o `generateStaticParams` a rota passa a ser resolvida
+ * sob demanda e o build nao precisa de rede.
+ *
+ * A invalidacao sob demanda e feita por `POST /api/revalidate`:
+ *   `?tag=categories` ou `?route=/[countryCode]/(main)/categories/[...category]&type=page`.
+ */
+export const revalidate = 3600
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params

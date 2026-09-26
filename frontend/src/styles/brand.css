@@ -1,0 +1,123 @@
+/*
+ * Real Valor — Design Tokens
+ * ---------------------------------------------------------------
+ * Source of truth: ./Downloads/identidade_realvalor (brand guide)
+ *
+ * Palette (as printed on the guide, 6 core colors):
+ *   Rosa Queimado  #B97872  cor assinatura
+ *   Off White      #F7F1E8  fundos
+ *   Marrom Cacau   #4A3531  apoio
+ *   Grafite        #303033  textos
+ *   Preto          #171717  contraste
+ *   Dourado Rosé   #D4B19A  detalhes
+ *
+ * Typography (as printed on the guide, 3 families):
+ *   Playfair Display  titulos e destaques
+ *   Montserrat        textos e interface
+ *   Allura            assinaturas e frases
+ *
+ * Accessibility rule: rv-rose on rv-offwhite is ~3.4:1, so rose is
+ * only used for fills, borders, icons and large (>=24px) text.
+ * Body copy always uses rv-grafite (~11:1).
+ *
+ * Every token below can be overridden per seasonal theme by the
+ * inline CSS variables produced by lib/theme.ts (Fase 5 of the
+ * technical doc) — no rebuild required.
+ */
+
+:root,
+:root[data-theme="default"] {
+  /* --- Core palette --- */
+  --rv-rose: #b97872;
+  --rv-offwhite: #f7f1e8;
+  --rv-cacao: #4a3531;
+  --rv-grafite: #303033;
+  --rv-preto: #171717;
+  --rv-dourado: #d4b19a;
+
+  /* --- Derived (not in the guide, computed from the above) --- */
+  --rv-rose-strong: #9e5f58; /* hover / active on rose fills */
+  --rv-rose-soft: #e3c9c4; /* rose at low emphasis on off-white */
+  --rv-surface: #fdfbf8; /* elevated card, slightly lifted off-white */
+  --rv-border: #e5dacd; /* hairline dividers */
+  --rv-muted: #6f6a66; /* secondary text, still AA on off-white */
+
+  /* --- Semantic mapping --- */
+  --rv-bg: var(--rv-offwhite);
+  --rv-fg: var(--rv-grafite);
+  --rv-fg-strong: var(--rv-preto);
+  --rv-primary: var(--rv-rose);
+  --rv-primary-fg: #ffffff;
+  --rv-accent: var(--rv-dourado);
+  --rv-secondary: var(--rv-cacao);
+
+  /* --- Typography --- */
+  --rv-font-display: var(--font-playfair), Georgia, serif;
+  --rv-font-sans: var(--font-montserrat), system-ui, sans-serif;
+  --rv-font-script: var(--font-allura), cursive;
+
+  /* --- Shape & depth --- */
+  --rv-radius-sm: 2px;
+  --rv-radius: 4px;
+  --rv-radius-lg: 8px;
+  --rv-radius-xl: 16px;
+  --rv-shadow-card: 0 1px 2px rgba(48, 48, 51, 0.04),
+    0 4px 12px rgba(48, 48, 51, 0.06);
+  --rv-shadow-card-hover: 0 2px 4px rgba(48, 48, 51, 0.06),
+    0 12px 28px rgba(48, 48, 51, 0.12);
+
+  /* --- Motion --- */
+  --rv-ease: cubic-bezier(0.5, 0, 0.5, 1);
+  --rv-duration: 200ms;
+}
+
+/* Base application of the brand surface + type */
+body {
+  background-color: var(--rv-bg);
+  color: var(--rv-fg);
+  font-family: var(--rv-font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Brand utilities ------------------------------------------------------- */
+
+.rv-display {
+  font-family: var(--rv-font-display);
+  color: var(--rv-fg-strong);
+  letter-spacing: -0.01em;
+}
+
+.rv-script {
+  font-family: var(--rv-font-script);
+  color: var(--rv-rose);
+  font-size: 1.5em;
+  line-height: 1;
+}
+
+.rv-eyebrow {
+  font-family: var(--rv-font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.rv-container {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 512px) {
+  .rv-container {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .rv-container {
+    padding-inline: 3rem;
+  }
+}

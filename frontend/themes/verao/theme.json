@@ -1,0 +1,17 @@
+{
+  "id": "verao",
+  "label": "Verão",
+  "dateRange": {
+    "start": "12-27",
+    "end": "03-20"
+  },
+  "colors": {
+    "rose": "#C98A7D",
+    "offwhite": "#FBF6EE",
+    "dourado": "#DCC0A6"
+  },
+  "fonts": {},
+  "assets": {
+    "heroImage": "/brand/hero-verao.jpg"
+  }
+}

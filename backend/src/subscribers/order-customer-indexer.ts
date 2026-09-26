@@ -50,7 +50,12 @@ export default async function orderCustomerIndexerHandler({
     }
 
     // Se não tem customer associado, busca por email
-    let targetCustomer = null
+    // A anotação de tipo é obrigatória: sem ela o TypeScript infere `null` para
+    // a variável e rejeita as atribuições de `CustomerDTO` abaixo, quebrando o
+    // `yarn build` (e, portanto, o build da imagem de produção).
+    let targetCustomer: Awaited<
+      ReturnType<typeof customerModuleService.retrieveCustomer>
+    > | null = null
     if (email) {
       const [customers] = await customerModuleService.listAndCountCustomers({
         email,

@@ -34,6 +34,22 @@ module.exports = {
           80: "#1F2937",
           90: "#111827",
         },
+        /* Real Valor brand palette — ./Downloads/identidade_realvalor.
+         * Values track the CSS variables in src/styles/brand.css so a
+         * seasonal theme can recolour utilities without a rebuild. */
+        rv: {
+          rose: "var(--rv-rose)",
+          "rose-strong": "var(--rv-rose-strong)",
+          "rose-soft": "var(--rv-rose-soft)",
+          offwhite: "var(--rv-offwhite)",
+          cacao: "var(--rv-cacao)",
+          grafite: "var(--rv-grafite)",
+          preto: "var(--rv-preto)",
+          dourado: "var(--rv-dourado)",
+          surface: "var(--rv-surface)",
+          border: "var(--rv-border)",
+          muted: "var(--rv-muted)",
+        },
       },
       borderRadius: {
         none: "0px",
@@ -60,7 +76,8 @@ module.exports = {
       },
       fontFamily: {
         sans: [
-          "Inter",
+          "var(--rv-font-sans)",
+          "var(--font-montserrat)",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
@@ -69,6 +86,15 @@ module.exports = {
           "Ubuntu",
           "sans-serif",
         ],
+        /* Playfair Display — titulos e destaques */
+        display: [
+          "var(--rv-font-display)",
+          "var(--font-playfair)",
+          "Georgia",
+          "serif",
+        ],
+        /* Allura — assinaturas e frases */
+        script: ["var(--rv-font-script)", "var(--font-allura)", "cursive"],
       },
       keyframes: {
         ring: {

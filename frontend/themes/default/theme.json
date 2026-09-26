@@ -1,0 +1,19 @@
+{
+  "id": "default",
+  "label": "Real Valor",
+  "dateRange": null,
+  "colors": {
+    "rose": "#B97872",
+    "offwhite": "#F7F1E8",
+    "cacao": "#4A3531",
+    "grafite": "#303033",
+    "preto": "#171717",
+    "dourado": "#D4B19A"
+  },
+  "fonts": {
+    "display": "Playfair Display",
+    "sans": "Montserrat",
+    "script": "Allura"
+  },
+  "assets": {}
+}

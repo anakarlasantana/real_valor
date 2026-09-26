@@ -1,0 +1,19 @@
+{
+  "id": "black-friday",
+  "label": "Black Friday",
+  "dateRange": {
+    "start": "11-20",
+    "end": "11-30"
+  },
+  "colors": {
+    "rose": "#B97872",
+    "offwhite": "#F4F2F0",
+    "cacao": "#2A2626",
+    "preto": "#0F0F0F",
+    "dourado": "#C9A187"
+  },
+  "fonts": {},
+  "assets": {
+    "heroImage": "/brand/hero-black-friday.jpg"
+  }
+}

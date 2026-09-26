@@ -116,21 +116,27 @@ export async function middleware(request: NextRequest) {
 
   const countryCode = regionMap && (await getCountryCode(request, regionMap))
 
-  const urlHasCountryCode =
-    countryCode && request.nextUrl.pathname.split("/")[1].includes(countryCode)
+  // Match the first path segment against the region map exactly. A loose
+  // `String.includes()` match here would treat paths like `/br/store` (or any
+  // segment merely *containing* a region code) as already localized, which
+  // makes the cache-id redirect below re-issue the same URL and loop forever.
+  const pathSegments = request.nextUrl.pathname.split("/").filter(Boolean)
+  const urlCountryCode = pathSegments[0]?.toLowerCase()
+  const urlHasCountryCode = !!urlCountryCode && regionMap.has(urlCountryCode)
 
-  // if one of the country codes is in the url and the cache id is set, return next
-  if (urlHasCountryCode && cacheIdCookie) {
-    return NextResponse.next()
-  }
+  // If the URL is already localized, make sure the cache id cookie is set and
+  // let the request through. We set the cookie on the *response* rather than
+  // redirecting, so a first visit always converges in a single round trip.
+  if (urlHasCountryCode) {
+    const next = NextResponse.next()
 
-  // if one of the country codes is in the url and the cache id is not set, set the cache id and redirect
-  if (urlHasCountryCode && !cacheIdCookie) {
-    response.cookies.set("_medusa_cache_id", cacheId, {
-      maxAge: 60 * 60 * 24,
-    })
+    if (!cacheIdCookie) {
+      next.cookies.set("_medusa_cache_id", cacheId, {
+        maxAge: 60 * 60 * 24,
+      })
+    }
 
-    return response
+    return next
   }
 
   // check if the url is a static asset

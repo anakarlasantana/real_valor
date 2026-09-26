@@ -1,4 +1,55 @@
+# =============================================================================
+# Real Valor — Docker Compose (orquestrador UNICO da stack)
+# =============================================================================
+# Um unico arquivo sobe a stack inteira e isolada:
+#     Postgres 16 + Redis 7 + backend Medusa v2 + storefront Next.js 15
+#
+#   DESENVOLVIMENTO (hot reload)  ->  docker compose up -d
+#       O Compose carrega `docker-compose.override.yml` AUTOMATICAMENTE junto
+#       com este arquivo. E o modo padrao, sem flag nenhuma.
+#
+#   PRODUCAO                     ->  docker compose -f docker-compose.yml up -d
+#       Informar `-f` DESLIGA a leitura automatica do override: sobe apenas a
+#       base, com imagens imutaveis (sem bind mounts) e limites de recurso.
+#
+# Cada repositorio tem seu PROPRIO Dockerfile, e o estagio usado esta explicito
+# (`target`) nos dois modos — nao existe Dockerfile de plataforma na raiz:
+#     backend/Dockerfile   ->  target `runner` aqui / `dev` no override
+#     frontend/Dockerfile  ->  target `runner` aqui / `dev` no override
+#
+# Variaveis: o Compose le o `.env` da RAIZ automaticamente (criado a partir de
+# `.env.example`). Nao e preciso `--env-file`. Para conferir o resultado final:
+#     docker compose config
+#
+# -----------------------------------------------------------------------------
+# ISOLAMENTO — nao toque nas outras stacks da maquina
+# -----------------------------------------------------------------------------
+# Containers: real_valor_postgres | real_valor_redis | real_valor_backend |
+#             real_valor_frontend
+# Rede:       real_valor_net
+# Volumes:    real_valor_pgdata | real_valor_redisdata
+# Portas:     9000 (API/Admin) | 8000 (loja) | 5438 e 6381 (apenas loopback)
+# NAO altere nem remova: devops_*, traefik_network, sin-frontend-dev (:8080).
+#
+# -----------------------------------------------------------------------------
+# O BUILD DO STOREFRONT NAO DEPENDE MAIS DO BACKEND
+# -----------------------------------------------------------------------------
+# As paginas de categoria, colecao e produto declaravam `generateStaticParams()`
+# — que consulta a Store API DURANTE o `next build`. Isso obrigava a subir o
+# backend antes de construir o frontend, anexar o builder a `real_valor_net`
+# (opcao `network`, nao suportada pelo BuildKit), usar o builder LEGACY e manter
+# o script `scripts/build-frontend.sh`. Tudo isso foi REMOVIDO: essas paginas
+# agora renderizam SOB DEMANDA com ISR (revalidate + tag) e o cache e invalidado
+# sob demanda por `/api/revalidate`.
+#
+# Efeito pratico: `docker compose build` funciona 100% offline e a ordem de
+# subida dos servicos deixou de importar. Ver docs/DEBITO-TECNICO.md.
+# =============================================================================
+
 services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16 — banco da stack Real Valor
+  # ---------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: real_valor_postgres
@@ -8,37 +59,65 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-real_valor_pass}
       POSTGRES_DB: ${POSTGRES_DB:-real_valor_db}
     ports:
-      - "${POSTGRES_PORT:-5438}:5432"
+      # Somente no loopback: permite inspecao local (psql/DBeaver) sem expor o
+      # banco para a rede da maquina.
+      - "127.0.0.1:${POSTGRES_PORT:-5438}:5432"
     volumes:
       - real_valor_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-real_valor} -d ${POSTGRES_DB:-real_valor_db}"]
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-real_valor} -d ${POSTGRES_DB:-real_valor_db}
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - real_valor_net
 
+  # ---------------------------------------------------------------------------
+  # Redis 7 — cache / event bus do Medusa
+  # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: real_valor_redis
     restart: unless-stopped
+    # `--appendonly yes` persiste o cache/event bus entre reinicios.
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "${REDIS_PORT:-6381}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6381}:6379"
     volumes:
       - real_valor_redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
-      timeout: 5s
-      retries: 5
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - real_valor_net
 
+  # ---------------------------------------------------------------------------
+  # Backend — Medusa v2 (Store API + Admin) em http://localhost:9000
+  # ---------------------------------------------------------------------------
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # `runner` = artefato compilado (`medusa build`) sem devDependencies.
+      # O estagio `dev` (hot reload) vive no docker-compose.override.yml.
+      target: runner
+    image: real_valor_backend:${REAL_VALOR_TAG:-local}
     container_name: real_valor_backend
     restart: unless-stopped
     depends_on:
@@ -47,24 +126,100 @@ services:
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 9000
-      DATABASE_URL: postgres://${POSTGRES_USER:-real_valor}:${POSTGRES_PASSWORD:-real_valor_pass}@postgres:5432/${POSTGRES_DB:-real_valor_db}
+      # ⚠️ `?sslmode=disable` e obrigatorio: sem ele o Medusa tenta TLS contra um
+      # Postgres `ssl = off` e a conexao pendura ate o timeout de migrations.
+      DATABASE_URL: postgres://${POSTGRES_USER:-real_valor}:${POSTGRES_PASSWORD:-real_valor_pass}@postgres:5432/${POSTGRES_DB:-real_valor_db}?sslmode=disable
       REDIS_URL: redis://redis:6379
+      # Segredos: TROQUE em qualquer uso real (ver docs/DEBITO-TECNICO.md 1.3).
       JWT_SECRET: ${JWT_SECRET:-real_valor_jwt_secret_key_medusa_v2_2026}
       COOKIE_SECRET: ${COOKIE_SECRET:-real_valor_cookie_secret_key_medusa_v2_2026}
-      STORE_CORS: ${STORE_CORS:-http://localhost:3000,http://127.0.0.1:3000}
-      ADMIN_CORS: ${ADMIN_CORS:-http://localhost:9000,http://localhost:5173,http://127.0.0.1:9000,http://127.0.0.1:5173}
-      AUTH_CORS: ${AUTH_CORS:-http://localhost:3000,http://localhost:9000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:9000}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@realvalor.com.br}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123456}
+      STORE_CORS: ${STORE_CORS:-http://localhost:8000,http://127.0.0.1:8000}
+      ADMIN_CORS: ${ADMIN_CORS:-http://localhost:9000,http://127.0.0.1:9000}
+      AUTH_CORS: ${AUTH_CORS:-http://localhost:8000,http://localhost:9000,http://127.0.0.1:8000,http://127.0.0.1:9000}
+      # Criacao idempotente do admin pelo docker-entrypoint.sh (vazio = nao cria).
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # 1 = roda `medusa db:migrate` na subida do container.
+      RUN_MIGRATIONS: "${RUN_MIGRATIONS:-1}"
+      MEDUSA_BACKEND_URL: ${MEDUSA_BACKEND_URL:-http://localhost:9000}
+      # Caminho (URL) do painel admin. NAO use "/app": colide com o WORKDIR
+      # deste container e, em DEV, quebra a resolucao dos modulos de extensao
+      # do admin (ver `admin.path` em backend/medusa-config.ts e o README).
+      MEDUSA_ADMIN_PATH: ${MEDUSA_ADMIN_PATH:-/painel}
     ports:
       - "9000:9000"
-    volumes:
-      - ./backend/src:/app/src
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Limites validos para o `docker compose up` (sem Swarm). O override de dev
+    # roda em watch e tem os proprios limites.
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     networks:
       - real_valor_net
 
+  # ---------------------------------------------------------------------------
+  # Frontend — storefront Next.js 15 em http://localhost:8000
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: runner
+      # ⚠️ NEXT_PUBLIC_* e INLINADO no bundle durante o build. Alterar qualquer
+      # uma exige `docker compose build frontend` de novo — defini-la so no
+      # `environment:` abaixo NAO muda o JavaScript ja compilado.
+      args:
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${NEXT_PUBLIC_MEDUSA_BACKEND_URL:-http://localhost:9000}
+        # Server-side (SSR) -> backend. Dentro da rede o host e `backend`.
+        MEDUSA_BACKEND_URL: ${MEDUSA_INTERNAL_BACKEND_URL:-http://backend:9000}
+        NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:-pk_test}
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:8000}
+        NEXT_PUBLIC_DEFAULT_REGION: ${NEXT_PUBLIC_DEFAULT_REGION:-br}
+        NEXT_PUBLIC_STRIPE_KEY: ${NEXT_PUBLIC_STRIPE_KEY:-}
+    image: real_valor_frontend:${REAL_VALOR_TAG:-local}
+    container_name: real_valor_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      PORT: 8000
+      # Runtime (SSR/route handlers) dentro da rede Docker.
+      MEDUSA_BACKEND_URL: ${MEDUSA_INTERNAL_BACKEND_URL:-http://backend:9000}
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${NEXT_PUBLIC_MEDUSA_BACKEND_URL:-http://localhost:9000}
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:-pk_test}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:8000}
+      NEXT_PUBLIC_DEFAULT_REGION: ${NEXT_PUBLIC_DEFAULT_REGION:-br}
+      # Sem default DE PROPOSITO. O handler de `/api/revalidate` e fail-closed:
+      # sem `REVALIDATE_SECRET` ele responde 500 e nao invalida nada. Um valor
+      # padrao conhecido aqui transformaria um purge autenticado em purge
+      # publico (vetor de DoS trivial). Defina no `.env` da raiz para habilitar.
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
+    ports:
+      - "8000:8000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    networks:
+      - real_valor_net
+
+# =============================================================================
+# Recursos nomeados (`real_valor_*`) — nunca colidem com outras stacks.
+# =============================================================================
 volumes:
   real_valor_pgdata:
     name: real_valor_pgdata
@@ -74,3 +229,4 @@ volumes:
 networks:
   real_valor_net:
     name: real_valor_net
+    driver: bridge

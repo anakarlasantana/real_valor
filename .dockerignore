@@ -1,0 +1,49 @@
+# =============================================================================
+# Real Valor — contexto de build da RAIZ
+# =============================================================================
+# O contexto de build e enviado ao daemon do Docker. Sem este arquivo, os
+# ~914MB de backend/node_modules, ~598MB de frontend/node_modules e ~31MB de
+# frontend/.next seriam transmitidos a cada `docker build`, tornando o build
+# lento e sujeito a falhas por memoria/espaco em disco.
+# =============================================================================
+
+# Dependencias (reinstaladas dentro da imagem)
+**/node_modules
+**/.yarn/cache
+**/.yarn/install-state.gz
+**/.yarn/unplugged
+
+# Artefatos de build (gerados dentro da imagem)
+**/.next
+**/.medusa
+**/dist
+**/build
+**/.turbo
+**/coverage
+**/jest-coverage
+
+# Controle de versao e metadados
+.git
+.gitignore
+.gitattributes
+.github
+
+# Segredos — NUNCA entram na imagem
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Documentacao e ferramentas locais
+docs
+.vscode
+.idea
+
+# Logs e arquivos temporarios
+*.log
+**/*.pid
+.DS_Store
+Thumbs.db
+
+# Diretorios temporarios de verificacao local
+.buildtest
+.yarncheck-tmp

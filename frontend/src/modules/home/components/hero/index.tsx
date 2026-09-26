@@ -1,36 +1,83 @@
-import { Github } from "@medusajs/icons"
-import { Button, Heading } from "@medusajs/ui"
+import { type HeroSection } from "@lib/content/home-sections"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import Image from "next/image"
 
-const Hero = () => {
+/**
+ * Hero — full-bleed editorial photograph with a left-anchored copy
+ * block over a horizontal dark scrim.
+ *
+ * Replaces the previous 50/50 cacao-panel + image split (and its
+ * inline trust badges, now their own `benefits-bar` section), which did
+ * not match the prototype.
+ *
+ * The scrim is a left-to-right gradient — dark behind the copy, almost
+ * transparent by 75% — so the photograph stays visible while white type
+ * keeps its contrast. Its strength comes from `overlay` in the content,
+ * and the tone is a translucent cacao so the hero stays inside the
+ * brand palette instead of pure black.
+ */
+export default function Hero({ section }: { section: HeroSection }) {
+  const overlay = Math.min(Math.max(section.overlay ?? 0.72, 0), 1)
+  const midOverlay = Number((overlay * 0.62).toFixed(3))
+
   return (
-    <div className="h-[75vh] w-full border-b border-ui-border-base relative bg-ui-bg-subtle">
-      <div className="absolute inset-0 z-10 flex flex-col justify-center items-center text-center small:p-32 gap-6">
-        <span>
-          <Heading
-            level="h1"
-            className="text-3xl leading-10 text-ui-fg-base font-normal"
-          >
-            Ecommerce Starter Template
-          </Heading>
-          <Heading
-            level="h2"
-            className="text-3xl leading-10 text-ui-fg-subtle font-normal"
-          >
-            Powered by Medusa and Next.js
-          </Heading>
-        </span>
-        <a
-          href="https://github.com/medusajs/nextjs-starter-medusa"
-          target="_blank"
-        >
-          <Button variant="secondary">
-            View on GitHub
-            <Github />
-          </Button>
-        </a>
+    <section className="relative w-full overflow-hidden bg-rv-cacao">
+      <div className="relative flex min-h-[560px] items-center small:min-h-[580px]">
+        {section.imageUrl && (
+          <Image
+            src={section.imageUrl}
+            alt={section.imageAlt}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-center"
+          />
+        )}
+
+        {/* Scrim: cacao fading to transparent across the width. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(90deg, rgba(27,15,12,${overlay}) 0%, rgba(27,15,12,${midOverlay}) 35%, rgba(27,15,12,0.02) 75%)`,
+          }}
+        />
+
+        <div className="relative z-10 w-full">
+          <div className="rv-container">
+            <div className="max-w-[620px] py-16 small:py-24">
+              {section.eyebrow && (
+                <p className="rv-eyebrow mb-5 text-rv-offwhite/80">
+                  {section.eyebrow}
+                </p>
+              )}
+
+              <h1 className="rv-display text-[38px] leading-[1.08] text-rv-offwhite small:text-[54px] xlarge:text-[68px]">
+                {section.headline}{" "}
+                <em className="italic text-rv-dourado">
+                  {section.headlineEmphasis}
+                </em>
+              </h1>
+
+              {section.subtitle && (
+                <p className="mt-6 max-w-[440px] text-base leading-relaxed text-rv-offwhite/85">
+                  {section.subtitle}
+                </p>
+              )}
+
+              {section.ctaLabel && (
+                <LocalizedClientLink
+                  href={section.ctaHref}
+                  className="rv-eyebrow mt-9 inline-flex items-center justify-center rounded-[var(--rv-radius)] bg-rv-rose px-8 py-4 text-rv-offwhite transition-colors duration-200 ease-in hover:bg-rv-rose-strong"
+                  data-testid="hero-cta"
+                >
+                  {section.ctaLabel}
+                </LocalizedClientLink>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
   )
 }
-
-export default Hero

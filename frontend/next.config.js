@@ -12,6 +12,10 @@ const S3_PATHNAME = process.env.MEDUSA_CLOUD_S3_PATHNAME
  * @type {import('next').NextConfig}
  */
 const nextConfig = {
+  // "standalone" empacota o servidor e apenas as dependencias realmente
+  // usadas, permitindo uma imagem Docker final enxuta (sem node_modules
+  // completo). O `frontend/Dockerfile` depende desta saida.
+  output: "standalone",
   reactStrictMode: true,
   logging: {
     fetches: {
@@ -41,6 +45,10 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "medusa-server-testing.s3.us-east-1.amazonaws.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
       ...(S3_HOSTNAME && S3_PATHNAME
         ? [

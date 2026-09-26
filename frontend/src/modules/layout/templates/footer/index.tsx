@@ -3,7 +3,6 @@ import { listCollections } from "@lib/data/collections"
 import { Text, clx } from "@medusajs/ui"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import MedusaCTA from "@modules/layout/components/medusa-cta"
 
 export default async function Footer() {
   const { collections } = await listCollections({
@@ -12,22 +11,41 @@ export default async function Footer() {
   const productCategories = await listCategories()
 
   return (
-    <footer className="border-t border-ui-border-base w-full">
+    <footer className="border-t border-rv-border w-full bg-rv-offwhite">
       <div className="content-container flex flex-col w-full">
-        <div className="flex flex-col gap-y-6 xsmall:flex-row items-start justify-between py-40">
-          <div>
+        <div className="flex flex-col gap-y-10 small:flex-row items-start justify-between py-20">
+          <div className="flex flex-col gap-y-4 max-w-xs">
             <LocalizedClientLink
               href="/"
-              className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
+              className="flex flex-col leading-none"
+              aria-label="Real Valor — página inicial"
             >
-              Medusa Store
+              <span className="rv-display text-2xl tracking-[0.3em] text-rv-preto">
+                REAL VALOR
+              </span>
+              <span className="rv-eyebrow mt-1 text-rv-rose">
+                Alfaiataria feminina
+              </span>
             </LocalizedClientLink>
+
+            <Text className="rv-script text-3xl text-rv-rose">
+              Mais que roupas, é sobre você.
+            </Text>
+
+            <Text className="text-sm leading-relaxed text-rv-muted">
+              A alfaiataria que valoriza você, não o seu status.
+            </Text>
+
+            <span className="rv-eyebrow text-rv-dourado">
+              Alfaiataria para todas.
+            </span>
           </div>
+
           <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-3">
             {productCategories && productCategories?.length > 0 && (
               <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
-                  Categories
+                <span className="rv-eyebrow text-rv-grafite">
+                  Categorias
                 </span>
                 <ul
                   className="grid grid-cols-1 gap-2"
@@ -47,12 +65,12 @@ export default async function Footer() {
 
                     return (
                       <li
-                        className="flex flex-col gap-2 text-ui-fg-subtle txt-small"
+                        className="flex flex-col gap-2 text-rv-muted txt-small"
                         key={c.id}
                       >
                         <LocalizedClientLink
                           className={clx(
-                            "hover:text-ui-fg-base",
+                            "transition-colors duration-200 hover:text-rv-rose",
                             children && "txt-small-plus"
                           )}
                           href={`/categories/${c.handle}`}
@@ -66,7 +84,7 @@ export default async function Footer() {
                               children.map((child) => (
                                 <li key={child.id}>
                                   <LocalizedClientLink
-                                    className="hover:text-ui-fg-base"
+                                    className="transition-colors duration-200 hover:text-rv-rose"
                                     href={`/categories/${child.handle}`}
                                     data-testid="category-link"
                                   >
@@ -84,12 +102,12 @@ export default async function Footer() {
             )}
             {collections && collections.length > 0 && (
               <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
-                  Collections
+                <span className="rv-eyebrow text-rv-grafite">
+                  Coleções
                 </span>
                 <ul
                   className={clx(
-                    "grid grid-cols-1 gap-2 text-ui-fg-subtle txt-small",
+                    "grid grid-cols-1 gap-2 text-rv-muted txt-small",
                     {
                       "grid-cols-2": (collections?.length || 0) > 3,
                     }
@@ -98,7 +116,7 @@ export default async function Footer() {
                   {collections?.slice(0, 6).map((c) => (
                     <li key={c.id}>
                       <LocalizedClientLink
-                        className="hover:text-ui-fg-base"
+                        className="transition-colors duration-200 hover:text-rv-rose"
                         href={`/collections/${c.handle}`}
                       >
                         {c.title}
@@ -109,47 +127,41 @@ export default async function Footer() {
               </div>
             )}
             <div className="flex flex-col gap-y-2">
-              <span className="txt-small-plus txt-ui-fg-base">Medusa</span>
-              <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle txt-small">
+              <span className="rv-eyebrow text-rv-grafite">Ajuda</span>
+              <ul className="grid grid-cols-1 gap-y-2 text-rv-muted txt-small">
                 <li>
-                  <a
-                    href="https://github.com/medusajs"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
+                  <LocalizedClientLink
+                    href="/account"
+                    className="transition-colors duration-200 hover:text-rv-rose"
                   >
-                    GitHub
-                  </a>
+                    Minha conta
+                  </LocalizedClientLink>
                 </li>
                 <li>
-                  <a
-                    href="https://docs.medusajs.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
+                  <LocalizedClientLink
+                    href="/cart"
+                    className="transition-colors duration-200 hover:text-rv-rose"
                   >
-                    Documentation
-                  </a>
+                    Sacola
+                  </LocalizedClientLink>
                 </li>
                 <li>
-                  <a
-                    href="https://github.com/medusajs/nextjs-starter-medusa"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
+                  <LocalizedClientLink
+                    href="/account"
+                    className="transition-colors duration-200 hover:text-rv-rose"
                   >
-                    Source code
-                  </a>
+                    Contato
+                  </LocalizedClientLink>
                 </li>
               </ul>
             </div>
           </div>
         </div>
-        <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
+        <div className="flex w-full mb-10 justify-between text-rv-muted">
           <Text className="txt-compact-small">
-            © {new Date().getFullYear()} Medusa Store. All rights reserved.
+            © {new Date().getFullYear()} Real Valor. Todos os direitos
+            reservados.
           </Text>
-          <MedusaCTA />
         </div>
       </div>
     </footer>

@@ -2,3 +2,8 @@
 *.md linguist-detectable=false
 *.yaml linguist-detectable=false
 *.json linguist-detectable=false
+# fontes versionadas (frontend/src/app/fonts) — não normalizar linha/nem diff textual
+*.woff2 binary
+*.woff binary
+*.ttf binary
+*.otf binary
