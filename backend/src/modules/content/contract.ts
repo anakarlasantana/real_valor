@@ -152,6 +152,82 @@ export type NavSection = SectionBase & {
   actions: HeaderAction[]
 }
 
+/**
+ * De onde vêm os itens de uma coluna do rodapé.
+ *
+ *   `links`       → os `links` digitados no admin (o padrão)
+ *   `categories`  → as categorias do catálogo, ao vivo
+ *   `collections` → as coleções do catálogo, ao vivo
+ *
+ * É uma lista, e não um `union` solto, porque o editor do admin precisa
+ * oferecer as opções: ele é um pacote separado, mantém a própria cópia e
+ * `scripts/check-contract-parity.mjs` confere as duas.
+ */
+export const FOOTER_COLUMN_SOURCES = [
+  "links",
+  "categories",
+  "collections",
+] as const
+
+export type FooterColumnSource = (typeof FOOTER_COLUMN_SOURCES)[number]
+
+/**
+ * Coluna de links do rodapé (ex.: "Ajuda").
+ *
+ * Coluna é sempre conteúdo: não existe coluna fixa nem automática no
+ * componente, e o lojista insere, edita, reordena e remove **todas** pelo
+ * mesmo editor do admin. As colunas de catálogo não são um caso especial
+ * do layout — são só uma `source` possível, escolhida por coluna.
+ *
+ * Com `source: "categories"` ou `"collections"` os itens vêm do catálogo
+ * e `links` é ignorado; com `"links"` (o padrão) é o contrário. Nos dois
+ * casos os `href` digitados têm a mesma forma e a mesma resolução dos
+ * links do menu: quem transforma o `href` em comportamento é o `nav-link`
+ * (`/#secao` rola, `/rota` navega, `https://` abre em nova aba,
+ * `mailto:`/`tel:` abrem o contato), então rodapé e cabeçalho não
+ * divergem.
+ */
+export type FooterColumn = {
+  title: string
+  /** Ausente/desconhecido conta como `"links"` (dado gravado antes). */
+  source: FooterColumnSource
+  links: HeaderLink[]
+}
+
+/** Ícone social do rodapé. */
+export type FooterSocial = {
+  /** Chave resolvida por `frontend/src/lib/content/social-icons.tsx`. */
+  icon: string
+  /** Nome acessível do ícone — ele não tem texto visível. */
+  label: string
+  href: string
+}
+
+/**
+ * Rodapé da loja.
+ *
+ * Como o `nav`, não é uma seção da home: aparece em todas as rotas, quem
+ * o desenha é o layout, e o `id` fixo `footer` é o que o seed cria.
+ *
+ * A marca, a frase manuscrita e a linha de direitos continuam no
+ * componente — não são conteúdo. Todo o resto é: as colunas de links (na
+ * ordem da lista, cada uma com a sua origem) e as redes sociais. Não
+ * existe coluna padrão nem FAQ embutida: rodapé sem coluna nenhuma é um
+ * estado válido, e na loja só aparece o que o lojista inserir no admin —
+ * uma coluna de "Perguntas frequentes" é uma coluna como qualquer outra.
+ */
+export type FooterSection = SectionBase & {
+  type: "footer"
+  /**
+   * Colunas de links, na ordem da lista. Cada item decide de onde vêm os
+   * itens (`source`), então o componente não tem coluna fixa. Coluna sem
+   * título ou sem itens não aparece na loja — é o que permite publicar o
+   * rodapé antes de o catálogo existir.
+   */
+  columns: FooterColumn[]
+  social: FooterSocial[]
+}
+
 export type HomeSection =
   | AnnouncementSection
   | HeroSection
@@ -161,6 +237,7 @@ export type HomeSection =
   | EditorialSection
   | InstagramSection
   | NavSection
+  | FooterSection
 
 /** Todo `type` de seção válido, como valor — para validação em runtime. */
 export const SECTION_TYPES = [
@@ -174,6 +251,9 @@ export const SECTION_TYPES = [
   // Não é uma seção da home: é o cabeçalho da loja, renderizado pelo
   // layout em todas as rotas (como a barra de anúncio).
   "nav",
+  // Mesmo caso do `nav`: o rodapé também é cromo do site, não seção da
+  // home, e quem o desenha é o layout.
+  "footer",
 ] as const
 
 export type SectionType = (typeof SECTION_TYPES)[number]
@@ -204,6 +284,10 @@ export type FieldKind =
   | "list:image"
   | "list:link"
   | "list:action"
+  // Item com sub-lista dentro (`links`): o editor do admin desenha os
+  // níveis internos recursivamente.
+  | "list:column"
+  | "list:social"
 
 export type FieldSpec = {
   name: string
@@ -307,6 +391,20 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       label: "Ícones da direita",
       kind: "list:action",
       help: 'Ordem da lista = ordem no cabeçalho. O ícone "bag" usa a sacola do carrinho, com contador — mantenha só um.',
+    },
+  ],
+  footer: [
+    {
+      name: "columns",
+      label: "Colunas",
+      kind: "list:column",
+      help: 'Ordem da lista = ordem no rodapé. Cada coluna escolhe a origem dos itens: "links" usa os links digitados, "categories" e "collections" puxam do catálogo. Coluna sem título ou sem itens não aparece na loja.',
+    },
+    {
+      name: "social",
+      label: "Redes sociais",
+      kind: "list:social",
+      help: "Ordem da lista = ordem dos ícones, logo abaixo da marca. O rótulo é o nome acessível do ícone — ele não tem texto visível.",
     },
   ],
 }

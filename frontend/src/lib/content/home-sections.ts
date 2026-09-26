@@ -151,6 +151,81 @@ export type NavSection = SectionBase & {
   actions: HeaderAction[]
 }
 
+/**
+ * Where a footer column's items come from.
+ *
+ *   `links`       → the `links` typed in the admin (the default)
+ *   `categories`  → the catalogue categories, live
+ *   `collections` → the catalogue collections, live
+ *
+ * Kept as a list (not a bare union) so the admin editor can offer the
+ * options; it is a separate package with its own copy, and
+ * `scripts/check-contract-parity.mjs` compares the two.
+ */
+export const FOOTER_COLUMN_SOURCES = [
+  "links",
+  "categories",
+  "collections",
+] as const
+
+export type FooterColumnSource = (typeof FOOTER_COLUMN_SOURCES)[number]
+
+/**
+ * Footer column (e.g. "Ajuda").
+ *
+ * A column is always content: the component has no fixed or automatic
+ * column, so the shopkeeper inserts, edits, reorders and removes **all**
+ * of them in the same admin editor. Catalogue columns are not a special
+ * case in the layout — just one possible `source`, picked per column.
+ *
+ * With `source: "categories"` or `"collections"` the items come from the
+ * catalogue and `links` is ignored; with `"links"` (the default) it is the
+ * other way round. Either way the typed `href`s have the same shape and
+ * the same resolution as the header ones: `nav-link` is what turns the
+ * `href` into behaviour (`/#section` scrolls, `/route` navigates,
+ * `https://` opens in a new tab, `mailto:`/`tel:` open the client), so
+ * footer and header cannot drift apart.
+ */
+export type FooterColumn = {
+  title: string
+  /** Missing/unknown counts as `"links"` (data stored before). */
+  source: FooterColumnSource
+  links: HeaderLink[]
+}
+
+/** Footer social icon. The key resolves through `social-icons.tsx`. */
+export type FooterSocial = {
+  icon: string
+  /** Accessible name — the glyph has no visible text. */
+  label: string
+  href: string
+}
+
+/**
+ * Store footer.
+ *
+ * Like `nav`, it is not a home section: the layout renders it on every
+ * route, and the fixed id `footer` is the record the seed creates.
+ *
+ * The wordmark, the script line and the rights row stay in the component —
+ * they are not content. Everything else is: the link columns (in list
+ * order, each with its own source) and the social links. There is no
+ * default column and no built-in FAQ: a footer with no column at all is a
+ * valid state, the store only shows what the shopkeeper inserts in the
+ * admin, and a "Perguntas frequentes" column is just another column.
+ */
+export type FooterSection = SectionBase & {
+  type: "footer"
+  /**
+   * Link columns, in list order. Each item decides where its items come
+   * from (`source`), so the component has no fixed column. A column
+   * without a title or without items does not show — that is what lets the
+   * footer be published before the catalogue exists.
+   */
+  columns: FooterColumn[]
+  social: FooterSocial[]
+}
+
 export type HomeSection =
   | AnnouncementSection
   | HeroSection
@@ -160,6 +235,7 @@ export type HomeSection =
   | EditorialSection
   | InstagramSection
   | NavSection
+  | FooterSection
 
 /* ------------------------------------------------------------------
  * Espelho de backend/src/modules/content/contract.ts
@@ -180,6 +256,9 @@ export const SECTION_TYPES = [
   // Não é uma seção da home: é o cabeçalho da loja, renderizado pelo
   // layout em todas as rotas (como a barra de anúncio).
   "nav",
+  // Mesmo caso do `nav`: o rodapé também é cromo do site, não seção da
+  // home, e quem o desenha é o layout.
+  "footer",
 ] as const
 
 export type SectionType = (typeof SECTION_TYPES)[number]
@@ -210,6 +289,10 @@ export type FieldKind =
   | "list:image"
   | "list:link"
   | "list:action"
+  // Item com sub-lista dentro (`links`): o editor do admin desenha os
+  // níveis internos recursivamente.
+  | "list:column"
+  | "list:social"
 
 export type FieldSpec = {
   name: string
@@ -315,6 +398,20 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       help: 'Ordem da lista = ordem no cabeçalho. O ícone "bag" usa a sacola do carrinho, com contador — mantenha só um.',
     },
   ],
+  footer: [
+    {
+      name: "columns",
+      label: "Colunas",
+      kind: "list:column",
+      help: 'Ordem da lista = ordem no rodapé. Cada coluna escolhe a origem dos itens: "links" usa os links digitados, "categories" e "collections" puxam do catálogo. Coluna sem título ou sem itens não aparece na loja.',
+    },
+    {
+      name: "social",
+      label: "Redes sociais",
+      kind: "list:social",
+      help: "Ordem da lista = ordem dos ícones, logo abaixo da marca. O rótulo é o nome acessível do ícone — ele não tem texto visível.",
+    },
+  ],
 }
 
 /**
@@ -347,6 +444,33 @@ export const DEFAULT_HEADER: NavSection = {
     { icon: "bag", label: "Sacola", href: "/cart" },
     { icon: "account", label: "Conta", href: "/account" },
     { icon: "search", label: "Buscar", href: "/search" },
+  ],
+}
+
+/**
+ * Fallback footer, mirroring `backend/src/modules/content/defaults.ts`.
+ *
+ * Same reasoning as `DEFAULT_HEADER`: the footer is chrome on every
+ * route, so it must never render empty — the wordmark, the script line,
+ * the social row and the rights row are always there.
+ *
+ * `columns` ships empty on purpose: a column is content, there is no
+ * default column, and the shopkeeper inserts as many as they want (from
+ * the catalogue or typed by hand) in the admin. There is no FAQ field
+ * either: a "Perguntas frequentes" column is just another column.
+ */
+export const DEFAULT_FOOTER: FooterSection = {
+  id: "footer",
+  type: "footer",
+  enabled: true,
+  position: 80,
+  columns: [],
+  social: [
+    {
+      icon: "instagram",
+      label: "Instagram",
+      href: "https://instagram.com/realvalor",
+    },
   ],
 }
 
@@ -482,6 +606,8 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
       },
     ],
   },
+  // O rodapé viaja no mesmo payload do cabeçalho (ver `footerSections`).
+  DEFAULT_FOOTER,
 ]
 
 /** Sections sorted by position and with disabled ones removed. */
@@ -521,5 +647,24 @@ export function headerSections(
   return (
     sections.find((section): section is NavSection => section.type === "nav") ??
     DEFAULT_HEADER
+  )
+}
+
+/**
+ * The footer is chrome on every route, same as the header, and its copy
+ * is content — so the layout pulls that one block out of the payload it
+ * already fetched, and a single request feeds both.
+ *
+ * Falls back to `DEFAULT_FOOTER` when there is no `footer` block
+ * (the seed never ran, the admin hid it, or `/store/content` failed): an
+ * empty footer would take the wordmark and the rights line with it.
+ */
+export function footerSections(
+  sections: HomeSection[] = DEFAULT_HOME_SECTIONS
+): FooterSection {
+  return (
+    sections.find(
+      (section): section is FooterSection => section.type === "footer"
+    ) ?? DEFAULT_FOOTER
   )
 }

@@ -46,11 +46,16 @@ node scripts/check-contract-parity.mjs
 ```
 
 Ele compara `SECTION_TYPES`, cada `SECTION_FIELDS` e valida que
-`defaults.ts` cobre todos os tipos, que o `nav` do seed casa com o
-fallback do storefront e que o editor do admin
+`defaults.ts` cobre todos os tipos, que o `nav` e o `footer` do seed
+casam com os fallbacks do storefront e que o editor do admin
 (`backend/src/admin/routes/content/field-input.tsx`) sabe desenhar todo
-tipo de lista, com as mesmas chaves de ícone do storefront. **Rode isto
-depois de qualquer alteração no contrato.**
+tipo de lista, com as mesmas chaves de ícone do storefront — inclusive
+as redes sociais, cujo registro é próprio (`social-icons.tsx`). No rodapé
+ele desce um nível: os campos do item de coluna têm que ser os do tipo
+`FooterColumn`, as origens oferecidas no `<select>` têm que ser as de
+`FOOTER_COLUMN_SOURCES` e toda origem precisa de um ramo em
+`footer-column/index.tsx` — senão o lojista escolhe no admin uma coluna que
+a loja não desenha. **Rode isto depois de qualquer alteração no contrato.**
 
 ## Regras de layout
 
@@ -92,6 +97,55 @@ Consequências práticas:
 - O `href` guardado no CMS é `/#editorial`, sem país; quem prefixa `/{país}` é o `nav-link` na
   renderização. Já na home o clique é interceptado e rola suave (`scrollIntoView`); vindo de outra
   rota o navegador recarrega já no fragmento.
+
+## Rodapé (`footer`)
+
+Como o `nav`, o rodapé é **cromo**, não seção da home: aparece em todas as rotas, quem o desenha é
+o layout (`(main)/layout.tsx` → `footerSections()`) e o render da home ignora o tipo
+(`case "footer": return null`). O CMS guarda só o que o lojista escreve:
+
+| Campo | Render |
+| --- | --- |
+| `columns` | colunas de links — `title` + `source` + `links` — na ordem da lista |
+| `social` | ícones sociais (`icon` + `label` + `href`) abaixo da marca |
+
+A marca, a frase manuscrita e a linha de direitos continuam no JSX — são desenho, não texto de
+lojista. **Não existe coluna padrão**: o rodapé nasce sem nenhuma (`columns: []` no seed e no
+fallback), e a loja mostra exatamente as colunas que o lojista inserir, na ordem em que estiverem.
+Inserir, editar, reordenar e remover são a mesma lista para todas elas — inclusive as de catálogo,
+que não são um caso especial do layout. Não há FAQ embutida: uma coluna de "Perguntas frequentes" é
+uma coluna como qualquer outra.
+
+O que muda entre as colunas é a origem dos itens, escolhida por coluna em `source`:
+
+| `source` | Itens |
+| --- | --- |
+| `links` (padrão) | os `links` digitados no admin, resolvidos pelo `nav-link` |
+| `categories` | as categorias de topo do catálogo, ao vivo (`/categories/{handle}`), com as filhas aninhadas |
+| `collections` | as coleções do catálogo, ao vivo (`/collections/{handle}`) |
+
+`source` ausente ou desconhecido conta como `links` — é o que significa um registro gravado antes
+desse campo, então a loja em produção não precisa de migration. O catálogo **só é buscado quando
+alguma coluna aponta para ele** (`footer/index.tsx`): um rodapé de colunas digitadas não paga
+requisição de categorias nem de coleções. Quem desenha cada ramo é
+`frontend/src/modules/layout/components/footer-column/index.tsx`, e o script de paridade confere que
+toda origem oferecida no admin tem ramo lá.
+
+**Lista vazia esconde o bloco**: coluna sem título ou sem itens não aparece — é o que permite
+publicar o rodapé antes de o catálogo existir.
+
+**Cuidado ao mexer em `SECTION_FIELDS.footer`**: essa lista é a definição do formulário **e** o
+contrato de escrita. O `GET /admin/content` devolve as specs, o formulário do admin monta o corpo do
+PATCH a partir delas e o PATCH substitui o `data` inteiro pelo que veio — campo que sai da lista
+some da tela **e** é apagado do banco no primeiro "Salvar". Tirar o bloco `footer` inteiro (o que já
+aconteceu uma vez, na tentativa de remover a FAQ) deixava o cartão do rodapé sem nenhum campo e a
+validação estourava com 500. O guard de paridade reprova os dois sintomas: `"footer" declara campos
+nos dois arquivos` e `todo campo que o rodapé lê tem editor em SECTION_FIELDS.footer`.
+
+Os `links` passam pelo mesmo `nav-link` do menu (âncora, rota interna, `https://`, `mailto:`), e
+os ícones saem de `frontend/src/lib/content/social-icons.tsx`. Esse registro é separado de
+`icons.ts` porque o `@medusajs/icons` não traz glifo de marca (Instagram, WhatsApp…) — e as
+chaves oferecidas no admin (`list:social`) são conferidas pelo script de paridade.
 
 ## API
 

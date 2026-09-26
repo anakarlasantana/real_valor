@@ -27,7 +27,21 @@ function validateData(
   { strict }: { strict: boolean }
 ): string[] {
   const errors: string[] = []
-  const specs = SECTION_FIELDS[type]
+  // `?? []` e a checagem abaixo existem por causa de um caso real: a entrada
+  // `footer` saiu de `SECTION_FIELDS` e o `map` estourava com 500 ("Cannot
+  // read properties of undefined"), que para o lojista é só "ocorreu um erro
+  // desconhecido" — e nenhum guard reprovava, porque a paridade tolera a
+  // chave faltando dos dois lados. Tipo sem campos é bug de contrato, não
+  // dado ruim: melhor uma mensagem que aponta o arquivo.
+  const specs = SECTION_FIELDS[type] ?? []
+
+  if (!specs.length) {
+    return [
+      `O tipo "${type}" não tem campos em SECTION_FIELDS ` +
+        `(backend/src/modules/content/contract.ts).`,
+    ]
+  }
+
   const known = new Set(specs.map((f) => f.name))
 
   for (const key of Object.keys(data)) {
@@ -77,7 +91,15 @@ function validateData(
 
 /** Divide o corpo recebido entre colunas e o payload `data`. */
 function splitPayload(body: Record<string, unknown>) {
-  const { id: _id, title, enabled, position, surface, type: _type, ...data } = body
+  const {
+    id: _id,
+    title,
+    enabled,
+    position,
+    surface,
+    type: _type,
+    ...data
+  } = body
 
   return {
     columns: {

@@ -163,8 +163,39 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     images: [
       { imageUrl: "/brand/story-1.jpg", imageAlt: "Real Valor no Instagram" },
       { imageUrl: "/brand/story-2.jpg", imageAlt: "Real Valor no Instagram" },
-      { imageUrl: "/brand/collection-1.jpg", imageAlt: "Real Valor no Instagram" },
-      { imageUrl: "/brand/collection-2.jpg", imageAlt: "Real Valor no Instagram" },
+      {
+        imageUrl: "/brand/collection-1.jpg",
+        imageAlt: "Real Valor no Instagram",
+      },
+      {
+        imageUrl: "/brand/collection-2.jpg",
+        imageAlt: "Real Valor no Instagram",
+      },
+    ],
+  },
+  /**
+   * Rodapé. Como o `nav`, não é uma seção da home: o layout o renderiza
+   * em todas as rotas, então `position` 80 só mantém a lista ordenada.
+   *
+   * Espelhado em `frontend/src/lib/content/home-sections.ts`
+   * (`DEFAULT_FOOTER`) — os dois são fallback um do outro.
+   *
+   * `columns` nasce vazia de propósito: coluna é conteúdo, não existe
+   * coluna padrão, e o lojista insere quantas quiser no admin — digitando
+   * os links ou apontando a coluna para o catálogo (`source`).
+   */
+  {
+    id: "footer",
+    type: "footer",
+    enabled: true,
+    position: 80,
+    columns: [],
+    social: [
+      {
+        icon: "instagram",
+        label: "Instagram",
+        href: "https://instagram.com/realvalor",
+      },
     ],
   },
 ]

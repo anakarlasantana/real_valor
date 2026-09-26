@@ -19,6 +19,9 @@ export type FieldKind =
   | "list:image"
   | "list:link"
   | "list:action"
+  // Item que carrega sub-lista (`links`): desenhado em recursão.
+  | "list:column"
+  | "list:social"
 
 export type FieldSpec = {
   name: string
@@ -29,10 +32,39 @@ export type FieldSpec = {
   help?: string
 }
 
+/**
+ * Um campo de item de lista.
+ *
+ * `kind` só existe para o item que é lista (hoje, o `links` de uma coluna
+ * do rodapé) e `options` para o item que é escolha (`source`).
+ */
+type ItemFieldSpec = {
+  name: string
+  label: string
+  kind?: FieldKind
+  /** Opções do `<select>`; a primeira é o valor de um item novo. */
+  options?: readonly string[]
+  /** Tradução de cada opção, para o `<select>` não ser só jargão. */
+  optionLabels?: Record<string, string>
+  /** Em branco é um valor válido (o ícone cai no padrão): oferece "—". */
+  allowEmpty?: boolean
+  /** Explicação curta, abaixo do rótulo. */
+  help?: string
+}
+
+/**
+ * Origens possíveis dos itens de uma coluna do rodapé — espelha
+ * `FOOTER_COLUMN_SOURCES` de `backend/src/modules/content/contract.ts`
+ * (e do espelho no frontend). O admin é um pacote separado e não importa
+ * o contrato, então a lista é mantida à mão aqui e conferida por
+ * `scripts/check-contract-parity.mjs`.
+ */
+const FOOTER_COLUMN_SOURCES = ["links", "categories", "collections"] as const
+
 /** Campos de cada item de lista — espelha o contrato do backend. */
-const ITEM_FIELDS: Record<string, readonly { name: string; label: string }[]> = {
+const ITEM_FIELDS: Record<string, readonly ItemFieldSpec[]> = {
   "list:benefit": [
-    { name: "icon", label: "Ícone" },
+    { name: "icon", label: "Ícone", allowEmpty: true },
     { name: "title", label: "Título" },
     { name: "subtitle", label: "Subtítulo" },
   ],
@@ -53,7 +85,34 @@ const ITEM_FIELDS: Record<string, readonly { name: string; label: string }[]> = 
     { name: "href", label: "Destino" },
   ],
   "list:action": [
-    { name: "icon", label: "Ícone" },
+    { name: "icon", label: "Ícone", allowEmpty: true },
+    { name: "label", label: "Rótulo" },
+    { name: "href", label: "Destino" },
+  ],
+  // Coluna do rodapé: título, a origem dos itens e — quando a origem é
+  // "links" — os links dela, que são uma lista dentro do item (ver
+  // `ObjectListInput`, que desenha os dois níveis).
+  "list:column": [
+    { name: "title", label: "Título" },
+    {
+      name: "source",
+      label: "Origem dos itens",
+      options: FOOTER_COLUMN_SOURCES,
+      optionLabels: {
+        links: "os links digitados abaixo",
+        categories: "as categorias do catálogo",
+        collections: "as coleções do catálogo",
+      },
+    },
+    {
+      name: "links",
+      label: "Links",
+      kind: "list:link",
+      help: "Ignorados quando a origem é o catálogo.",
+    },
+  ],
+  "list:social": [
+    { name: "icon", label: "Ícone", allowEmpty: true },
     { name: "label", label: "Rótulo" },
     { name: "href", label: "Destino" },
   ],
@@ -70,7 +129,18 @@ const ITEM_FIELDS: Record<string, readonly { name: string; label: string }[]> = 
  */
 const ICON_KEYS_BY_KIND: Record<string, readonly string[]> = {
   "list:benefit": ["quality", "price", "sizes", "delivery"],
-  "list:action": ["bag", "account", "search", "whatsapp", "mail", "phone", "pin"],
+  "list:action": [
+    "bag",
+    "account",
+    "search",
+    "whatsapp",
+    "mail",
+    "phone",
+    "pin",
+  ],
+  // Espelha `SOCIAL_ICON_KEYS` de `frontend/src/lib/content/social-icons.tsx`
+  // (registro próprio: os ícones sociais não estão em `icons.ts`).
+  "list:social": ["instagram", "facebook", "whatsapp", "youtube"],
 }
 
 /** Tradução de cada chave, para o `<select>` não ser só jargão. */
@@ -86,6 +156,142 @@ const ICON_LABELS: Record<string, string> = {
   mail: "e-mail",
   phone: "telefone",
   pin: "localização",
+  // Redes sociais do rodapé (`list:social`).
+  instagram: "Instagram",
+  facebook: "Facebook",
+  youtube: "YouTube",
+}
+
+/**
+ * Editor de uma lista de objetos (itens, coleções, imagens, links).
+ *
+ * É recursivo de propósito: um item pode conter outra lista — a coluna do
+ * rodapé (`list:column`) guarda os links dela —, então o mesmo componente
+ * desenha os níveis internos em vez de um ramo por profundidade. O
+ * `addLabel` existe para o botão do nível de dentro não repetir
+ * "Adicionar item" logo abaixo do rótulo "Links".
+ */
+function ObjectListInput({
+  kind,
+  value,
+  onChange,
+  addLabel = "Adicionar item",
+}: {
+  kind: FieldKind
+  value: unknown
+  onChange: (value: unknown) => void
+  addLabel?: string
+}) {
+  const fields = ITEM_FIELDS[kind] ?? []
+  const iconKeys = ICON_KEYS_BY_KIND[kind] ?? []
+  const items = Array.isArray(value) ? (value as Record<string, unknown>[]) : []
+
+  const update = (index: number, name: string, next: unknown) => {
+    onChange(
+      items.map((item, i) => (i === index ? { ...item, [name]: next } : item))
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-y-3">
+      {items.map((item, index) => (
+        <div
+          key={index}
+          className="flex flex-col gap-y-3 rounded-md border border-ui-border-base p-3"
+        >
+          <div className="flex items-center justify-between">
+            <Text size="xsmall" weight="plus">
+              Item {index + 1}
+            </Text>
+            <Button
+              variant="transparent"
+              size="small"
+              onClick={() => onChange(items.filter((_, i) => i !== index))}
+            >
+              Remover
+            </Button>
+          </div>
+
+          {fields.map((field) => {
+            // Constante local: é o que faz o TypeScript estreitar `kind`
+            // para `FieldKind` no ramo da sub-lista.
+            const nested = field.kind
+
+            // Todo campo com escolha vira um `<select>`: as opções do
+            // próprio campo (`source`) ou o registro de ícones (`icon`).
+            const choices =
+              field.options ?? (field.name === "icon" ? iconKeys : [])
+
+            return (
+              <div key={field.name} className="flex flex-col gap-y-1">
+                <Label size="xsmall">{field.label}</Label>
+                {field.help && (
+                  <Text size="xsmall" className="text-ui-fg-subtle">
+                    {field.help}
+                  </Text>
+                )}
+
+                {nested && nested.startsWith("list:") ? (
+                  <ObjectListInput
+                    kind={nested}
+                    value={item[field.name]}
+                    onChange={(next) => update(index, field.name, next)}
+                    addLabel={`Adicionar ${field.label.toLowerCase()}`}
+                  />
+                ) : choices.length > 0 ? (
+                  <select
+                    className="h-8 rounded-md border border-ui-border-base bg-ui-bg-field px-2 text-sm"
+                    value={String(item[field.name] ?? "")}
+                    onChange={(e) => update(index, field.name, e.target.value)}
+                  >
+                    {field.allowEmpty && <option value="">—</option>}
+                    {choices.map((key) => {
+                      const translation =
+                        field.optionLabels?.[key] ?? ICON_LABELS[key]
+
+                      return (
+                        <option key={key} value={key}>
+                          {translation ? `${key} — ${translation}` : key}
+                        </option>
+                      )
+                    })}
+                  </select>
+                ) : (
+                  <Input
+                    value={String(item[field.name] ?? "")}
+                    onChange={(e) => update(index, field.name, e.target.value)}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+
+      <Button
+        variant="secondary"
+        size="small"
+        className="self-start"
+        onClick={() =>
+          onChange([
+            ...items,
+            // Sub-lista nasce como `[]`, não como `""`: string vazia
+            // viraria item inválido na validação da API. Um `<select>`
+            // nasce na primeira opção — a que tem significado (ex.:
+            // `source: "links"`), não numa opção vazia.
+            Object.fromEntries(
+              fields.map((f) => [
+                f.name,
+                f.kind?.startsWith("list:") ? [] : f.options?.[0] ?? "",
+              ])
+            ),
+          ])
+        }
+      >
+        {addLabel}
+      </Button>
+    </div>
+  )
 }
 
 type FieldInputProps = {
@@ -132,83 +338,12 @@ export const FieldInput = ({ spec, value, onChange }: FieldInputProps) => {
     )
   }
 
-  /* ---- listas de objetos (itens, coleções, imagens) ---- */
+  /* ---- listas de objetos (itens, coleções, imagens, links) ---- */
   if (spec.kind.startsWith("list:")) {
-    const fields = ITEM_FIELDS[spec.kind] ?? []
-    const iconKeys = ICON_KEYS_BY_KIND[spec.kind] ?? []
-    const items = Array.isArray(value) ? (value as Record<string, unknown>[]) : []
-
-    const update = (index: number, name: string, next: unknown) => {
-      onChange(
-        items.map((item, i) => (i === index ? { ...item, [name]: next } : item))
-      )
-    }
-
     return (
       <div className="flex flex-col gap-y-3">
         {label}
-
-        {items.map((item, index) => (
-          <div
-            key={index}
-            className="flex flex-col gap-y-3 rounded-md border border-ui-border-base p-3"
-          >
-            <div className="flex items-center justify-between">
-              <Text size="xsmall" weight="plus">
-                Item {index + 1}
-              </Text>
-              <Button
-                variant="transparent"
-                size="small"
-                onClick={() => onChange(items.filter((_, i) => i !== index))}
-              >
-                Remover
-              </Button>
-            </div>
-
-            {fields.map((field) => (
-              <div key={field.name} className="flex flex-col gap-y-1">
-                <Label size="xsmall">{field.label}</Label>
-
-                {iconKeys.length > 0 && field.name === "icon" ? (
-                  <select
-                    className="h-8 rounded-md border border-ui-border-base bg-ui-bg-field px-2 text-sm"
-                    value={String(item[field.name] ?? "")}
-                    onChange={(e) => update(index, field.name, e.target.value)}
-                  >
-                    <option value="">—</option>
-                    {iconKeys.map((key) => (
-                      <option key={key} value={key}>
-                        {ICON_LABELS[key]
-                          ? `${key} — ${ICON_LABELS[key]}`
-                          : key}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <Input
-                    value={String(item[field.name] ?? "")}
-                    onChange={(e) => update(index, field.name, e.target.value)}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        ))}
-
-        <Button
-          variant="secondary"
-          size="small"
-          className="self-start"
-          onClick={() =>
-            onChange([
-              ...items,
-              Object.fromEntries(fields.map((f) => [f.name, ""])),
-            ])
-          }
-        >
-          Adicionar item
-        </Button>
+        <ObjectListInput kind={spec.kind} value={value} onChange={onChange} />
       </div>
     )
   }

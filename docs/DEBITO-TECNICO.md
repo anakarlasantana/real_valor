@@ -6,8 +6,9 @@ atacado sem redescobrir o contexto.
 
 > Última atualização: 2026-09-26
 > Escopo auditado: fase CMS (Etapas 2+3+4) concluída e validada, mais a varredura de 2026-09-26
-> (**build hermético do storefront** — fonts self-hosted — e **consolidação do Compose em um único
-> modelo**). Os itens abaixo são o que **fica pendente** para uso em produção.
+> (**build hermético do storefront** — fonts self-hosted — **consolidação do Compose em um único
+> modelo** e a **migração do rodapé para o CMS**, bloco `footer` com colunas e redes sociais). Os
+> itens abaixo são o que **fica pendente** para uso em produção.
 
 **Legenda de severidade**
 
@@ -280,15 +281,21 @@ visitante) é que cada card abra a sua coleção.
 (reconfirmado via `curl`), então apontar os cards para lá só trocaria um destino genérico por um
 destino quebrado. **Corrigir 2.1 antes.**
 
-#### 2.5.3 Apenas a superfície `home` é renderizada
+#### 2.5.3 Apenas a superfície `home` é renderizada — rodapé resolvido
 
-**Evidência:** todos os blocos têm `surface: "home"` (`seed-content.ts:26`). Só
-`app/[countryCode]/(main)/page.tsx` consome `getHomeSections()`. Não há rota institucional nem
-bloco de rodapé editável.
+**Status: o rodapé entrou no CMS em 2026-09-26; resta a superfície institucional.**
 
-**Impacto:** o alcance do CMS é a home. Textos de Sobre/Contato/rodapé continuam exigindo deploy
-— o lojista edita um terço da loja e o resto fica com o desenvolvedor. Este é o mesmo problema
-do item 3.3, listado aqui porque é o teto da integração.
+**Evidência:** todos os blocos têm `surface: "home"` (`seed-content.ts:26`) — inclusive o `nav` e
+o `footer`, que não são seções da home e quem os renderiza é o layout. Só
+`app/[countryCode]/(main)/page.tsx` consome `getHomeSections()` como corpo de página; as partes
+de cromo saem do mesmo payload via `headerSections()` / `footerSections()`. O rodapé agora é o
+bloco `footer` (colunas de links — cada uma escolhendo a origem dos itens, catálogo ou digitados —,
+e redes sociais, tudo editável em **Conteúdo da vitrine**); o que continua fora do CMS é a
+superfície institucional — não há rota nem bloco para Sobre/Contato.
+
+**Impacto:** o alcance do CMS é a home e o cromo (barra de anúncio, cabeçalho e rodapé). Textos
+institucionais continuam exigindo deploy — o lojista edita a maior parte da loja, mas não uma
+página de Sobre. Este é o mesmo problema do item 3.3, listado aqui porque é o teto da integração.
 
 #### 2.5.4 Sem upload de imagem — a liberação do CMS depende de deploy
 
@@ -366,17 +373,22 @@ contrato só é descoberta em runtime ou rodando o script à mão.
 
 ### 3.3 CMS cobre apenas a superfície `home`
 
-**Evidência:** o módulo `content` está populado apenas com `surface: "home"` (8 blocos: as 7
-seções do protótipo + o `nav` do cabeçalho). O `nav` viaja nessa mesma superfície, mas **não** é
-uma seção da home: quem o renderiza é o layout (`(main)/layout.tsx` → `headerSections()`), em
-todas as rotas, e o render da home ignora o tipo (`case "nav": return null`). O tema da loja é
+**Status: rodapé resolvido em 2026-09-26; resta a superfície institucional.**
+
+**Evidência:** o módulo `content` está populado apenas com `surface: "home"` (9 blocos: as 7
+seções do protótipo + o `nav` do cabeçalho + o `footer` do rodapé). Cabeçalho e rodapé viajam
+nessa mesma superfície, mas **não** são seções da home: quem os renderiza é o layout
+(`(main)/layout.tsx` → `headerSections()`/`footerSections()`), em todas as rotas, e o render da
+home ignora os dois tipos (`case "nav"`/`case "footer": return null`). O tema da loja é
 *file-based* (`themes/*/theme.json`), fora do CMS.
 
-**Impacto:** textos institucionais e de rodapé continuam exigindo deploy para alterar. O
-lojista edita a home, mas não o resto da loja.
+**Impacto:** textos institucionais (Sobre, Contato, trocas) continuam exigindo deploy para
+alterar. O rodapé já não: as colunas (de catálogo — categorias ou coleções — ou com links
+digitados) e as redes sociais são campos do bloco `footer` em **Conteúdo da vitrine**, sem
+coluna padrão no código, com paridade travada pelo script contra o fallback do storefront.
 
-**Ação necessária:** estender `surface` para `institutional`/`footer` (a modelagem já suporta;
-é trabalho de conteúdo + render), sem migrar o tema para o CMS nesta rodada.
+**Ação necessária:** estender `surface` para `institutional` (a modelagem já suporta; é trabalho
+de conteúdo + render), sem migrar o tema para o CMS nesta rodada.
 
 ---
 

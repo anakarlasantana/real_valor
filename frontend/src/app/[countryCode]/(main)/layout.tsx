@@ -5,7 +5,11 @@ import { retrieveCustomer } from "@lib/data/customer"
 import { getHomeSections } from "@lib/data/content"
 import { getBaseURL } from "@lib/util/env"
 import { StoreCartShippingOption } from "@medusajs/types"
-import { announceSections, headerSections } from "@lib/content/home-sections"
+import {
+  announceSections,
+  footerSections,
+  headerSections,
+} from "@lib/content/home-sections"
 import CartMismatchBanner from "@modules/layout/components/cart-mismatch-banner"
 import AnnouncementBar from "@modules/home/components/announcement-bar"
 import Footer from "@modules/layout/templates/footer"
@@ -37,9 +41,10 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
     shippingOptions = shipping_options
   }
 
-  // O cabeçalho também é cromo (toda rota), mas seus links são conteúdo:
-  // saem do mesmo payload que o anúncio, com fallback embutido.
+  // O cabeçalho e o rodapé também são cromo (toda rota), mas seu texto é
+  // conteúdo: saem do mesmo payload que o anúncio, com fallback embutido.
   const header = headerSections(sections)
+  const footer = footerSections(sections)
 
   return (
     <>
@@ -59,7 +64,7 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
         />
       )}
       {props.children}
-      <Footer />
+      <Footer content={footer} />
     </>
   )
 }

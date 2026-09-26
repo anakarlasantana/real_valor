@@ -133,6 +133,10 @@ function renderSection(
       // Mesmo caso da barra de anúncio: o layout resolve o cabeçalho via
       // `headerSections()` e o desenha fora da página.
       return null
+    case "footer":
+      // E o rodapé, via `footerSections()`. Os três são chrome do site,
+      // não seção da home.
+      return null
     case "hero":
       return <Hero section={section} />
     case "benefits":

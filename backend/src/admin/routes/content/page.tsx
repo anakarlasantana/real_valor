@@ -58,6 +58,11 @@ const TYPE_LABELS: Record<string, string> = {
   // "Sobre" da navbar rola (a âncora é o `id` da seção, não o rótulo).
   editorial: "Sobre",
   instagram: "Instagram",
+  // Cabeçalho e rodapé não são seções da home — aparecem em todas as
+  // rotas, desenhados pelo layout —, mas viajam no mesmo payload. Sem
+  // rótulo aqui a listagem mostraria o `type` cru.
+  nav: "Cabeçalho",
+  footer: "Rodapé",
 }
 
 const ContentPage = () => {
