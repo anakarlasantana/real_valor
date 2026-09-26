@@ -13,13 +13,15 @@ export default function InstagramGrid({
   const images = section.images ?? []
 
   return (
-    <section className="w-full bg-rv-preto py-16 text-rv-offwhite small:py-24">
+    <section className="rv-section-bg-preto rv-section-text-onmedia w-full py-16 small:py-24">
       <div className="rv-container">
         <header className="mx-auto max-w-[640px] text-center">
           {section.handle && (
-            <p className="rv-eyebrow mb-5 text-rv-dourado">{section.handle}</p>
+            <p className="rv-eyebrow rv-section-accent-onmedia mb-5">
+              {section.handle}
+            </p>
           )}
-          <h2 className="rv-display text-[28px] leading-tight text-rv-offwhite small:text-[40px]">
+          <h2 className="rv-display rv-section-heading-onmedia text-[28px] leading-tight small:text-[40px]">
             {section.title}
           </h2>
         </header>

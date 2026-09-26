@@ -31,17 +31,17 @@ export default function EditorialBanner({
   const copy = (
     <div className="flex flex-col justify-center">
       {section.script && (
-        <p className="rv-script text-[34px] leading-none small:text-[44px]">
+        <p className="rv-script rv-section-accent text-[34px] leading-none small:text-[44px]">
           {section.script}
         </p>
       )}
 
-      <h2 className="rv-display mt-5 text-[26px] leading-tight small:text-[36px]">
+      <h2 className="rv-display rv-section-heading mt-5 text-[26px] leading-tight small:text-[36px]">
         {section.title}
       </h2>
 
       {section.body && (
-        <p className="mt-5 max-w-[460px] text-base leading-relaxed text-rv-muted">
+        <p className="rv-section-text mt-5 max-w-[460px] text-base leading-relaxed">
           {section.body}
         </p>
       )}
@@ -58,7 +58,7 @@ export default function EditorialBanner({
   )
 
   return (
-    <section className="w-full bg-rv-surface py-16 small:py-24">
+    <section className="rv-section-bg-surface w-full py-16 small:py-24">
       <div className="rv-container">
         <div className="grid grid-cols-1 items-center gap-10 small:grid-cols-2 small:gap-16">
           {imageFirst ? (

@@ -34,7 +34,7 @@ export default function BenefitsBar({
   return (
     <section
       aria-label="Vantagens"
-      className="w-full border-b border-rv-border bg-rv-surface"
+      className="rv-section-bg-surface w-full border-b border-rv-border"
     >
       <div className="rv-container">
         <ul
@@ -49,18 +49,18 @@ export default function BenefitsBar({
               <li
                 key={`${item.title}-${index}`}
                 data-testid="benefit-item"
-                className="flex grow basis-[calc(50%_-_1px)] flex-col items-center justify-center gap-2 bg-rv-surface px-4 py-6 text-center small:basis-[11rem] small:py-8"
+                className="rv-section-bg-surface flex grow basis-[calc(50%_-_1px)] flex-col items-center justify-center gap-2 px-4 py-6 text-center small:basis-[11rem] small:py-8"
               >
                 <Icon
-                  className="h-5 w-5 text-rv-rose"
+                  className="rv-section-accent h-5 w-5"
                   aria-hidden="true"
                   focusable="false"
                 />
-                <p className="text-small-semi uppercase tracking-[0.12em] text-rv-grafite">
+                <p className="text-small-semi rv-section-heading-sans uppercase tracking-[0.12em]">
                   {item.title}
                 </p>
                 {item.subtitle && (
-                  <p className="text-xsmall-regular text-rv-muted">
+                  <p className="text-xsmall-regular rv-section-text">
                     {item.subtitle}
                   </p>
                 )}

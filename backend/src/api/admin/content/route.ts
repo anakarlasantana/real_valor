@@ -5,9 +5,21 @@ import type ContentModuleService from "../../../modules/content/service"
 import {
   SECTION_TYPES,
   SECTION_FIELDS,
+  THEME_COLOR_HEXES,
+  THEME_DARK_TOKENS,
+  THEME_FONTS,
   isSectionType,
+  type FieldKind,
   type SectionType,
 } from "../../../modules/content/contract"
+
+/**
+ * Os `kind` que guardam um valor de `options` — escolha dentro de uma lista
+ * fechada. `color` e `font` são a mesma coisa que `select` para a
+ * validação: mudam só no desenho do editor (bolinha de cor, lista de fontes
+ * com prévia). Quem garante que eles não viram texto livre é esta lista.
+ */
+const CHOICE_KINDS: readonly FieldKind[] = ["select", "color", "font"]
 
 /**
  * Validação de entrada do admin contra `contract.ts`.
@@ -70,10 +82,17 @@ function validateData(
       errors.push(`Campo "${spec.name}" deve ser número.`)
     }
 
-    if (spec.kind === "select" && !spec.options?.includes(value as never)) {
-      errors.push(
-        `Campo "${spec.name}" deve ser um de: ${spec.options?.join(", ")}.`
+    if (
+      CHOICE_KINDS.includes(spec.kind) &&
+      !spec.options?.includes(value as never)
+    ) {
+      // A opção vazia não se escreve: sem o "(vazio)" a mensagem sairia
+      // começando por vírgula ("deve ser um de: , rose, …").
+      const options = (spec.options ?? []).map((option) =>
+        option === "" ? "(vazio = padrão do tema)" : option
       )
+
+      errors.push(`Campo "${spec.name}" deve ser um de: ${options.join(", ")}.`)
     }
 
     if (spec.kind.startsWith("list:") && !Array.isArray(value)) {
@@ -150,6 +169,26 @@ export async function GET(
     schema: {
       types: SECTION_TYPES,
       fields: SECTION_FIELDS,
+      /**
+       * Prévia de aparência para o editor: o hex de cada cor da paleta e a
+       * família/pilha de cada papel de fonte.
+       *
+       * Vão no `schema`, e não numa terceira cópia dentro do admin, porque o
+       * painel é um pacote separado (não importa o contrato) e precisa dos
+       * dois só para **desenhar**: a bolinha de cor e a lista de fontes com
+       * prévia — nenhuma fonte existe no navegador do painel. O que pode ser
+       * gravado continua vindo de `options`, campo a campo, validado no
+       * `validateData` desta rota.
+       */
+      palette: THEME_COLOR_HEXES,
+      fonts: THEME_FONTS,
+      /**
+       * Cores de fundo que o storefront trata como escuras (lá ele
+       * legibiliza o texto em off white). Aqui é o que permite o trilho de
+       * fundo **avisar** isso na hora da escolha, em vez de o lojista
+       * descobrir depois, olhando a loja.
+       */
+      darkTokens: THEME_DARK_TOKENS,
     },
   })
 }

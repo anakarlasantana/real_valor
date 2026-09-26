@@ -59,13 +59,15 @@ export default async function FeaturedProducts({
       <div className="rv-container">
         <header className="mb-8 max-w-[620px] small:mb-10">
           {section.eyebrow && (
-            <p className="rv-eyebrow mb-4 text-rv-rose">{section.eyebrow}</p>
+            <p className="rv-eyebrow rv-section-accent mb-4">
+              {section.eyebrow}
+            </p>
           )}
-          <h2 className="rv-display text-[28px] leading-tight small:text-[40px]">
+          <h2 className="rv-display rv-section-heading text-[28px] leading-tight small:text-[40px]">
             {section.title}
           </h2>
           {section.subtitle && (
-            <p className="mt-4 text-base leading-relaxed text-rv-muted">
+            <p className="rv-section-text mt-4 text-base leading-relaxed">
               {section.subtitle}
             </p>
           )}
@@ -106,16 +108,12 @@ export default async function FeaturedProducts({
           <ul className="grid grid-cols-2 gap-x-6 gap-y-10 small:grid-cols-4 small:gap-y-14">
             {products.map((product) => (
               <li key={product.id}>
-                <ProductPreview
-                  product={product}
-                  region={region}
-                  isFeatured
-                />
+                <ProductPreview product={product} region={region} isFeatured />
               </li>
             ))}
           </ul>
         ) : (
-          <p className="py-10 text-base text-rv-muted">
+          <p className="rv-section-text py-10 text-base">
             Nenhuma peça encontrada para este filtro.
           </p>
         )}

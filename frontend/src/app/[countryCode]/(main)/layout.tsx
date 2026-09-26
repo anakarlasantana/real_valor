@@ -48,9 +48,7 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
 
   return (
     <>
-      <AnnouncementBar
-        text={announceSections(sections)?.text ?? "Frete seguro para todo o Brasil"}
-      />
+      <AnnouncementBar section={announceSections(sections)} />
       <Nav header={header} />
       {customer && cart && (
         <CartMismatchBanner customer={customer} cart={cart} />

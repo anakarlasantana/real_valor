@@ -22,13 +22,15 @@ export default function CollectionHighlights({
       <div className="rv-container">
         <header className="mb-10 max-w-[620px] small:mb-14">
           {section.eyebrow && (
-            <p className="rv-eyebrow mb-4 text-rv-rose">{section.eyebrow}</p>
+            <p className="rv-eyebrow rv-section-accent mb-4">
+              {section.eyebrow}
+            </p>
           )}
-          <h2 className="rv-display text-[28px] leading-tight small:text-[40px]">
+          <h2 className="rv-display rv-section-heading text-[28px] leading-tight small:text-[40px]">
             {section.title}
           </h2>
           {section.subtitle && (
-            <p className="mt-4 text-base leading-relaxed text-rv-muted">
+            <p className="rv-section-text mt-4 text-base leading-relaxed">
               {section.subtitle}
             </p>
           )}
@@ -55,15 +57,15 @@ export default function CollectionHighlights({
                   />
 
                   <div className="absolute inset-x-0 bottom-0 p-6">
-                    <p className="rv-display text-2xl text-rv-offwhite">
+                    <p className="rv-display rv-section-heading-onmedia text-2xl">
                       {item.title}
                     </p>
                     {item.subtitle && (
-                      <p className="mt-1 text-small-regular text-rv-offwhite/80">
+                      <p className="rv-section-text-inherit mt-1 text-small-regular">
                         {item.subtitle}
                       </p>
                     )}
-                    <span className="rv-eyebrow mt-4 inline-block border-b border-rv-dourado pb-1 text-rv-dourado">
+                    <span className="rv-eyebrow rv-section-accent-onmedia mt-4 inline-block border-b border-rv-dourado pb-1">
                       {item.ctaLabel}
                     </span>
                   </div>

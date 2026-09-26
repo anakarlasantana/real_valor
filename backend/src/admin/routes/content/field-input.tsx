@@ -5,14 +5,39 @@
  * admin devolve — gerado a partir de
  * `backend/src/modules/content/contract.ts` —, então adicionar um campo
  * no contrato faz ele aparecer aqui sem mexer neste arquivo.
+ *
+ * Duas coisas deste arquivo NÃO são genéricas e por isso estão espelhadas
+ * à mão em relação ao contrato (a guarda
+ * `scripts/check-contract-parity.mjs` confere): os campos de cada item de
+ * lista (`ITEM_FIELDS`) e as chaves de ícone oferecidas
+ * (`ICON_KEYS_BY_KIND`). Já `optionLabels` e `group` chegam prontos pelo
+ * `schema` — o contrato decide as opções e a tradução delas, e quem lê
+ * `group` é a página, que monta os trilhos de aparência.
+ *
+ * Os dois `kind` de aparência (`color`, `font`) têm ramo aqui, mas quem os
+ * desenha é o `appearance-controls.tsx`: bolinha de cor com tooltip e lista
+ * de fontes com prévia. Este arquivo só passa o campo adiante, com a paleta
+ * e as fontes que vieram no `schema` — o resto dos `kind` é formulário
+ * comum.
  */
 import { Button, Input, Label, Text, Textarea } from "@medusajs/ui"
+
+import {
+  ColorPicker,
+  FontPicker,
+  type Fonts,
+  type Palette,
+} from "./appearance-controls"
 
 export type FieldKind =
   | "text"
   | "textarea"
   | "number"
   | "select"
+  // Aparência: escolha dentro da paleta / dos papéis de fonte. O valor
+  // continua sendo um `string` de `options` — muda só o desenho.
+  | "color"
+  | "font"
   | "list:text"
   | "list:benefit"
   | "list:highlight"
@@ -29,6 +54,26 @@ export type FieldSpec = {
   kind: FieldKind
   required?: boolean
   options?: readonly string[]
+  /**
+   * Tradução de cada opção, vinda do contrato. A chave é a opção; a opção
+   * vazia se escreve `"": "…"`. Sem tradução, a opção aparece crua.
+   */
+  optionLabels?: Record<string, string>
+  /**
+   * Agrupamento visual, vindo do contrato: o rótulo do **trilho** de
+   * aparência (`"Títulos"`, `"Fundo"`…). `undefined` (ou `""`) é o grupo do
+   * conteúdo, que não ganha cabeçalho — o campo é desenhado sozinho, na
+   * ordem do contrato.
+   */
+  group?: string
+  /**
+   * Campo de conteúdo que este campo veste, vindo do contrato — é a âncora
+   * declarada do trilho. Quem decide onde desenhar é a **ordem** dos campos
+   * (`page.tsx` percorre o array e abre um trilho quando o grupo começa);
+   * este campo é o que a guarda de paridade usa para conferir que a ordem
+   * não se perdeu no caminho.
+   */
+  attachedTo?: string
   help?: string
 }
 
@@ -298,9 +343,24 @@ type FieldInputProps = {
   spec: FieldSpec
   value: unknown
   onChange: (value: unknown) => void
+  /**
+   * `schema.palette` / `schema.fonts` — as prévias dos campos `color` e
+   * `font` (hex de cada cor, família de cada fonte). Vêm do `schema` da API,
+   * e não de uma cópia aqui, pelo mesmo motivo do resto do arquivo: o admin
+   * é um pacote separado e não importa o contrato. São opcionais porque
+   * só os dois `kind` de aparência os usam.
+   */
+  palette?: Palette
+  fonts?: Fonts
 }
 
-export const FieldInput = ({ spec, value, onChange }: FieldInputProps) => {
+export const FieldInput = ({
+  spec,
+  value,
+  onChange,
+  palette,
+  fonts,
+}: FieldInputProps) => {
   const label = (
     <div className="flex flex-col">
       <Label size="small" weight="plus">
@@ -396,6 +456,25 @@ export const FieldInput = ({ spec, value, onChange }: FieldInputProps) => {
           ))}
         </select>
       </div>
+    )
+  }
+
+  /* ---- cor do tema (bolinha) ---- */
+  if (spec.kind === "color") {
+    return (
+      <ColorPicker
+        spec={spec}
+        value={value}
+        onChange={onChange}
+        palette={palette}
+      />
+    )
+  }
+
+  /* ---- fonte do tema (lista com prévia) ---- */
+  if (spec.kind === "font") {
+    return (
+      <FontPicker spec={spec} value={value} onChange={onChange} fonts={fonts} />
     )
   }
 

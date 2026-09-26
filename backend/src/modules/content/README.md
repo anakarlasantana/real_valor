@@ -45,7 +45,8 @@ Um teste de paridade trava a divergência:
 node scripts/check-contract-parity.mjs
 ```
 
-Ele compara `SECTION_TYPES`, cada `SECTION_FIELDS` e valida que
+Ele compara `SECTION_TYPES`, cada `SECTION_FIELDS` — campo por campo, inclusive
+`required`, `options`, `optionLabels` e `group` — e valida que
 `defaults.ts` cobre todos os tipos, que o `nav` e o `footer` do seed
 casam com os fallbacks do storefront e que o editor do admin
 (`backend/src/admin/routes/content/field-input.tsx`) sabe desenhar todo
@@ -56,6 +57,24 @@ ele desce um nível: os campos do item de coluna têm que ser os do tipo
 `FOOTER_COLUMN_SOURCES` e toda origem precisa de um ramo em
 `footer-column/index.tsx` — senão o lojista escolhe no admin uma coluna que
 a loja não desenha. **Rode isto depois de qualquer alteração no contrato.**
+
+Desde a aparência por seção ele também confere a ponte com o CSS, que é onde
+um campo novo se perderia em silêncio: as listas de cores e de fontes nos
+dois arquivos, cada campo `appearance*` lido pelo storefront (e nenhum campo
+lido que o contrato não declare), cada variável `--rv-section-*` escrita
+consumida por um `var()` no `brand.css`, e cada classe `.rv-section-*`
+definida sendo usada — e vice-versa (ver *Aparência por seção*).
+
+E o editor, que é o outro lugar onde a aparência se perde: cada trilho tem de
+estar **logo abaixo** do campo que ele veste (o `attachedTo` conferido contra a
+ordem do array), as opções de cor e de fonte têm de ser a paleta e os papéis
+na ordem do contrato, o `FieldSpec` espelhado no admin tem de conhecer o
+`attachedTo`, o `GET /admin/content` tem de mandar `palette`/`fonts`/
+`darkTokens`, e cada família declarada precisa existir como `@font-face` em
+`backend/src/admin/routes/content/appearance.css` apontando para um `.woff2`
+com o **mesmo md5** do storefront. As duas últimas são as que nenhuma revisão
+manual pegaria: sem elas a bolinha sai sem cor e a prévia de fonte cai no
+fallback do navegador, e a página continua "funcionando".
 
 ## Regras de layout
 
@@ -97,6 +116,136 @@ Consequências práticas:
 - O `href` guardado no CMS é `/#editorial`, sem país; quem prefixa `/{país}` é o `nav-link` na
   renderização. Já na home o clique é interceptado e rola suave (`scrollIntoView`); vindo de outra
   rota o navegador recarrega já no fragmento.
+
+## Aparência por seção (`appearance*`)
+
+Cada seção pode vestir as cores e as fontes **do tema** sem sair do CRM. Os
+campos moram no mesmo `data` das outras seções e começam com `appearance`; a
+primeira opção é sempre a vazia — "Padrão do tema da loja":
+
+| Campo | `kind` | O que muda na loja |
+| --- | --- | --- |
+| `appearanceHeadingFont` | `font` | a família dos títulos |
+| `appearanceTextFont` | `font` | a família dos textos |
+| `appearanceHeadingColor` | `color` | a cor dos títulos |
+| `appearanceTextColor` | `color` | a cor dos textos secundários |
+| `appearanceAccentColor` | `color` | a cor dos detalhes (eyebrow, ícones, frase manuscrita, realces, botões e links) |
+| `appearanceBackgroundColor` | `color` | a cor de fundo do bloco |
+
+`color` e `font` são `select` com desenho próprio: no painel, a cor sai como
+**bolinha** (com o nome do papel no tooltip) e a fonte como **lista com
+prévia**, cada opção desenhada na própria família. O valor gravado é o mesmo
+de sempre — uma string de `options` — e o `validateData` da rota admin
+reprova o que estiver fora da lista exatamente como fazia com `select`.
+
+Os valores são os **papéis do tema**: as 6 cores do guia de marca (`rose`,
+`offwhite`, `cacao`, `grafite`, `preto`, `dourado`) e os 3 papéis de fonte
+(`display`, `sans`, `script`), declarados uma vez em `THEME_COLOR_TOKENS` /
+`FONT_ROLES` e espelhados no storefront. **Não há cor livre** (hex): ela
+venceria o tema sazonal, e o pedido era uma vitrine que acompanha a estação,
+não uma que briga com ela.
+
+### Onde cada campo aparece: os trilhos
+
+A aparência **não** é um bloco no fim do formulário. Cada campo tem um `group`
+(o rótulo do trilho, um de `APPEARANCE_GROUPS`: Títulos, Textos, Detalhes,
+Fundo) e um `attachedTo` (o campo de conteúdo que ele veste), e o `SECTION_FIELDS`
+espalha o trilho **logo depois** desse campo. Quem escolhe a fonte do título
+está com o cursor no campo "Título":
+
+| Seção | Títulos | Textos | Detalhes | Fundo |
+| --- | --- | --- | --- | --- |
+| `hero` | `headline` | `subtitle` | `headlineEmphasis` (o itálico do título) | — |
+| `benefits` | `items` | `items` | `items` (o ícone) | `items` |
+| `collections` | `title` | `subtitle` | `eyebrow` | `items` |
+| `featured` | `title` | `subtitle` | `eyebrow` | `viewAllLabel` |
+| `editorial` | `title` | `body` | `script` (a frase manuscrita) | `imagePosition` |
+| `instagram` | `title` | — | `handle` | `images` |
+| `announcement` | — | `text` | — | `text` |
+| `nav` / `footer` | — | — | — | — |
+
+Três decisões que a tabela acima registra:
+
+- **o `hero` não tem trilho de fundo**: o fundo dele é a fotografia;
+- **a barra de anúncio não tem trilho de títulos**: é uma linha só;
+- **a faixa do Instagram não tem trilho de textos**: o perfil é destaque, o
+  título é título e o resto é imagem — a faixa não tem texto corrido para
+  pintar. A faixa de benefícios, que também não tem título, veste os quatro
+  trilhos a partir da lista de itens.
+
+O `attachedTo` é redundante com a posição no array **de propósito**: a ordem é
+o que o admin usa para montar o formulário, e o `attachedTo` é o que a guarda
+de paridade cobra para essa ordem não se perder num `sort`, num agrupamento ou
+num `spread` fora de lugar. Um trilho longe do campo que ele muda não quebra
+nada — só deixa de fazer sentido.
+
+**Como funciona.** O lojista escolhe o papel (`dourado`), o storefront grava
+`var(--rv-dourado)` inline no wrapper da seção (`appearanceVars`, em
+`frontend/src/lib/content/appearance.ts`) e as classes `.rv-section-*` do
+`frontend/src/styles/brand.css` leem essas variáveis com o valor que a seção já
+usava como *fallback*:
+
+```css
+.rv-section-heading-onmedia {
+  color: var(--rv-section-heading-color, var(--rv-offwhite));
+}
+```
+
+Duas consequências, as duas de propósito:
+
+- **Seção sem nenhuma escolha sai idêntica ao que já era** — sem variável, o
+  fallback é o token que o elemento já usava, então nada muda até alguém
+  escolher. O wrapper da home (`(main)/page.tsx`) é quem escreve as variáveis,
+  ou seja, um campo novo de aparência não precisa ser ligado componente por
+  componente;
+- **o tema sazonal continua mandando**: como a seção guarda o papel e não a cor,
+  o Black Friday troca `--rv-rose` e a seção recolore junto.
+
+**Sem migration e sem endpoint novo.** Os campos viajam dentro do `data` que já
+existe, o `validateData` da rota admin já reprova valor fora da lista (400:
+`Campo "appearanceHeadingColor" deve ser um de: (vazio = padrão do tema),
+rose, offwhite, …`), o `GET /admin/content` já devolve os campos no `schema` (com
+`group` e `attachedTo`, que é o que a página usa para montar os trilhos) e o
+storefront continua lendo o mesmo payload, com o cache de 60s. Nenhum valor
+gravado muda de nome, de tipo ou de lugar: o que o lojista escolheu antes está
+no mesmo campo, e a loja continua aplicando o mesmo CSS.
+
+**O que o `schema` ganhou** (`GET /admin/content`), e por quê: o painel é um
+pacote separado, não importa o contrato e não lê os `theme.json` do storefront,
+então precisa das prévias por uma via só:
+
+| Chave | Conteúdo | Para que serve |
+| --- | --- | --- |
+| `palette` | `THEME_COLOR_HEXES` — papel → hex | pintar a bolinha de cor |
+| `fonts` | `THEME_FONTS` — papel → `{ family, stack }` | pedir cada família ao navegador |
+| `darkTokens` | `THEME_DARK_TOKENS` | avisar a regra do fundo escuro na hora da escolha |
+
+As três são **cópia de leitura para desenhar**: o que pode ser gravado continua
+saindo de `options`, campo a campo, e validado no servidor. A bolinha mostra a
+cor do tema **padrão** (num tema de estação a da loja é outra) e a fonte é a
+mesma da loja, com os arquivos `.woff2` copiados para
+`backend/src/admin/routes/content/fonts/` — o navegador do painel não tem
+nenhuma das três. `scripts/check-contract-parity.mjs` confere as pontas todas:
+hex contra o `theme.json`, família e pilha contra o `theme.json`/`theme.ts` e
+md5 dos `.woff2` contra os do storefront.
+
+**Uma regra que não vem de campo:** escolher um fundo escuro (`preto`, `cacao` —
+`THEME_DARK_TOKENS`) sem escolher a cor do texto faz o storefront escrever
+`--rv-section-text-color` e `--rv-section-heading-color` em off white. Grafite
+sobre preto seria ilegível, e quem quer um bloco escuro não tem por que saber
+que precisa escolher o texto junto. **Escolha explícita sempre vence**: gravar
+`grafite` de texto num fundo `preto` mantém grafite. Não há regra espelhada para
+fundo claro porque no tema padrão todo texto de seção já é escuro — o caso que
+sobra é `dourado` de fundo, e para esse há o campo *Cor dos textos*.
+
+Como a regra é do render e não um campo, o trilho **Fundo** a avisa no momento
+em que a cor escura é escolhida (é o que o `darkTokens` no `schema` permite) —
+aviso que só aparece na escolha escura, porque aviso sempre escrito vira ruído.
+
+No admin, *↺ Padrão do tema* grava a opção vazia em todos os campos **daquele
+trilho** — restaurar não apaga o campo, grava a escolha que não sobrescreve
+nada. É um botão por trilho, e não um só para a seção: voltar a fonte dos
+títulos ao padrão não tem por que desfazer a cor de fundo escolhida.
 
 ## Rodapé (`footer`)
 

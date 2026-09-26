@@ -29,7 +29,14 @@
  */
 
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { createHash } from "node:crypto"
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -44,10 +51,37 @@ const MIRROR = join(root, "frontend/src/lib/content/home-sections.ts")
 const DEFAULTS = join(root, "backend/src/modules/content/defaults.ts")
 const ICONS = join(root, "frontend/src/lib/content/icons.ts")
 const SOCIAL_ICONS = join(root, "frontend/src/lib/content/social-icons.tsx")
+const APPEARANCE = join(root, "frontend/src/lib/content/appearance.ts")
+const BRAND_CSS = join(root, "frontend/src/styles/brand.css")
 const ADMIN_FIELD_INPUT = join(
   root,
   "backend/src/admin/routes/content/field-input.tsx"
 )
+/**
+ * A página do editor e o CSS dos controles de aparência. A página é quem
+ * decide onde o trilho é desenhado (percorrendo a ordem do contrato) e quem
+ * avisa a regra do fundo escuro; o CSS é quem declara o `@font-face` das
+ * fontes da prévia.
+ */
+const ADMIN_PAGE = join(root, "backend/src/admin/routes/content/page.tsx")
+const APPEARANCE_CSS = join(
+  root,
+  "backend/src/admin/routes/content/appearance.css"
+)
+const ADMIN_CONTENT_ROUTE = join(root, "backend/src/api/admin/content/route.ts")
+/**
+ * As fontes da prévia: `THEME_FONTS` diz a família e a pilha, mas quem
+ * entrega os bytes ao navegador do painel é o `@font-face` do
+ * `appearance.css` apontando para a cópia local. Conferir a família sem
+ * conferir o arquivo deixaria passar a pior falha possível — a prévia
+ * desenhada numa fonte que ninguém está vendo.
+ */
+const ADMIN_FONTS = join(root, "backend/src/admin/routes/content/fonts")
+const STOREFRONT_FONTS = join(root, "frontend/src/app/fonts")
+/** O tema padrão: de onde saem os hex e as famílias que o admin exibe. */
+const THEME_JSON = join(root, "frontend/themes/default/theme.json")
+/** `themeToCSSVariables`: de onde sai a pilha completa de cada fonte. */
+const THEME_TS = join(root, "frontend/src/lib/theme.ts")
 const FOOTER_COLUMN = join(
   root,
   "frontend/src/modules/layout/components/footer-column/index.tsx"
@@ -57,6 +91,18 @@ const FOOTER_TEMPLATE = join(
   "frontend/src/modules/layout/templates/footer/index.tsx"
 )
 const PARITY_DIR = join(root, "frontend/src/lib/content/__parity__")
+
+/**
+ * Onde as classes `.rv-section-*` do `brand.css` podem ser usadas: o
+ * wrapper da home, o layout (barra de anúncio) e os componentes das
+ * seções. É o que a guarda da aparência varre — uma classe definida e
+ * nunca usada é CSS morto, e uma classe usada e nunca definida é uma
+ * escolha do lojista que não chega na tela.
+ */
+const STOREFRONT_DIRS = [
+  join(root, "frontend/src/app"),
+  join(root, "frontend/src/modules"),
+]
 
 /**
  * Carrega um módulo TS e devolve o valor de um export.
@@ -191,6 +237,30 @@ function readStringList(source, name) {
   return match ? parseStringArray(match[1]) : null
 }
 
+/** Caminhos de arquivo com uma das extensões, em recursão. */
+function walk(dir, extensions) {
+  const found = []
+
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name)
+
+    if (entry.isDirectory()) {
+      found.push(...walk(path, extensions))
+    } else if (extensions.some((extension) => entry.name.endsWith(extension))) {
+      found.push(path)
+    }
+  }
+
+  return found
+}
+
+/** Nomes distintos de um `captura` em todas as ocorrências do texto. */
+function readMatches(source, pattern, group = 1) {
+  return [
+    ...new Set([...source.matchAll(pattern)].map((match) => match[group])),
+  ]
+}
+
 console.log("Paridade do contrato de conteúdo\n")
 
 const sourceTypes = loadExport(CONTRACT, "SECTION_TYPES")
@@ -220,6 +290,12 @@ for (const type of sourceTypes) {
         kind: f.kind,
         required: Boolean(f.required),
         options: f.options ?? [],
+        // `group` e `optionLabels` também são renderizados pelo admin (que
+        // lê o `schema`), então divergir aqui muda a tela: um campo cai no
+        // grupo errado ou o `<select>` mostra a chave crua ("dourado" em
+        // vez de "Dourado Rosé").
+        group: f.group ?? "",
+        optionLabels: f.optionLabels ?? {},
       }))
     )
 
@@ -407,6 +483,26 @@ for (const kind of listKinds) {
   )
 }
 
+// O outro lado do mesmo problema: um `kind` que não é lista e que o
+// `FieldInput` não trata cai no ramo de texto — um campo de escolha vira
+// caixa de digitação livre, e o lojista digita o que o `validateData` vai
+// reprovar. `"text"` é o ramo padrão de propósito, então ele fica de fora.
+const scalarKinds = [
+  ...new Set(
+    Object.values(sourceFields)
+      .flat()
+      .map((f) => f.kind)
+  ),
+].filter((kind) => !kind.startsWith("list:") && kind !== "text")
+
+for (const kind of scalarKinds) {
+  assert(
+    `"${kind}" tem ramo no FieldInput`,
+    adminSource.includes(`spec.kind === "${kind}"`),
+    "acrescente o ramo em " + "backend/src/admin/routes/content/field-input.tsx"
+  )
+}
+
 const iconKeysByKind = {
   "list:benefit": loadExport(ICONS, "BENEFIT_ICON_KEYS", true),
   "list:action": loadExport(ICONS, "HEADER_ACTION_ICON_KEYS", true),
@@ -493,6 +589,441 @@ assert(
     JSON.stringify(adminSources) === JSON.stringify(contractSources),
   `admin: ${adminSources?.join(", ") ?? "não lido"}\n` +
     `       contrato: ${contractSources.join(", ")}`
+)
+
+// A página do editor monta os trilhos percorrendo os campos na ordem do
+// contrato, e cada campo de aparência carrega a âncora (`attachedTo`) do que
+// veste. É um espelho do `FieldSpec` do contrato, então a assinatura importa
+// no mesmo sentido de `ITEM_FIELDS`: sem ela o TypeScript deixa passar um
+// `page.tsx` que lê `spec.attachedTo` de um tipo que não tem, e o editor
+// desenha a âncora "por acaso" — até alguém mexer no espelho.
+assert(
+  'o espelho de "FieldSpec" no admin conhece "attachedTo"',
+  /attachedTo\?:\s*string/.test(adminSource),
+  "acrescente o campo em backend/src/admin/routes/content/field-input.tsx"
+)
+
+console.log("\nAPARÊNCIA POR SEÇÃO (contrato ⇔ espelho ⇔ loja)")
+
+// Os valores válidos (paleta e papéis de fonte) têm duas cópias, uma por
+// pacote. A terceira ponta — o `<select>` do admin — não guarda cópia
+// nenhuma, de propósito: as opções chegam prontas no `schema` da API, para
+// não haver mais uma lista a dessincronizar.
+const contractColors = loadExport(CONTRACT, "THEME_COLOR_TOKENS")
+const mirrorColors = loadExport(MIRROR, "THEME_COLOR_TOKENS", true)
+const contractFonts = loadExport(CONTRACT, "FONT_ROLES")
+const mirrorFonts = loadExport(MIRROR, "FONT_ROLES", true)
+const contractDark = loadExport(CONTRACT, "THEME_DARK_TOKENS")
+const mirrorDark = loadExport(MIRROR, "THEME_DARK_TOKENS", true)
+const contractGroups = loadExport(CONTRACT, "APPEARANCE_GROUPS")
+const mirrorGroups = loadExport(MIRROR, "APPEARANCE_GROUPS", true)
+
+assert(
+  "as cores do tema são as mesmas no contrato e no espelho",
+  JSON.stringify(contractColors) === JSON.stringify(mirrorColors),
+  `backend: ${contractColors.join(", ")}\n` +
+    `       frontend: ${mirrorColors.join(", ")}`
+)
+
+assert(
+  "os papéis de fonte são os mesmos no contrato e no espelho",
+  JSON.stringify(contractFonts) === JSON.stringify(mirrorFonts),
+  `backend: ${contractFonts.join(", ")}\n` +
+    `       frontend: ${mirrorFonts.join(", ")}`
+)
+
+assert(
+  "os rótulos dos trilhos de aparência são os mesmos nos dois lados",
+  contractGroups.length > 0 &&
+    JSON.stringify(contractGroups) === JSON.stringify(mirrorGroups),
+  `backend: ${contractGroups.join(", ")}\n` +
+    `       frontend: ${mirrorGroups.join(", ")}`
+)
+
+// `THEME_DARK_TOKENS` não alimenta `<select>` nenhum: é a lista que o
+// storefront usa para auto-legibilizar fundo escuro. Uma cor aqui que não
+// esteja na paleta seria uma regra que nunca dispara (ou pior: um token
+// que não existe, e a seção fica sem texto).
+assert(
+  "as cores de fundo escuro são as mesmas no contrato e no espelho",
+  JSON.stringify(contractDark) === JSON.stringify(mirrorDark),
+  `backend: ${contractDark.join(", ")}\n` +
+    `       frontend: ${mirrorDark.join(", ")}`
+)
+
+assert(
+  "toda cor de fundo escuro é uma cor da paleta do tema",
+  contractDark.length > 0 &&
+    contractDark.every((token) => contractColors.includes(token)),
+  `fora da paleta: ${
+    contractDark
+      .filter((token) => !contractColors.includes(token))
+      .join(", ") || "nenhuma"
+  }`
+)
+
+const appearanceSource = readFileSync(APPEARANCE, "utf8")
+const brandCss = readFileSync(BRAND_CSS, "utf8")
+
+const appearanceSpecs = Object.values(sourceFields)
+  .flat()
+  .filter((field) => field.name.startsWith("appearance"))
+const appearanceFields = [
+  ...new Set(appearanceSpecs.map((field) => field.name)),
+]
+
+assert(
+  "SECTION_FIELDS declara campos de aparência",
+  appearanceFields.length > 0,
+  'nenhum campo começando com "appearance" foi encontrado'
+)
+
+// O trilho: o campo é `color` ou `font` (a lista fechada que a bolinha e a
+// lista de fontes desenham), a opção vazia está na frente — é ela que o
+// botão "Padrão do tema" grava, e é o que faz a seção voltar a seguir o
+// tema sem apagar o campo — e o `group` é um dos rótulos do contrato.
+//
+// `kind: "select"` aqui seria a falha que ninguém vê: o campo cairia no
+// ramo genérico, o lojista veria uma caixa de texto livre e o
+// `validateData` reprovaria o que ele digitar.
+const offPattern = appearanceSpecs.filter(
+  (field) =>
+    (field.kind !== "color" && field.kind !== "font") ||
+    field.options?.[0] !== "" ||
+    !contractGroups.includes(field.group) ||
+    !field.attachedTo
+)
+
+assert(
+  "todo campo de aparência é color/font, com o padrão na frente, em um trilho",
+  appearanceSpecs.length > 0 && offPattern.length === 0,
+  `fora do padrão: ${
+    offPattern
+      .map((f) => `${f.name} (${f.kind} / ${f.group ?? "sem trilho"})`)
+      .join(", ") || "nenhum"
+  }`
+)
+
+// A lista de opções é a paleta ou os papéis de fonte — nada além. Um papel
+// fora da paleta passaria pela validação e viraria uma escolha que o
+// storefront ignora em silêncio (`appearanceVars` descarta valor fora da
+// lista): a pior falha de um controle de aparência, porque parece que
+// funcionou.
+const expectedOptions = (field) =>
+  JSON.stringify([
+    "",
+    ...(field.kind === "color" ? contractColors : contractFonts),
+  ])
+const offPalette = appearanceSpecs.filter(
+  (field) => JSON.stringify(field.options ?? []) !== expectedOptions(field)
+)
+
+assert(
+  "as opções de cor são a paleta e as de fonte são os papéis, na ordem",
+  appearanceSpecs.length > 0 && offPalette.length === 0,
+  `fora da lista: ${
+    offPalette.map((f) => f.name).join(", ") || "nenhum"
+  }\n       ` +
+    `cor: , ${contractColors.join(", ")} | fonte: , ${contractFonts.join(", ")}`
+)
+
+// O `attachedTo` é a promessa de "aparece embaixo do campo que muda", e é
+// verificável: a âncora é o último campo de conteúdo antes do trilho na
+// mesma lista. Sem esta guarda, um `spread` fora de lugar empurra o trilho
+// três campos para baixo — ou para a seção vizinha — e nada quebra: é a
+// diferença entre a fonte do título ficar embaixo do título e de ficar solta
+// no fim do formulário.
+const anchorProblems = []
+
+for (const [type, fields] of Object.entries(sourceFields)) {
+  let lastContentField = null
+
+  for (const field of fields) {
+    if (field.name.startsWith("appearance")) {
+      if (field.attachedTo !== lastContentField) {
+        anchorProblems.push(
+          `${type}.${field.name} aponta para ` +
+            `${field.attachedTo ?? "(nada)"} em vez de ` +
+            `${lastContentField ?? "(início da seção)"}`
+        )
+      }
+      continue
+    }
+
+    lastContentField = field.name
+  }
+}
+
+assert(
+  "todo trilho fica logo abaixo do campo de conteúdo que ele veste",
+  appearanceSpecs.length > 0 && anchorProblems.length === 0,
+  `fora de lugar: ${anchorProblems.join(" | ") || "nenhum"}`
+)
+
+const untranslated = appearanceSpecs.filter(
+  (field) =>
+    typeof field.optionLabels?.[""] !== "string" ||
+    (field.options ?? []).some(
+      (option) => typeof field.optionLabels?.[option] !== "string"
+    )
+)
+
+assert(
+  "todo campo de aparência traduz cada uma das opções",
+  appearanceSpecs.length > 0 && untranslated.length === 0,
+  `sem rótulo: ${untranslated.map((f) => f.name).join(", ") || "nenhum"}`
+)
+
+// O storefront precisa LER cada campo oferecido: campo que o admin mostra e
+// a loja ignora é o pior tipo de campo, porque parece que funcionou. A
+// leitura é textual porque o contrato é TS: importá-lo aqui só para isso
+// seria mais uma ponta para o `validateData` ter de conhecer.
+const appearanceReads = readMatches(
+  appearanceSource,
+  /source\.([A-Za-z_$][\w$]*)/g
+)
+
+assert(
+  "todo campo de aparência do contrato é lido pelo storefront",
+  appearanceFields.length > 0 &&
+    appearanceFields.every((name) => appearanceReads.includes(name)),
+  "sem leitura em frontend/src/lib/content/appearance.ts: " +
+    `${appearanceFields.filter((n) => !appearanceReads.includes(n)).join(", ")}`
+)
+
+assert(
+  "appearance.ts não lê campo que o contrato não declara",
+  appearanceReads.length > 0 &&
+    appearanceReads.every((name) => appearanceFields.includes(name)),
+  `fora do contrato: ${
+    appearanceReads.filter((n) => !appearanceFields.includes(n)).join(", ") ||
+    "nenhum"
+  }`
+)
+
+// A outra metade da ponte: cada variável que `appearanceVars` escreve no
+// wrapper precisa de um `var()` no `brand.css`. Uma variável escrita e não
+// consumida é uma escolha que o lojista faz e nada aplica.
+const writtenVars = readMatches(appearanceSource, /--rv-section[a-z-]*/g, 0)
+const consumedVars = readMatches(brandCss, /var\((--rv-section[a-z-]*)/g)
+
+assert(
+  "toda variável de aparência escrita é consumida no brand.css",
+  writtenVars.length > 0 &&
+    writtenVars.every((name) => consumedVars.includes(name)),
+  `sem uso: ${
+    writtenVars.filter((name) => !consumedVars.includes(name)).join(", ") ||
+    "nenhuma"
+  }`
+)
+
+// E as classes, nas duas direções: uma definida e nunca usada é CSS morto
+// (ninguém lembra de apagar), e uma usada e nunca definida é um erro de
+// digitação que não dá erro em lugar nenhum — só a seção sem a cor.
+const storefrontSource = STOREFRONT_DIRS.flatMap((dir) => walk(dir, [".tsx"]))
+  .map((file) => readFileSync(file, "utf8"))
+  .join("\n")
+
+const definedClasses = readMatches(brandCss, /^\.(rv-section[a-z-]*)[ ,{]/gm)
+const usedClasses = readMatches(
+  storefrontSource,
+  // `(?:-[a-z]+)*` (e não `[a-z-]*`) para um comentário que escreve o prefixo
+  // — "as classes `.rv-section-*` do brand.css" — casar `rv-section`, e não
+  // um "rv-section-" que não é classe nenhuma.
+  /\brv-section(?:-[a-z]+)*/g,
+  0
+)
+
+assert(
+  "toda classe de aparência definida é usada na loja",
+  definedClasses.length > 0 &&
+    definedClasses.every((name) => usedClasses.includes(name)),
+  `CSS morto: ${
+    definedClasses.filter((name) => !usedClasses.includes(name)).join(", ") ||
+    "nenhuma"
+  }`
+)
+
+assert(
+  "toda classe de aparência usada está definida no brand.css",
+  usedClasses.length > 0 &&
+    usedClasses.every((name) => definedClasses.includes(name)),
+  `sem definição: ${
+    usedClasses.filter((name) => !definedClasses.includes(name)).join(", ") ||
+    "nenhuma"
+  }`
+)
+
+console.log("\nPRÉVIA DE APARÊNCIA (paleta, fontes e os arquivos do painel)")
+
+const contractHexes = loadExport(CONTRACT, "THEME_COLOR_HEXES")
+const mirrorHexes = loadExport(MIRROR, "THEME_COLOR_HEXES", true)
+const contractThemeFonts = loadExport(CONTRACT, "THEME_FONTS")
+const mirrorThemeFonts = loadExport(MIRROR, "THEME_FONTS", true)
+
+assert(
+  "a paleta de prévia é a mesma no contrato e no espelho",
+  JSON.stringify(contractHexes) === JSON.stringify(mirrorHexes),
+  "o hex que o painel desenha precisa ser o mesmo dos dois lados"
+)
+
+assert(
+  "as famílias de fonte são as mesmas no contrato e no espelho",
+  JSON.stringify(contractThemeFonts) === JSON.stringify(mirrorThemeFonts),
+  "a prévia de uma ponta e a da outra precisam ser a mesma fonte"
+)
+
+// O hex é cópia de leitura do tema padrão (`themes/default/theme.json`).
+// Um tema de estação troca os valores — a cópia mostra a cor do padrão, e o
+// contrato avisa isso —, mas o **padrão** é o que a bolinha promete, então
+// é contra ele que a cópia é conferida.
+const theme = JSON.parse(readFileSync(THEME_JSON, "utf8"))
+const offThemeColors = contractColors.filter(
+  (token) =>
+    (contractHexes[token] ?? "").toLowerCase() !==
+    String(theme.colors?.[token] ?? "").toLowerCase()
+)
+
+assert(
+  "cada hex da paleta é o que o theme.json do tema padrão declara",
+  offThemeColors.length === 0,
+  `divergente: ${
+    offThemeColors
+      .map(
+        (token) =>
+          `${token}: ${contractHexes[token]} != ${theme.colors?.[token]}`
+      )
+      .join(", ") || "nenhuma"
+  }`
+)
+
+const offThemeFamilies = contractFonts.filter(
+  (role) => contractThemeFonts[role]?.family !== theme.fonts?.[role]
+)
+
+assert(
+  "cada família é a que o theme.json do tema padrão declara",
+  offThemeFamilies.length === 0,
+  `divergente: ${offThemeFamilies.join(", ") || "nenhuma"}`
+)
+
+// A `stack` é a pilha que `themeToCSSVariables` escreve em `--rv-font-*`: a
+// mesma da loja, para a prévia cair no mesmo fallback quando o arquivo da
+// fonte não chega. O texto é lido do próprio `theme.ts` — a comparação é
+// com a fórmula da loja, não com uma reescrita do que ela diz.
+const themeTs = readFileSync(THEME_TS, "utf8")
+const offStacks = contractFonts.filter((role) => {
+  const declared = contractThemeFonts[role]?.stack
+  // `--rv-font-display`: `"${theme.fonts.display}", Georgia, serif`
+  // O grupo é o que vem **depois** do fechamento do `}` — a aspa de fim de
+  // família e o fallback, para a pilha ser remontada a partir da fórmula da
+  // loja e não de uma reescrita dela.
+  const template = new RegExp(
+    `"--rv-font-${role}":\\s*\`"\\$\\{theme\\.fonts\\.${role}\\}([^\`]*)\``
+  ).exec(themeTs)
+
+  return (
+    !template ||
+    `"${contractThemeFonts[role]?.family}${template[1]}` !== declared
+  )
+})
+
+assert(
+  "cada pilha de fonte é a que o theme.ts escreve para a loja",
+  offStacks.length === 0,
+  `divergente: ${offStacks.join(", ") || "nenhuma"}`
+)
+
+// O `@font-face` é quem entrega os bytes ao navegador do painel. Conferir a
+// família sem conferir o arquivo deixaria passar a pior falha possível: a
+// prévia desenhada numa fonte que o painel não tem — que é o que acontece
+// quando o nome está certo e o arquivo sumiu.
+const appearanceCss = readFileSync(APPEARANCE_CSS, "utf8")
+const cssFamilies = readMatches(
+  appearanceCss,
+  /@font-face\s*\{[^}]*font-family:\s*"([^"]+)"[\s\S]*?\}/g
+)
+const expectedFamilies = contractFonts.map(
+  (role) => contractThemeFonts[role]?.family
+)
+
+assert(
+  "o appearance.css declara @font-face para cada família, apontando para ./fonts",
+  cssFamilies.length === expectedFamilies.length &&
+    expectedFamilies.every((family) => cssFamilies.includes(family)) &&
+    // Nenhuma `@font-face` sem arquivo local: fonte vinda de CDN é a que o
+    // storefront deixou de usar (ver `frontend/src/app/fonts/README.md`).
+    // Conta **declarações** (`@font-face {`), não menções — o cabeçalho do
+    // arquivo fala delas.
+    (appearanceCss.match(/@font-face\s*\{/g) ?? []).length ===
+      expectedFamilies.length &&
+    (appearanceCss.match(/url\("\.\/fonts\/[^"]+"\)/g) ?? []).length ===
+      expectedFamilies.length,
+  `no css: ${cssFamilies.join(", ") || "nenhuma"} | ` +
+    `esperado: ${expectedFamilies.join(", ")}`
+)
+
+// E o arquivo apontado precisa ser a mesma fonte da loja: o painel é outro
+// pacote, com a cópia local dos `.woff2`, e cópia desatualizada é prévia que
+// mente sobre a fonte que a loja está usando. O diretório do storefront é o
+// nome da família em minúsculas com hífen — o mesmo que
+// `src/app/fonts/README.md` documenta.
+const md5 = (file) => createHash("md5").update(readFileSync(file)).digest("hex")
+const fontProblems = []
+
+for (const family of expectedFamilies) {
+  const slug = String(family)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+  const file = `${slug}-latin.woff2`
+  const storefront = join(STOREFRONT_FONTS, slug, file)
+  const admin = join(ADMIN_FONTS, file)
+
+  if (!existsSync(storefront)) {
+    fontProblems.push(`${file}: não achei em ${storefront}`)
+  } else if (!existsSync(admin)) {
+    fontProblems.push(`${file}: não achei a cópia em ${admin}`)
+  } else if (md5(storefront) !== md5(admin)) {
+    fontProblems.push(`${file}: md5 ${md5(admin)} != ${md5(storefront)}`)
+  }
+}
+
+assert(
+  "os .woff2 do painel são os mesmos do storefront (md5)",
+  fontProblems.length === 0,
+  fontProblems.join("; ")
+)
+
+// O aviso do fundo escuro é a única coisa que a página precisa nomear do
+// contrato: o trilho em que vale. Rótulo trocado no contrato e não aqui
+// deixaria o aviso apontando para o nada — silenciosamente, porque o aviso
+// simplesmente nunca aparece.
+const adminPage = readFileSync(ADMIN_PAGE, "utf8")
+const backgroundRail = /const BACKGROUND_RAIL = "([^"]+)"/.exec(adminPage)?.[1]
+
+assert(
+  "o trilho do aviso de fundo escuro existe no contrato",
+  contractGroups.includes(backgroundRail),
+  `página: ${backgroundRail ?? "(não lido)"} | ` +
+    `contrato: ${contractGroups.join(", ")}`
+)
+
+// O painel não importa o contrato, então o hex e a família chegam pelo
+// `schema` da API. Se o `schema` deixar de mandá-los, a bolinha sai sem cor e
+// a lista de fontes cai no fallback do navegador — que é o erro que a prévia
+// não tem como esconder, porque ainda "funciona".
+const adminRoute = readFileSync(ADMIN_CONTENT_ROUTE, "utf8")
+const schemaKeys = [
+  "palette: THEME_COLOR_HEXES",
+  "fonts: THEME_FONTS",
+  "darkTokens: THEME_DARK_TOKENS",
+]
+const offSchema = schemaKeys.filter((key) => !adminRoute.includes(key))
+
+assert(
+  "GET /admin/content devolve paleta, fontes e cores escuras no schema",
+  offSchema.length === 0,
+  `faltando no schema: ${offSchema.join(", ") || "nenhum"}`
 )
 
 if (failures.length) {

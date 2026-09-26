@@ -47,20 +47,20 @@ export default function Hero({ section }: { section: HeroSection }) {
           <div className="rv-container">
             <div className="max-w-[620px] py-16 small:py-24">
               {section.eyebrow && (
-                <p className="rv-eyebrow mb-5 text-rv-offwhite/80">
+                <p className="rv-eyebrow rv-section-text-inherit mb-5">
                   {section.eyebrow}
                 </p>
               )}
 
-              <h1 className="rv-display text-[38px] leading-[1.08] text-rv-offwhite small:text-[54px] xlarge:text-[68px]">
+              <h1 className="rv-display rv-section-heading-onmedia text-[38px] leading-[1.08] small:text-[54px] xlarge:text-[68px]">
                 {section.headline}{" "}
-                <em className="italic text-rv-dourado">
+                <em className="rv-section-accent-onmedia italic">
                   {section.headlineEmphasis}
                 </em>
               </h1>
 
               {section.subtitle && (
-                <p className="mt-6 max-w-[440px] text-base leading-relaxed text-rv-offwhite/85">
+                <p className="rv-section-text-inherit mt-6 max-w-[440px] text-base leading-relaxed">
                   {section.subtitle}
                 </p>
               )}
@@ -68,7 +68,7 @@ export default function Hero({ section }: { section: HeroSection }) {
               {section.ctaLabel && (
                 <LocalizedClientLink
                   href={section.ctaHref}
-                  className="rv-eyebrow mt-9 inline-flex items-center justify-center rounded-[var(--rv-radius)] bg-rv-rose px-8 py-4 text-rv-offwhite transition-colors duration-200 ease-in hover:bg-rv-rose-strong"
+                  className="rv-eyebrow rv-section-accent-fill mt-9 inline-flex items-center justify-center rounded-[var(--rv-radius)] px-8 py-4 transition-colors duration-200 ease-in hover:bg-rv-rose-strong"
                   data-testid="hero-cta"
                 >
                   {section.ctaLabel}

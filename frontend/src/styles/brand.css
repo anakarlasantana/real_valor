@@ -104,6 +104,104 @@ body {
 }
 
 /*
+ * Appearance per section — the shopkeeper's picks in the CRM
+ * ---------------------------------------------------------------
+ * Each class below reads a `--rv-section-*` variable written inline on
+ * the section wrapper by `lib/content/appearance.ts`. When the variable
+ * is absent — the default, and by far the common case — the second
+ * argument wins, and that argument is exactly the token the section was
+ * already using. So a section nobody configured renders pixel-identical
+ * to before: same classes, same computed colour.
+ *
+ * Why the value is a token and not a colour: the wrapper says
+ * `var(--rv-dourado)`, so a seasonal theme recolours the section
+ * together with the rest of the store. A literal `#d4b19a` would win
+ * over Black Friday instead of following it.
+ *
+ * Block order matters: this block comes after `.rv-display` / `.rv-script`
+ * / `.rv-eyebrow` above, so an override wins over the class that gives
+ * the element its default. It also has to replace the Tailwind utility
+ * on the elements it controls — brand.css is imported before the
+ * utilities in `globals.css`, so a leftover `text-rv-offwhite` would
+ * beat the override.
+ *
+ * `currentColor` (in `.rv-section-text-inherit`) is the one fallback
+ * that is not a token: `text-rv-offwhite/85` and friends do not exist
+ * in the CSS at all (Tailwind does not emit the opacity modifier for a
+ * colour declared as `var(...)`), so those elements inherit their
+ * parent's colour today. The class inherits along, to keep it that way.
+ * See `docs/DEBITO-TECNICO.md` — the inert class is a bug of its own,
+ * fixed separately, not an invitation to change the storefront here.
+ */
+
+/* Background: the wrapper carries the section's own fill; a section
+ * that paints its own surface (or bar) re-declares it below. */
+.rv-section {
+  background-color: var(--rv-section-bg, transparent);
+}
+
+.rv-section-bg-surface {
+  background-color: var(--rv-section-bg, var(--rv-surface));
+}
+
+.rv-section-bg-preto {
+  background-color: var(--rv-section-bg, var(--rv-preto));
+}
+
+/* Headings: display face by default, on the light sections. */
+.rv-section-heading {
+  font-family: var(--rv-section-heading-font, var(--rv-font-display));
+  color: var(--rv-section-heading-color, var(--rv-fg-strong));
+}
+
+/* Headings over a photograph or a dark fill: off-white by default. */
+.rv-section-heading-onmedia {
+  font-family: var(--rv-section-heading-font, var(--rv-font-display));
+  color: var(--rv-section-heading-color, var(--rv-offwhite));
+}
+
+/* Headings that are labels rather than titles (the benefits strip). */
+.rv-section-heading-sans {
+  font-family: var(--rv-section-heading-font, var(--rv-font-sans));
+  color: var(--rv-section-heading-color, var(--rv-fg));
+}
+
+/* Body copy, subtitles, empty states. */
+.rv-section-text {
+  font-family: var(--rv-section-text-font, var(--rv-font-sans));
+  color: var(--rv-section-text-color, var(--rv-muted));
+}
+
+/* Text on a dark fill: set on the container, inherited by the copy. */
+.rv-section-text-onmedia {
+  font-family: var(--rv-section-text-font, var(--rv-font-sans));
+  color: var(--rv-section-text-color, var(--rv-offwhite));
+}
+
+/* Text whose default is the inherited colour — see the `currentColor`
+ * note above: keeps today's rendering until the shopkeeper picks one. */
+.rv-section-text-inherit {
+  font-family: var(--rv-section-text-font, inherit);
+  color: var(--rv-section-text-color, currentColor);
+}
+
+/* Accents: eyebrows, icons, the handwritten line, item links. */
+.rv-section-accent {
+  color: var(--rv-section-accent, var(--rv-rose));
+}
+
+/* Accent over a dark fill (the guide's gold detail). */
+.rv-section-accent-onmedia {
+  color: var(--rv-section-accent, var(--rv-dourado));
+}
+
+/* Accent used as a fill (the hero button, which stays off-white on it). */
+.rv-section-accent-fill {
+  background-color: var(--rv-section-accent, var(--rv-rose));
+  color: var(--rv-offwhite);
+}
+
+/*
  * Alvo de âncora do menu: `/#hero`, `/#collections`, `/#editorial`…
  *
  * O cabeçalho é `sticky top-0` com `h-20` (5rem) — sem esta margem, a

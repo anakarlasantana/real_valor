@@ -33,6 +33,7 @@ atacado sem redescobrir o contexto.
   - [2.3 Páginas institucionais ausentes](#23-páginas-institucionais-ausentes)
   - [2.4 CPF não é coletado no checkout](#24-cpf-não-é-coletado-no-checkout)
   - [2.5 CMS: elo entre Admin e vitrine incompleto](#25-cms-elo-entre-admin-e-vitrine-incompleto)
+  - [2.6 Tailwind descarta a opacidade em cor que é variável](#26-tailwind-descarta-a-opacidade-em-cor-que-é-variável--texto-do-hero-e-dos-cards-herda-a-cor-errada)
 - [3. 🟡 Médio](#3--médio)
   - [3.1 CMS sem invalidação imediata de cache](#31-cms-sem-invalidação-imediata-de-cache)
   - [3.2 Zero testes automatizados e zero CI](#32-zero-testes-automatizados-e-zero-ci)
@@ -324,6 +325,86 @@ editar. O sintoma ("o CMS está vazio") não aponta para a causa (seed diferente
 
 **Ação necessária:** chamar o seed de conteúdo ao final de `seed.ts`, ou documentar
 explicitamente que os dois scripts são necessários no provisionamento.
+
+#### 2.5.6 `POST /admin/content` não cria seção com `title` obrigatório no contrato
+
+**Evidência (2026-09-26, ambiente local):**
+
+```bash
+curl -s -X POST localhost:9000/admin/content -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"instagram","position":75,"enabled":true,"handle":"@teste","title":"Teste","images":[]}'
+# 400: Campo obrigatório ausente: "title".
+```
+
+`splitPayload` (`backend/src/api/admin/content/route.ts:93`) retira `title` do corpo para a coluna
+`content_block.title`, e o `validateData` valida o que sobrou contra o contrato. Só que
+`collections`, `featured`, `editorial` e `instagram` têm `title` **também** como campo obrigatório do
+`data` — então o POST desses quatro tipos é impossível: o campo some do `data` antes da validação.
+`benefits` (sem obrigatório) funciona, e foi por isso que o problema não apareceu antes.
+
+O `title` da coluna, aliás, não aparece em saída nenhuma: `listSections` achata apenas
+`id`/`enabled`/`position`/`type` + `data`, e o frontend lê o título de `data.title`.
+
+**Impacto hoje:** contido — a página do admin só faz PATCH (editar seção existente) e o seed grava
+pelo service, não pela rota. Vira bloqueador no dia em que o CRM ganhar "criar seção".
+
+**Ação necessária:** manter `title` no `data` quando o contrato do tipo o declara obrigatório (ou
+aposentar a coluna `title`, que já não é lida por ninguém), e cobrir com um caso de POST por tipo.
+
+---
+
+### 2.6 Tailwind descarta a opacidade em cor que é variável — texto do hero e dos cards herda a cor errada
+
+**Status: aberto (identificado em 2026-09-26, ao construir a aparência por seção).**
+
+As cores da marca são declaradas como `var(--rv-*)` no `tailwind.config.js` — é o que permite um
+tema sazonal recoloriar a loja sem rebuild. O problema: quando a cor é um `var(...)`, o Tailwind
+(3.4.19) **não gera** o utilitário que pede opacidade. A classe simplesmente não existe no CSS.
+
+```bash
+# CSS servido pelo storefront (dev), 2026-09-26
+curl -s localhost:8000/_next/static/chunks/src_1dd3d68c._.css \
+  | grep -o 'text-rv-offwhite[^,{ ;]*' | sort -u
+# text-rv-offwhite
+# text-rv-offwhite:hover      <- nenhuma variante /85 nem /80
+```
+
+Reproduzido também fora do app, compilando o Tailwind do repositório (`node_modules/tailwindcss`
+3.4.19) com um conteúdo de teste: `text-rv-offwhite/85` não produz regra; `text-rv-offwhite`
+produz `color: var(--rv-offwhite)`. O mesmo vale para `bg-rv-dourado/20`, `from-rv-preto/70` e
+`via-rv-preto/10` (o modificador é ignorado, e o utilitário sai do CSS).
+
+Sem regra, o elemento não tem cor própria e **herda** — no tema padrão isso é `--rv-fg` (grafite,
+`#303033`):
+
+| Onde | Classe escrita | O que a loja mostra hoje |
+| --- | --- | --- |
+| Hero — subtítulo | `text-rv-offwhite/85` | grafite sobre o scrim escuro da foto |
+| Hero — eyebrow | `text-rv-offwhite/80` | idem |
+| Card de coleção — subtítulo | `text-rv-offwhite/80` | grafite sobre a foto |
+| Card de coleção — scrim | `from-rv-preto/70 via-rv-preto/10` | sem gradiente nenhum: o título fica sobre a foto crua |
+| Placeholders de imagem | `bg-rv-dourado/20` | sem tom de fundo enquanto a imagem carrega |
+
+**Correção sugerida:** trocar a cor com opacidade por um token sólido (a opacidade é o ponto que o
+Tailwind não consegue compor sobre `var()`), ou migrar esses elementos para as classes de
+aparência por seção (`.rv-section-text-*`), que leem
+`var(--rv-section-text-color, …)` — ver `backend/src/modules/content/README.md`, seção
+*Aparência por seção*.
+
+**Por que não foi corrigido junto com a aparência por seção:** a entrega tinha como requisito
+"nada muda até o lojista escolher uma cor", e os fallbacks dessas classes foram escritos para
+preservar o estado atual (`currentColor`) exatamente como está — corrigir o contraste junto
+misturaria duas mudanças visuais na mesma revisão.
+
+**Contorno imediato, sem deploy:** no CRM, seção Hero → campo *Subtítulo* → trilho *Textos* →
+*Cor dos textos* → `Off White` (e nas coleções, que têm o mesmo caso no subtítulo do card, com a
+ressalva de que ali o texto claro do card divide o campo com o texto escuro do bloco). Definida a
+variável, ela ganha do `currentColor` e o texto volta a aparecer.
+
+**Guarda relacionada:** `scripts/check-contract-parity.mjs` confere que toda classe `.rv-section-*`
+definida no `brand.css` é usada na loja e vice-versa — foi assim que a família de classes da
+aparência por seção deixou de depender de revisão manual para não virar CSS morto.
 
 ---
 

@@ -1,0 +1,210 @@
+/**
+ * Aparência no editor de conteúdo — bolinha de cor, lista de fontes com
+ * prévia e o trilho que agrupa os dois.
+ *
+ * Arquivo de CSS importado pelo `appearance-controls.tsx` (o admin do Medusa
+ * é montado pelo Vite, que aceita `import "./x.css"`; o `vite-env.d.ts` do
+ * admin declara os módulos `.css`). Ele existe porque duas coisas aqui não
+ * são utilitário de Tailwind e não têm equivalente nas classes do
+ * `@medusajs/ui`: o `@font-face` das fontes do storefront e o *tooltip* da
+ * bolinha de cor, que é `::after` sobre um atributo `data-tooltip`.
+ *
+ * As cores são literais do guia de marca (e cinzas neutros de propósito):
+ * o painel tem tema claro e escuro, e as variáveis internas do admin não são
+ * API pública — um cinza com alfa e o rosa da marca funcionam nos dois.
+ */
+:root {
+  --rv-admin-rose: #b97872;
+  --rv-admin-ink: #171717;
+  --rv-admin-line: rgba(128, 128, 128, 0.45);
+  --rv-admin-surface: rgba(128, 128, 128, 0.12);
+  --rv-admin-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+/* ---------------------------------------------------------------------------
+ * Fontes do storefront, para a lista de fontes sair na família certa.
+ *
+ * Cópia dos arquivos self-hosted do storefront (./fonts/README.md): os
+ * mesmos bytes, conferidos por md5 em `scripts/check-contract-parity.mjs`.
+ * As famílias e as faixas de peso são as que `THEME_FONTS` (`contract.ts`)
+ * declara e as que `frontend/src/app/layout.tsx` registra na loja — prévia
+ * com família diferente da loja é prévia que mente.
+ * ------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Playfair Display";
+  src: url("./fonts/playfair-display-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Montserrat";
+  src: url("./fonts/montserrat-latin.woff2") format("woff2");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Allura";
+  src: url("./fonts/allura-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------------------
+ * Trilho de aparência
+ *
+ * O que separa "isto veste o campo de cima" de "isto é mais um campo": o
+ * fio, o fundo e o recuo. Sem eles, uma cor solta no meio do formulário
+ * parece conteúdo — e foi justamente o que a versão anterior fazia, com o
+ * bloco "Aparência" no fim da seção.
+ * ------------------------------------------------------------------------- */
+.rv-appearance-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-left: 2px solid var(--rv-admin-rose);
+  border-radius: 6px;
+  background: var(--rv-admin-surface);
+  padding: 10px 12px;
+}
+
+.rv-appearance-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rv-appearance-rail-title {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.rv-appearance-rail-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 24px;
+}
+
+.rv-appearance-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rv-appearance-value {
+  opacity: 0.7;
+}
+
+/* ---------------------------------------------------------------------------
+ * Bolinha de cor
+ *
+ * A bolinha é `background` inline (o hex vem da paleta no `schema`); a
+ * opção vazia — "Padrão do tema da loja" — não tem cor para mostrar, então
+ * é um círculo tracejado com um traço, que é o que se lê como "nenhuma cor
+ * escolhida". O anel da escolhida é o rosa da marca: é o mesmo padrão nos
+ * dois temas do painel.
+ * ------------------------------------------------------------------------- */
+.rv-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rv-swatch {
+  position: relative;
+  height: 26px;
+  width: 26px;
+  cursor: pointer;
+  border-radius: 9999px;
+  border: 1px solid var(--rv-admin-line);
+  outline: none;
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.rv-swatch:hover {
+  transform: scale(1.08);
+}
+
+.rv-swatch[aria-checked="true"] {
+  box-shadow: 0 0 0 2px var(--rv-admin-rose);
+}
+
+.rv-swatch:focus-visible {
+  box-shadow: 0 0 0 2px var(--rv-admin-rose), 0 0 0 4px var(--rv-admin-surface);
+}
+
+/* Opção vazia: tracejado + traço na diagonal ("sem cor"). */
+.rv-swatch[data-empty="true"] {
+  border-style: dashed;
+  background-color: var(--rv-admin-surface);
+  background-image: linear-gradient(
+    to bottom right,
+    transparent calc(50% - 1px),
+    var(--rv-admin-line) 50%,
+    transparent calc(50% + 1px)
+  );
+}
+
+/* Tooltip: o nome do papel ("Dourado Rosé"), que é o que o lojista escolhe —
+   a cor na tela vem do tema, e num tema sazonal não é a mesma do padrão. */
+.rv-swatch[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 20;
+  transform: translateX(-50%);
+  border-radius: 4px;
+  background: var(--rv-admin-ink);
+  box-shadow: var(--rv-admin-shadow);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 4px 8px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+
+.rv-swatch[data-tooltip]:hover::after,
+.rv-swatch[data-tooltip]:focus-visible::after {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+ * Lista de fontes
+ *
+ * Cada opção é desenhada na própria família (`font-family` inline, vinda de
+ * `THEME_FONTS` no `schema`) e a amostra "Aa" fica na cor de apoio, para o
+ * que se lê primeiro ser o nome do papel.
+ * ------------------------------------------------------------------------- */
+.rv-font-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.rv-font-option {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.rv-font-option-sample {
+  flex: none;
+  font-size: 16px;
+  opacity: 0.65;
+}

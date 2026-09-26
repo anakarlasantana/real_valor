@@ -46,6 +46,19 @@ Pesos efetivamente usados no design system: `400` (`font-normal`), `500`
 Cada diretório tem `OFL.txt` (SIL Open Font License 1.1, redistribuição
 permitida inclusive em produto comercial).
 
+## Cópia no painel do CRM
+
+O editor de conteúdo (`/painel/content`) mostra a **prévia** de cada fonte do
+tema, desenhando cada opção na própria família — logo, o navegador do painel
+também precisa dos arquivos. Como o admin é um pacote separado, existe uma
+cópia byte a byte destes três `.woff2` em
+`backend/src/admin/routes/content/fonts/`, declarada por `@font-face` em
+`backend/src/admin/routes/content/appearance.css` (ver o `README.md` de lá).
+
+A consequência prática: **trocar um `.woff2` aqui é trocar nos dois lugares**.
+`scripts/check-contract-parity.mjs` confere o md5 das cópias contra estes
+arquivos, então a esquecida não passa.
+
 ## Procedência (auditável)
 
 Os três arquivos são **binariamente idênticos** aos que o build bem-sucedido com

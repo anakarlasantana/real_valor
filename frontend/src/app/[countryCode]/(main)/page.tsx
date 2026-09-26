@@ -4,6 +4,7 @@ import {
   DEFAULT_HOME_SECTIONS,
   type HomeSection,
 } from "@lib/content/home-sections"
+import { appearanceVars } from "@lib/content/appearance"
 import { getHomeSections } from "@lib/data/content"
 import { getRegion } from "@lib/data/regions"
 import BenefitsBar from "@modules/home/components/benefits-bar"
@@ -95,8 +96,20 @@ export default async function Home(props: {
         // existem — seja um alvo válido sem depender de alguém lembrar de
         // repetir o id no JSX. `.rv-anchor` (brand.css) compensa o
         // cabeçalho fixo.
+        //
+        // O mesmo wrapper é quem carrega as variáveis de aparência da
+        // seção (`appearanceVars`): como toda seção passa por aqui, um
+        // campo de aparência novo não precisa ser ligado componente por
+        // componente — quem lê as variáveis são as classes `.rv-section-*`
+        // do `brand.css`. Seção sem nenhuma escolha sai com o `style`
+        // vazio, ou seja, com o HTML de antes.
         return (
-          <div key={section.id} id={section.id} className="rv-anchor">
+          <div
+            key={section.id}
+            id={section.id}
+            className="rv-anchor rv-section"
+            style={appearanceVars(section)}
+          >
             {body}
           </div>
         )
