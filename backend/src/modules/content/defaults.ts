@@ -14,6 +14,33 @@ import type { HomeSection } from "./contract"
  * o campo no admin.
  */
 export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
+  /**
+   * Cabeçalho. Não é uma seção da home — o layout o renderiza em todas
+   * as rotas —, mas é conteúdo como qualquer outro, então mora aqui e
+   * ganha um bloco no seed. `position` 5 só serve para manter a lista
+   * ordenada; ele é ignorado no render da home.
+   *
+   * Espelhado em `frontend/src/lib/content/home-sections.ts`
+   * (`DEFAULT_HEADER`) — os dois são fallback um do outro.
+   */
+  {
+    id: "nav",
+    type: "nav",
+    enabled: true,
+    position: 5,
+    links: [
+      { label: "Início", href: "/#hero" },
+      { label: "Coleções", href: "/#collections" },
+      { label: "Produtos", href: "/store" },
+      { label: "Sobre", href: "/#editorial" },
+      { label: "Contatos", href: "mailto:contato@realvalor.com.br" },
+    ],
+    actions: [
+      { icon: "bag", label: "Sacola", href: "/cart" },
+      { icon: "account", label: "Conta", href: "/account" },
+      { icon: "search", label: "Buscar", href: "/search" },
+    ],
+  },
   {
     id: "announcement",
     type: "announcement",

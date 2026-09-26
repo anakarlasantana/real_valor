@@ -43,7 +43,15 @@ export const getHomeSections = async (): Promise<HomeSection[]> => {
       {
         method: "GET",
         query: { surface: "home" },
-        next: { tags: [CONTENT_CACHE_TAG] },
+        // `force-cache` sozinho guarda a resposta para sempre. Isso era
+        // aceitável quando só a home lia o conteúdo, mas o cabeçalho
+        // (`nav`) agora sai daqui e aparece em *todas* as rotas — nas que
+        // renderizam a cada request (`/cart`, `/account`, `/search`) o
+        // menu ficaria congelado até alguém chamar
+        // `revalidateTag("content")` na mão, e nada no código faz isso.
+        // Uma janela curta e explícita limita a defasagem ao mesmo
+        // "dentro de um minuto" já documentado em `(main)/page.tsx`.
+        next: { tags: [CONTENT_CACHE_TAG], revalidate: 60 },
         cache: "force-cache",
       }
     )

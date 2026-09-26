@@ -168,7 +168,7 @@ real_valor/
 ├── .env.example                  # modelo do `.env` da raiz
 ├── .nvmrc                        # Node 22 (a mesma versão usada nas imagens)
 ├── scripts/
-│   ├── check-contract-parity.mjs # confere o contrato storefront ↔ Store API
+│   ├── check-contract-parity.mjs # paridade do conteúdo: backend ↔ storefront ↔ admin
 │   └── vendor-fonts.mjs          # (re)baixa e valida os `.woff2` self-hosted
 │
 ├── backend/                          # Medusa v2 — Store API + Admin
@@ -283,10 +283,16 @@ make up && make migrate && make seed
 | **Loja Storefront (Next.js)** | [http://localhost:8000](http://localhost:8000) | Vitrine e catálogo nacional (BRL) |
 | **Catálogo de Roupas** | [http://localhost:8000/br/store](http://localhost:8000/br/store) | Vestidos, Camisas e Alfaiataria |
 | **Painel Admin Medusa v2** | [http://localhost:9000/painel](http://localhost:9000/painel) | **E-mail**: `admin@realvalor.com.br`<br>**Senha**: `admin123456` |
+| **CMS — Conteúdo da vitrine** | [http://localhost:9000/painel/content](http://localhost:9000/painel/content) | Sidebar principal → **Conteúdo da vitrine** |
 | **Store API** | [http://localhost:9000/store](http://localhost:9000/store) | API REST consumida pelo frontend |
 | **Health check** | [http://localhost:9000/health](http://localhost:9000/health) | `200` indica backend operacional |
 | **PostgreSQL** | `localhost:5438` | user `real_valor` / db `real_valor_db` (loopback) |
 | **Redis** | `localhost:6381` | cache e event bus (loopback) |
+
+> **CMS da vitrine:** a página **Conteúdo da vitrine** fica na **sidebar principal** do admin,
+> em `/painel/content` — ao lado dos menus nativos e, por isso, dentro do **personalizar
+> layout** (ícone *Adjustments* → *Main sidebar*): dá para reordenar, mover de seção e ocultar
+> como qualquer outro item. Detalhes do módulo: `backend/src/modules/content/README.md`.
 
 ---
 

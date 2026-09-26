@@ -89,6 +89,11 @@ export default async function Home(props: {
  * The registry. Switching on `section.type` gives real exhaustiveness:
  * `assertNever` stops compiling if a member is added to the
  * `HomeSection` union and not handled here.
+ *
+ * `announcement` e `nav` viajam no mesmo payload, mas não são seções da
+ * home: são chrome do site, resolvidos pelo layout (barra superior e
+ * cabeçalho). Por isso os dois caem em `null` aqui — devolver os dois
+ * duplicaria a barra e o cabeçalho no corpo da página.
  */
 function SectionRenderer({
   section,
@@ -103,6 +108,10 @@ function SectionRenderer({
     case "announcement":
       // Rendered by the layout as site chrome, so it is skipped here to
       // avoid duplicating the bar on the page.
+      return null
+    case "nav":
+      // Mesmo caso da barra de anúncio: o layout resolve o cabeçalho via
+      // `headerSections()` e o desenha fora da página.
       return null
     case "hero":
       return <Hero section={section} />

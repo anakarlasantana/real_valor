@@ -5,7 +5,8 @@ import { ArrowRightMini, XMark } from "@medusajs/icons"
 import { Text, clx, useToggleState } from "@medusajs/ui"
 import { Fragment } from "react"
 
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { type NavSection } from "@lib/content/home-sections"
+import NavLink from "../nav-link"
 import CountrySelect from "../country-select"
 import LanguageSelect from "../language-select"
 import { HttpTypes } from "@medusajs/types"
@@ -23,23 +24,24 @@ import { Locale } from "@lib/data/locales"
  * building the panel from an `innerHTML` string — was deliberately NOT
  * ported: it bypasses React, breaks focus management and is an
  * injection vector once the menu becomes admin-editable.
+ *
+ * The menu itself comes from the header block (`NavSection`): the same
+ * `links` as the desktop bar, plus the action icons as a labelled row —
+ * on a touch screen there is no tooltip, so the drawer shows the text.
  */
-const SideMenuItems = {
-  Início: "/",
-  Coleções: "/collections",
-  Alfaiataria: "/store",
-  Sobre: "/store",
-  Contato: "/account",
-  Sacola: "/cart",
-}
-
 type SideMenuProps = {
   regions: HttpTypes.StoreRegion[] | null
   locales: Locale[] | null
   currentLocale: string | null
+  header: NavSection
 }
 
-const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
+const SideMenu = ({
+  regions,
+  locales,
+  currentLocale,
+  header,
+}: SideMenuProps) => {
   const countryToggleState = useToggleState()
   const languageToggleState = useToggleState()
 
@@ -99,23 +101,36 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                     </div>
 
                     <ul className="flex flex-col items-start gap-5">
-                      {Object.entries(SideMenuItems).map(([name, href]) => {
-                        return (
-                          <li key={name}>
-                            <LocalizedClientLink
-                              href={href}
-                              className="rv-display text-2xl leading-none text-rv-grafite transition-colors duration-200 hover:text-rv-rose"
-                              onClick={close}
-                              data-testid={`${name.toLowerCase()}-link`}
-                            >
-                              {name}
-                            </LocalizedClientLink>
-                          </li>
-                        )
-                      })}
+                      {header.links.map((link) => (
+                        <li key={`${link.label}-${link.href}`}>
+                          <NavLink
+                            href={link.href}
+                            label={link.label}
+                            onClick={close}
+                            className="rv-display text-2xl leading-none text-rv-grafite"
+                            data-testid={`${link.label.toLowerCase()}-link`}
+                          />
+                        </li>
+                      ))}
                     </ul>
 
                     <div className="flex flex-col gap-y-5 border-t border-rv-border pt-5">
+                      {header.actions.length > 0 && (
+                        <ul className="flex flex-col items-start gap-4">
+                          {header.actions.map((action) => (
+                            <li key={`${action.label}-${action.href}`}>
+                              <NavLink
+                                href={action.href}
+                                label={action.label}
+                                icon={action.icon}
+                                variant="row"
+                                onClick={close}
+                                data-testid={`${action.label.toLowerCase()}-link`}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                       {!!locales?.length && (
                         <div
                           className="flex justify-between"

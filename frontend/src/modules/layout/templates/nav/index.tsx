@@ -1,33 +1,29 @@
 import { Suspense } from "react"
 
+import { type NavSection } from "@lib/content/home-sections"
 import { listRegions } from "@lib/data/regions"
 import { listLocales } from "@lib/data/locales"
 import { getLocale } from "@lib/data/locale-actions"
 import { StoreRegion } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CartButton from "@modules/layout/components/cart-button"
+import NavLink from "@modules/layout/components/nav-link"
 import SideMenu from "@modules/layout/components/side-menu"
 
 /**
  * Main navigation — matches the prototype: logo left, links centred,
  * actions right on a `1fr auto 1fr` grid.
  *
- * This replaced the previous centred-wordmark + left-menu arrangement.
- * On mobile the centre links are hidden and the drawer (`SideMenu`)
- * takes over, which is why it sits in the left column.
+ * The menu is content, not code: labels, destinations, order and
+ * visibility come from the `nav` block of the CMS (edited at Admin →
+ * Conteúdo da vitrine). The header travels in the same payload as the
+ * home, so `layout.tsx` resolves it once with `headerSections()` and
+ * passes it down — and this component stays a pure renderer.
  *
- * Labels follow the prototype's menu: Início, Coleções, Alfaiataria,
- * Sobre, Contato.
+ * The bag action is the exception: it is the only one with state, so it
+ * delegates to `CartButton`.
  */
-const NAV_LINKS = [
-  { label: "Início", href: "/" },
-  { label: "Coleções", href: "/collections" },
-  { label: "Alfaiataria", href: "/store" },
-  { label: "Sobre", href: "/store" },
-  { label: "Contato", href: "/account" },
-]
-
-export default async function Nav() {
+export default async function Nav({ header }: { header: NavSection }) {
   const [regions, locales, currentLocale] = await Promise.all([
     listRegions().then((regions: StoreRegion[]) => regions),
     listLocales(),
@@ -45,6 +41,7 @@ export default async function Nav() {
                 regions={regions}
                 locales={locales}
                 currentLocale={currentLocale}
+                header={header}
               />
             </div>
 
@@ -64,43 +61,53 @@ export default async function Nav() {
             </LocalizedClientLink>
           </div>
 
-          {/* Centre — primary links. */}
-          <ul className="hidden items-center gap-x-8 small:flex">
-            {NAV_LINKS.map((link) => (
-              <li key={link.label}>
-                <LocalizedClientLink
-                  className="rv-eyebrow text-rv-grafite transition-colors duration-200 hover:text-rv-rose"
-                  href={link.href}
-                >
-                  {link.label}
-                </LocalizedClientLink>
-              </li>
-            ))}
-          </ul>
+          {/* Centre — primary links, straight from the CMS. */}
+          {header.links.length > 0 && (
+            <ul className="hidden items-center gap-x-8 small:flex">
+              {header.links.map((link) => (
+                <li key={`${link.label}-${link.href}`}>
+                  <NavLink
+                    href={link.href}
+                    label={link.label}
+                    className="rv-eyebrow text-rv-grafite"
+                    data-testid={`${link.label.toLowerCase()}-link`}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
 
-          {/* Right — actions. */}
-          <div className="flex h-full items-center justify-end gap-x-5">
-            <LocalizedClientLink
-              className="rv-eyebrow hidden text-rv-grafite transition-colors duration-200 hover:text-rv-rose small:inline-flex"
-              href="/account"
-              data-testid="nav-account-link"
-            >
-              Conta
-            </LocalizedClientLink>
-
-            <Suspense
-              fallback={
-                <LocalizedClientLink
-                  className="rv-eyebrow flex gap-2 text-rv-grafite"
-                  href="/cart"
-                  data-testid="nav-cart-link"
+          {/* Right — action icons. `bag` is the cart: it is the only one
+              with state, so it renders through `CartButton`. */}
+          <div className="flex h-full items-center justify-end gap-x-2 small:gap-x-3">
+            {header.actions.map((action) =>
+              action.icon === "bag" ? (
+                <Suspense
+                  key={`${action.label}-${action.href}`}
+                  fallback={
+                    <NavLink
+                      href={action.href}
+                      label={action.label}
+                      icon={action.icon}
+                      variant="icon"
+                      count={0}
+                      data-testid="nav-cart-link"
+                    />
+                  }
                 >
-                  Sacola (0)
-                </LocalizedClientLink>
-              }
-            >
-              <CartButton />
-            </Suspense>
+                  <CartButton href={action.href} label={action.label} />
+                </Suspense>
+              ) : (
+                <NavLink
+                  key={`${action.label}-${action.href}`}
+                  href={action.href}
+                  label={action.label}
+                  icon={action.icon}
+                  variant="icon"
+                  data-testid={`nav-${action.label.toLowerCase()}-link`}
+                />
+              )
+            )}
           </div>
         </nav>
       </header>

@@ -25,7 +25,7 @@ const ContentBlock = model.define("content_block", {
 
   /**
    * Tipo da seção: `announcement` | `hero` | `benefits` | `collections`
-   * | `featured` | `editorial` | `instagram`.
+   * | `featured` | `editorial` | `instagram` | `nav`.
    *
    * Sem `enum` no banco de propósito: o union é validado em TS, e
    * adicionar um tipo novo passa a ser só código — sem migration.

@@ -3,7 +3,14 @@
  *
  * A convenção é o nome do diretório: tudo em `src/admin/routes/**` vira
  * rota no dashboard, com a URL derivada do caminho do arquivo. Por isso
- * a página abre em `/app/settings/content`.
+ * a página abre em `/painel/content` e aparece na sidebar principal.
+ *
+ * Fica FORA de `routes/settings/` de propósito: o dashboard classifica o
+ * item pelo prefixo do path (`DashboardApp.populateMenus`), e tudo sob
+ * `/settings` cai nas extensões da sidebar de Configurações em vez do
+ * menu principal. Aqui o item é uma entrada da sidebar principal
+ * (`customizeId: main-sidebar`), então entra no "personalizar layout"
+ * como qualquer menu nativo — reordenar, mover de seção e ocultar.
  *
  * A lista de campos de cada tipo NÃO é reescrita aqui: vem do
  * `schema.fields` que `GET /admin/content` devolve, gerado a partir de

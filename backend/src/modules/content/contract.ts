@@ -109,6 +109,49 @@ export type InstagramSection = SectionBase & {
   images: { imageUrl: string; imageAlt: string }[]
 }
 
+/**
+ * Item do menu principal do cabeçalho.
+ *
+ * O `href` também define o comportamento, então não existe um campo
+ * "modo": a forma do destino basta.
+ *   `/#hero` ou `#hero`   → rola até a seção de id `hero` da home
+ *   `/store`, `/search`   → página interna (o país é prefixado na loja)
+ *   `https://…`           → fora do site, em nova aba
+ *   `mailto:…` / `tel:…`  → cliente de e-mail / telefone
+ */
+export type HeaderLink = {
+  label: string
+  href: string
+}
+
+/** Ação do cluster de ícones à direita do cabeçalho. */
+export type HeaderAction = {
+  /** Chave de ícone resolvida por `frontend/src/lib/content/icons.ts`. */
+  icon: string
+  /** Rótulo: nome acessível do ícone e texto no menu mobile. */
+  label: string
+  href: string
+}
+
+/**
+ * Menu do cabeçalho.
+ *
+ * É a única seção que não é da home: como a barra de anúncio, aparece
+ * em todas as rotas da loja. Mas, como todo conteúdo da vitrine, mora na
+ * mesma tabela e na mesma superfície (`home`) — daí o `id` fixo `nav`,
+ * que o `seed-content.ts` cria.
+ *
+ * A ordem é a ordem dos arrays: `links` no centro do cabeçalho (e no
+ * topo do menu mobile), `actions` no cluster da direita. Os itens da
+ * lista são editáveis um a um pelo admin (inclusive reordenados), sem
+ * um campo de ordem por item.
+ */
+export type NavSection = SectionBase & {
+  type: "nav"
+  links: HeaderLink[]
+  actions: HeaderAction[]
+}
+
 export type HomeSection =
   | AnnouncementSection
   | HeroSection
@@ -117,6 +160,7 @@ export type HomeSection =
   | FeaturedSection
   | EditorialSection
   | InstagramSection
+  | NavSection
 
 /** Todo `type` de seção válido, como valor — para validação em runtime. */
 export const SECTION_TYPES = [
@@ -127,6 +171,9 @@ export const SECTION_TYPES = [
   "featured",
   "editorial",
   "instagram",
+  // Não é uma seção da home: é o cabeçalho da loja, renderizado pelo
+  // layout em todas as rotas (como a barra de anúncio).
+  "nav",
 ] as const
 
 export type SectionType = (typeof SECTION_TYPES)[number]
@@ -155,6 +202,8 @@ export type FieldKind =
   | "list:benefit"
   | "list:highlight"
   | "list:image"
+  | "list:link"
+  | "list:action"
 
 export type FieldSpec = {
   name: string
@@ -229,5 +278,19 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     { name: "handle", label: "Perfil", kind: "text" },
     { name: "title", label: "Título", kind: "text", required: true },
     { name: "images", label: "Imagens", kind: "list:image" },
+  ],
+  nav: [
+    {
+      name: "links",
+      label: "Links do menu",
+      kind: "list:link",
+      help: 'Ordem da lista = ordem no menu. Use "/#secao" para rolar até uma parte da home, "/rota" para outra página, "https://…" para fora do site e "mailto:…"/"tel:…" para contato.',
+    },
+    {
+      name: "actions",
+      label: "Ícones da direita",
+      kind: "list:action",
+      help: 'Ordem da lista = ordem no cabeçalho. O ícone "bag" usa a sacola do carrinho, com contador — mantenha só um.',
+    },
   ],
 }

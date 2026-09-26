@@ -46,8 +46,11 @@ node scripts/check-contract-parity.mjs
 ```
 
 Ele compara `SECTION_TYPES`, cada `SECTION_FIELDS` e valida que
-`defaults.ts` cobre todos os tipos. **Rode isto depois de qualquer
-alteração no contrato.**
+`defaults.ts` cobre todos os tipos, que o `nav` do seed casa com o
+fallback do storefront e que o editor do admin
+(`backend/src/admin/routes/content/field-input.tsx`) sabe desenhar todo
+tipo de lista, com as mesmas chaves de ícone do storefront. **Rode isto
+depois de qualquer alteração no contrato.**
 
 ## API
 
@@ -68,10 +71,15 @@ alteração no contrato.**
 
 ## Admin
 
-A página fica em **Configurações → Conteúdo da vitrine**
-(`src/admin/routes/settings/content/`), porque os diretórios do admin
-seguem a convenção de agrupamento (settings, orders, products,
-customers, categories, price-lists).
+A página fica em **Conteúdo da vitrine**, na sidebar principal do painel
+(`src/admin/routes/content/`).
+
+Ela **não** vive em `src/admin/routes/settings/`: o dashboard classifica o item pelo
+prefixo do path (`DashboardApp.populateMenus`, `path.startsWith("/settings")`), e o
+que está sob `/settings` vai para as extensões da sidebar de Configurações em vez do
+menu principal. Como entrada da sidebar principal, a página participa do mesmo
+**personalizar layout** dos menus nativos
+(`/admin/layouts/main-sidebar/configuration`).
 
 O formulário não repete a lista de campos em React: ele lê
 `schema.fields` da API, que é gerado do contrato. Adicionar um campo no

@@ -28,7 +28,7 @@ atacado sem redescobrir o contexto.
   - [1.3 Segredos com default fraco e versionado](#13-segredos-com-default-fraco-e-versionado)
 - [2. 🟠 Alto](#2--alto)
   - [2.1 `/br/collections` retorna 404](#21-brcollections-retorna-404)
-  - [2.2 Links de navegação provisórios](#22-links-de-navegação-provisórios)
+  - [2.2 Links de navegação provisórios — resolvido](#22-links-de-navegação-provisórios)
   - [2.3 Páginas institucionais ausentes](#23-páginas-institucionais-ausentes)
   - [2.4 CPF não é coletado no checkout](#24-cpf-não-é-coletado-no-checkout)
   - [2.5 CMS: elo entre Admin e vitrine incompleto](#25-cms-elo-entre-admin-e-vitrine-incompleto)
@@ -164,9 +164,11 @@ $ curl -o /dev/null -w '%{http_code}' http://localhost:8000/br
 200
 ```
 
-Falta o `page.tsx` de índice da pasta `collections/`. Como o menu principal e o menu lateral
-linkam para `/collections` (`nav/index.tsx:24`, `side-menu/index.tsx:29`), o clique leva o
-usuário a uma 404 — jornada de descoberta quebrada justamente no link mais visível.
+Falta o `page.tsx` de índice da pasta `collections/`. Até 2026-09-26 o cabeçalho era a
+vitrine dessa 404: o link "Coleções" apontava para `/collections` (`nav/index.tsx:24`). Com o
+cabeçalho no CMS (item 2.2) o destino padrão virou a âncora da home (`/#collections`), então a
+rota ficou órfã — alcançável só por URL digitada, já que o rodapé e o card de produto linkam
+por handle (`/collections/<handle>`).
 
 **Ação necessária:** criar `frontend/src/app/[countryCode]/(main)/collections/page.tsx`
 listando as coleções via `listCollections` (`frontend/src/lib/data/collections.ts`, já
@@ -174,21 +176,31 @@ existente e já utilizado pelo rodapé).
 
 ---
 
-### 2.2 Links de navegação provisórios
+### 2.2 Links de navegação provisórios — resolvido
 
-**Evidência:**
+**Status: resolvido em 2026-09-26.** O cabeçalho deixou de ser código: os itens vêm do bloco
+`nav` do CMS (`id: nav`, `surface: home`) e são editáveis no admin em **Conteúdo da vitrine**,
+sem deploy. `NAV_LINKS` e `SideMenuItems` foram removidos (`grep` retorna zero ocorrências);
+`nav/index.tsx` e `side-menu/index.tsx` consomem `HeaderLink[]` / `HeaderAction[]`.
 
-| Arquivo | Linha | Link | Destino atual | Problema |
-|---|---|---|---|---|
-| `frontend/src/modules/layout/templates/nav/index.tsx` | 24 | Coleções | `/collections` | 404 (item 2.1) |
-| `frontend/src/modules/layout/templates/nav/index.tsx` | 26 | Sobre | `/store` | redireciona para a vitrine |
-| `frontend/src/modules/layout/templates/nav/index.tsx` | 27 | Contato | `/account` | redireciona para a conta |
-| `frontend/src/modules/layout/components/side-menu/index.tsx` | 29-32 | mesmos itens | idem | idem |
+Destinos padrão — espelhados no seed (`backend/src/modules/content/defaults.ts`) e no fallback
+do storefront (`frontend/src/lib/content/home-sections.ts`):
 
-Os próprios arquivos marcam esses itens como provisórios ("Sobre, Contato").
+| Rótulo | `href` padrão | Comportamento |
+|---|---|---|
+| Início | `/#hero` | rola até a seção `hero` da home |
+| Coleções | `/#collections` | rola até a seção `collections` |
+| Produtos | `/store` | vitrine (página real) |
+| Sobre | `/#editorial` | rola até a seção `editorial` |
+| Contatos | `mailto:contato@realvalor.com.br` | abre o cliente de e-mail |
 
-**Ação necessária:** definir com o cliente os destinos definitivos e apontar para as páginas
-institucionais do item 2.3 (ou remover do menu até elas existirem).
+O `href` **define** o comportamento — não existe campo "modo": `#id`/`/#id` rola, `/rota` é
+interno, `https://` abre em nova aba e `mailto:`/`tel:` vai para o handler do sistema.
+
+**O que resta:** o *destino* dos itens de conteúdo. "Sobre" aponta para a seção editorial e
+"Contatos" para um `mailto:` — os dois funcionam e são editáveis, mas continuam sendo desvios
+enquanto as páginas institucionais do item 2.3 não existirem. A troca é edição no admin, não
+deploy.
 
 ---
 
@@ -228,9 +240,9 @@ dígito verificador, persistindo em `metadata.cpf` do pedido/cliente.
 
 ### 2.5 CMS: elo entre Admin e vitrine incompleto
 
-O módulo de conteúdo funciona ponta a ponta — o lojista edita em **Configurações → Conteúdo da
-vitrine** e a mudança **chega** na home. Mas a integração tem cinco lacunas que limitam o que é
-possível editar hoje.
+O módulo de conteúdo funciona ponta a ponta — o lojista edita em **Conteúdo da vitrine**
+(sidebar principal do admin, `/painel/content`) e a mudança **chega** na home. Mas a
+integração tem cinco lacunas que limitam o que é possível editar hoje.
 
 #### 2.5.1 `featured` ("Peças em destaque") não é editável — destaque vem por acaso
 
@@ -308,13 +320,19 @@ explicitamente que os dois scripts são necessários no provisionamento.
 ### 3.1 CMS sem invalidação imediata de cache
 
 **Evidência:** `frontend/src/lib/data/content.ts` consome `GET /store/content` com a tag global
-`content` e janela de revalidação de 60s.
+`content` e `next: { revalidate: 60 }`. A janela passou a ser **explícita no fetch** em
+2026-09-26: com `cache: "force-cache"` e apenas a tag, o conteúdo ficava preso indefinidamente
+nas rotas que renderizam a cada request (`/cart`, `/account`, `/search`) — o que passou a incluir
+o cabeçalho, que agora vem do CMS e aparece em todas as rotas. Nas rotas pré-renderizadas a
+defasagem continua sendo a janela do segmento (`revalidate = 3600` em produto/coleção).
 
 **Impacto:** o lojista edita no admin e **espera até 60 segundos** para ver a mudança na
 vitrine — sensação de "não salvou" e risco de edição duplicada.
 
 **Ação necessária:** endpoint `POST /api/revalidate` no frontend protegido por *shared secret*,
-chamado pelo backend após `POST/PATCH/DELETE /admin/content`.
+chamado pelo backend após `POST/PATCH/DELETE /admin/content`. O endpoint **já existe**
+(`frontend/src/app/api/revalidate/route.ts`), mas nenhum código o chama — a invalidação hoje é
+manual (`curl` documentado no próprio arquivo) e o caminho normal é esperar a janela.
 
 > **Nota de implementação:** a tag **precisa** ser global (`content`). `getCacheOptions`
 > prefixa a tag por visitante, o que impede o revalidate de atingir todos os usuários — isso
@@ -325,8 +343,9 @@ chamado pelo backend após `POST/PATCH/DELETE /admin/content`.
 ### 3.2 Zero testes automatizados e zero CI
 
 **Evidência:** não há suíte de testes no projeto; a única rede de segurança é o script
-`scripts/check-contract-parity.mjs` (valida paridade de contrato backend↔frontend), executado
-manualmente.
+`scripts/check-contract-parity.mjs` (valida paridade backend ↔ storefront ↔ admin: tipos, campos,
+defaults, o `nav` do seed contra o fallback do storefront e as chaves de ícone oferecidas no admin
+contra o registro do storefront), executado manualmente.
 
 **Impacto:** refatorações e novos módulos não têm verificação automática; uma divergência de
 contrato só é descoberta em runtime ou rodando o script à mão.
@@ -342,8 +361,11 @@ contrato só é descoberta em runtime ou rodando o script à mão.
 
 ### 3.3 CMS cobre apenas a superfície `home`
 
-**Evidência:** o módulo `content` está populado apenas com `surface: "home"` (7 seções na
-ordem do protótipo). O tema da loja é *file-based* (`themes/*/theme.json`), fora do CMS.
+**Evidência:** o módulo `content` está populado apenas com `surface: "home"` (8 blocos: as 7
+seções do protótipo + o `nav` do cabeçalho). O `nav` viaja nessa mesma superfície, mas **não** é
+uma seção da home: quem o renderiza é o layout (`(main)/layout.tsx` → `headerSections()`), em
+todas as rotas, e o render da home ignora o tipo (`case "nav": return null`). O tema da loja é
+*file-based* (`themes/*/theme.json`), fora do CMS.
 
 **Impacto:** textos institucionais e de rodapé continuam exigindo deploy para alterar. O
 lojista edita a home, mas não o resto da loja.
@@ -396,12 +418,12 @@ de ambiente é o **`.env` da raiz** (modelo versionado: `.env.example`).
 contrário serve `.medusa/server/public/admin` — diretório que **não existe** neste repositório
 (nunca foi executado `yarn build` no host). O artefato gerado `backend/.medusa/client/entry.jsx`
 comprova o efeito: lista apenas o plugin npm (`plugin0 = @medusajs/draft-order/admin`) e
-**omite o plugin local de `backend/src/admin`**, de modo que a rota `settings/content` nunca é
+**omite o plugin local de `backend/src/admin`**, de modo que a rota `content` nunca é
 compilada.
 
-**Impacto:** a tela **Configurações → Conteúdo da vitrine** não aparece no menu do Admin,
-embora o módulo `content`, o endpoint `GET /store/content` e o arquivo
-`src/admin/routes/settings/content/page.tsx` estejam corretos. Foi isso que originou a
+**Impacto:** a tela **Conteúdo da vitrine** não aparece no menu do Admin, embora o módulo
+`content`, o endpoint `GET /store/content` e o arquivo
+`src/admin/routes/content/page.tsx` estejam corretos. Foi isso que originou a
 percepção de "elo incompleto" na seção 2.5.
 
 **Status: resolvido em 2026-09-24 (containerização).** Cada ambiente passou a ter um `NODE_ENV`
@@ -418,8 +440,15 @@ O ponto crítico anterior era justamente rodar `yarn start` sem nunca ter execut
 servido em produção. Assim, o admin funciona nos dois modos, sem depender de build manual no
 host.
 
-Critério de aceite: item "Conteúdo da vitrine" visível em Configurações (modo dev), e
-`entry.jsx` listando o plugin local.
+Critério de aceite: item "Conteúdo da vitrine" visível na **sidebar principal** (modo dev),
+listado em `GET /admin/layouts/main-sidebar/configuration`, e `entry.jsx` listando o plugin
+local.
+
+> **Nota (2026-09-26):** a rota passou de `settings/content` para `content`. Com o path antigo
+> o item nunca ia para o menu principal: o dashboard o classificava como extensão da sidebar
+> de Configurações (`DashboardApp.populateMenus` → `path.startsWith("/settings")`). O débito
+> acima (artefato ausente) já estava resolvido — o que restava do sintoma "não aparece no
+> menu" era apenas o **local** do item na navegação.
 
 ---
 
@@ -473,6 +502,7 @@ Registrado para evitar retrabalho — foram levantados como suspeita e **não** 
 | BuildKit / `build.network` / builder legacy | `docker compose build` com BuildKit ativo | ✅ **Irrelevante agora** — sem rede no build não há rede a anexar (ver 6.5) |
 | `medusa build` falhava com TS2339 | `src/subscribers/order-customer-indexer.ts:53` | ✅ **Corrigido** — `let targetCustomer = null` deixava o TS inferir o tipo `null`, rejeitando as atribuições de `CustomerDTO`. 9 erros `tsc` que quebravam `yarn build` e o build da imagem de produção |
 | Postgres exige TLS | `docker-compose.yml` (DATABASE_URL) | ✅ **Corrigido** — o Medusa forçava `ssl: { rejectUnauthorized: false }` por heurística de URL. `?sslmode=disable` resolve (ver nota abaixo) |
+| Cabeçalho fixo no código (`NAV_LINKS`, `SideMenuItems`, ícones estáticos) | `grep -rn 'NAV_LINKS\|SideMenuItems' frontend/src` + `curl localhost:8000/br` | ✅ **Resolvido em 2026-09-26** — zero ocorrências; o menu vem do bloco `nav` do CMS (ver 2.2) e o HTML traz `data-testid="início-link"` etc. |
 
 ---
 

@@ -110,6 +110,47 @@ export type InstagramSection = SectionBase & {
   images: { imageUrl: string; imageAlt: string }[]
 }
 
+/**
+ * Entry of the header's primary menu.
+ *
+ * The `href` also decides the behaviour, so there is no separate "mode"
+ * field: the shape of the destination is enough.
+ *   `/#hero` or `#hero`   → smooth-scrolls to home section `hero`
+ *   `/store`, `/search`   → internal page (country prefix added by the link)
+ *   `https://…`           → leaves the site, in a new tab
+ *   `mailto:…` / `tel:…`  → email client / phone dialer
+ */
+export type HeaderLink = {
+  label: string
+  href: string
+}
+
+/** Action of the icon cluster on the right of the header. */
+export type HeaderAction = {
+  /** Icon key resolved by `lib/content/icons.ts`. */
+  icon: string
+  /** Label: accessible name of the icon and text in the mobile drawer. */
+  label: string
+  href: string
+}
+
+/**
+ * Store header menu.
+ *
+ * The only section that is not part of the home: like the announcement
+ * bar it renders on every route. It still travels in the same content
+ * payload (`surface: "home"`), which is why the layout reads it from
+ * `getHomeSections()` instead of fetching again.
+ *
+ * Array order is render order: `links` in the header centre (and at the
+ * top of the mobile drawer), `actions` in the right-hand cluster.
+ */
+export type NavSection = SectionBase & {
+  type: "nav"
+  links: HeaderLink[]
+  actions: HeaderAction[]
+}
+
 export type HomeSection =
   | AnnouncementSection
   | HeroSection
@@ -118,6 +159,7 @@ export type HomeSection =
   | FeaturedSection
   | EditorialSection
   | InstagramSection
+  | NavSection
 
 /* ------------------------------------------------------------------
  * Espelho de backend/src/modules/content/contract.ts
@@ -135,6 +177,9 @@ export const SECTION_TYPES = [
   "featured",
   "editorial",
   "instagram",
+  // Não é uma seção da home: é o cabeçalho da loja, renderizado pelo
+  // layout em todas as rotas (como a barra de anúncio).
+  "nav",
 ] as const
 
 export type SectionType = (typeof SECTION_TYPES)[number]
@@ -163,6 +208,8 @@ export type FieldKind =
   | "list:benefit"
   | "list:highlight"
   | "list:image"
+  | "list:link"
+  | "list:action"
 
 export type FieldSpec = {
   name: string
@@ -238,6 +285,20 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     { name: "title", label: "Título", kind: "text", required: true },
     { name: "images", label: "Imagens", kind: "list:image" },
   ],
+  nav: [
+    {
+      name: "links",
+      label: "Links do menu",
+      kind: "list:link",
+      help: 'Ordem da lista = ordem no menu. Use "/#secao" para rolar até uma parte da home, "/rota" para outra página, "https://…" para fora do site e "mailto:…"/"tel:…" para contato.',
+    },
+    {
+      name: "actions",
+      label: "Ícones da direita",
+      kind: "list:action",
+      help: 'Ordem da lista = ordem no cabeçalho. O ícone "bag" usa a sacola do carrinho, com contador — mantenha só um.',
+    },
+  ],
 }
 
 /**
@@ -248,10 +309,38 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
 const FALLBACK_HERO = "/brand/hero.jpg"
 
 /**
+ * Fallback header, mirroring `backend/src/modules/content/defaults.ts`.
+ *
+ * Used whenever the content payload has no `nav` block: the seed never
+ * ran, the block was hidden by the admin, or `/store/content` failed.
+ * The header is chrome on every route, so it must never render empty.
+ */
+export const DEFAULT_HEADER: NavSection = {
+  id: "nav",
+  type: "nav",
+  enabled: true,
+  position: 5,
+  links: [
+    { label: "Início", href: "/#hero" },
+    { label: "Coleções", href: "/#collections" },
+    { label: "Produtos", href: "/store" },
+    { label: "Sobre", href: "/#editorial" },
+    { label: "Contatos", href: "mailto:contato@realvalor.com.br" },
+  ],
+  actions: [
+    { icon: "bag", label: "Sacola", href: "/cart" },
+    { icon: "account", label: "Conta", href: "/account" },
+    { icon: "search", label: "Buscar", href: "/search" },
+  ],
+}
+
+/**
  * Default home — an exact transcription of the prototype, including
  * headings, sub-headings, CTAs and section order.
  */
 export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
+  // O cabeçalho viaja no mesmo payload da home (ver `headerSections`).
+  DEFAULT_HEADER,
   {
     id: "announcement",
     type: "announcement",
@@ -398,5 +487,23 @@ export function announceSections(
 ): AnnouncementSection | undefined {
   return sections.find(
     (section): section is AnnouncementSection => section.type === "announcement"
+  )
+}
+
+/**
+ * The header is site chrome (every route), not home content, yet its
+ * links are content — same reasoning as `announceSections`, so the
+ * layout pulls that one block out of the payload it already fetched.
+ *
+ * Falls back to `DEFAULT_HEADER` when there is no `nav` block: disabled
+ * sections are removed by `visibleSections` before this point, and an
+ * empty header is worse than a plain one.
+ */
+export function headerSections(
+  sections: HomeSection[] = DEFAULT_HOME_SECTIONS
+): NavSection {
+  return (
+    sections.find((section): section is NavSection => section.type === "nav") ??
+    DEFAULT_HEADER
   )
 }

@@ -10,11 +10,13 @@ import { DEFAULT_HOME_SECTIONS } from "../modules/content/defaults"
  * Rode com:
  *   ./node_modules/.bin/medusa exec ./src/scripts/seed-content.ts
  *
- * É idempotente por padrão: se já existir qualquer seção para a
- * superfície, não faz nada e avisa. Assim pode ser rodado no
- * provisionamento sem sobrescrever conteúdo que o admin já editou.
+ * É idempotente e incremental: cria apenas os blocos que ainda não
+ * existem (comparando por `id`) e não encosta no que o admin já editou.
+ * É por aqui que um bloco novo — como o `nav` do cabeçalho — chega numa
+ * loja que já foi semeada: basta rodar de novo.
  *
- * `--force` remove as seções existentes da superfície antes de recriar.
+ * `--force` remove as seções existentes da superfície antes de recriar
+ * tudo do zero (sobrescreve edições do admin).
  */
 export default async function seedContent({
   container,
@@ -27,21 +29,27 @@ export default async function seedContent({
 
   const existing = await service.listContentBlocks({ surface })
 
-  if (existing.length && !force) {
-    console.log(
-      `Já existem ${existing.length} seção(ões) para "${surface}". ` +
-        `Nada foi alterado — use --force para recriar.`
-    )
-    return
-  }
-
-  if (existing.length && force) {
+  if (force && existing.length) {
     await service.deleteContentBlocks(existing.map((block) => block.id))
     console.log(`Removidas ${existing.length} seção(ões) existentes.`)
   }
 
+  const kept = force ? 0 : existing.length
+  const keptIds = new Set(force ? [] : existing.map((block) => block.id))
+  const missing = DEFAULT_HOME_SECTIONS.filter(
+    (section) => !keptIds.has(section.id)
+  )
+
+  if (!missing.length) {
+    console.log(
+      `Já existem ${kept} seção(ões) para "${surface}" — nenhuma faltando. ` +
+        `Nada foi alterado; use --force para recriar do zero.`
+    )
+    return
+  }
+
   const created = await service.createContentBlocks(
-    DEFAULT_HOME_SECTIONS.map((section) => {
+    missing.map((section) => {
       const { id, enabled, position, type, ...data } = section
 
       return {
@@ -56,11 +64,12 @@ export default async function seedContent({
   )
 
   console.log(
-    `Criadas ${created.length} seções para "${surface}": ` +
+    `Criadas ${created.length} seção(ões) para "${surface}": ` +
       created
         .slice()
         .sort((a, b) => a.position - b.position)
         .map((block) => `${block.position}:${block.type}`)
-        .join(", ")
+        .join(", ") +
+      (kept ? ` (${kept} já existiam e não foram tocadas)` : "")
   )
 }
