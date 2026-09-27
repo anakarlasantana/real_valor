@@ -48,13 +48,19 @@ node scripts/check-contract-parity.mjs
 Ele compara `SECTION_TYPES`, cada `SECTION_FIELDS` — campo por campo, inclusive
 `required`, `options`, `optionLabels` e `group` — e valida que
 `defaults.ts` cobre todos os tipos, que o `nav` e o `footer` do seed
-casam com os fallbacks do storefront e que o editor do admin
-(`backend/src/admin/routes/content/field-input.tsx`) sabe desenhar todo
-tipo de lista, com as mesmas chaves de ícone do storefront — inclusive
-as redes sociais, cujo registro é próprio (`social-icons.tsx`). No rodapé
-ele desce um nível: os campos do item de coluna têm que ser os do tipo
-`FooterColumn`, as origens oferecidas no `<select>` têm que ser as de
-`FOOTER_COLUMN_SOURCES` e toda origem precisa de um ramo em
+casam com os fallbacks do storefront e que todo `list:*` tem sub-formulário
+em `ITEM_FIELDS` (e que nenhum sub-formulário sobra, sem nenhum campo que o
+alcance). O que o editor do admin **desenha** chega todo pelo `schema` —
+inclusive os campos de dentro do item e os rótulos —, então o admin não
+mantém espelho nenhum: a guarda proíbe os nomes antigos (`ITEM_FIELDS`,
+`ICON_KEYS_BY_KIND`, `ICON_LABELS`, `FOOTER_COLUMN_SOURCES`, `TYPE_LABELS`) e
+cobra que os dois arquivos leiam o que chega. O que de fato **vive em dois
+pacotes** continua sendo conferido de verdade: cada `ITEM_FIELDS[kind]` contra
+o tipo que o storefront lê (`BenefitItem`, `CollectionHighlight`,
+`HeaderLink`, `HeaderAction`, `FooterColumn`, `FooterSocial`), as chaves de
+ícone contra `icons.ts`/`social-icons.tsx` — inclusive as redes sociais, cujo
+registro é próprio —, as origens oferecidas no `<select>` contra
+`FOOTER_COLUMN_SOURCES` e toda origem com ramo em
 `footer-column/index.tsx` — senão o lojista escolhe no admin uma coluna que
 a loja não desenha. **Rode isto depois de qualquer alteração no contrato.**
 
@@ -69,8 +75,9 @@ E o editor, que é o outro lugar onde a aparência se perde: cada trilho tem de
 estar **logo abaixo** do campo que ele veste (o `attachedTo` conferido contra a
 ordem do array), as opções de cor e de fonte têm de ser a paleta e os papéis
 na ordem do contrato, o `FieldSpec` espelhado no admin tem de conhecer o
-`attachedTo`, o `GET /admin/content` tem de mandar `palette`/`fonts`/
-`darkTokens`, e cada família declarada precisa existir como `@font-face` em
+`attachedTo`, o `GET /admin/content` tem de mandar `typeLabels`/`itemFields`/
+`palette`/`fonts`/`darkTokens`, e cada família declarada precisa existir como
+`@font-face` em
 `backend/src/admin/routes/content/appearance.css` apontando para um `.woff2`
 com o **mesmo md5** do storefront. As duas últimas são as que nenhuma revisão
 manual pegaria: sem elas a bolinha sai sem cor e a prévia de fonte cai no
@@ -227,7 +234,9 @@ mesma da loja, com os arquivos `.woff2` copiados para
 `backend/src/admin/routes/content/fonts/` — o navegador do painel não tem
 nenhuma das três. `scripts/check-contract-parity.mjs` confere as pontas todas:
 hex contra o `theme.json`, família e pilha contra o `theme.json`/`theme.ts` e
-md5 dos `.woff2` contra os do storefront.
+md5 dos `.woff2` contra os do storefront. O `schema` inteiro é o formulário do
+painel — inclusive `itemFields` e `typeLabels`, que é o que desenha cada item
+de lista e nomeia cada tipo (ver *Admin*).
 
 **Uma regra que não vem de campo:** escolher um fundo escuro (`preto`, `cacao` —
 `THEME_DARK_TOKENS`) sem escolher a cor do texto faz o storefront escrever
@@ -325,9 +334,20 @@ menu principal. Como entrada da sidebar principal, a página participa do mesmo
 **personalizar layout** dos menus nativos
 (`/admin/layouts/main-sidebar/configuration`).
 
-O formulário não repete a lista de campos em React: ele lê
-`schema.fields` da API, que é gerado do contrato. Adicionar um campo no
-contrato já o faz aparecer no admin.
+O formulário não repete nada do contrato em React: `schema.fields` traz os
+campos de cada seção, `schema.itemFields` o sub-formulário de cada item de
+lista (os mesmos `ITEM_FIELDS` do contrato, por `kind`) e `schema.typeLabels`
+o nome de cada tipo na listagem. Adicionar um campo — de seção ou de dentro de
+um item — é uma linha no contrato.
+
+O admin é um pacote npm separado e **não importa** `contract.ts`: o `schema` é
+a única via, e por isso ele carrega até a tradução de cada escolha
+(`optionLabels`) e a lista de campos de item. Antes disso os campos de item e
+os rótulos de tipo eram digitados de novo no painel, e a divergência era
+silenciosa: um campo novo no contrato não aparecia no editor e um campo
+removido continuava sendo gravado. A guarda de paridade reprova os dois
+sintomas — os nomes dos espelhos antigos não podem voltar e cada
+`ITEM_FIELDS[kind]` tem de casar com o tipo que o storefront lê.
 
 ## Operação
 

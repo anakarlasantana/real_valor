@@ -210,9 +210,11 @@ export type NavSection = SectionBase & {
  *   `categories`  → as categorias do catálogo, ao vivo
  *   `collections` → as coleções do catálogo, ao vivo
  *
- * É uma lista, e não um `union` solto, porque o editor do admin precisa
- * oferecer as opções: ele é um pacote separado, mantém a própria cópia e
- * `scripts/check-contract-parity.mjs` confere as duas.
+ * É uma lista, e não um `union` solto, porque é ela que o editor do admin
+ * oferece no `<select>`: as opções do campo de item viajam em `ITEM_FIELDS`
+ * (e daí no `schema` do `GET /admin/content`), então o painel não tem cópia
+ * nenhuma. `scripts/check-contract-parity.mjs` confere a lista contra o
+ * `source` oferecido pelo editor e contra os ramos de `footer-column/index.tsx`.
  */
 export const FOOTER_COLUMN_SOURCES = [
   "links",
@@ -817,3 +819,216 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     },
   ],
 }
+
+// ===========================================================================
+// O QUE O CRM DESENHA ALÉM DOS CAMPOS DE SEÇÃO
+// ===========================================================================
+// `SECTION_FIELDS` diz quais campos uma seção tem; falta o resto que o editor
+// do admin precisa para desenhar a tela — e que também é dado, não tabela em
+// React:
+//
+//   SECTION_TYPE_LABELS   o nome de cada tipo na listagem ("Sobre", não
+//                         "editorial");
+//   ITEM_FIELDS           o sub-formulário de cada item de lista (os itens de
+//                         `benefits`, os links de uma coluna do rodapé…),
+//                         recursivo como o conteúdo é;
+//   ICON_LABELS           a tradução das chaves de ícone oferecidas.
+//
+// Os três viajam no `schema` do `GET /admin/content` e quem os desenha é o
+// `field-input.tsx`/`page.tsx`, que não importam nada daqui (o admin é um
+// pacote npm separado do backend). Até aqui eles eram espelhos digitados à mão
+// no admin, e a guarda de paridade só sabia comparar texto com texto; agora o
+// que o editor desenha e o que o contrato declara são o **mesmo objeto**, e a
+// guarda confere o que de fato vive em dois pacotes: as chaves de ícone do
+// storefront e os campos que ele lê.
+//
+// Nada disto é gravável por conta própria: o que a API aceita continua saindo
+// de `SECTION_FIELDS` (com `options` campo a campo) e sendo validado pelo
+// `validateData` da rota admin.
+
+/**
+ * Rótulo de cada tipo na listagem do editor.
+ *
+ * O `type` é o identificador que a API grava e que o storefront casa no
+ * `switch` — não muda. O rótulo é o que o lojista lê, e não é uma tradução do
+ * `type`: a seção `editorial` se chama **Sobre** na loja (é o item do menu que
+ * rola até ela), e `nav`/`footer` são cromo de todas as rotas, não seções da
+ * home. Uma tabela dentro do `page.tsx` deixaria um tipo novo aparecendo como
+ * jargão até alguém lembrar de mexer no admin.
+ */
+export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
+  announcement: "Barra de anúncio",
+  hero: "Hero",
+  benefits: "Faixa de benefícios",
+  collections: "Coleções em destaque",
+  featured: "Peças em destaque",
+  editorial: "Sobre",
+  instagram: "Instagram",
+  nav: "Cabeçalho",
+  footer: "Rodapé",
+}
+
+/**
+ * Tradução de cada chave de ícone oferecida em `ITEM_FIELDS`.
+ *
+ * O ícone é escolhido por chave (`"quality"`, `"bag"`) porque quem desenha é o
+ * registro do storefront (`frontend/src/lib/content/icons.ts`); sem a tradução
+ * o `<select>` do admin seria só jargão. Chave oferecida e sem rótulo aparece
+ * crua — é o que a guarda de paridade reprova, junto com o rótulo órfão.
+ */
+export const ICON_LABELS: Record<string, string> = {
+  quality: "qualidade",
+  price: "preço",
+  sizes: "tamanhos",
+  delivery: "entrega",
+  bag: "sacola — usa o carrinho, com contador",
+  account: "conta",
+  search: "busca",
+  whatsapp: "WhatsApp",
+  mail: "e-mail",
+  phone: "telefone",
+  pin: "localização",
+  // Redes sociais do rodapé (`list:social`), que têm registro próprio
+  // (`frontend/src/lib/content/social-icons.tsx`).
+  instagram: "Instagram",
+  facebook: "Facebook",
+  youtube: "YouTube",
+}
+
+/**
+ * Tradução das origens de uma coluna do rodapé.
+ *
+ * O rótulo diz de onde os itens **saem**, e não o nome da origem: quem escolhe
+ * `categories` precisa saber que a lista passa a ser o catálogo ao vivo, e não
+ * o que ele digitou logo abaixo.
+ */
+export const FOOTER_COLUMN_SOURCE_LABELS: Record<FooterColumnSource, string> = {
+  links: "os links digitados abaixo",
+  categories: "as categorias do catálogo",
+  collections: "as coleções do catálogo",
+}
+
+/**
+ * Um campo de um item de lista — o que o editor desenha dentro de um item.
+ *
+ * É um tipo à parte de `FieldSpec` de propósito: item de lista não tem trilho
+ * de aparência, nem `attachedTo`, nem campo obrigatório. Oferecer isso aqui
+ * sugeriria um recurso que o editor não desenha.
+ *
+ * `kind` só existe para o item que é lista (hoje, o `links` de uma coluna do
+ * rodapé) e `options` para o item que é escolha (`source`, `icon`).
+ */
+export type ItemFieldSpec = {
+  name: string
+  label: string
+  /** `list:*` desenha uma lista dentro do item; ausente é campo simples. */
+  kind?: FieldKind
+  /** Opções do `<select>`; a primeira é o valor de um item novo. */
+  options?: readonly string[]
+  /** Tradução de cada opção, para o `<select>` não ser só jargão. */
+  optionLabels?: Record<string, string>
+  /** Em branco é um valor válido (o ícone cai no padrão): oferece "—". */
+  allowEmpty?: boolean
+  /** Explicação curta, abaixo do rótulo. */
+  help?: string
+}
+
+/**
+ * Sub-formulário de cada `kind` de lista, na ordem em que o editor o desenha.
+ *
+ * Só os `kind` de objeto aparecem: `list:text` é um input separado por
+ * vírgula, sem sub-campos. Todo `list:*` de `SECTION_FIELDS` precisa estar
+ * aqui — sem editor o campo aparece na tela e não dá para preencher —, e a
+ * guarda de paridade cobra os dois sentidos (nenhum `kind` sem sub-formulário,
+ * nenhuma chave que não seja um `kind` declarado nas seções).
+ *
+ * Cada `kind` tem um tipo no bloco compartilhado (`BenefitItem`,
+ * `CollectionHighlight`, `HeaderLink`, `HeaderAction`, `FooterColumn`,
+ * `FooterSocial`), que é o que o storefront lê: a guarda confere que o editor
+ * oferece exatamente os campos do tipo, na mesma ordem — campo num lado só
+ * deixa o lojista sem como preencher o que a loja renderiza, ou o contrário.
+ * `list:image` não tem tipo nomeado (o `images` do Instagram é inline), e
+ * `list:column` tem a checagem extra contra o que o render da coluna lê.
+ *
+ * O ícone é escolha dentro de uma lista fechada, e as chaves são declaradas
+ * aqui — o contrato não importa o registro do storefront (pacotes separados) —,
+ * conferidas contra `BENEFIT_ICON_KEYS`/`HEADER_ACTION_ICON_KEYS` (`icons.ts`)
+ * e `SOCIAL_ICON_KEYS` (`social-icons.tsx`) pela guarda de paridade: chave
+ * nova num lado só ofereceria no admin um ícone que a loja não desenha (ou o
+ * contrário, um ícone que ninguém consegue escolher).
+ *
+ * `list:column` é o caso recursivo: a coluna guarda os próprios links
+ * (`list:link`), e é por isso que o editor desenha os níveis internos em
+ * recursão em vez de um ramo por profundidade.
+ */
+export const ITEM_FIELDS: Partial<
+  Record<FieldKind, readonly ItemFieldSpec[]>
+> = {
+  "list:benefit": [
+    {
+      name: "icon",
+      label: "Ícone",
+      options: ["quality", "price", "sizes", "delivery"],
+      optionLabels: ICON_LABELS,
+      allowEmpty: true,
+    },
+    { name: "title", label: "Título" },
+    { name: "subtitle", label: "Subtítulo" },
+  ],
+  "list:highlight": [
+    { name: "title", label: "Título" },
+    { name: "subtitle", label: "Subtítulo" },
+    { name: "imageUrl", label: "Imagem (URL)" },
+    { name: "imageAlt", label: "Imagem (alt)" },
+    { name: "href", label: "Link" },
+    { name: "ctaLabel", label: "Texto do botão" },
+  ],
+  "list:image": [
+    { name: "imageUrl", label: "Imagem (URL)" },
+    { name: "imageAlt", label: "Imagem (alt)" },
+  ],
+  "list:link": [
+    { name: "label", label: "Rótulo" },
+    { name: "href", label: "Destino" },
+  ],
+  "list:action": [
+    {
+      name: "icon",
+      label: "Ícone",
+      options: ["bag", "account", "search", "whatsapp", "mail", "phone", "pin"],
+      optionLabels: ICON_LABELS,
+      allowEmpty: true,
+    },
+    { name: "label", label: "Rótulo" },
+    { name: "href", label: "Destino" },
+  ],
+  // Coluna do rodapé: título, a origem dos itens e — quando a origem é
+  // "links" — os links dela, que são uma lista dentro do item.
+  "list:column": [
+    { name: "title", label: "Título" },
+    {
+      name: "source",
+      label: "Origem dos itens",
+      options: FOOTER_COLUMN_SOURCES,
+      optionLabels: FOOTER_COLUMN_SOURCE_LABELS,
+    },
+    {
+      name: "links",
+      label: "Links",
+      kind: "list:link",
+      help: "Ignorados quando a origem é o catálogo.",
+    },
+  ],
+  "list:social": [
+    {
+      name: "icon",
+      label: "Ícone",
+      options: ["instagram", "facebook", "whatsapp", "youtube"],
+      optionLabels: ICON_LABELS,
+      allowEmpty: true,
+    },
+    { name: "label", label: "Rótulo" },
+    { name: "href", label: "Destino" },
+  ],
+}
+

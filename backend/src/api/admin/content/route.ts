@@ -3,8 +3,10 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { CONTENT_MODULE } from "../../../modules/content"
 import type ContentModuleService from "../../../modules/content/service"
 import {
-  SECTION_TYPES,
+  ITEM_FIELDS,
   SECTION_FIELDS,
+  SECTION_TYPE_LABELS,
+  SECTION_TYPES,
   THEME_COLOR_HEXES,
   THEME_DARK_TOKENS,
   THEME_FONTS,
@@ -169,6 +171,24 @@ export async function GET(
     schema: {
       types: SECTION_TYPES,
       fields: SECTION_FIELDS,
+      /**
+       * Nome de cada tipo para a listagem. Vem daqui como os campos: o
+       * `type` é o identificador que o storefront casa no `switch`, e o
+       * rótulo é o que o lojista lê — `editorial` se chama "Sobre" porque é
+       * esse o nome da âncora no menu. Sem o rótulo no payload o admin teria
+       * que manter a tabela (e um tipo novo apareceria como jargão até
+       * alguém lembrar de mexer no painel).
+       */
+      typeLabels: SECTION_TYPE_LABELS,
+      /**
+       * Sub-formulário de cada item de lista, por `kind`. É o mesmo motivo
+       * dos campos: os itens (`benefit.title`, `column.source`…) são objetos
+       * e o editor precisa saber o que desenhar dentro de um deles, com as
+       * opções e a tradução. Como `fields`, isto é o que o editor **desenha**
+       * na tela — o que ele pode gravar continua sendo validado pelo
+       * `validateData` desta rota.
+       */
+      itemFields: ITEM_FIELDS,
       /**
        * Prévia de aparência para o editor: o hex de cada cor da paleta e a
        * família/pilha de cada papel de fonte.

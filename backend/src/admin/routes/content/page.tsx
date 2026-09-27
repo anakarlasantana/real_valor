@@ -17,6 +17,12 @@
  * `backend/src/modules/content/contract.ts`. Adicionar um campo no
  * contrato já o faz aparecer no formulário.
  *
+ * O mesmo vale para o resto da tela: `schema.typeLabels` traz o nome de cada
+ * tipo na listagem (o contrato decide que `editorial` se chama "Sobre") e
+ * `schema.itemFields` o sub-formulário de cada item de lista. Não há tabela
+ * de rótulos nem de campos de item neste arquivo — um tipo ou um campo novo
+ * no contrato aparece aqui sem edição.
+ *
  * O formulário respeita a **ordem** do contrato: cada campo de conteúdo sai
  * na posição dele, e cada trilho de aparência (os campos que têm `group`)
  * sai logo abaixo do campo que ele veste — o `attachedTo` do contrato é a
@@ -41,7 +47,11 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { AppearanceRail } from "./appearance-controls"
-import { FieldInput, type FieldSpec } from "./field-input"
+import {
+  FieldInput,
+  type FieldSpec,
+  type ItemFields,
+} from "./field-input"
 
 type Section = {
   id: string
@@ -54,30 +64,16 @@ type Section = {
 type Schema = {
   types: readonly string[]
   fields: Record<string, readonly FieldSpec[]>
+  /** Tipo da seção → nome que o lojista lê (o `type` cru é jargão). */
+  typeLabels?: Record<string, string>
+  /** `kind` de lista → campos de dentro do item. */
+  itemFields?: ItemFields
   /** Papel da cor → hex, para a bolinha de cor. */
   palette?: Record<string, string>
   /** Papel da fonte → { family, stack }, para a prévia da fonte. */
   fonts?: Record<string, { family: string; stack: string }>
   /** Cores de fundo que o storefront trata como escuras. */
   darkTokens?: readonly string[]
-}
-
-/** Rótulo curto por tipo de seção, para a listagem. */
-const TYPE_LABELS: Record<string, string> = {
-  announcement: "Barra de anúncio",
-  hero: "Hero",
-  benefits: "Faixa de benefícios",
-  collections: "Coleções em destaque",
-  featured: "Peças em destaque",
-  // O nome é o do item do menu, não o do protótipo: é este bloco que o
-  // "Sobre" da navbar rola (a âncora é o `id` da seção, não o rótulo).
-  editorial: "Sobre",
-  instagram: "Instagram",
-  // Cabeçalho e rodapé não são seções da home — aparecem em todas as
-  // rotas, desenhados pelo layout —, mas viajam no mesmo payload. Sem
-  // rótulo aqui a listagem mostraria o `type` cru.
-  nav: "Cabeçalho",
-  footer: "Rodapé",
 }
 
 /**
@@ -320,7 +316,7 @@ const ContentPage = () => {
                 <Badge size="2xsmall">{section.position}</Badge>
                 <div>
                   <Text weight="plus" size="small">
-                    {TYPE_LABELS[section.type] ?? section.type}
+                    {schema?.typeLabels?.[section.type] ?? section.type}
                   </Text>
                   <Text size="xsmall" className="text-ui-fg-subtle">
                     {/* `#id` é a âncora que o menu usa: um Destino
@@ -361,6 +357,7 @@ const ContentPage = () => {
                       onChange={(value) =>
                         setField(section.id, spec.name, value)
                       }
+                      itemFields={schema?.itemFields ?? {}}
                       palette={schema?.palette}
                       fonts={schema?.fonts}
                     />

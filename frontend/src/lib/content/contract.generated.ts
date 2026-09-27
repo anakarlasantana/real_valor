@@ -195,9 +195,11 @@ export type NavSection = SectionBase & {
  *   `categories`  → as categorias do catálogo, ao vivo
  *   `collections` → as coleções do catálogo, ao vivo
  *
- * É uma lista, e não um `union` solto, porque o editor do admin precisa
- * oferecer as opções: ele é um pacote separado, mantém a própria cópia e
- * `scripts/check-contract-parity.mjs` confere as duas.
+ * É uma lista, e não um `union` solto, porque é ela que o editor do admin
+ * oferece no `<select>`: as opções do campo de item viajam em `ITEM_FIELDS`
+ * (e daí no `schema` do `GET /admin/content`), então o painel não tem cópia
+ * nenhuma. `scripts/check-contract-parity.mjs` confere a lista contra o
+ * `source` oferecido pelo editor e contra os ramos de `footer-column/index.tsx`.
  */
 export const FOOTER_COLUMN_SOURCES = [
   "links",

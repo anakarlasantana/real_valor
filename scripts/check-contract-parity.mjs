@@ -171,21 +171,16 @@ function assert(label, condition, detail = "") {
 /**
  * Lê o bloco `const NOME = { ... }` de um arquivo texto.
  *
- * `field-input.tsx` é um componente React: importá-lo no Node esbarraria no
- * JSX, que o type-stripping nativo não transforma. Daí a leitura textual —
- * o mesmo motivo pelo qual as listas do admin são espelhadas à mão.
+ * Componentes `.tsx` (o registro social, o editor do admin) são lidos como
+ * texto: importá-los no Node esbarraria no JSX, que o type-stripping nativo
+ * não transforma. Todo o resto que a guarda compara é carregado por
+ * `loadExport`, do próprio módulo — inclusive o sub-formulário dos itens, que
+ * é dado do contrato.
  */
 function readBlock(source, name) {
   const match = new RegExp(`const ${name}[\\s\\S]*?\\n\\}`).exec(source)
 
   return match ? match[0] : ""
-}
-
-/** Extrai `"chave": ["a", "b"]` de um bloco; `null` se não achar. */
-function readKeys(block, name) {
-  const match = new RegExp(`"${name}"\\s*:\\s*\\[([^\\]]*)\\]`).exec(block)
-
-  return match ? parseStringArray(match[1]) : null
 }
 
 /**
@@ -214,20 +209,6 @@ function readTypeFields(source, name) {
 
   return match
     ? [...match[1].matchAll(/^\s*([A-Za-z_$][\w$]*)\??\s*:/gm)].map((m) => m[1])
-    : null
-}
-
-/**
- * Nomes dos sub-campos (`name: "x"`) do editor de um `kind` de lista,
- * dentro do bloco `ITEM_FIELDS` de `field-input.tsx`.
- */
-function readItemFieldNames(block, kind) {
-  const match = new RegExp(`"${kind}"\\s*:\\s*\\[([\\s\\S]*?)\\n  \\]`).exec(
-    block
-  )
-
-  return match
-    ? [...match[1].matchAll(/name:\s*"([^"]+)"/g)].map((m) => m[1])
     : null
 }
 
@@ -420,11 +401,59 @@ assert(
 console.log("\nADMIN (field-input.tsx)")
 
 const adminSource = readFileSync(ADMIN_FIELD_INPUT, "utf8")
-const itemFields = readBlock(adminSource, "ITEM_FIELDS")
-const iconKeysBlock = readBlock(adminSource, "ICON_KEYS_BY_KIND")
+const pageSource = readFileSync(ADMIN_PAGE, "utf8")
 
-assert("ITEM_FIELDS foi localizado", itemFields !== "")
-assert("ICON_KEYS_BY_KIND foi localizado", iconKeysBlock !== "")
+// O sub-formulário de cada item de lista é dado do contrato, como os campos
+// de seção: o admin recebe `schema.itemFields` pronto e desenha o que vier
+// (`itemFields[kind]`), sem tabela própria. Um espelho digitado de volta
+// divergiria em silêncio — era o que a versão antiga desta guarda comparava
+// texto com texto —, então os nomes antigos viram proibição explícita.
+const MIRRORS = [
+  "ITEM_FIELDS",
+  "ICON_KEYS_BY_KIND",
+  "ICON_LABELS",
+  "FOOTER_COLUMN_SOURCES",
+  "TYPE_LABELS",
+]
+
+for (const name of MIRRORS) {
+  const inAdmin = new RegExp(`const ${name}\\b`).test(adminSource)
+  const inPage = new RegExp(`const ${name}\\b`).test(pageSource)
+
+  assert(
+    `o admin não tem o espelho "${name}" (o contrato é quem manda)`,
+    !inAdmin && !inPage,
+    `ainda declarado em: ${
+      [inAdmin && "field-input.tsx", inPage && "page.tsx"].filter(Boolean).join(", ") ||
+      "(?!)"
+    }`
+  )
+}
+
+// E o outro lado do mesmo defeito: um `schema` que ninguém lê é campo que
+// some da tela. Os dois arquivos precisam consumir o que chega.
+assert(
+  'o editor lê os campos de item do schema ("itemFields")',
+  adminSource.includes("itemFields") && pageSource.includes("itemFields"),
+  "leia `schema.itemFields` em page.tsx e passe em field-input.tsx"
+)
+
+assert(
+  'a listagem lê os rótulos de tipo do schema ("typeLabels")',
+  pageSource.includes("typeLabels"),
+  "leia `schema.typeLabels` em backend/src/admin/routes/content/page.tsx"
+)
+
+const contractItemFields = loadExport(CONTRACT, "ITEM_FIELDS")
+const itemKinds = Object.keys(contractItemFields)
+const editorFieldNames = (kind) =>
+  (contractItemFields[kind] ?? []).map((field) => field.name)
+
+assert(
+  "ITEM_FIELDS do contrato tem os editores de item",
+  itemKinds.length > 0,
+  "o editor do admin ficaria sem sub-formulário nenhum"
+)
 
 // Todo `list:` do contrato precisa de um editor: sem ele o campo aparece
 // na tela do admin, mas não dá para preencher. `list:text` é a exceção —
@@ -440,8 +469,27 @@ const listKinds = [
 for (const kind of listKinds) {
   assert(
     `há editor de itens para "${kind}"`,
-    itemFields.includes(`"${kind}":`),
-    "acrescente o tipo em ITEM_FIELDS (ou trate-o como list:text)"
+    itemKinds.includes(kind),
+    'acrescente o tipo em ITEM_FIELDS (backend/src/modules/content/contract.ts) ' +
+      'ou trate-o como "list:text"'
+  )
+}
+
+// O inverso: `kind` que ninguém alcança — nenhuma seção o usa e nenhum item o
+// abre como sub-lista — é editor morto, que nenhuma tela desenha.
+const nestedKinds = itemKinds.flatMap((kind) =>
+  (contractItemFields[kind] ?? [])
+    .map((field) => field.kind)
+    .filter(
+      (nested) => typeof nested === "string" && nested.startsWith("list:")
+    )
+)
+
+for (const kind of itemKinds) {
+  assert(
+    `o editor de "${kind}" é alcançável a partir de algum campo`,
+    listKinds.includes(kind) || nestedKinds.includes(kind),
+    "nenhuma seção usa o kind e nenhum item o abre como sub-lista"
   )
 }
 
@@ -465,34 +513,16 @@ for (const kind of scalarKinds) {
   )
 }
 
-const iconKeysByKind = {
-  "list:benefit": loadExport(ICONS, "BENEFIT_ICON_KEYS"),
-  "list:action": loadExport(ICONS, "HEADER_ACTION_ICON_KEYS"),
+// O ícone é escolha dentro de uma lista fechada, e a lista é declarada no
+// contrato (`options` do campo `icon`) porque o registro que desenha o ícone
+// vive no storefront, outro pacote. O que se confere aqui é que os dois lados
+// oferecem **as mesmas** chaves: chave nova num lado só ofereceria no admin um
+// ícone que a loja não desenha — ou o contrário, um ícone que ninguém escolhe.
+const iconOptions = (kind) => {
+  const field = (contractItemFields[kind] ?? []).find((f) => f.name === "icon")
+
+  return field?.options ?? null
 }
-
-const knownIcons = new Set(loadExport(ICONS, "AVAILABLE_ICON_KEYS"))
-
-for (const [kind, expected] of Object.entries(iconKeysByKind)) {
-  const found = readKeys(iconKeysBlock, kind)
-
-  assert(
-    `"${kind}" oferece as mesmas chaves de ícone`,
-    found !== null && JSON.stringify(found) === JSON.stringify(expected),
-    `admin: ${found?.join(", ") ?? "não lido"}\n` +
-      `       storefront: ${expected.join(", ")}`
-  )
-}
-
-assert(
-  "toda chave de ícone oferecida tem um ícone no registro do storefront",
-  Object.values(iconKeysByKind)
-    .flat()
-    .every((key) => knownIcons.has(key)),
-  `sem ícone: ${Object.values(iconKeysByKind)
-    .flat()
-    .filter((key) => !knownIcons.has(key))
-    .join(", ")}`
-)
 
 // O registro social vive num `.tsx` (desenha SVG próprio, não usa
 // `@medusajs/icons`), então é lido como texto — o type-stripping nativo
@@ -504,14 +534,38 @@ const socialSource = readFileSync(SOCIAL_ICONS, "utf8")
 // o suficiente — e por isso serve para o contrato, para o admin e aqui.
 const socialKeys = readStringList(socialSource, "SOCIAL_ICON_KEYS")
 const socialMapKeys = readObjectKeys(readBlock(socialSource, "SOCIAL_ICONS"))
-const adminSocialKeys = readKeys(iconKeysBlock, "list:social")
+
+const iconKeysByKind = {
+  "list:benefit": loadExport(ICONS, "BENEFIT_ICON_KEYS"),
+  "list:action": loadExport(ICONS, "HEADER_ACTION_ICON_KEYS"),
+  "list:social": socialKeys,
+}
+
+const knownIcons = new Set(loadExport(ICONS, "AVAILABLE_ICON_KEYS"))
+
+for (const [kind, expected] of Object.entries(iconKeysByKind)) {
+  const found = iconOptions(kind)
+
+  assert(
+    `"${kind}" oferece as mesmas chaves de ícone`,
+    found !== null && JSON.stringify(found) === JSON.stringify(expected),
+    `contrato: ${found?.join(", ") ?? "não lido"}\n` +
+      `       storefront: ${expected?.join(", ") ?? "não lido"}`
+  )
+}
 
 assert(
-  '"list:social" oferece as mesmas chaves de ícone',
-  adminSocialKeys !== null &&
-    JSON.stringify(adminSocialKeys) === JSON.stringify(socialKeys),
-  `admin: ${adminSocialKeys?.join(", ") ?? "não lido"}\n` +
-    `       storefront: ${socialKeys?.join(", ") ?? "não lido"}`
+  "toda chave de ícone oferecida tem um ícone no registro do storefront",
+  Array.isArray(iconKeysByKind["list:benefit"]) &&
+    Array.isArray(iconKeysByKind["list:action"]) &&
+    [...iconKeysByKind["list:benefit"], ...iconKeysByKind["list:action"]].every(
+      (key) => knownIcons.has(key)
+    ),
+  `sem ícone: ${
+    [...(iconKeysByKind["list:benefit"] ?? []), ...(iconKeysByKind["list:action"] ?? [])]
+      .filter((key) => !knownIcons.has(key))
+      .join(", ") || "nenhuma"
+  }`
 )
 
 assert(
@@ -526,31 +580,109 @@ assert(
   }`
 )
 
-// O item de uma coluna do rodapé vive em dois lugares: o tipo
-// `FooterColumn` do contrato e o editor `ITEM_FIELDS["list:column"]`.
-// Campo só num lado deixa o lojista sem como preencher o que o
-// storefront renderiza — e, no caso do `source`, sem como escolher se a
-// coluna sai do catálogo ou dos links digitados.
+// O item de cada lista também existe como tipo no contrato — é o que o
+// storefront lê. Comparar os nomes, na ordem, é o que garante que editor e
+// loja falam do mesmo item: campo num lado só deixa o lojista sem como
+// preencher o que a loja renderiza, ou o contrário. `list:image` fica fora
+// porque não tem tipo nomeado (o `images` do Instagram é inline).
 const contractSource = readFileSync(CONTRACT, "utf8")
-const contractColumnFields = readTypeFields(contractSource, "FooterColumn")
-const adminColumnFields = readItemFieldNames(itemFields, "list:column")
 
-assert(
-  "o editor de coluna do rodapé tem os mesmos campos do contrato",
-  contractColumnFields !== null &&
-    JSON.stringify(adminColumnFields) === JSON.stringify(contractColumnFields),
-  `admin: ${adminColumnFields?.join(", ") ?? "não lido"}\n` +
-    `       contrato: ${contractColumnFields?.join(", ") ?? "não lido"}`
+const ITEM_TYPES = {
+  "list:benefit": "BenefitItem",
+  "list:highlight": "CollectionHighlight",
+  "list:link": "HeaderLink",
+  "list:action": "HeaderAction",
+  "list:column": "FooterColumn",
+  "list:social": "FooterSocial",
+}
+
+for (const [kind, typeName] of Object.entries(ITEM_TYPES)) {
+  const typeFields = readTypeFields(contractSource, typeName)
+  const editorFields = editorFieldNames(kind)
+
+  assert(
+    `o editor de "${kind}" tem os mesmos campos de "${typeName}"`,
+    typeFields !== null &&
+      JSON.stringify(editorFields) === JSON.stringify(typeFields),
+    `editor: ${editorFields.join(", ") || "não lido"}\n` +
+      `       ${typeName}: ${typeFields?.join(", ") ?? "não lido"}`
+  )
+}
+
+// A origem de uma coluna é escolha dentro de uma lista fechada
+// (`FOOTER_COLUMN_SOURCES`); o editor precisa oferecer exatamente essas
+// opções, e cada uma precisa de rótulo — sem ele o lojista escolheria entre
+// "categories" e "collections" no `<select>`.
+const columnSourceField = (contractItemFields["list:column"] ?? []).find(
+  (field) => field.name === "source"
 )
-
-const adminSources = readStringList(adminSource, "FOOTER_COLUMN_SOURCES")
 
 assert(
   '"list:column" oferece as mesmas origens de coluna do contrato',
-  adminSources !== null &&
-    JSON.stringify(adminSources) === JSON.stringify(contractSources),
-  `admin: ${adminSources?.join(", ") ?? "não lido"}\n` +
+  columnSourceField?.options !== undefined &&
+    JSON.stringify(columnSourceField.options) ===
+      JSON.stringify(contractSources),
+  `editor: ${columnSourceField?.options?.join(", ") ?? "não lido"}\n` +
     `       contrato: ${contractSources.join(", ")}`
+)
+
+const columnSourceLabels = loadExport(CONTRACT, "FOOTER_COLUMN_SOURCE_LABELS")
+const missingSourceLabels = contractSources.filter(
+  (source) => !columnSourceLabels[source]
+)
+
+assert(
+  "toda origem de coluna tem rótulo",
+  missingSourceLabels.length === 0,
+  `sem rótulo: ${missingSourceLabels.join(", ") || "nenhuma"}`
+)
+
+// Mesma ideia para os ícones: a tradução é dado do contrato (o admin a recebe
+// em `optionLabels`), então oferecer uma chave sem rótulo — ou manter um
+// rótulo órfão, de chave que não existe mais — é divergência de um lado só.
+// Os dois sentidos são conferidos.
+const offeredIcons = [
+  ...new Set(itemKinds.map((kind) => iconOptions(kind) ?? []).flat()),
+]
+const iconLabels = loadExport(CONTRACT, "ICON_LABELS")
+
+assert(
+  "toda chave de ícone oferecida tem rótulo no contrato",
+  offeredIcons.every((key) => Boolean(iconLabels[key])),
+  `sem rótulo: ${
+    offeredIcons.filter((key) => !iconLabels[key]).join(", ") || "nenhuma"
+  }`
+)
+
+assert(
+  "não há rótulo de ícone órfão no contrato",
+  Object.keys(iconLabels).every((key) => offeredIcons.includes(key)),
+  `órfão: ${
+    Object.keys(iconLabels)
+      .filter((key) => !offeredIcons.includes(key))
+      .join(", ") || "nenhum"
+  }`
+)
+
+// O mesmo para a listagem: o rótulo de cada tipo de seção viaja no `schema`
+// (`typeLabels`), então um tipo sem rótulo aparece como jargão na tela e um
+// rótulo órfão é linha de tabela que ninguém lê.
+const typeLabels = loadExport(CONTRACT, "SECTION_TYPE_LABELS")
+const unlabeledTypes = sourceTypes.filter((type) => !typeLabels[type])
+const orphanTypeLabels = Object.keys(typeLabels).filter(
+  (type) => !sourceTypes.includes(type)
+)
+
+assert(
+  "todo tipo de seção tem rótulo na listagem",
+  unlabeledTypes.length === 0,
+  `sem rótulo: ${unlabeledTypes.join(", ") || "nenhum"}`
+)
+
+assert(
+  "não há rótulo de tipo órfão no contrato",
+  orphanTypeLabels.length === 0,
+  `órfão: ${orphanTypeLabels.join(", ") || "nenhum"}`
 )
 
 // A página do editor monta os trilhos percorrendo os campos na ordem do
@@ -945,9 +1077,13 @@ assert(
 // O painel não importa o contrato, então o hex e a família chegam pelo
 // `schema` da API. Se o `schema` deixar de mandá-los, a bolinha sai sem cor e
 // a lista de fontes cai no fallback do navegador — que é o erro que a prévia
-// não tem como esconder, porque ainda "funciona".
+// não tem como esconder, porque ainda "funciona". Vale o mesmo para os
+// rótulos de tipo e para os campos de item: sem eles a listagem mostra
+// jargão e o editor de lista fica sem sub-formulário.
 const adminRoute = readFileSync(ADMIN_CONTENT_ROUTE, "utf8")
 const schemaKeys = [
+  "typeLabels: SECTION_TYPE_LABELS",
+  "itemFields: ITEM_FIELDS",
   "palette: THEME_COLOR_HEXES",
   "fonts: THEME_FONTS",
   "darkTokens: THEME_DARK_TOKENS",
@@ -955,7 +1091,8 @@ const schemaKeys = [
 const offSchema = schemaKeys.filter((key) => !adminRoute.includes(key))
 
 assert(
-  "GET /admin/content devolve paleta, fontes e cores escuras no schema",
+  "GET /admin/content devolve rótulos, campos de item, paleta, fontes e " +
+    "cores escuras no schema",
   offSchema.length === 0,
   `faltando no schema: ${offSchema.join(", ") || "nenhum"}`
 )
@@ -970,9 +1107,9 @@ if (failures.length) {
       "node scripts/gen-content.mjs"
   )
   console.log(
-    "Já as listas do admin espelham frontend/src/lib/content/icons.ts " +
-      "(chaves de ícone) e os campos de cada lista do contrato — essas são " +
-      "mantidas à mão."
+    "Já as chaves de ícone e os campos de cada lista vivem no contrato " +
+      "(frontend/src/lib/content/icons.ts é quem desenha o ícone, e é o " +
+      "único espelho que a guarda compara texto com texto)."
   )
   process.exit(1)
 }
