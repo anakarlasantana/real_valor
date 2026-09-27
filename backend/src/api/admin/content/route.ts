@@ -1,14 +1,8 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 
 import { CONTENT_MODULE } from "../../../modules/content"
-import {
-  SECTION_FIELDS,
-  SECTION_TYPES,
-  isSectionType,
-  type FieldKind,
-  type SectionType,
-} from "../../../modules/content/contract"
-import { buildSchema } from "../../../modules/content/schema"
+import { type FieldKind } from "../../../modules/content/contract"
+import type { ContentSchemaPayload } from "../../../modules/content/schema"
 import type ContentModuleService from "../../../modules/content/service"
 
 /**
@@ -32,9 +26,12 @@ const CHOICE_KINDS: readonly FieldKind[] = ["select", "color", "font"]
  *           edição de um campo só.
  */
 function validateData(
-  type: SectionType,
+  type: string,
   data: Record<string, unknown>,
-  { strict }: { strict: boolean }
+  {
+    strict,
+    fields,
+  }: { strict: boolean; fields: ContentSchemaPayload["fields"] }
 ): string[] {
   const errors: string[] = []
   // `?? []` e a checagem abaixo existem por causa de um caso real: a entrada
@@ -43,12 +40,15 @@ function validateData(
   // desconhecido" — e nenhum guard reprovava, porque a paridade tolera a
   // chave faltando dos dois lados. Tipo sem campos é bug de contrato, não
   // dado ruim: melhor uma mensagem que aponta o arquivo.
-  const specs = SECTION_FIELDS[type] ?? []
+  // Os campos vêm do **registro no banco** (`service.getSchema()`), e não do
+  // `SECTION_FIELDS` do código: é o registro que diz o que o CRM pode gravar.
+  // O `contract.ts` só entra por baixo, quando o registro não existe.
+  const specs = fields[type] ?? []
 
   if (!specs.length) {
     return [
-      `O tipo "${type}" não tem campos em SECTION_FIELDS ` +
-        `(backend/src/modules/content/contract.ts).`,
+      `O tipo "${type}" não tem campos no schema gravado ` +
+        `(backend/src/modules/content/schema.ts).`,
     ]
   }
 
@@ -160,6 +160,7 @@ export async function GET(
 
   const { surface = "home" } = req.query as { surface?: string }
   const sections = await service.listSections({ surface, onlyEnabled: false })
+  const stored = await service.getSchema()
 
   res.json({
     sections,
@@ -169,8 +170,38 @@ export async function GET(
      * onde o `seed-schema` tira a linha do banco. A partir do registro no
      * Postgres é que isto sai; o contrato é o bootstrap.
      */
-    schema: buildSchema(),
+    schema: stored.schema,
+    /**
+     * A versão do schema com que estes dados foram escritos — a loja recebe
+     * isto no payload da Store API para saber com qual formulário foram
+     * gravados.
+     */
+    schemaVersion: stored.version,
+    /**
+     * De onde veio o schema: `"db"` é o registro no Postgres (o caso normal
+     * depois do `make seed`), `"contract"` é o bootstrap do contrato, para um
+     * banco que ainda não foi semeado. Não é depuração: é o que torna visível
+     * que o registro ainda não foi gravado.
+     */
+    schemaSource: stored.source,
   })
+}
+
+/**
+ * O `type` que a API aceita.
+ *
+ * Sai do **registro** (`schema.types`), não de `isSectionType`: um tipo novo
+ * gravado no schema passa a ser gravável sem tocar em código — que é o ponto de
+ * o schema ser dado. O contrato segue sendo o bootstrap do registro.
+ */
+function isKnownType(
+  type: unknown,
+  schema: ContentSchemaPayload
+): type is string {
+  return (
+    typeof type === "string" &&
+    (schema.types as readonly string[]).includes(type)
+  )
 }
 
 /** POST /admin/content — cria uma seção. */
@@ -183,16 +214,21 @@ export async function POST(
   const body = (req.body ?? {}) as Record<string, unknown>
   const type = body.type
 
-  if (!isSectionType(type)) {
+  const { schema } = await service.getSchema()
+
+  if (!isKnownType(type, schema)) {
     res.status(400).json({
       type: "invalid_data",
-      message: `Campo "type" deve ser um de: ${SECTION_TYPES.join(", ")}.`,
+      message: `Campo "type" deve ser um de: ${schema.types.join(", ")}.`,
     })
     return
   }
 
   const { columns, data } = splitPayload(body)
-  const errors = validateData(type, data, { strict: true })
+  const errors = validateData(type, data, {
+    strict: true,
+    fields: schema.fields,
+  })
 
   if (errors.length) {
     res.status(400).json({ type: "invalid_data", message: errors.join(" ") })
@@ -234,8 +270,10 @@ export async function PATCH(
     return
   }
 
+  const { schema } = await service.getSchema()
   const type = existing.type
-  if (!isSectionType(type)) {
+
+  if (!isKnownType(type, schema)) {
     res.status(500).json({
       type: "invalid_data",
       message: `Seção "${id}" tem type inválido gravado: "${existing.type}".`,
@@ -249,7 +287,10 @@ export async function PATCH(
 
   // Numa edição parcial só se valida o que veio: mesclar com o `data`
   // atual antes de validar evitava poder limpar um campo de propósito.
-  const errors = validateData(type, data, { strict: false })
+  const errors = validateData(type, data, {
+    strict: false,
+    fields: schema.fields,
+  })
 
   if (errors.length) {
     res.status(400).json({ type: "invalid_data", message: errors.join(" ") })
