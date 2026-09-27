@@ -42,8 +42,19 @@ export async function GET(
     surface,
     onlyEnabled: true,
   })
+  const { version } = await service.getSchema()
 
   res.json({
     sections: type ? sections.filter((s) => s.type === type) : sections,
+    /**
+     * A versão do schema com que estes dados foram gravados.
+     *
+     * A loja não usa isto para decidir o que renderizar — ela tem os tipos
+     * gerados — e sim para **saber com que formulário os dados foram
+     * escritos**: um `schemaVersion` diferente do que a loja conhece é o sinal
+     * de que houve mudança de schema, e o que faz ela descartar um tipo que
+     * não reconhece em vez de quebrar a página (ver `lib/data/content.ts`).
+     */
+    schemaVersion: version,
   })
 }

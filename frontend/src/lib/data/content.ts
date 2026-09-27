@@ -3,6 +3,7 @@
 import { sdk } from "@lib/config"
 import {
   DEFAULT_HOME_SECTIONS,
+  isSectionType,
   visibleSections,
   type HomeSection,
 } from "@lib/content/home-sections"
@@ -22,6 +23,13 @@ const CONTENT_CACHE_TAG = "content"
 
 type ContentResponse = {
   sections: HomeSection[]
+  /**
+   * A versão do schema com que os dados foram gravados (vem do registro no
+   * Postgres, via a Store API). A loja não tipa por ela — os tipos são
+   * gerados — e sim por ela **descarta** o que não reconhece, o que é o
+   * contrato de "campo/tipo desconhecido é ignorado, nunca quebra a página".
+   */
+  schemaVersion: number
 }
 
 /**
@@ -37,9 +45,46 @@ type ContentResponse = {
  * A content failure must never take the storefront down, so every
  * error path falls back to `DEFAULT_HOME_SECTIONS`.
  */
+/**
+ * Descarta as seções cujo tipo a loja não conhece.
+ *
+ * Isto não é_metrica de estilo: é o que impede que um **tipo novo gravado no
+ * schema sem deploy** derrube a home. O render da home é exaustivo por
+ * `switch` e o `default` chama `assertNever`, que lança — então uma seção
+ * desconhecida que chegasse ao render viraria HTTP 500 na página inteira.
+ *
+ * Descartar (com log no servidor) é o comportamento pedido pelo plano: a loja
+ * valida o que recebe e ignora o que não conhece. O erro de digitação no
+ * contrato continua visível, porque o log sai no servidor — e o `--check` do
+ * `seed-schema` é quem acusa schema gravado sem o storefront saber.
+ */
+function supportedSections(
+  sections: unknown,
+  schemaVersion: number
+): HomeSection[] {
+  if (!Array.isArray(sections)) {
+    return []
+  }
+
+  return sections.filter((section): section is HomeSection => {
+    const type = (section as { type?: unknown } | null)?.type
+
+    if (typeof type === "string" && isSectionType(type)) {
+      return true
+    }
+
+    console.error(
+      `Seção com tipo "${String(type)}" não é suportada pela loja ` +
+        `(schema v${schemaVersion}); descartada.`
+    )
+
+    return false
+  })
+}
+
 export const getHomeSections = async (): Promise<HomeSection[]> => {
   try {
-    const { sections } = await sdk.client.fetch<ContentResponse>(
+    const { sections, schemaVersion } = await sdk.client.fetch<ContentResponse>(
       "/store/content",
       {
         method: "GET",
@@ -57,13 +102,15 @@ export const getHomeSections = async (): Promise<HomeSection[]> => {
       }
     )
 
+    const supported = supportedSections(sections, schemaVersion)
+
     // Empty is valid configuration (the admin hid everything), but it is
     // far more often a sign the seed never ran — use the defaults then.
-    if (!sections?.length) {
+    if (!supported.length) {
       return visibleSections(DEFAULT_HOME_SECTIONS)
     }
 
-    return visibleSections(sections)
+    return visibleSections(supported)
   } catch (error) {
     // A content failure must never take the storefront down: the home
     // still renders with the baked-in defaults.
