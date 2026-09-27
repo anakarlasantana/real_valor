@@ -102,6 +102,7 @@ Enquanto o schema/banco ficou adiado, "arrumou-se a casa":
 | H3 | `assets` morto dos `theme.json` (apontava para `.jpg` inexistentes) e do tipo `Theme` | ✅ commit `825080511a` |
 | H4 | Dependência morta: **corrigido** — `ansi-colors` é usada por `frontend/check-env-variables.js`, que o `next.config.js` carrega (o build aborta se falta variável). No lugar, saiu o que era mesmo morto: `campaign-1/2/3.jpg`, sem nenhuma referência | ✅ commit `825080511a` |
 | H5 | Baseline de `tsc` 20 → 0 no storefront (e o do backend junto), com alvo próprio `make types` | ✅ ver H5 abaixo |
+| H6 | Bug de ambiente achado no smoke test: chave de API com **2 canais** de venda (página de produto 500) e `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` stale no `.env` | ✅ commit do seed + linha no troubleshooting do `README` |
 
 ## H5 — os 20 erros de `tsc` do storefront
 

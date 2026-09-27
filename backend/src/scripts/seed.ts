@@ -317,7 +317,10 @@ export default async function seedDemoData({ container }: ExecArgs) {
   let publishableApiKey: ApiKey | null = null;
   const { data } = await query.graph({
     entity: "api_key",
-    fields: ["id"],
+    // `token` junto: o seed imprime a chave no fim (ver abaixo), e é ela que o
+    // storefront precisa em `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`. Sem isso a
+    // única forma de descobrir a chave é abrir o painel.
+    fields: ["id", "token"],
     filters: {
       type: "publishable",
     },
@@ -343,12 +346,34 @@ export default async function seedDemoData({ container }: ExecArgs) {
     publishableApiKey = publishableApiKeyResult as ApiKey;
   }
 
+  // A chave fica presa a **um só** canal de venda. O `add` sozinho nunca desliga
+  // o vínculo que o bootstrap do Medusa deixou ("Default Sales Channel"), e com
+  // dois canais o `/store/products` recusa calcular inventário — "Inventory
+  // availability cannot be calculated in the given context" — e a página de
+  // produto responde 500. O `remove` dos demais é o que corrige.
+  const onlineChannelId = onlineSalesChannel[0].id
+  const otherChannelIds = (
+    await salesChannelModuleService.listSalesChannels()
+  )
+    .map((channel) => channel.id)
+    .filter((id) => id !== onlineChannelId)
+
   await linkSalesChannelsToApiKeyWorkflow(container).run({
     input: {
       id: publishableApiKey.id,
-      add: [onlineSalesChannel[0].id],
+      add: [onlineChannelId],
+      ...(otherChannelIds.length ? { remove: otherChannelIds } : {}),
     },
-  });
+  })
+
+  // A chave é pública por desenho (ela vai no bundle do navegador), então
+  // imprimi-la é seguro — e evita o `.env` ficar com a chave de um banco
+  // antigo, que é como o storefront passou a responder 400 "A valid publishable
+  // key is required" depois de um `clean-db`.
+  logger.info(
+    `[Real Valor] Chave do storefront (\`.env\`): ` +
+      `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=${publishableApiKey.token}`
+  );
 
   // 8. Categorias de Moda Feminina
   logger.info("[Real Valor] Cadastrando categorias femininas...");
