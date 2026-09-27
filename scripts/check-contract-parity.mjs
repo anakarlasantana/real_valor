@@ -88,6 +88,19 @@ const ADMIN_CONTENT_ROUTE = join(root, "backend/src/api/admin/content/route.ts")
  * chaves sao conferidas aqui, e nao na rota, porque a montagem saiu dela.
  */
 const CONTENT_SCHEMA = join(root, "backend/src/modules/content/schema.ts")
+const CONTENT_SERVICE = join(root, "backend/src/modules/content/service.ts")
+const CONTENT_SCHEMA_MODEL = join(
+  root,
+  "backend/src/modules/content/models/content-schema.ts"
+)
+const CONTENT_MIGRATIONS = join(
+  root,
+  "backend/src/modules/content/migrations"
+)
+const SEED_SCHEMA_SCRIPT = join(root, "backend/src/scripts/seed-schema.ts")
+const FLAGS_SCRIPT = join(root, "backend/src/scripts/flags.ts")
+const STORE_CONTENT_ROUTE = join(root, "backend/src/api/store/content/route.ts")
+const STOREFRONT_CONTENT_DATA = join(root, "frontend/src/lib/data/content.ts")
 /**
  * As fontes da prévia: `THEME_FONTS` diz a família e a pilha, mas quem
  * entrega os bytes ao navegador do painel é o `@font-face` do
@@ -1109,12 +1122,156 @@ assert(
 // E a rota tem que **consumir** esse lugar, senão o schema volta a ser montado
 // dentro dela — que é como as duas pontas (rota e seed) acabariam divergindo
 // sem ninguém perceber.
+// A rota **lê** o schema do serviço…
 assert(
-  "a rota do admin monta o schema a partir de schema.ts (`buildSchema()`)",
-  adminRoute.includes("buildSchema()") &&
-    adminRoute.includes("modules/content/schema") &&
-    !adminRoute.includes("palette: THEME_COLOR_HEXES"),
-  "em backend/src/api/admin/content/route.ts: monte com `buildSchema()`"
+  "a rota do admin lê o schema do registro (`service.getSchema()`)",
+  adminRoute.includes("service.getSchema()") &&
+    adminRoute.includes("schema: stored.schema") &&
+    adminRoute.includes("schemaVersion: stored.version") &&
+    adminRoute.includes("schemaSource: stored.source"),
+  "em backend/src/api/admin/content/route.ts: sirva `stored` (schema, versão e origem)"
+)
+
+// …e **não monta** o schema. A montagem é o bootstrap e mora em `schema.ts`;
+// se a rota voltar a montar, o registro deixa de valer e o `contract.ts` volta
+// a ser o único lugar que decide o formulário — que é o defeito que este
+// trabalho tirou do caminho.
+//
+// O teste é o **import** e a montagem inline (as chaves do schema), e não a
+// menção a `buildSchema()`: citar a função num comentário é legítimo e útil,
+// e uma guarda que reprova comentário obriga o próximo a apagar a explicação.
+assert(
+  "a rota do admin não monta o schema (isso é do `schema.ts`/bootstrap)",
+  !/import\s*\{[^}]*\bbuildSchema\b/.test(adminRoute) &&
+    !schemaKeys.some((key) => adminRoute.includes(key)),
+  "em backend/src/api/admin/content/route.ts: use `service.getSchema()` — " +
+    "a montagem do schema é do `schema.ts`"
+)
+
+console.log("\nSCHEMA COMO DADO (content_schema, o registro do crm)")
+
+const contentService = readFileSync(CONTENT_SERVICE, "utf8")
+const contentSchemaModel = readFileSync(CONTENT_SCHEMA_MODEL, "utf8")
+const seedSchemaScript = readFileSync(SEED_SCHEMA_SCRIPT, "utf8")
+const flagsScript = readFileSync(FLAGS_SCRIPT, "utf8")
+const storeContentRoute = readFileSync(STORE_CONTENT_ROUTE, "utf8")
+const storefrontContentData = readFileSync(STOREFRONT_CONTENT_DATA, "utf8")
+
+// A migration cria a **tabela** e nada mais. Um `insert` com o JSON do schema
+// dentro da migration faria o historico depender do codigo do dia em que rodou:
+// um banco novo em 2027 nasceria com o schema de 2027, e o de 2026 ficaria com
+// o de 2026 — divergencia entre ambientes, que e o oposto do objetivo. O
+// conteudo da linha e dado derivado de codigo, e quem escreve e o seed-schema.
+const migrationFiles = readdirSync(CONTENT_MIGRATIONS)
+  .filter((file) => file.startsWith("Migration") && file.endsWith(".ts"))
+const schemaMigration = migrationFiles.filter((file) => {
+  const text = readFileSync(join(CONTENT_MIGRATIONS, file), "utf8")
+  return /create table[^"]*"?content_schema"?/i.test(text)
+})
+const insertingMigrations = schemaMigration.filter((file) => {
+  const text = readFileSync(join(CONTENT_MIGRATIONS, file), "utf8")
+  return /insert\s+into/i.test(text)
+})
+
+assert(
+  "existe migration criando a tabela `content_schema`",
+  schemaMigration.length > 0,
+  `gerada por \`medusa db:generate content\` — nenhuma migration cria a tabela`
+)
+
+assert(
+  "a migration do schema nao insere linha (so DDL): o dado e do seed-schema",
+  schemaMigration.length > 0 && insertingMigrations.length === 0,
+  `com insert: ${insertingMigrations.join(", ")}`
+)
+
+assert(
+  "o model tem chave, versão e data (uma linha só)",
+  contentSchemaModel.includes('model.define("content_schema"') &&
+    contentSchemaModel.includes("model.text().primaryKey()") &&
+    contentSchemaModel.includes("version: model.number()") &&
+    contentSchemaModel.includes("data: model.json()"),
+  "em backend/src/modules/content/models/content-schema.ts"
+)
+
+// O serviço é quem decide a fonte: registro primeiro, contrato por baixo, e
+// declara qual dos dois respondeu (`source`) para o payload não mentir.
+assert(
+  "o serviço lê o registro e declara a origem (`source`) com fallback no contrato",
+  contentService.includes("async getSchema") &&
+    contentService.includes("listContentSchemas") &&
+    contentService.includes('source: "db"') &&
+    contentService.includes('source: "contract"') &&
+    contentService.includes("async saveSchema"),
+  "em backend/src/modules/content/service.ts"
+)
+
+// A versão mora no contrato e é carimbada na gravação: se derivasse do banco,
+// ninguém veria a divergência entre o schema que gravou os dados e o do código.
+// Lidos como texto, e não por `loadExport`: `schema.ts` importa **valores** do
+// contrato, e o import de `./contract` (sem extensão) não resolve no type-
+// stripping do Node — que é a mesma razão de o `loadExport` funcionar no
+// contrato e no `defaults.ts` (lá o import do contrato é só de tipo e some).
+const schemaVersion = Number(
+  /export const SCHEMA_VERSION = (\d+)/.exec(contentSchema)?.[1]
+)
+const schemaKey = /export const SCHEMA_KEY = "([^"]+)"/.exec(contentSchema)?.[1]
+
+assert(
+  "a versão do schema é um inteiro declarado no contrato (SCHEMA_VERSION)",
+  Number.isInteger(schemaVersion) && schemaVersion > 0,
+  `veio: ${JSON.stringify(schemaVersion)}`
+)
+
+assert(
+  "o seed-schema grava a linha com a versão do contrato e a chave fixa",
+  seedSchemaScript.includes("service.saveSchema") &&
+    seedSchemaScript.includes("version: SCHEMA_VERSION") &&
+    contentService.includes("SCHEMA_KEY") &&
+    typeof schemaKey === "string" &&
+    schemaKey.length > 0,
+  `SCHEMA_KEY veio: ${JSON.stringify(schemaKey)}`
+)
+
+// O `--check` é o que a CI chama: sem ele, "mudei o contrato e esqueci o
+// registro" só apareceria quando alguém rodasse o seed. E a comparação é por
+// `isDeepStrictEqual`, não por `JSON.stringify` — `data` é `jsonb` e não
+// preserva ordem de chave, então stringify acusaria diff numa base recém-gravada.
+assert(
+  "o seed-schema tem `--check` que não grava e compara sem stringify",
+  seedSchemaScript.includes("--check") &&
+    seedSchemaScript.includes("isDeepStrictEqual") &&
+    !seedSchemaScript.includes("JSON.stringify(stored"),
+  "em backend/src/scripts/seed-schema.ts"
+)
+
+// As flags do `medusa exec` chegam em `process.argv`, não em `ExecArgs.args`
+// (nesta versão do CLI). Os dois scripts de seed passam pelo helper, senão o
+// `--force` documentado volta a ser silenciosamente ignorado.
+const seedContentScript = readFileSync(
+  join(root, "backend/src/scripts/seed-content.ts"),
+  "utf8"
+)
+assert(
+  "os scripts de seed leem as flags de process.argv (via `scriptFlags`)",
+  flagsScript.includes("process.argv") &&
+    seedSchemaScript.includes("scriptFlags") &&
+    seedContentScript.includes("scriptFlags") &&
+    !/\(args \?\? \[\]\)\.includes\(/.test(seedSchemaScript) &&
+    !/\(args \?\? \[\]\)\.includes\(/.test(seedContentScript),
+  "em backend/src/scripts/flags.ts"
+)
+
+// A loja recebe a versão e descarta o que não conhece: o render da home é
+// exaustivo (`assertNever` lança), então um tipo novo gravado no registro sem
+// deploy viraria 500 sem esse filtro.
+assert(
+  "a loja recebe `schemaVersion` e filtra tipo desconhecido",
+  storeContentRoute.includes("schemaVersion: version") &&
+    storefrontContentData.includes("schemaVersion") &&
+    storefrontContentData.includes("supportedSections") &&
+    storefrontContentData.includes("isSectionType"),
+  "em backend/src/api/store/content/route.ts e frontend/src/lib/data/content.ts"
 )
 
 if (failures.length) {

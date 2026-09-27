@@ -165,10 +165,12 @@ export async function GET(
   res.json({
     sections,
     /**
-     * Metadados que o widget usa para montar o formulário — montados em
-     * `buildSchema()` (`modules/content/schema.ts`), que é o mesmo lugar de
-     * onde o `seed-schema` tira a linha do banco. A partir do registro no
-     * Postgres é que isto sai; o contrato é o bootstrap.
+     * Metadados que o widget usa para montar o formulário — lidos do
+     * **registro no Postgres** (`service.getSchema()`), que é o mesmo lugar de
+     * onde o `seed-schema` tira a linha. A montagem a partir do contrato
+     * (`buildSchema()`, em `modules/content/schema.ts`) é o bootstrap: só entra
+     * quando o registro não existe, e o `schemaSource` abaixo diz qual dos
+     * dois foi servido.
      */
     schema: stored.schema,
     /**
