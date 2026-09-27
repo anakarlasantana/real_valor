@@ -102,6 +102,14 @@ const FLAGS_SCRIPT = join(root, "backend/src/scripts/flags.ts")
 const STORE_CONTENT_ROUTE = join(root, "backend/src/api/store/content/route.ts")
 const STOREFRONT_CONTENT_DATA = join(root, "frontend/src/lib/data/content.ts")
 /**
+ * O filtro de tipo desconhecido da loja, que saiu de `content.ts` para
+ * ficar testável sem o SDK da Medusa (ver `supported-sections.spec.ts`).
+ */
+const STOREFRONT_SUPPORTED_SECTIONS = join(
+  root,
+  "frontend/src/lib/data/supported-sections.ts"
+)
+/**
  * As fontes da prévia: `THEME_FONTS` diz a família e a pilha, mas quem
  * entrega os bytes ao navegador do painel é o `@font-face` do
  * `appearance.css` apontando para a cópia local. Conferir a família sem
@@ -1174,6 +1182,7 @@ const seedSchemaScript = readFileSync(SEED_SCHEMA_SCRIPT, "utf8")
 const flagsScript = readFileSync(FLAGS_SCRIPT, "utf8")
 const storeContentRoute = readFileSync(STORE_CONTENT_ROUTE, "utf8")
 const storefrontContentData = readFileSync(STOREFRONT_CONTENT_DATA, "utf8")
+const supportedSections = readFileSync(STOREFRONT_SUPPORTED_SECTIONS, "utf8")
 
 // A migration cria a **tabela** e nada mais. Um `insert` com o JSON do schema
 // dentro da migration faria o historico depender do codigo do dia em que rodou:
@@ -1292,9 +1301,11 @@ assert(
   "a loja recebe `schemaVersion` e filtra tipo desconhecido",
   storeContentRoute.includes("schemaVersion: version") &&
     storefrontContentData.includes("schemaVersion") &&
-    storefrontContentData.includes("supportedSections") &&
-    storefrontContentData.includes("isSectionType"),
-  "em backend/src/api/store/content/route.ts e frontend/src/lib/data/content.ts"
+    storefrontContentData.includes("supportedSections(") &&
+    supportedSections.includes("isSectionType") &&
+    supportedSections.includes("export function supportedSections"),
+  "em backend/src/api/store/content/route.ts e " +
+    "frontend/src/lib/data/{content,supported-sections}.ts"
 )
 
 if (failures.length) {
