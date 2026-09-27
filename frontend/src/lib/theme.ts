@@ -48,7 +48,6 @@ export type Theme = {
   dateRange: { start: string; end: string } | null
   colors: ThemeColors
   fonts: ThemeFonts
-  assets: Record<string, string>
 }
 
 /** Shape of the JSON actually stored on disk (everything optional). */
@@ -58,7 +57,6 @@ type ThemeFile = {
   dateRange?: { start: string; end: string } | null
   colors?: Partial<ThemeColors>
   fonts?: Partial<ThemeFonts>
-  assets?: Record<string, string>
 }
 
 const THEMES_DIR = path.join(process.cwd(), "themes")
@@ -112,7 +110,6 @@ function normalizeTheme(file: ThemeFile): Theme {
     dateRange: file.dateRange ?? null,
     colors: { ...DEFAULT_THEME.colors, ...file.colors } as ThemeColors,
     fonts: { ...DEFAULT_THEME.fonts, ...file.fonts } as ThemeFonts,
-    assets: { ...DEFAULT_THEME.assets, ...file.assets },
   }
 }
 

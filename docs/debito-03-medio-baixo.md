@@ -177,7 +177,9 @@ local.
 
 ### 4.3 Imagens hero em baixa resolução
 
-**Evidência:** `frontend/public/brand/hero.jpg` e `campaign-*.jpg` são placeholders.
+**Evidência:** `frontend/public/brand/hero.jpg` é placeholder — e é a imagem do hero no
+conteúdo padrão da vitrine. As `campaign-*.jpg` saíram em 2026-09-27: nenhuma referência no
+código, e nenhuma seção do contrato as usaria (não existe tipo `campaign`).
 
 **Impacto:** primeira impressão da marca comprometida em telas grandes.
 
