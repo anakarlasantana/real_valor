@@ -89,6 +89,53 @@ export type ContentSchemaPayload = {
 }
 
 /**
+ * O schema que o CRM consome, e de onde ele veio.
+ *
+ * `source` existe para o payload dizer a verdade: `"db"` é o registro no
+ * Postgres (o caso normal depois do `make seed`), `"contract"` é o bootstrap.
+ * Não é depuração: é o que permite à UI e à auditoria saberem se o formulário
+ * que estão vendo é o gravado ou o de bootstrap.
+ */
+export type StoredSchema = {
+  /** O schema que o CRM consome. */
+  schema: ContentSchemaPayload
+  /** O `schemaVersion` que a loja recebe no payload. */
+  version: number
+  source: "db" | "contract"
+}
+
+/** Uma linha do registro, como o serviço a lê (ou `null`, se não houver). */
+export type SchemaRow = {
+  version?: number | null
+  data?: unknown
+} | null
+
+/**
+ * **A decisão**: registro gravado ou bootstrap do contrato.
+ *
+ * Função pura de propósito — o serviço fica só com o I/O (ler a linha) e a
+ * regra "qual das duas responder" fica testável sem container, sem banco e sem
+ * mock. É a única parte do `getSchema` que tem condição; o resto é leitura.
+ *
+ * `types` vazio também conta como "sem registro": uma linha em branco (criada à
+ * mão, ou por um seed antigo) serviria um formulário vazio ao CRM, que é pior do
+ * que servir o contrato.
+ */
+export function resolveSchema(row: SchemaRow): StoredSchema {
+  const stored = row?.data as ContentSchemaPayload | undefined
+
+  if (row && typeof row.version === "number" && stored?.types?.length) {
+    return { schema: stored, version: row.version, source: "db" }
+  }
+
+  return {
+    schema: buildSchema(),
+    version: SCHEMA_VERSION,
+    source: "contract",
+  }
+}
+
+/**
  * Monta o schema a partir do contrato.
  *
  * Chamado pelo `seed-schema` (para gravar) e pelo `service.getSchema()`

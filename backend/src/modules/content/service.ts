@@ -6,7 +6,9 @@ import {
   SCHEMA_KEY,
   SCHEMA_VERSION,
   buildSchema,
+  resolveSchema,
   type ContentSchemaPayload,
+  type StoredSchema,
 } from "./schema"
 
 /**
@@ -18,13 +20,7 @@ import {
  * é depuração: é o que permite a UI e a auditoria saberem se o formulário que
  * estão vendo é o gravado ou o de bootstrap.
  */
-export type StoredSchema = {
-  /** O schema que o CRM consome. */
-  schema: ContentSchemaPayload
-  /** O `schemaVersion` que a loja recebe no payload. */
-  version: number
-  source: "db" | "contract"
-}
+
 
 /**
  * Serviço do módulo de conteúdo.
@@ -83,18 +79,11 @@ class ContentModuleService extends MedusaService({
    * CRM, que é pior do que servir o contrato.
    */
   async getSchema(): Promise<StoredSchema> {
+    // A regra ("registro ou bootstrap?") está em `resolveSchema`, no
+    // `schema.ts`: é pura e testável sem container. Aqui é só a leitura.
     const [row] = await this.listContentSchemas({ key: SCHEMA_KEY })
-    const stored = row?.data as ContentSchemaPayload | undefined
 
-    if (row && typeof row.version === "number" && stored?.types?.length) {
-      return { schema: stored, version: row.version, source: "db" }
-    }
-
-    return {
-      schema: buildSchema(),
-      version: SCHEMA_VERSION,
-      source: "contract",
-    }
+    return resolveSchema(row)
   }
 
   /**

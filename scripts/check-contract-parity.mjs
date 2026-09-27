@@ -1214,14 +1214,19 @@ assert(
 
 // O serviço é quem decide a fonte: registro primeiro, contrato por baixo, e
 // declara qual dos dois respondeu (`source`) para o payload não mentir.
+// A decisão ("registro ou bootstrap?") mora em `resolveSchema`, no `schema.ts` —
+// é pura e testável sem container (`schema-record.unit.spec.ts`). O serviço fica
+// com o I/O: ler a linha e delegar.
 assert(
-  "o serviço lê o registro e declara a origem (`source`) com fallback no contrato",
-  contentService.includes("async getSchema") &&
+  "a decisão registro x bootstrap é pura (`resolveSchema`) e o serviço delega",
+  contentSchema.includes("export function resolveSchema") &&
+    contentSchema.includes('source: "db"') &&
+    contentSchema.includes('source: "contract"') &&
+    contentService.includes("async getSchema") &&
     contentService.includes("listContentSchemas") &&
-    contentService.includes('source: "db"') &&
-    contentService.includes('source: "contract"') &&
+    contentService.includes("resolveSchema(row)") &&
     contentService.includes("async saveSchema"),
-  "em backend/src/modules/content/service.ts"
+  "em backend/src/modules/content/{schema,service}.ts"
 )
 
 // A versão mora no contrato e é carimbada na gravação: se derivasse do banco,
