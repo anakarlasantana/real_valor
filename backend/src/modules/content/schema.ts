@@ -42,13 +42,22 @@ import {
 export const SCHEMA_VERSION = 1
 
 /**
+ * A chave da linha do registro. Uma só linha: o schema do CRM.
+ *
+ * Texto fixo (e não o `id` automático) porque o `saveSchema` precisa ser um
+ * **upsert** determinístico — dá para chamar o seed quantas vezes quiser sem
+ * criar uma segunda linha que competes com a primeira.
+ */
+export const SCHEMA_KEY = "content"
+
+/**
  * O que o CRM recebe em `schema`.
  *
  * É o "formulário inteiro": tipos, rótulos, campos por tipo, sub-formulário
  * de item, e a paleta/fontes/dark-tokens que o editor usa só para **desenhar**
  * (o que pode ser gravado continua vindo de `options`, campo a campo).
  */
-export type ContentSchema = {
+export type ContentSchemaPayload = {
   /** Tipos de seção que existem. */
   types: readonly SectionType[]
   /** Tipo → nome que o lojista lê (`editorial` se chama "Sobre"). */
@@ -87,7 +96,7 @@ export type ContentSchema = {
  * pura: o mesmo contrato sempre produz o mesmo schema, e o `--check` pode
  * comparar com o que está gravado sem medo de efeito colateral.
  */
-export function buildSchema(): ContentSchema {
+export function buildSchema(): ContentSchemaPayload {
   return {
     types: SECTION_TYPES,
     fields: SECTION_FIELDS,
