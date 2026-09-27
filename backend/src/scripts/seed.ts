@@ -65,6 +65,27 @@ export default async function seedDemoData({ container }: ExecArgs) {
 
   logger.info("[Real Valor] Iniciando seed de dados da loja de roupas femininas...");
 
+  /**
+   * Cria o vínculo, tolerando o que já existe.
+   *
+   * `link.create` falha com "Cannot create multiple links between ...", ou seja,
+   * o seed só rodava numa base vazia — e o README manda rodar `make seed`
+   * justamente para imprimir a chave do storefront, ou seja, ele precisa poder
+   * rodar duas vezes. Vínculo repetido é o estado desejado; qualquer outro erro
+   * sobe.
+   */
+  const linkOnce = async (data: Parameters<typeof link.create>[0]) => {
+    try {
+      await link.create(data)
+    } catch (error) {
+      const message = String((error as Error)?.message ?? error)
+
+      if (!/multiple links/i.test(message)) {
+        throw error
+      }
+    }
+  };
+
   const [store] = await storeModuleService.listStores();
 
   // 1. Canais de Venda: "Loja Online Real Valor" e "Loja Física Real Valor"
@@ -121,29 +142,58 @@ export default async function seedDemoData({ container }: ExecArgs) {
 
   // 3. Região Brasil com Moeda BRL
   logger.info("[Real Valor] Configurando Região Brasil (BRL)...");
-  const { result: regionResult } = await createRegionsWorkflow(container).run({
-    input: {
-      regions: [
-        {
-          name: "Brasil",
-          currency_code: "brl",
-          countries: ["br"],
-          payment_providers: ["pp_system_default"],
-        },
-      ],
-    },
-  });
-  const region = regionResult[0];
+  // Idempotente: a região que já existe é reutilizada. Sem esta checagem o
+  // seed morre em `Countries with codes: "br" are already assigned to a region`
+  // assim que a base já foi semeada — e o README manda rodar `make seed` para
+  // imprimir a chave do storefront, ou seja, o seed precisa rodar duas vezes
+  // sem quebrar. Só o `id` é usado daqui para frente (stock location e
+  // fulfilment set), então a busca enxuta serve.
+  const { data: existingRegions } = await query.graph({
+    entity: "region",
+    fields: ["id"],
+    filters: { currency_code: "brl" },
+  })
+
+  // Só o `id` interessa daqui para frente; o tipo é o mínimo comum entre o
+  // que o `query` devolve (DTO) e o que o workflow cria (entidade).
+  let region: { id: string } | undefined = existingRegions?.[0]
+
+  if (!region) {
+    const { result: regionResult } = await createRegionsWorkflow(container).run({
+      input: {
+        regions: [
+          {
+            name: "Brasil",
+            currency_code: "brl",
+            countries: ["br"],
+            payment_providers: ["pp_system_default"],
+          },
+        ],
+      },
+    })
+
+    region = regionResult[0]
+  }
 
   // 4. Região Fiscal Brasil
-  await createTaxRegionsWorkflow(container).run({
-    input: [
-      {
-        country_code: "br",
-        provider_id: "tp_system",
-      },
-    ],
-  });
+  // Idempotente pelo mesmo motivo da região: `createTaxRegionsWorkflow` falha
+  // com "Tax region with country_code: br, already exists" se ela já existir.
+  const { data: existingTaxRegions } = await query.graph({
+    entity: "tax_region",
+    fields: ["id"],
+    filters: { country_code: "br" },
+  })
+
+  if (!existingTaxRegions?.length) {
+    await createTaxRegionsWorkflow(container).run({
+      input: [
+        {
+          country_code: "br",
+          provider_id: "tp_system",
+        },
+      ],
+    })
+  }
 
   // 5. Centro de Distribuição / Estoque
   logger.info("[Real Valor] Configurando Estoque Central...");
@@ -176,7 +226,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
     },
   });
 
-  await link.create({
+  await linkOnce({
     [Modules.STOCK_LOCATION]: {
       stock_location_id: stockLocation.id,
     },
@@ -207,23 +257,41 @@ export default async function seedDemoData({ container }: ExecArgs) {
     shippingProfile = shippingProfileResult[0];
   }
 
-  const fulfillmentSet = await fulfillmentModuleService.createFulfillmentSets({
-    name: "Envio Nacional Brasil",
-    type: "shipping",
-    service_zones: [
-      {
-        name: "Todo o Brasil",
-        geo_zones: [
+  // Idempotente pelo mesmo motivo: `createFulfillmentSets` falha com
+  // "Fulfillment set with name: ..., already exists" numa base já semeada. O
+  // `service_zones.id` é usado pelas opções de frete abaixo, então a busca
+  // precisa trazer as zonas, não só o id.
+  const { data: existingFulfillmentSets } = await query.graph({
+    entity: "fulfillment_set",
+    fields: ["id", "name", "service_zones.id"],
+    filters: { name: "Envio Nacional Brasil" },
+  })
+
+  // Tipo mínimo: o `id` e o `service_zones[].id` das opções de frete.
+  let fulfillmentSet:
+    | { id: string; service_zones: { id: string }[] }
+    | undefined = existingFulfillmentSets?.[0]
+
+  if (!fulfillmentSet) {
+    fulfillmentSet =
+      await fulfillmentModuleService.createFulfillmentSets({
+        name: "Envio Nacional Brasil",
+        type: "shipping",
+        service_zones: [
           {
-            country_code: "br",
-            type: "country",
+            name: "Todo o Brasil",
+            geo_zones: [
+              {
+                country_code: "br",
+                type: "country",
+              },
+            ],
           },
         ],
-      },
-    ],
-  });
+      })
+  }
 
-  await link.create({
+  await linkOnce({
     [Modules.STOCK_LOCATION]: {
       stock_location_id: stockLocation.id,
     },
@@ -377,34 +445,44 @@ export default async function seedDemoData({ container }: ExecArgs) {
 
   // 8. Categorias de Moda Feminina
   logger.info("[Real Valor] Cadastrando categorias femininas...");
-  const { result: categoryResult } = await createProductCategoriesWorkflow(
-    container
-  ).run({
-    input: {
-      product_categories: [
-        {
-          name: "Vestidos",
-          handle: "vestidos",
+  // Idempotente: só entra o que falta. `createProductCategoriesWorkflow` falha
+  // com "Product category with handle: ..., already exists", e é o `categoryResult`
+  // que as variações do catálogo usam para casar o id da categoria.
+  const wantedCategories = [
+    { name: "Vestidos", handle: "vestidos" },
+    { name: "Blusas & Camisas", handle: "blusas-camisas" },
+    { name: "Calças & Alfaiataria", handle: "calcas-alfaiataria" },
+    { name: "Conjuntos", handle: "conjuntos" },
+  ]
+
+  const { data: existingCategories } = await query.graph({
+    entity: "product_category",
+    fields: ["id", "handle", "name"],
+  })
+
+  const existingHandles = new Set(
+    (existingCategories ?? []).map((category) => category.handle)
+  )
+  const missingCategories = wantedCategories.filter(
+    (category) => !existingHandles.has(category.handle)
+  )
+
+  if (missingCategories.length) {
+    await createProductCategoriesWorkflow(container).run({
+      input: {
+        product_categories: missingCategories.map((category) => ({
+          ...category,
           is_active: true,
-        },
-        {
-          name: "Blusas & Camisas",
-          handle: "blusas-camisas",
-          is_active: true,
-        },
-        {
-          name: "Calças & Alfaiataria",
-          handle: "calcas-alfaiataria",
-          is_active: true,
-        },
-        {
-          name: "Conjuntos",
-          handle: "conjuntos",
-          is_active: true,
-        },
-      ],
-    },
-  });
+        })),
+      },
+    })
+  }
+
+  const { data: allCategories } = await query.graph({
+    entity: "product_category",
+    fields: ["id", "handle", "name"],
+  })
+  const categoryResult = allCategories ?? []
 
   // 9. Produtos de Moda Feminina Real Valor com Metadados CRO
   logger.info("[Real Valor] Cadastrando peças de moda feminina...");
@@ -412,9 +490,11 @@ export default async function seedDemoData({ container }: ExecArgs) {
   const catBlusas = categoryResult.find((c) => c.name === "Blusas & Camisas")!.id;
   const catCalcas = categoryResult.find((c) => c.name === "Calças & Alfaiataria")!.id;
 
-  await createProductsWorkflow(container).run({
-    input: {
-      products: [
+  // Idempotente: só entram as peças que ainda não existem. `createProductsWorkflow`
+  // falha com "Product with handle: ..., already exists" numa base já semeada, e o
+  // passo 10 (estoque) consulta os inventory items em vez de usar o retorno daqui —
+  // então pular as peças existentes não deixa nada pela metade.
+  const wantedProducts = [
         {
           title: "Vestido Midi Linho Floral",
           category_ids: [catVestidos],
@@ -617,9 +697,27 @@ export default async function seedDemoData({ container }: ExecArgs) {
           ],
           sales_channels: [{ id: onlineSalesChannel[0].id }],
         },
-      ],
-    },
-  });
+  ]
+
+  const { data: existingProducts } = await query.graph({
+    entity: "product",
+    fields: ["id", "title"],
+  })
+
+  const existingTitles = new Set(
+    (existingProducts ?? []).map((product) => product.title)
+  )
+  const newProducts = wantedProducts.filter(
+    (product) => !existingTitles.has(product.title)
+  )
+
+  if (newProducts.length) {
+    await createProductsWorkflow(container).run({
+      input: {
+        products: newProducts,
+      },
+    })
+  }
 
   // 10. Atualização de estoque para os novos produtos
   logger.info("[Real Valor] Atualizando níveis de estoque...");

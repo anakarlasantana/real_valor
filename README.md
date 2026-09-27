@@ -152,6 +152,9 @@ make restart PROD=1                     # PROD (todos)
 make migrate
 
 # Popular o catálogo
+# Idempotente: roda em cima de uma base já semeada sem duplicar nem quebrar.
+# No fim imprime a chave do storefront — ponha no `.env` da raiz como
+# NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY.
 make seed
 
 # Publicar uma alteração de catálogo imediatamente (sem esperar a janela de ISR)
