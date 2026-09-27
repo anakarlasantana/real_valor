@@ -163,12 +163,43 @@ O meio vai para teste.
 | **G0** | este mapa, escrito | ~zero |
 | **G1** | **CI** no GitHub Actions: `make check`, `make types`, testes, `check-schema` (Postgres de serviço), `next build` | baixo — e é o que torna todo o resto verificável |
 | **G2** | **tipagem no painel**: importar os tipos do contrato, renderer exaustivo por `kind`, constantes importadas em vez de lidas por regex | baixo |
-| **G3** | **testes assumem a guarda**: `defaults`, `appearance`, `itemFields`/ícones/labels, CSS e fontes com `fs`, `validateData`/`isKnownType`/`normalizeSurface`/`getSchema`, vitest no frontend, jsdom+RTL no painel | médio (deps novas) |
+| **G3** | **testes assumem a guarda**: `defaults`, `appearance`, `itemFields`/ícones/labels, CSS e fontes com `fs`, `resolveSchema`/`getSchema`, vitest no frontend | médio (deps novas) — ✅ **feito** (37 + 5 testes) |
 | **G4** | **deletar a guarda**: `git rm scripts/check-contract-parity.mjs`; `make check` = `gen --check` + testes; o hook chama o novo `make check`. O mapa vai na mensagem do commit | médio — por isso a CI precisa estar verde antes |
 | **G5** | **`packages/contrato`**: install unificado (lockfile único), pacote com `contract.ts` + `schema.ts`, os dois apps em `workspace:*`, `transpilePackages` no Next, Medusa com o pacote no build, os dois Dockerfiles ajustados. Sai `gen-content.mjs` e `contract.generated.ts` | **alto** — mexe no build dos dois lados |
 
 **Requisito de G4:** CI verde antes. Sem CI rodando, apagar 89 verificações é
 desligar o alarme antes de ligar outro.
+
+### Onde parou (2026-09-27)
+
+| Fase | Estado |
+|---|---|
+| **G0** mapa | ✅ `eeebebdbff` |
+| **G1** CI | ✅ `400d137b52` (4 jobs; o job `schema` foi validado localmente contra um banco **vazio**: `db:migrate` → `seed-schema` ("Era inexistente") → `--check` ("em dia")) |
+| **G2** tipagem no painel | ✅ `98ad1e0fcf` — guarda de **89 → 80**; a exaustividade por `kind` virou `tsc` (provado: injetar `\| "date"` dá `TS2322`); `medusa build` passa e o bundle do admin não leva dado do contrato |
+| **G3** testes | ✅ `50f8cee573` (37 no backend) + `efaece4907` (5 no storefront, com `vitest`) |
+| **G4** apagar a guarda | ⏸️ **adiada — e a ordem virou** |
+| **G5** `packages/contrato` | ⏸️ não iniciado |
+
+**Por que o G4 virou depois do G5 (invertendo o plano).** Aproximadamente 8 das 80
+asserções restantes comparam o **artefato gerado** (a cópia) com o contrato: o
+`nav`/`footer` do seed contra o fallback da loja, e afins. Elas não têm
+substituto enquanto a cópia existir — e a cópia morre no G5, junto com a
+comparação. Apagar a guarda antes deixaria um buraco **medível** (não
+especulativo) de cobertura. Além disso a CI existe como arquivo, mas nunca
+**rodou** no GitHub (a máquina não tem Docker e o push é outro ambiente): a
+condição que o próprio G4 impunha — "CI verde antes" — ainda não foi cumprida
+de fato.
+
+Duas lacunas que ficaram declaradas, não escondidas:
+
+- **Teste de render do painel** (precisaria de jsdom + testing-library): as duas
+  asserções fracas que o cobriam ("o editor lê `itemFields`", "a listagem lê
+  `typeLabels`") **permanecem** na guarda, porque apagar verificação sem
+  substituto é perder cobertura em silêncio.
+- **`vite` como devDep do storefront**: o `vitest` exige, e o projeto não tinha
+  (o Next traz o dele, que não é o mesmo pacote). Instalar é o caminho padrão,
+  mas é uma dependência a mais no build de imagem.
 
 ### Validação final exigida (o "100%")
 
