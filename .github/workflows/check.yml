@@ -1,0 +1,137 @@
+# =============================================================================
+# A verificação que não pode depender de disciplina humana.
+# =============================================================================
+# Hoje a guarda e os tipos só rodam se alguém lembrar (`make check` no hook).
+# Esta workflow é o que fecha o item 3.2 do registro de débito ("adicionar CI")
+# e o que torna exigível tudo o mais que o build de verificação ganhou: tipos,
+# testes, o build do storefront, e o `--check` do registro do schema.
+#
+# Quatro jobs, porque as dependências não são as mesmas:
+#
+#   guard  — `make check`. NÃO instala nada: os dois scripts leem arquivos com
+#            Node puro (é por isso que o hook de commit roda em segundos).
+#   types  — `make types`: `tsc` dos dois pacotes. Precisa de `yarn install`.
+#   schema — o registro do `content_schema` conferido contra o contrato, num
+#            Postgres efêmero. Verifica **dado**, que é o que nenhuma linguagem
+#            confere.
+#   build  — `next build`, que tem de passar **sem infra** (o build não pode
+#            depender de API no ar; ver o item 3.2 do registro de débito).
+#
+# Os testes entram na fase G3 (quando existirem specs de verdade).
+name: check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# Um push novo cancela a execução anterior da mesma ref: é a mesma informação.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 24 é o Node com type-stripping estável, de que o `loadExport` da guarda
+  # depende (o `contract.ts` é importado como TypeScript). O `engines` do backend
+  # pede >=20, mas 22.18+ é o piso real do que a guarda usa.
+  NODE_VERSION: "24"
+
+jobs:
+  guard:
+    name: guarda de contrato
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: make check
+
+  types:
+    name: tipos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+          cache-dependency-path: |
+            backend/yarn.lock
+            frontend/yarn.lock
+      - name: instalar dependências
+        run: |
+          corepack enable
+          (cd backend && yarn install --immutable)
+          (cd frontend && yarn install --immutable)
+      - run: make types
+
+  schema:
+    name: registro do schema
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: real_valor
+          POSTGRES_PASSWORD: real_valor_pass
+          POSTGRES_DB: real_valor_db
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://real_valor:real_valor_pass@localhost:5432/real_valor_db?sslmode=disable
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci_jwt_secret
+      COOKIE_SECRET: ci_cookie_secret
+      STORE_CORS: http://localhost:8000
+      ADMIN_CORS: http://localhost:9000
+      AUTH_CORS: http://localhost:8000,http://localhost:9000
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+          cache-dependency-path: backend/yarn.lock
+      - name: instalar dependências
+        run: |
+          corepack enable
+          cd backend && yarn install --immutable
+      - name: migrations
+        run: cd backend && yarn medusa db:migrate
+      # Ora o registro a partir do contrato e confere. O `--check` sozinho acusaria
+      # "registro não existe" num banco efêmero, que é o estado esperado logo após
+      # a migration — a migration cria a **tabela**, a linha é do writer.
+      - name: gravar e conferir o registro do schema
+        run: |
+          cd backend
+          yarn medusa exec ./src/scripts/seed-schema.ts
+          yarn medusa exec ./src/scripts/seed-schema.ts -- --check
+
+  build:
+    name: build do storefront
+    runs-on: ubuntu-latest
+    env:
+      # `check-env-variables.js` aborta o build sem ela. Em CI o valor é
+      # fictício de propósito: o build não pode chamar a Store API (item 3.2).
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: pk_ci_build_sem_chamada
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
+      NEXT_PUBLIC_BASE_URL: http://localhost:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+      - name: instalar dependências
+        run: |
+          corepack enable
+          cd frontend && yarn install --immutable
+      - run: cd frontend && yarn build
