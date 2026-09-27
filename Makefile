@@ -109,6 +109,18 @@ migrate:
 
 seed:
 	$(COMPOSE) exec backend yarn seed
+	$(COMPOSE) exec backend yarn seed-schema
+
+# O registro do schema do CRM no Postgres: o contrato e o bootstrap, o banco e
+# a fonte em runtime. Entra no `seed` porque um banco novo precisa dele para o
+# CRM deixar de servir o bootstrap.
+seed-schema:
+	$(COMPOSE) exec backend yarn seed-schema
+
+# So confere: nao grava nada e sai != 0 quando o registro esta velho (ou nao
+# existe). E o que a CI chama depois de `make check`.
+check-schema:
+	$(COMPOSE) exec backend yarn check-schema
 
 clean-db:
 	@echo "AVISO: isto vai APAGAR os dados do Postgres e do Redis."

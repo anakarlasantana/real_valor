@@ -117,10 +117,13 @@ class ContentModuleService extends MedusaService({
     // `MedusaService` não gera `upsert*` para model com chave própria, então o
     // "upsert" é este `if`: a linha existe → reescreve; não existe → cria. Como
     // a chave é fixa (`SCHEMA_KEY`), nunca nascem duas linhas em disputa.
-    const [existing] = await this.listContentSchemas({
-      key: SCHEMA_KEY,
-      take: 1,
-    })
+    // `take` é opção da query, não filtro: vai no segundo argumento, como em
+    // `listSections` — no primeiro ele vira coluna e o MikroORM reprova com
+    // "Trying to query by not existing property ContentSchema.take".
+    const [existing] = await this.listContentSchemas(
+      { key: SCHEMA_KEY },
+      { take: 1 }
+    )
 
     if (existing) {
       await this.updateContentSchemas(row)

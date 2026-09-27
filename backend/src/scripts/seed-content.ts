@@ -3,6 +3,7 @@ import { ExecArgs } from "@medusajs/framework/types"
 import { CONTENT_MODULE } from "../modules/content"
 import type ContentModuleService from "../modules/content/service"
 import { DEFAULT_HOME_SECTIONS } from "../modules/content/defaults"
+import { scriptFlags } from "./flags"
 
 /**
  * Popula o módulo de conteúdo com a cópia do protótipo.
@@ -24,7 +25,7 @@ export default async function seedContent({
 }: ExecArgs & { args?: string[] }) {
   const service: ContentModuleService = container.resolve(CONTENT_MODULE)
 
-  const force = (args ?? []).includes("--force")
+  const force = scriptFlags(args).includes("--force")
   const surface = "home"
 
   const existing = await service.listContentBlocks({ surface })
