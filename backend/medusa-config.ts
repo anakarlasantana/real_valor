@@ -25,7 +25,10 @@ module.exports = defineConfig({
     // `Failed to resolve import "/src/admin/i18n/index.ts"` (painel em branco).
     // Um `path` que NAO seja prefixo do WORKDIR elimina a colisao.
     // Ver README > "Enderecos de Acesso".
-    path: process.env.MEDUSA_ADMIN_PATH || "/painel",
+    // O tipo do admin path e' template literal (`/${string}`); o valor ja vem
+    // com "/" (o default "/painel"), entao o cast so resolve o tipo.
+    path: (process.env.MEDUSA_ADMIN_PATH ||
+      "/painel") as `/${string}`,
     backendUrl: process.env.MEDUSA_BACKEND_URL || "http://localhost:9000",
   },
   modules: [

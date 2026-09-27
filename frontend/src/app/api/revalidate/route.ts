@@ -54,7 +54,14 @@ function secretsMatch(provided: string, expected: string): boolean {
   const providedDigest = createHash("sha256").update(provided).digest()
   const expectedDigest = createHash("sha256").update(expected).digest()
 
-  return timingSafeEqual(providedDigest, expectedDigest)
+  // `Uint8Array` no meio porque `timingSafeEqual` e' declarado com
+  // `ArrayBufferView` (da `lib.dom`) enquanto `digest()` devolve `Buffer` (dos
+  // tipos do Node). Sao os mesmos 32 bytes: a comparacao continua em tempo
+  // constante e sobre digest de tamanho fixo.
+  return timingSafeEqual(
+    new Uint8Array(providedDigest),
+    new Uint8Array(expectedDigest)
+  )
 }
 
 function badRequest(message: string, extra: Record<string, unknown> = {}) {

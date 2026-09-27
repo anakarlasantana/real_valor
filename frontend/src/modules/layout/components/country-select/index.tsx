@@ -27,27 +27,33 @@ type CountrySelectProps = {
 }
 
 const CountrySelect = ({ toggleState, regions }: CountrySelectProps) => {
-  const [current, setCurrent] = useState<
-    | { country: string | undefined; region: string; label: string | undefined }
-    | undefined
-  >(undefined)
+  const [current, setCurrent] = useState<CountryOption | undefined>(undefined)
 
   const { countryCode } = useParams()
   const currentPath = usePathname().split(`/${countryCode}`)[1]
 
   const { state, close } = toggleState
 
-  const options = useMemo(() => {
-    return regions
-      ?.map((r) => {
-        return r.countries?.map((c) => ({
+  /**
+   * Uma opcao por pais, ja sem os incompletos.
+   *
+   * `iso_2` e `display_name` sao opcionais nos tipos do Medusa, e o `flat()` de
+   * listas possivelmente `undefined` produzia `(opcao | undefined)[]`. Um pais
+   * sem os dois nao tem o que mostrar nem para onde mandar (`updateRegion`),
+   * entao ele sai da lista aqui — o que tambem deixa o tipo da opcao igual ao
+   * `CountryOption` que o `Listbox` exige.
+   */
+  const options = useMemo<CountryOption[]>(() => {
+    return (regions ?? [])
+      .flatMap((r) =>
+        (r.countries ?? []).map((c) => ({
           country: c.iso_2,
           region: r.id,
           label: c.display_name,
         }))
-      })
-      .flat()
-      .sort((a, b) => (a?.label ?? "").localeCompare(b?.label ?? ""))
+      )
+      .filter((o): o is CountryOption => !!o.country && !!o.label)
+      .sort((a, b) => a.label.localeCompare(b.label))
   }, [regions])
 
   useEffect(() => {

@@ -14,7 +14,10 @@ const LineItemPrice = ({
   style = "default",
   currencyCode,
 }: LineItemPriceProps) => {
-  const { total, original_total } = item
+  // Os totais sao opcionais nos tipos do Medusa (`number | undefined`). A loja
+  // sempre os envia; quando nao vierem, 0 e' o unico valor que nao produz NaN
+  // no `convertToLocale` nem desconto negativo na tela.
+  const { total = 0, original_total = 0 } = item
   const originalPrice = original_total
   const currentPrice = total
   const hasReducedPrice = currentPrice < originalPrice

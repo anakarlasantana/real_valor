@@ -172,6 +172,21 @@ check:
 	@echo "  Contrato e artefato conferidos."
 
 # ---------------------------------------------------------------------------
+# Tipos: o `tsc` dos dois pacotes
+# ---------------------------------------------------------------------------
+# Fica FORA do `make check` de proposito: o hook de commit roda o `check`, e o
+# `tsc` do storefront leva dezenas de segundos. E um alvo proprio, para a CI
+# (F5) e para quem estiver fechando um trabalho grande rodar antes de subir.
+#
+# `--incremental false` porque e `--noEmit`: sem isso o `tsc` escreveria o
+# `tsconfig.tsbuildinfo` e o cache de build ficaria invalido.
+types:
+	@cd backend && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
+	@cd frontend && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
+	@echo ""
+	@echo "  Tipos conferidos nos dois pacotes."
+
+# ---------------------------------------------------------------------------
 # Modo HOST: editar e validar sem build de imagem
 # ---------------------------------------------------------------------------
 # `scripts/dev-host.sh` sobe Postgres e Redis em container e roda Medusa e Next

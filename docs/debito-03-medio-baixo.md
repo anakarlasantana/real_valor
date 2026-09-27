@@ -47,9 +47,9 @@ uma divergência que escape às guardas só é descoberta em runtime.
 
 **Ação necessária:**
 
-1. Adicionar CI (GitHub Actions / Azure Pipelines) rodando `make check`, `tsc` dos dois pacotes
-   (hoje: **20 erros pré-existentes** no storefront e **1** no backend, ambos fora do escopo do
-   CMS) e o build do frontend.
+1. Adicionar CI (GitHub Actions / Azure Pipelines) rodando `make check`, `make types` e o build do
+   frontend. O `tsc` dos dois pacotes já está em **zero erros** (2026-09-27) e ganhou alvo próprio
+   (`make types`) — o que faltava era a guarda, não o conserto.
 2. Cobrir com testes: `service.ts` do módulo `content`, rotas `GET /store/content` e
    `GET/POST/PATCH/DELETE /admin/content` (incluindo os 400 de validação) e o fluxo de checkout.
 

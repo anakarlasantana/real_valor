@@ -18,10 +18,32 @@ const PICKUP_OPTION_OFF = "__PICKUP_OFF"
 
 type ShippingProps = {
   cart: HttpTypes.StoreCart
-  availableShippingMethods: HttpTypes.StoreCartShippingOption[] | null
+  /**
+   * `StoreCartShippingOptionWithServiceZone`, e nao o `StoreCartShippingOption`
+   * base: e' a varianie que traz `service_zone` — de onde sai o tipo "pickup"
+   * e o endereco da loja (`listCartShippingMethods` ja devolve esse formato).
+   * Tipar pela base fazia o `tsc` reprovar leitura de dado que existe.
+   */
+  availableShippingMethods: HttpTypes.StoreCartShippingOptionWithServiceZone[] | null
 }
 
-function formatAddress(address: HttpTypes.StoreCartAddress) {
+/**
+ * O que `formatAddress` sabe imprimir.
+ *
+ * O endereco da opcao de frete (`StoreFulfillmentAddress`) e o endereco do
+ * carrinho (`StoreCartAddress`) sao dois tipos distintos do Medusa com o mesmo
+ * formato, e a funcao ja serve aos dois — como a ausencia deles, que e' o caso
+ * comum quando a loja nao tem endereco de retirada cadastrado.
+ */
+type PrintableAddress = {
+  address_1?: string | null
+  address_2?: string | null
+  city?: string | null
+  postal_code?: string | null
+  country_code?: string | null
+}
+
+function formatAddress(address: PrintableAddress | null | undefined) {
   if (!address) {
     return ""
   }

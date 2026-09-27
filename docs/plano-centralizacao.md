@@ -101,21 +101,25 @@ Enquanto o schema/banco ficou adiado, "arrumou-se a casa":
 | H2 | Este arquivo de plano versionado | ✅ |
 | H3 | `assets` morto dos `theme.json` (apontava para `.jpg` inexistentes) e do tipo `Theme` | ✅ commit `825080511a` |
 | H4 | Dependência morta: **corrigido** — `ansi-colors` é usada por `frontend/check-env-variables.js`, que o `next.config.js` carrega (o build aborta se falta variável). No lugar, saiu o que era mesmo morto: `campaign-1/2/3.jpg`, sem nenhuma referência | ✅ commit `825080511a` |
-| H5 | Baseline de `tsc` do storefront 20 → 0 (destrava `tsc` como guarda / CI) | ⏸️ ver H5 abaixo |
+| H5 | Baseline de `tsc` 20 → 0 no storefront (e o do backend junto), com alvo próprio `make types` | ✅ ver H5 abaixo |
 
 ## H5 — os 20 erros de `tsc` do storefront
 
-Enquanto existirem, o `tsc` não pode ser guarda e o CI (F5) morre aqui. Os 20 erros (por
-arquivo):
+**Fechado em 2026-09-27: os dois pacotes estão em zero erros de `tsc`**, e existe o alvo `make
+types` — fora do `make check` de propósito (o hook de commit roda o `check`, e o `tsc` do
+storefront leva dezenas de segundos). Nenhum erro foi silenciado com `@ts-ignore`: o que mudou
+foi o tipo ou o default, nunca a checagem.
 
-| Arquivo | Erros |
-|---|---|
-| `src/modules/common/components/line-item-unit-price/index.tsx` | 7 |
-| `src/modules/common/components/line-item-price/index.tsx` | 5 |
-| `src/modules/checkout/components/shipping/index.tsx` | 3 |
-| `src/app/[countryCode]/(main)/...` | 3 |
-| `src/modules/layout/components/country-select/index.tsx` | 1 |
-| `src/app/api/revalidate/route.ts` | 1 (nosso) |
+O que cada um era, e o que virou:
 
-Comando de conferência: `./node_modules/.bin/tsc --noEmit -p tsconfig.json` (em
-`frontend/`). O backend tem 1 erro pré-existente, em `medusa-config.ts:28`.
+| Onde | Erros | Causa | O que foi feito |
+|---|---|---|---|
+| `line-item-unit-price` | 7 | `total`/`original_total` são `number \| undefined` nos tipos do Medusa | default `0` + guarda na divisão do percentual (com o `0`, o `-NaN%` aparecia na tela) |
+| `line-item-price` | 5 | idem | default `0` (o resto do arquivo já lidava com `undefined`) |
+| `products/[handle]/page.tsx` | 3 | `product.images` e `variant.images` anuláveis; o template exige lista | `?? []` e os `!` fora — a assinatura passa a declarar o retorno |
+| `shipping/index.tsx` | 3 | a prop era `StoreCartShippingOption` (a base, **sem** `service_zone`) | a prop passou a ser `StoreCartShippingOptionWithServiceZone`, que é o que `listCartShippingMethods` devolve; `formatAddress` ganhou o tipo estrutural que os dois endereços compartilham |
+| `country-select/index.tsx` | 1 | `iso_2`/`display_name` opcionais + `flat()` de listas possivelmente `undefined` | filtro `is CountryOption`: país sem os dois sai da lista (não tem o que mostrar nem para onde mandar) |
+| `api/revalidate/route.ts` | 1 | `timingSafeEqual` é declarado com `ArrayBufferView` (lib dom) e `digest()` devolve `Buffer` (tipos do Node) | `new Uint8Array(...)` no meio — mesmos 32 bytes, comparação em tempo constante inalterada |
+| `medusa-config.ts:28` (backend) | 1 | `path` do admin é `\`/${string}\`` e o valor vinha como `string` | cast no ponto: mesma string em runtime, com o tipo que o Medusa declara |
+
+Conferir: `make types`.
