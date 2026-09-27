@@ -427,6 +427,10 @@ const pageSource = readFileSync(ADMIN_PAGE, "utf8")
 // (`itemFields[kind]`), sem tabela própria. Um espelho digitado de volta
 // divergiria em silêncio — era o que a versão antiga desta guarda comparava
 // texto com texto —, então os nomes antigos viram proibição explícita.
+// Uma regra, uma asserção. Eram cinco, uma por nome espelhado, e as cinco diziam
+// a mesma coisa: **o painel não declara dado do contrato** — ele recebe pelo
+// `schema` da API. Desde a G2 ele também não declara *tipo* (importa com
+// `import type`), o que é a segunda asserção logo abaixo.
 const MIRRORS = [
   "ITEM_FIELDS",
   "ICON_KEYS_BY_KIND",
@@ -435,19 +439,49 @@ const MIRRORS = [
   "TYPE_LABELS",
 ]
 
-for (const name of MIRRORS) {
-  const inAdmin = new RegExp(`const ${name}\\b`).test(adminSource)
-  const inPage = new RegExp(`const ${name}\\b`).test(pageSource)
+const mirrorHouses = MIRRORS.flatMap((name) => {
+  const pattern = new RegExp(`const ${name}\\b`)
+  return [
+    pattern.test(adminSource) ? `field-input.tsx (${name})` : null,
+    pattern.test(pageSource) ? `page.tsx (${name})` : null,
+  ].filter(Boolean)
+})
 
-  assert(
-    `o admin não tem o espelho "${name}" (o contrato é quem manda)`,
-    !inAdmin && !inPage,
-    `ainda declarado em: ${
-      [inAdmin && "field-input.tsx", inPage && "page.tsx"].filter(Boolean).join(", ") ||
-      "(?!)"
-    }`
+assert(
+  "o painel não declara dado do contrato: tudo vem do `schema`",
+  mirrorHouses.length === 0,
+  `declarado em: ${mirrorHouses.join(", ")}`
+)
+
+// E a forma dos tipos também não volta. O que é proibido é **declaração de
+// forma** (`type X = {` ou `type X = | "a"`), não o *alias* (`type Schema =
+// ContentSchemaPayload`) — que é o desejado: o nome local aponta para o
+// contrato em vez de copiar o corpo. O `=` depois do nome é obrigatório, senão a
+// checagem casaria com o próprio `import type { … }` do painel.
+const PANEL_TYPE_SHAPES = [
+  "FieldKind",
+  "FieldSpec",
+  "ItemFieldSpec",
+  "ItemFields",
+  "Schema",
+]
+
+const panelTypeShapes = PANEL_TYPE_SHAPES.filter((name) =>
+  [adminSource, pageSource].some((source) =>
+    new RegExp(
+      `^\\s*(export )?type ${name} = (\\{|\\n\\s*\\||\\|)`,
+      "m"
+    ).test(source)
   )
-}
+)
+
+assert(
+  "o painel não declara a forma dos tipos do contrato (importa com `import type`)",
+  panelTypeShapes.length === 0,
+  "declarado no painel: " +
+    panelTypeShapes.join(", ") +
+    " — use `import type` de modules/content/contract"
+)
 
 // E o outro lado do mesmo defeito: um `schema` que ninguém lê é campo que
 // some da tela. Os dois arquivos precisam consumir o que chega.
@@ -516,21 +550,24 @@ for (const kind of itemKinds) {
 // `FieldInput` não trata cai no ramo de texto — um campo de escolha vira
 // caixa de digitação livre, e o lojista digita o que o `validateData` vai
 // reprovar. `"text"` é o ramo padrão de propósito, então ele fica de fora.
-const scalarKinds = [
-  ...new Set(
-    Object.values(sourceFields)
-      .flat()
-      .map((f) => f.kind)
-  ),
-].filter((kind) => !kind.startsWith("list:") && kind !== "text")
-
-for (const kind of scalarKinds) {
-  assert(
-    `"${kind}" tem ramo no FieldInput`,
-    adminSource.includes(`spec.kind === "${kind}"`),
-    "acrescente o ramo em " + "backend/src/admin/routes/content/field-input.tsx"
-  )
-}
+// A exaustividade por `kind` **não é asserção: é o compilador**.
+//
+// O `field-input.tsx` declara `UnhandledKind = Exclude<FieldKind, HandledKind>`
+// e `UNHANDLED_KINDS`, cujo tipo só aceita `true`. Um `kind` novo no contrato
+// que o editor não desenha vira erro de `tsc` — verificado: injetar
+// `| "date"` no contrato dá
+// `TS2322: Type 'true' is not assignable to type '"date"'`.
+//
+// O que sobra aqui é UMA asserção, e não é sobre `kind`: é checar que a
+// declaração continua lá, porque apagá-la numa refatoração devolveria a
+// cobertura ao silêncio — sem erro em lugar nenhum.
+assert(
+  "o editor declara a exaustividade por `kind` (UNHANDLED_KINDS, o `tsc` exige)",
+  /type UnhandledKind = Exclude<FieldKind, HandledKind>/.test(adminSource) &&
+    /UNHANDLED_KINDS/.test(adminSource),
+  "em backend/src/admin/routes/content/field-input.tsx: mantenha a declaração " +
+    "que faz o `tsc` reprovar `kind` sem ramo"
+)
 
 // O ícone é escolha dentro de uma lista fechada, e a lista é declarada no
 // contrato (`options` do campo `icon`) porque o registro que desenha o ícone
@@ -702,18 +739,6 @@ assert(
   "não há rótulo de tipo órfão no contrato",
   orphanTypeLabels.length === 0,
   `órfão: ${orphanTypeLabels.join(", ") || "nenhum"}`
-)
-
-// A página do editor monta os trilhos percorrendo os campos na ordem do
-// contrato, e cada campo de aparência carrega a âncora (`attachedTo`) do que
-// veste. É um espelho do `FieldSpec` do contrato, então a assinatura importa
-// no mesmo sentido de `ITEM_FIELDS`: sem ela o TypeScript deixa passar um
-// `page.tsx` que lê `spec.attachedTo` de um tipo que não tem, e o editor
-// desenha a âncora "por acaso" — até alguém mexer no espelho.
-assert(
-  'o espelho de "FieldSpec" no admin conhece "attachedTo"',
-  /attachedTo\?:\s*string/.test(adminSource),
-  "acrescente o campo em backend/src/admin/routes/content/field-input.tsx"
 )
 
 console.log("\nAPARÊNCIA POR SEÇÃO (contrato ⇔ loja)")
@@ -1080,18 +1105,11 @@ assert(
 )
 
 // O aviso do fundo escuro é a única coisa que a página precisa nomear do
-// contrato: o trilho em que vale. Rótulo trocado no contrato e não aqui
-// deixaria o aviso apontando para o nada — silenciosamente, porque o aviso
-// simplesmente nunca aparece.
-const adminPage = readFileSync(ADMIN_PAGE, "utf8")
-const backgroundRail = /const BACKGROUND_RAIL = "([^"]+)"/.exec(adminPage)?.[1]
-
-assert(
-  "o trilho do aviso de fundo escuro existe no contrato",
-  contractGroups.includes(backgroundRail),
-  `página: ${backgroundRail ?? "(não lido)"} | ` +
-    `contrato: ${contractGroups.join(", ")}`
-)
+// contrato: o trilho em que vale. **Não é mais asserção** — a página declara
+// `const BACKGROUND_RAIL: AppearanceGroup = "Fundo"`, com o tipo importado do
+// contrato, então um trilho renomeado ou removido quebra o `tsc` em vez de
+// deixar o aviso apontando para o nada em silêncio (que era o defeito: o aviso
+// simplesmente nunca aparecia).
 
 // O painel não importa o contrato, então o hex e a família chegam pelo
 // `schema` da API. Se o `schema` deixar de mandá-los, a bolinha sai sem cor e

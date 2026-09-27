@@ -934,6 +934,17 @@ export type ItemFieldSpec = {
 }
 
 /**
+ * O mapa `kind` de lista → campos de dentro do item.
+ *
+ * Nome próprio (e não um `Partial<Record<…>>` escrito em cada lugar) porque o
+ * **painel** importa este tipo: ele recebe o mapa no `schema.itemFields` e
+ * precisa da mesma forma que o contrato declara. Com o nome, um campo novo no
+ * item é erro de compilação nos dois lados, em vez de um espelho que diverge em
+ * silêncio.
+ */
+export type ItemFields = Partial<Record<FieldKind, readonly ItemFieldSpec[]>>
+
+/**
  * Sub-formulário de cada `kind` de lista, na ordem em que o editor o desenha.
  *
  * Só os `kind` de objeto aparecem: `list:text` é um input separado por
@@ -961,9 +972,8 @@ export type ItemFieldSpec = {
  * (`list:link`), e é por isso que o editor desenha os níveis internos em
  * recursão em vez de um ramo por profundidade.
  */
-export const ITEM_FIELDS: Partial<
-  Record<FieldKind, readonly ItemFieldSpec[]>
-> = {
+
+export const ITEM_FIELDS: ItemFields = {
   "list:benefit": [
     {
       name: "icon",

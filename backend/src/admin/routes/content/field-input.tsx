@@ -28,85 +28,62 @@ import {
   type Palette,
 } from "./appearance-controls"
 
-export type FieldKind =
+/**
+ * Os tipos do campo vem do **contrato**, não são declarados aqui.
+ *
+ * O painel é outro pacote (ele roda no navegador, servido pelo Medusa) e por
+ * isso o *dado* do formulário chega pelo `schema` da API. Mas o *tipo* é
+ * conhecimento de compilação e pode ser importado: `import type` desaparece no
+ * build, então não há dependência de runtime nem de empacotamento.
+ *
+ * O espelho existia porque a diferença de pacote parecia exigir cópia. Com a
+ * importação, um campo novo no contrato é erro de compilação aqui, e não um
+ * item que some da tela em silêncio — que é o defeito que a guarda de paridade
+ * procurava com texto.
+ */
+import type {
+  FieldKind,
+  FieldSpec,
+  ItemFieldSpec,
+  ItemFields,
+} from "../../../modules/content/contract"
+
+export type { FieldKind, FieldSpec, ItemFieldSpec, ItemFields }
+
+/**
+ * Os `kind` que este editor sabe desenhar.
+ *
+ * `list:${string}` cobre todos os `list:*` de uma vez, porque caem no mesmo
+ * ramo (`spec.kind.startsWith("list:")`); `text` cobre o ramo padrão, que é o
+ * input simples. Os demais têm ramo próprio.
+ */
+type HandledKind =
   | "text"
   | "textarea"
   | "number"
   | "select"
-  // Aparência: escolha dentro da paleta / dos papéis de fonte. O valor
-  // continua sendo um `string` de `options` — muda só o desenho.
   | "color"
   | "font"
   | "list:text"
-  | "list:benefit"
-  | "list:highlight"
-  | "list:image"
-  | "list:link"
-  | "list:action"
-  // Item que carrega sub-lista (`links`): desenhado em recursão.
-  | "list:column"
-  | "list:social"
-
-export type FieldSpec = {
-  name: string
-  label: string
-  kind: FieldKind
-  required?: boolean
-  options?: readonly string[]
-  /**
-   * Tradução de cada opção, vinda do contrato. A chave é a opção; a opção
-   * vazia se escreve `"": "…"`. Sem tradução, a opção aparece crua.
-   */
-  optionLabels?: Record<string, string>
-  /**
-   * Agrupamento visual, vindo do contrato: o rótulo do **trilho** de
-   * aparência (`"Títulos"`, `"Fundo"`…). `undefined` (ou `""`) é o grupo do
-   * conteúdo, que não ganha cabeçalho — o campo é desenhado sozinho, na
-   * ordem do contrato.
-   */
-  group?: string
-  /**
-   * Campo de conteúdo que este campo veste, vindo do contrato — é a âncora
-   * declarada do trilho. Quem decide onde desenhar é a **ordem** dos campos
-   * (`page.tsx` percorre o array e abre um trilho quando o grupo começa);
-   * este campo é o que a guarda de paridade usa para conferir que a ordem
-   * não se perdeu no caminho.
-   */
-  attachedTo?: string
-  help?: string
-}
+  | `list:${string}`
 
 /**
- * Um campo de item de lista, como veio em `schema.itemFields` — a mesma
- * forma do `ITEM_FIELDS` do contrato.
+ * **A exaustividade é do compilador.**
  *
- * `kind` só existe para o item que é lista (hoje, o `links` de uma coluna
- * do rodapé) e `options` para o item que é escolha (`source`, `icon`).
- */
-export type ItemFieldSpec = {
-  name: string
-  label: string
-  kind?: FieldKind
-  /** Opções do `<select>`; a primeira é o valor de um item novo. */
-  options?: readonly string[]
-  /** Tradução de cada opção, para o `<select>` não ser só jargão. */
-  optionLabels?: Record<string, string>
-  /** Em branco é um valor válido (o ícone cai no padrão): oferece "—". */
-  allowEmpty?: boolean
-  /** Explicação curta, abaixo do rótulo. */
-  help?: string
-}
-
-/**
- * `schema.itemFields`: o sub-formulário de cada `kind` de lista.
+ * Se o contrato ganhar um `kind` que este editor não desenha, `UNHANDLED_KINDS`
+ * deixa de ser `true` e o `tsc` reprova — com o nome do `kind` na mensagem. É o
+ * que substitui as cinco asserções "X tem ramo no FieldInput", que faziam a
+ * mesma coisa em texto e mais tarde: quem descobrisse o `kind` novo era o
+ * `make check`, ou seja, depois de a mudança já estar no código.
  *
- * Vem do contrato e é indexado pelo `kind` do campo que está sendo editado —
- * `ITEM_FIELDS[kind]` lá, `itemFields[kind]` aqui. `Partial` pelo mesmo
- * motivo do contrato: só os `kind` de objeto têm sub-formulário, e as chaves
- * são os `list:*` que as seções de fato usam (a guarda de paridade confere os
- * dois sentidos).
+ * O `kind` novo cai no ramo de texto, que é o fallback: o campo **aparece** e
+ * é editável (uma caixa de texto) — degradar assim é melhor do que sumir —,
+ * mas o erro de compilação impede de deixar isso passar em silêncio.
  */
-export type ItemFields = Partial<Record<FieldKind, readonly ItemFieldSpec[]>>
+export type UnhandledKind = Exclude<FieldKind, HandledKind>
+export const UNHANDLED_KINDS: [UnhandledKind] extends [never]
+  ? true
+  : UnhandledKind = true
 
 /**
  * Editor de uma lista de objetos (itens, coleções, imagens, links).

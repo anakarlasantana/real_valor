@@ -46,6 +46,8 @@ import {
 } from "@medusajs/ui"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import type { AppearanceGroup } from "../../../modules/content/contract"
+import type { ContentSchemaPayload } from "../../../modules/content/schema"
 import { AppearanceRail } from "./appearance-controls"
 import {
   FieldInput,
@@ -61,20 +63,19 @@ type Section = {
   [key: string]: unknown
 }
 
-type Schema = {
-  types: readonly string[]
-  fields: Record<string, readonly FieldSpec[]>
-  /** Tipo da seção → nome que o lojista lê (o `type` cru é jargão). */
-  typeLabels?: Record<string, string>
-  /** `kind` de lista → campos de dentro do item. */
-  itemFields?: ItemFields
-  /** Papel da cor → hex, para a bolinha de cor. */
-  palette?: Record<string, string>
-  /** Papel da fonte → { family, stack }, para a prévia da fonte. */
-  fonts?: Record<string, { family: string; stack: string }>
-  /** Cores de fundo que o storefront trata como escuras. */
-  darkTokens?: readonly string[]
-}
+/**
+ * O que a API devolve em `schema`: o **tipo do contrato**, importado.
+ *
+ * Antes era uma cópia local com tudo opcional. Com o import, o painel e o
+ * contrato passam a concordar por compilação: se a chave `itemFields` mudar de
+ * nome ou sair do payload, esta página para de compilar — em vez de ler um
+ * campo que não existe mais e a tela simplesmente perder um editor.
+ *
+ * `import type` não vira dependência de runtime: o *dado* continua chegando
+ * pelo `schema` da API, e é esse registro (o `content_schema` no Postgres) que
+ * decide o formulário.
+ */
+type Schema = ContentSchemaPayload
 
 /**
  * Uma linha do formulário: um campo de conteúdo solto, ou um trilho de
@@ -94,7 +95,7 @@ type FormRow =
  * paridade confere que este rótulo é um dos trilhos do contrato, então
  * renomear o trilho no contrato não deixa o aviso apontando para o nada.
  */
-const BACKGROUND_RAIL = "Fundo"
+const BACKGROUND_RAIL: AppearanceGroup = "Fundo"
 
 /**
  * Percorre os campos do contrato na ordem e devolve as linhas do formulário.
