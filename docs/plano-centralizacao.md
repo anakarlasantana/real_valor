@@ -55,29 +55,43 @@ paleta/família, o `COPY` extra do `themes/` no Dockerfile e o motivo das 2 cóp
 |---|---|---|---|
 | **F0** — Rede e ruído | `make check` + hook de commit, docs enxutas (1 entrada + 4 assuntos), READMEs de template e pastas vazias fora | ✅ feito | `make check`, `docs/DEBITO-TECNICO.md` |
 | **F1** — Fonte única do contrato | gerador emite tipos/defaults/tokens/mapas em cada app; artefato versionado com `--check` | ✅ feito | `scripts/gen-content.mjs`, `frontend/src/lib/content/contract.generated.ts`; guarda 1.042 → **69 asserts** |
-| **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ⚠️ **parcial** | CRM 100% desenhado pelo `schema` + `validateData` server-side (commits de F2). **Falta:** `content_schema` no banco, `schemaVersion` no payload, bootstrap/migração do registro |
+| **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ✅ **feito** | `content_schema` + `schema.ts` + `seed-schema`; a API lê e valida contra o registro; `schemaVersion` no payload; a loja descarta tipo desconhecido. 9 asserts na guarda |
 | **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ⏸️ etapa 1 pronta, **adiada** | branch `f3-tema-como-dado` (commit `fcdc3500ec`): superfície `theme` no contrato + API + CRM. **Falta:** seed dos `theme.json` e a loja ler do payload |
 | **F4** — CRM de vendas/entrega | agregações (vendas, status, ticket, rastreio) como módulo + rotas `/admin/*`, sobre o mesmo banco | ⏸️ não iniciado | `order-customer-indexer` + `/store/orders/track` são a base |
 | **F5** — Higiene | Makefile interface única; `packages/` só se útil; CI rodando `make check`; `schemaVersion` | ⏸️ parcial | Makefile já é a interface; **falta** CI e `schemaVersion` |
 
-**O F2 entregue é a ponte, não o registro.** A fonte da verdade do schema continua sendo
-`backend/src/modules/content/contract.ts`: o CRM lê pela API (zero espelho no painel, e
-foi isso que matou os espelhos), mas **mudar schema ainda exige deploy**. Verificar:
-`grep -rn 'content_schema\|schemaVersion'` não encontra nada, e o módulo tem **uma**
-migration — a `content_block` original.
+**O que o F2 virou, em duas etapas.** A primeira entregou a **ponte** (o CRM lê o schema pela
+API, sem espelho no painel). A segunda — o "F2′" — entregou o **registro**, que é o que
+faz *mudar schema sem deploy*:
 
-## O que falta dentro do F2 (F2′ — o passo que ficou no meio)
+| Onde | O quê |
+|---|---|
+| `models/content-schema.ts` | Tabela `content_schema`: `key` (uma linha), `version`, `data` |
+| `migrations/Migration*.ts` | **Só DDL** — o dado é do seed, não do histórico |
+| `schema.ts` | `buildSchema()` (montagem única), `SCHEMA_VERSION`, `SCHEMA_KEY` |
+| `service.ts` | `getSchema()` (registro, com fallback no contrato) e `saveSchema()` |
+| `scripts/seed-schema.ts` | Writer idempotente; `--check` sai ≠ 0 e diz o que diverge |
+| `api/admin/content` | Serve o registro; `POST`/`PATCH` validam contra **ele** |
+| `api/store/content` | `schemaVersion` no payload |
+| `lib/data/content.ts` (loja) | Descarta tipo desconhecido antes do render |
 
-1. `models/content-schema.ts` — `id` (`"content"`), `version` (= o `schemaVersion`), `data`
-   (o schema inteiro: `types`, `typeLabels`, `fields`, `itemFields`, `palette`, `fonts`,
-   `darkTokens`, `surfaces`, ícones) + migration pelo `medusa db:generate`.
-2. `service.getSchema()/saveSchema()`; bootstrap **idempotente** num `seed-schema.ts` que
-   grava a linha a partir do contrato — o TS vira *seed*, e a migration fica só com a DDL
-   (embutir ~700 linhas de JSON numa migration seria uma segunda fonte que envelhece).
-3. `GET /admin/content` devolve o schema **do banco**, com `source: "db" | "contract"` no
-   fallback; `POST/PATCH` validam contra o schema **gravado**, não contra o TS.
-4. `schemaVersion` no payload de `/store/content` e `/admin/content`; revalidação inclui o
-   schema na tag `content`.
+**A prova de que a fonte é o banco** (feita ao vivo, com o `contract.ts` intacto):
+removendo `headline` de `fields.hero` **no registro**, o `PATCH {"headline":…}` passou a
+responder **400 "Campo desconhecido"**; acrescentando `seloNovo` **só no registro**, o
+`PATCH` respondeu **200** e o CRM passou a listar o campo. E uma seção com
+`type = loja-de-marca-nova` (tipo que a loja não conhece) deixou a home em **200**, com a
+seção descartada — sem o filtro, o `assertNever` do render a transformaria em 500.
+
+### O que o F2′ não faz (de propósito)
+
+1. **A revalidação do storefront continua na tag `content`** (janela de 60 s), sem tag por
+   versão: mudar a tag quebraria o `POST /api/revalidate?tag=content`, que é a interface
+   documentada no `README`. Schema novo chega na loja pela janela — e o que precisa ser
+   imediato (o CRM) já é, porque o CRM lê direto do banco.
+2. **O registro não é editável pela UI**: mudar o schema ainda é `contract.ts` +
+   `make seed-schema`. O objetivo de turno (um registro, uma fonte) está atingido; um
+   *editor de schema* é produto, não arquitetura.
+3. **`DEFAULT_HOME_SECTIONS` não entra no registro**: é conteúdo, não schema.
 5. Guarda: a linha confere com o contrato (divergiu → "rode `make seed`"), `schemaVersion`
    nas duas pontas, schema vindo da tabela.
 

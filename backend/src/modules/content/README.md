@@ -8,8 +8,10 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 | Arquivo | Papel |
 | --- | --- |
 | `models/content-block.ts` | Tabela `content_block` (uma linha por seção) |
-| `service.ts` | `listSections()` — devolve as seções já achatadas |
-| `contract.ts` | **Fonte da verdade** do formato do conteúdo |
+| `models/content-schema.ts` | Tabela `content_schema` (uma linha: o schema do CRM) |
+| `service.ts` | `listSections()`, `getSchema()`, `saveSchema()` |
+| `schema.ts` | Montagem do schema (`buildSchema()`), `SCHEMA_VERSION` e `SCHEMA_KEY` |
+| `contract.ts` | O formato do conteúdo — **bootstrap** do schema |
 | `defaults.ts` | Cópia do protótipo, usada pelo seed e como fallback |
 | `migrations/` | Geradas com `medusa db:generate content` |
 
@@ -305,22 +307,64 @@ os ícones saem de `frontend/src/lib/content/social-icons.tsx`. Esse registro é
 `icons.ts` porque o `@medusajs/icons` não traz glifo de marca (Instagram, WhatsApp…) — e as
 chaves oferecidas no admin (`list:social`) são conferidas pelo script de paridade.
 
+## O schema do CRM é um registro no banco
+
+O formulário do CRM (tipos, rótulos, campos, opções, grupos) é uma **linha** em
+`content_schema`, não uma leitura do código. `contract.ts` é o **bootstrap**;
+`schema.ts` monta o schema a partir dele; `seed-schema` grava a linha; e é do
+registro que a API tira tanto o formulário que o painel desenha quanto as regras
+do que pode ser gravado.
+
+```
+contract.ts ──buildSchema()──▶ schema.ts ──saveSchema()──▶ content_schema
+                                     │                            │
+                                     └──── getSchema() ◀──────────┘
+```
+
+Três decisões que sustentam isso:
+
+- **A migration cria só a tabela.** O `insert` fica no `seed-schema`, porque uma
+  linha com o JSON do schema dentro da migration faria o histórico depender do
+  código do dia em que rodou (banco novo em 2027 nasceria com o schema de 2027,
+  o de 2026 com o de 2026).
+- **A versão mora no contrato** (`SCHEMA_VERSION`), carimbada na gravação. Se
+  derivasse do banco, ninguém veria a divergência entre o schema que gravou os
+  dados e o do código — que é o que `seed-schema --check` acusa.
+- **Sem a linha, a API não quebra:** `getSchema()` cai no contrato e declara
+  `schemaSource: "contract"`, o que torna visível que o registro ainda não foi
+  gravado. Banco novo funciona antes do primeiro `make seed`.
+
+Conferir o registro contra o contrato (é o que a CI deve chamar):
+
+```bash
+cd backend && ./node_modules/.bin/medusa exec ./src/scripts/seed-schema.ts -- --check
+```
+
+Sai != 0 e diz **qual** diverge (`fields: hero`), ou avisa que a linha não
+existe.
+
 ## API
 
 | Rota | Auth | Para quê |
 | --- | --- | --- |
 | `GET /store/content` | publishable key | Vitrine. Só seções habilitadas. `?surface=`, `?type=` |
-| `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + o schema dos formulários |
+| `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + o schema (do registro), `schemaVersion` e `schemaSource` |
 | `POST /admin/content` | admin | Cria. Campos obrigatórios exigidos |
 | `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio |
 | `DELETE /admin/content?id=` | admin | Remove |
 
-`GET /store/content` devolve as seções achatadas, prontas para render:
+`GET /store/content` devolve as seções achatadas, prontas para render, mais a
+versão do schema com que foram gravadas:
 
 ```json
 { "sections": [ { "id": "hero", "type": "hero", "enabled": true,
-  "position": 20, "headline": "...", "overlay": 0.72 } ] }
+  "position": 20, "headline": "...", "overlay": 0.72 } ],
+  "schemaVersion": 1 }
 ```
+
+`POST`/`PATCH` validam contra o **registro**: um campo que o `contract.ts`
+declare e o registro não tem é recusado com 400, e um campo que só o registro
+tem é aceito. É o que faz o formulário mudar sem deploy.
 
 ## Admin
 
@@ -358,10 +402,18 @@ cd backend
 ./node_modules/.bin/medusa exec ./src/scripts/seed-content.ts
 ```
 
-Recriar do zero:
+Recriar do zero (o `--force` precisa do `--` antes; nesta versão do CLI as
+flags chegam em `process.argv`, não em `ExecArgs.args`):
 
 ```bash
 ./node_modules/.bin/medusa exec ./src/scripts/seed-content.ts -- --force
+```
+
+Gravar o registro do schema (o `make seed` já chama):
+
+```bash
+yarn seed-schema     # ou: medusa exec ./src/scripts/seed-schema.ts
+yarn check-schema    # só confere, sai != 0 se o registro estiver velho
 ```
 
 ## Cache

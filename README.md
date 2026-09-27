@@ -241,6 +241,22 @@ make gen     # regera o artefato (commit o diff junto com a mudança no backend)
 make check   # falha se o artefato estiver velho ou o contrato incoerente
 ```
 
+O **schema do CRM** (os formulários: tipos, rótulos, campos, opções) é um **registro no
+Postgres** — a tabela `content_schema` —, não uma leitura do código: o `contract.ts` é o
+*bootstrap* e o `seed-schema` grava a linha. A API tira do registro tanto o formulário que o
+painel desenha quanto as regras do que pode ser gravado, então **um campo novo no registro
+aparece no CRM sem deploy**, e um campo que o código declara e o registro não tem é
+recusado com 400.
+
+```bash
+make seed-schema   # grava (o `make seed` já chama)
+make check-schema  # só confere: sai != 0 e diz o que divergiu
+```
+
+Sem a linha, a API não quebra: ela cai no contrato e diz `schemaSource: "contract"` no
+payload — banco novo funciona antes do primeiro seed. Detalhes em
+[`backend/src/modules/content/README.md`](backend/src/modules/content/README.md).
+
 `make check` também roda no commit, pelo hook versionado:
 
 ```bash
