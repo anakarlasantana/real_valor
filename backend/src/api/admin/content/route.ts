@@ -1,19 +1,15 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 
 import { CONTENT_MODULE } from "../../../modules/content"
-import type ContentModuleService from "../../../modules/content/service"
 import {
-  ITEM_FIELDS,
   SECTION_FIELDS,
-  SECTION_TYPE_LABELS,
   SECTION_TYPES,
-  THEME_COLOR_HEXES,
-  THEME_DARK_TOKENS,
-  THEME_FONTS,
   isSectionType,
   type FieldKind,
   type SectionType,
 } from "../../../modules/content/contract"
+import { buildSchema } from "../../../modules/content/schema"
+import type ContentModuleService from "../../../modules/content/service"
 
 /**
  * Os `kind` que guardam um valor de `options` — escolha dentro de uma lista
@@ -167,49 +163,13 @@ export async function GET(
 
   res.json({
     sections,
-    /** Metadados que o widget usa para montar o formulário. */
-    schema: {
-      types: SECTION_TYPES,
-      fields: SECTION_FIELDS,
-      /**
-       * Nome de cada tipo para a listagem. Vem daqui como os campos: o
-       * `type` é o identificador que o storefront casa no `switch`, e o
-       * rótulo é o que o lojista lê — `editorial` se chama "Sobre" porque é
-       * esse o nome da âncora no menu. Sem o rótulo no payload o admin teria
-       * que manter a tabela (e um tipo novo apareceria como jargão até
-       * alguém lembrar de mexer no painel).
-       */
-      typeLabels: SECTION_TYPE_LABELS,
-      /**
-       * Sub-formulário de cada item de lista, por `kind`. É o mesmo motivo
-       * dos campos: os itens (`benefit.title`, `column.source`…) são objetos
-       * e o editor precisa saber o que desenhar dentro de um deles, com as
-       * opções e a tradução. Como `fields`, isto é o que o editor **desenha**
-       * na tela — o que ele pode gravar continua sendo validado pelo
-       * `validateData` desta rota.
-       */
-      itemFields: ITEM_FIELDS,
-      /**
-       * Prévia de aparência para o editor: o hex de cada cor da paleta e a
-       * família/pilha de cada papel de fonte.
-       *
-       * Vão no `schema`, e não numa terceira cópia dentro do admin, porque o
-       * painel é um pacote separado (não importa o contrato) e precisa dos
-       * dois só para **desenhar**: a bolinha de cor e a lista de fontes com
-       * prévia — nenhuma fonte existe no navegador do painel. O que pode ser
-       * gravado continua vindo de `options`, campo a campo, validado no
-       * `validateData` desta rota.
-       */
-      palette: THEME_COLOR_HEXES,
-      fonts: THEME_FONTS,
-      /**
-       * Cores de fundo que o storefront trata como escuras (lá ele
-       * legibiliza o texto em off white). Aqui é o que permite o trilho de
-       * fundo **avisar** isso na hora da escolha, em vez de o lojista
-       * descobrir depois, olhando a loja.
-       */
-      darkTokens: THEME_DARK_TOKENS,
-    },
+    /**
+     * Metadados que o widget usa para montar o formulário — montados em
+     * `buildSchema()` (`modules/content/schema.ts`), que é o mesmo lugar de
+     * onde o `seed-schema` tira a linha do banco. A partir do registro no
+     * Postgres é que isto sai; o contrato é o bootstrap.
+     */
+    schema: buildSchema(),
   })
 }
 

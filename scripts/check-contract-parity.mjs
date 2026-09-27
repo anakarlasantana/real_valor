@@ -83,6 +83,12 @@ const APPEARANCE_CSS = join(
 )
 const ADMIN_CONTENT_ROUTE = join(root, "backend/src/api/admin/content/route.ts")
 /**
+ * O schema em um lugar so (`modules/content/schema.ts`): e de la que a rota
+ * monta o payload e de la que o `seed-schema` tira a linha do banco. As
+ * chaves sao conferidas aqui, e nao na rota, porque a montagem saiu dela.
+ */
+const CONTENT_SCHEMA = join(root, "backend/src/modules/content/schema.ts")
+/**
  * As fontes da prévia: `THEME_FONTS` diz a família e a pilha, mas quem
  * entrega os bytes ao navegador do painel é o `@font-face` do
  * `appearance.css` apontando para a cópia local. Conferir a família sem
@@ -1081,20 +1087,34 @@ assert(
 // rótulos de tipo e para os campos de item: sem eles a listagem mostra
 // jargão e o editor de lista fica sem sub-formulário.
 const adminRoute = readFileSync(ADMIN_CONTENT_ROUTE, "utf8")
+const contentSchema = readFileSync(CONTENT_SCHEMA, "utf8")
 const schemaKeys = [
+  "types: SECTION_TYPES",
   "typeLabels: SECTION_TYPE_LABELS",
+  "fields: SECTION_FIELDS",
   "itemFields: ITEM_FIELDS",
   "palette: THEME_COLOR_HEXES",
   "fonts: THEME_FONTS",
   "darkTokens: THEME_DARK_TOKENS",
 ]
-const offSchema = schemaKeys.filter((key) => !adminRoute.includes(key))
+const offSchema = schemaKeys.filter((key) => !contentSchema.includes(key))
 
 assert(
-  "GET /admin/content devolve rótulos, campos de item, paleta, fontes e " +
-    "cores escuras no schema",
+  "o schema do CRM é montado num lugar só, com tipos, campos, rótulos, " +
+    "campos de item, paleta, fontes e cores escuras",
   offSchema.length === 0,
   `faltando no schema: ${offSchema.join(", ") || "nenhum"}`
+)
+
+// E a rota tem que **consumir** esse lugar, senão o schema volta a ser montado
+// dentro dela — que é como as duas pontas (rota e seed) acabariam divergindo
+// sem ninguém perceber.
+assert(
+  "a rota do admin monta o schema a partir de schema.ts (`buildSchema()`)",
+  adminRoute.includes("buildSchema()") &&
+    adminRoute.includes("modules/content/schema") &&
+    !adminRoute.includes("palette: THEME_COLOR_HEXES"),
+  "em backend/src/api/admin/content/route.ts: monte com `buildSchema()`"
 )
 
 if (failures.length) {
