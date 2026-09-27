@@ -221,6 +221,7 @@ Os dois repos seguem o **mesmo padrão de Dockerfile**: `deps` (instala tudo, um
 | [`backend/src/modules/content/README.md`](backend/src/modules/content/README.md) | o CMS: contrato, seed, API e painel |
 | [`frontend/src/app/fonts/README.md`](frontend/src/app/fonts/README.md) | por que as fontes são self-hosted e como regerá-las |
 | [`docs/DEBITO-TECNICO.md`](docs/DEBITO-TECNICO.md) | entrada do registro de débito (mapa dos quatro assuntos) |
+| [`docs/plano-centralizacao.md`](docs/plano-centralizacao.md) | plano de arquitetura do CMS: o contrato como dado no Postgres, com o status de cada fase |
 
 O débito técnico está em quatro assuntos, por severidade — bloqueadores, alto, médio/baixo e as
 armadilhas de ambiente Docker —, cada item com evidência e impacto.

@@ -35,6 +35,12 @@ itens são os mesmos de sempre** (`1.3` continua sendo `1.3`) — só mudaram de
 
 Cada item leva a evidência (arquivo/linha ou comando de verificação) junto, como antes.
 
+Fora do registro (não é dívida, é direção):
+
+| Documento | O que |
+|---|---|
+| [`plano-centralizacao.md`](plano-centralizacao.md) | plano de arquitetura do CMS — o contrato (conteúdo **e tema**) como registro no Postgres, com o status de cada fase (F0–F5) |
+
 ### Citações por número, fora daqui
 
 Há referências a itens espalhadas pelo repositório — `docker-compose.yml`, `.env.example` e
