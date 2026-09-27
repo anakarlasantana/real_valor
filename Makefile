@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen check
+.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen check host-up host-down host-status host-logs
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -53,6 +53,12 @@ help:
 	@echo "  Contrato de conteudo"
 	@echo "    make gen           - Regera o contrato do storefront (commit o diff)"
 	@echo "    make check         - Falha se o artefato estiver velho ou o contrato incoerente"
+	@echo ""
+	@echo "  Modo host (sem Docker): scripts/dev-host.sh"
+	@echo "    make host-up       - Postgres/Redis em container + Medusa e Next no host"
+	@echo "    make host-status   - PID e saude dos dois servidores do modo host"
+	@echo "    make host-logs SVC=frontend - Logs do modo host (padrao: backend)"
+	@echo "    make host-down     - Para os servidores do modo host"
 	@echo ""
 	@echo "  Modo: use PROD=1 para producao (ex.: make up PROD=1)"
 
@@ -164,4 +170,23 @@ check:
 	@node scripts/check-contract-parity.mjs
 	@echo ""
 	@echo "  Contrato e artefato conferidos."
+
+# ---------------------------------------------------------------------------
+# Modo HOST: editar e validar sem build de imagem
+# ---------------------------------------------------------------------------
+# `scripts/dev-host.sh` sobe Postgres e Redis em container e roda Medusa e Next
+# direto no host, com os `node_modules` locais — mesmas portas do Compose. E o
+# caminho curto para o ciclo de edicao (e para validar o repositorio) quando o
+# build das imagens seria o gargalo. A stack canonica continua sendo o Compose.
+host-up:
+	@scripts/dev-host.sh up
+
+host-down:
+	@scripts/dev-host.sh down
+
+host-status:
+	@scripts/dev-host.sh status
+
+host-logs:
+	@scripts/dev-host.sh logs $(or $(SVC),backend)
 

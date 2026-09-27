@@ -16,6 +16,19 @@ Os únicos pré-requisitos são **Docker + Compose v2** (e `curl`, usado por `ma
 
 > ⚠️ **Não existem mais `start.sh`, `stop.sh` nem `build-frontend.sh`**, e não há ordem obrigatória de subida — veja [Sem ordem obrigatória de subida](#-sem-ordem-obrigatória-de-subida).
 
+### Editar sem build de imagem (modo host)
+
+Quando o build das imagens é o gargalo do ciclo de edição, `scripts/dev-host.sh` sobe Postgres e Redis em container e roda Medusa e Next **direto no host**, com os `node_modules` locais — nas mesmas portas da stack:
+
+```bash
+make host-up                     # containers + migrations + seed + os dois servidores
+make host-status                 # PID e saúde de cada servidor
+make host-logs SVC=frontend      # logs (padrão: backend)
+make host-down                   # para os servidores (containers ficam de pé)
+```
+
+O modo host é ferramenta de desenvolvimento; a stack canônica continua sendo o Compose (`make up`). PIDs e logs ficam em `.run/` (não versionado), e o script escreve o `frontend/.env.local` a partir da publishable key do banco.
+
 ---
 
 ## 🧭 Como a Aplicação Roda Localmente
