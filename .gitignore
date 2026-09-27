@@ -19,6 +19,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Runtime local do modo host (PIDs e logs de scripts/dev-host.sh)
+.run/
+
+# O artefato gerado do contrato do storefront
+# (`frontend/src/lib/content/contract.generated.ts`) e VERSIONADO de proposito:
+# a revisao mostra exatamente o que o storefront passa a receber, e o
+# `make check` falha quando ele esta velho. Nao adicione aqui.
+
 # OS files
 .DS_Store
 *.pem

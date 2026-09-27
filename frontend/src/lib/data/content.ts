@@ -28,10 +28,11 @@ type ContentResponse = {
  * Reads the home content from the backend Content module
  * (`GET /store/content`).
  *
- * The contract and the defaults live in `lib/content/home-sections.ts`,
- * which mirrors `backend/src/modules/content/contract.ts`. The parity
- * guard `scripts/check-contract-parity.mjs` fails if the two drift
- * apart.
+ * The contract and the defaults live in the backend Content module
+ * (`backend/src/modules/content/`). The storefront receives a generated copy
+ * at `lib/content/contract.generated.ts` — `node scripts/gen-content.mjs`
+ * writes it and `make check` fails when it is stale, so there is no second
+ * hand-typed source to drift.
  *
  * A content failure must never take the storefront down, so every
  * error path falls back to `DEFAULT_HOME_SECTIONS`.

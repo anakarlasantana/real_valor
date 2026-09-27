@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate
+.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen check
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -49,6 +49,10 @@ help:
 	@echo "    make health        - Checa /health do backend, a home da loja e o admin"
 	@echo "    make logs-admin    - Falha se o Vite do admin nao resolveu modulos"
 	@echo "    make revalidate TAG=products - Invalida o cache do storefront (ISR)"
+	@echo ""
+	@echo "  Contrato de conteudo"
+	@echo "    make gen           - Regera o contrato do storefront (commit o diff)"
+	@echo "    make check         - Falha se o artefato estiver velho ou o contrato incoerente"
 	@echo ""
 	@echo "  Modo: use PROD=1 para producao (ex.: make up PROD=1)"
 
@@ -141,3 +145,23 @@ revalidate:
 	@curl -fsS -X POST "http://localhost:8000/api/revalidate?tag=$(TAG)" \
 	  -H "x-revalidate-secret: $$($(COMPOSE) exec -T frontend printenv REVALIDATE_SECRET)" \
 	  && echo " cache invalidado: $(TAG)"
+
+# ---------------------------------------------------------------------------
+# Contrato de conteudo: gerar e verificar
+# ---------------------------------------------------------------------------
+# O contrato tem uma fonte so (`backend/src/modules/content/`), mas o
+# storefront e um pacote npm separado e nao consegue importa-la. O artefato
+# `frontend/src/lib/content/contract.generated.ts` e GERADO daquela fonte e
+# versionado: contrato novo e `make gen` + commit do diff.
+#
+# `make check` e o que o hook de commit roda. Ele nao precisa da stack de pe
+# (e so Node lendo arquivos), entao serve tambem para o pre-push e a CI.
+gen:
+	@node scripts/gen-content.mjs
+
+check:
+	@node scripts/gen-content.mjs --check
+	@node scripts/check-contract-parity.mjs
+	@echo ""
+	@echo "  Contrato e artefato conferidos."
+

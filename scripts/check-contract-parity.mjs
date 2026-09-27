@@ -1,24 +1,34 @@
 /**
- * Guarda de paridade do contrato de conteúdo.
+ * Guarda do contrato de conteúdo.
  * -----------------------------------------------------------------
- * O contrato existe em dois lugares, porque backend e frontend são
- * pacotes npm separados:
+ * O contrato tem uma fonte só — `backend/src/modules/content/`:
  *
- *   backend/src/modules/content/contract.ts   (fonte da verdade)
- *   frontend/src/lib/content/home-sections.ts (espelho)
+ *   contract.ts   tipos das seções, listas fechadas do tema e o que o
+ *                 CRM/admin desenha (`SECTION_FIELDS`, paleta de prévia,
+ *                 validação)
+ *   defaults.ts   o conteúdo padrão da home (também é o seed)
  *
- * Este script compara os dois e falha (exit 1) se divergirem.
+ * O storefront não guarda cópia: ele compila
+ * `frontend/src/lib/content/contract.generated.ts`, que
+ * `scripts/gen-content.mjs` escreve a partir daqueles dois arquivos. O
+ * artefato é versionado, e este script falha (exit 1) quando ele está
+ * desatualizado — contrato novo é editar o backend e rodar o gerador.
  *
- * Também verifica que `backend/src/modules/content/defaults.ts` cobre
- * todos os tipos de seção, para o seed nunca gravar uma home incompleta.
+ * O resto do que se confere aqui são as pontas que não passam pelo gerador:
  *
- * E que o editor do admin (`backend/src/admin/routes/content/field-input.tsx`)
- * sabe desenhar todo tipo de lista do contrato, com as mesmas chaves de
- * ícone que `frontend/src/lib/content/icons.ts` oferece. São espelhos
- * mantidos à mão — o admin é um pacote separado e não importa nem o
- * contrato nem o registro de ícones —, então é justamente onde a
- * divergência acontece em silêncio (um campo sem editor, um ícone que não
- * desenha).
+ *   - coerência da própria fonte (todo tipo tem campos, os defaults cobrem
+ *     todos os tipos, todo campo obrigatório está preenchido no seed, e
+ *     obrigatório/`SECTION_FIELDS` batem com o que a loja lê);
+ *   - o editor do admin (`backend/src/admin/routes/content/field-input.tsx`)
+ *     saber desenhar todo tipo de lista do contrato, com as mesmas chaves de
+ *     ícone que `frontend/src/lib/content/icons.ts` oferece. São espelhos
+ *     mantidos à mão — o admin é um pacote separado e não importa nem o
+ *     contrato nem o registro de ícones —, então é justamente onde a
+ *     divergência acontece em silêncio (um campo sem editor, um ícone que não
+ *     desenha);
+ *   - a aparência: os valores do contrato que o storefront pinta
+ *     (`brand.css`, `appearance.ts`) e os arquivos que a prévia do painel
+ *     desenha.
  *
  * Rode com:
  *   node scripts/check-contract-parity.mjs
@@ -36,6 +46,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -46,9 +57,11 @@ const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, "..")
 
 const CONTRACT = join(root, "backend/src/modules/content/contract.ts")
-const OVERRIDE = join(root, "backend/src/modules/content/index.ts")
-const MIRROR = join(root, "frontend/src/lib/content/home-sections.ts")
 const DEFAULTS = join(root, "backend/src/modules/content/defaults.ts")
+/** O gerador que produz o artefato do storefront (ver `scripts/gen-content.mjs`). */
+const GENERATOR = join(root, "scripts/gen-content.mjs")
+/** O artefato que o storefront compila — versionado, gerado. */
+const GENERATED = join(root, "frontend/src/lib/content/contract.generated.ts")
 const ICONS = join(root, "frontend/src/lib/content/icons.ts")
 const SOCIAL_ICONS = join(root, "frontend/src/lib/content/social-icons.tsx")
 const APPEARANCE = join(root, "frontend/src/lib/content/appearance.ts")
@@ -90,7 +103,6 @@ const FOOTER_TEMPLATE = join(
   root,
   "frontend/src/modules/layout/templates/footer/index.tsx"
 )
-const PARITY_DIR = join(root, "frontend/src/lib/content/__parity__")
 
 /**
  * Onde as classes `.rv-section-*` do `brand.css` podem ser usadas: o
@@ -107,19 +119,17 @@ const STOREFRONT_DIRS = [
 /**
  * Carrega um módulo TS e devolve o valor de um export.
  *
- * `CONTRACT_BYPASS=1` evita o ciclo de resolução do `index.ts` do
- * módulo do Medusa: quando o override é o próprio `index.ts`, esse
- * arquivo importa o `service`, que importa `@medusajs/framework/utils`.
- * O contrato não tem dependências de runtime, só tipos.
+ * O `import` acontece num processo Node à parte, que apaga os tipos
+ * (type-stripping nativo) e devolve o valor serializado por stdout. Só serve
+ * para arquivos sem dependência de runtime — `contract.ts`, `defaults.ts` e
+ * `icons.ts` são tipos e dados puros.
  */
-function loadExport(file, exportName, bypass = false) {
+function loadExport(file, exportName) {
   const dir = mkdtempSync(join(tmpdir(), "rv-parity-"))
   const entry = join(dir, "entry.mjs")
 
-  const specifier = `file://${file}`
   const body = `
-    ${bypass ? 'process.env.CONTRACT_BYPASS = "1";' : ""}
-    const mod = await import(${JSON.stringify(specifier)});
+    const mod = await import(${JSON.stringify(`file://${file}`)});
     const value = mod[${JSON.stringify(exportName)}];
     if (value === undefined) {
       console.error("__MISSING__:" + ${JSON.stringify(exportName)});
@@ -128,16 +138,7 @@ function loadExport(file, exportName, bypass = false) {
     process.stdout.write(JSON.stringify(value));
   `
 
-  const written = spawnSync(
-    "bash",
-    ["-c", `cat > ${JSON.stringify(entry)} <<'RVEOF'\n${body}\nRVEOF`],
-    { encoding: "utf8" }
-  )
-  if (written.status !== 0) {
-    rmSync(dir, { recursive: true, force: true })
-    throw new Error(`Falha ao preparar o carregador: ${written.stderr}`)
-  }
-
+  writeFileSync(entry, body)
   const result = spawnSync("node", [entry], { encoding: "utf8" })
   rmSync(dir, { recursive: true, force: true })
 
@@ -261,167 +262,128 @@ function readMatches(source, pattern, group = 1) {
   ]
 }
 
-console.log("Paridade do contrato de conteúdo\n")
+console.log("Contrato de conteúdo do storefront\n")
+
+// ---------------------------------------------------------------------------
+// 1. O ARTEFATO GERADO ESTÁ EM DIA
+// ---------------------------------------------------------------------------
+// O storefront não tem mais uma cópia digitada do contrato: ele compila
+// `frontend/src/lib/content/contract.generated.ts`, gerado de
+// `contract.ts` + `defaults.ts`. A sincronia é conferida pelo próprio
+// gerador — que compara o arquivo inteiro e diz o comando a rodar —, no
+// lugar das ~300 linhas de comparação campo a campo que existiam aqui.
+const generated = spawnSync("node", [GENERATOR, "--check"], {
+  encoding: "utf8",
+})
+
+assert(
+  "o contrato gerado do storefront está em dia",
+  generated.status === 0,
+  (generated.stderr || generated.stdout).trim()
+)
 
 const sourceTypes = loadExport(CONTRACT, "SECTION_TYPES")
 const sourceFields = loadExport(CONTRACT, "SECTION_FIELDS")
-const mirrorTypes = loadExport(MIRROR, "SECTION_TYPES", true)
-const mirrorFields = loadExport(MIRROR, "SECTION_FIELDS", true)
+const contractSources = loadExport(CONTRACT, "FOOTER_COLUMN_SOURCES")
+const fallbackHeader = loadExport(GENERATED, "DEFAULT_HEADER")
+const fallbackFooter = loadExport(GENERATED, "DEFAULT_FOOTER")
 
-console.log("SECTION_TYPES")
+console.log("\nSECTION_TYPES ⇔ SECTION_FIELDS")
+
+// Um tipo que existe só num dos dois mapas aparece na home mas não no
+// formulário do CRM (ou o contrário): ou não dá para editar, ou o PATCH
+// gravado nunca chega à tela.
 assert(
-  "mesma lista de tipos, na mesma ordem",
-  JSON.stringify(sourceTypes) === JSON.stringify(mirrorTypes),
-  `backend: ${sourceTypes.join(", ")}\n       frontend: ${mirrorTypes.join(
-    ", "
-  )}`
+  "todo tipo de SECTION_TYPES tem campos em SECTION_FIELDS",
+  sourceTypes.every((type) => (sourceFields[type] ?? []).length > 0),
+  `sem campos: ${sourceTypes
+    .filter((type) => !(sourceFields[type] ?? []).length)
+    .join(", ")}`
 )
 
-console.log("\nSECTION_FIELDS")
-for (const type of sourceTypes) {
-  const a = sourceFields[type] ?? []
-  const b = mirrorFields[type] ?? []
+assert(
+  "SECTION_FIELDS não declara tipo fora de SECTION_TYPES",
+  Object.keys(sourceFields).every((type) => sourceTypes.includes(type)),
+  `sobrando: ${Object.keys(sourceFields)
+    .filter((type) => !sourceTypes.includes(type))
+    .join(", ")}`
+)
 
-  const norm = (fields) =>
-    JSON.stringify(
-      fields.map((f) => ({
-        name: f.name,
-        label: f.label,
-        kind: f.kind,
-        required: Boolean(f.required),
-        options: f.options ?? [],
-        // `group` e `optionLabels` também são renderizados pelo admin (que
-        // lê o `schema`), então divergir aqui muda a tela: um campo cai no
-        // grupo errado ou o `<select>` mostra a chave crua ("dourado" em
-        // vez de "Dourado Rosé").
-        group: f.group ?? "",
-        optionLabels: f.optionLabels ?? {},
-      }))
-    )
+console.log("\nDEFAULTS_HOME_SECTIONS (seed ⇔ fallback do storefront)")
 
-  assert(
-    `"${type}" tem os mesmos campos`,
-    norm(a) === norm(b),
-    `backend: ${a.map((f) => f.name).join(", ")}\n       frontend: ${b
-      .map((f) => f.name)
-      .join(", ")}`
-  )
-}
-
-// A comparação acima usa `?? []`, então um tipo que perde a chave nos dois
-// arquivos passa como "tem os mesmos campos". E um tipo sem campos derruba a
-// loja: o formulário do admin fica sem nenhum campo para editar, o PATCH
-// estoura na validação (500) e o `data` do bloco perde o que o formulário
-// não enviar. Foi exatamente o que aconteceu com o `footer`.
-for (const type of sourceTypes) {
-  const inContract = sourceFields[type]
-  const inMirror = mirrorFields[type]
-
-  assert(
-    `"${type}" declara campos nos dois arquivos`,
-    Array.isArray(inContract) &&
-      inContract.length > 0 &&
-      Array.isArray(inMirror) &&
-      inMirror.length > 0,
-    `contrato: ${inContract?.length ?? "SEM A CHAVE"}; ` +
-      `espelho: ${inMirror?.length ?? "SEM A CHAVE"}`
-  )
-}
-
-console.log("\nDEFAULTS_HOME_SECTIONS")
-const defaults = loadExport(DEFAULTS, "DEFAULT_HOME_SECTIONS", true)
-const covered = new Set(defaults.map((s) => s.type))
+const defaults = loadExport(DEFAULTS, "DEFAULT_HOME_SECTIONS")
+const covered = new Set(defaults.map((section) => section.type))
 
 assert(
   "cobre todos os tipos de seção",
   sourceTypes.every((type) => covered.has(type)),
-  `faltando: ${sourceTypes.filter((t) => !covered.has(t)).join(", ")}`
+  `faltando: ${sourceTypes.filter((type) => !covered.has(type)).join(", ")}`
 )
 
 assert(
   "positions são únicas",
-  new Set(defaults.map((s) => s.position)).size === defaults.length,
-  `positions: ${defaults.map((s) => s.position).join(", ")}`
+  new Set(defaults.map((section) => section.position)).size === defaults.length,
+  `positions: ${defaults.map((section) => section.position).join(", ")}`
 )
 
 assert(
   "positions estão em ordem ascendente no arquivo",
-  defaults.every((s, i) => i === 0 || s.position > defaults[i - 1].position)
+  defaults.every(
+    (section, index) =>
+      index === 0 || section.position > defaults[index - 1].position
+  )
 )
 
+// O formulário do admin é montado a partir de `SECTION_FIELDS` e o PATCH
+// substitui o `data` inteiro pelo que ele enviou: campo obrigatório vazio no
+// seed vira campo apagado no primeiro "Salvar".
 assert(
   "todo campo obrigatório do contrato está preenchido",
   defaults.every((section) =>
     (sourceFields[section.type] ?? [])
-      .filter((f) => f.required)
-      .every((f) => {
-        const value = section[f.name]
+      .filter((field) => field.required)
+      .every((field) => {
+        const value = section[field.name]
+
         return value !== undefined && value !== null && value !== ""
       })
   )
 )
 
-console.log("\nHEADER (nav: seed \u2194 fallback)")
-
-const sourceNav = defaults.find((section) => section.type === "nav")
-const fallbackHeader = loadExport(MIRROR, "DEFAULT_HEADER", true)
-
-// O seed grava o bloco `nav`; quando o payload não traz nenhum, o layout
-// cai em `DEFAULT_HEADER`. Se os dois divergirem, a mesma loja mostra um
-// cabeçalho diferente conforme a semente rodou (ou conforme a rede).
+// O fallback da vitrine é derivado do seed pelo gerador (o bloco
+// `nav`/`footer` de `DEFAULT_HOME_SECTIONS`). Se a derivação sair errada, a
+// mesma loja mostra um cabeçalho (ou rodapé) diferente conforme a semente
+// rodou — ou conforme a rede —, então vale conferir mesmo vindo do mesmo
+// lado.
 const headerShape = (nav) =>
   JSON.stringify({ links: nav?.links ?? [], actions: nav?.actions ?? [] })
-
-assert(
-  "o nav do seed tem os mesmos links e a\u00e7\u00f5es do fallback do storefront",
-  sourceNav !== undefined &&
-    headerShape(sourceNav) === headerShape(fallbackHeader),
-  `seed: ${JSON.stringify(sourceNav?.links)} ${JSON.stringify(
-    sourceNav?.actions
-  )}\n` +
-    `       fallback: ${JSON.stringify(fallbackHeader.links)} ${JSON.stringify(
-      fallbackHeader.actions
-    )}`
-)
-
-console.log("\nFOOTER (footer: seed \u2194 fallback)")
-
-const sourceFooter = defaults.find((section) => section.type === "footer")
-const fallbackFooter = loadExport(MIRROR, "DEFAULT_FOOTER", true)
-
-// Mesma razão do cabeçalho: o seed grava o bloco `footer` e o layout cai
-// em `DEFAULT_FOOTER` quando o payload não traz nenhum. Se os dois
-// divergirem, a mesma loja mostra um rodapé diferente conforme a semente
-// rodou (ou conforme a rede).
 const footerShape = (footer) =>
   JSON.stringify({
     columns: footer?.columns ?? [],
     social: footer?.social ?? [],
   })
+const seedNav = defaults.find((section) => section.type === "nav")
+const seedFooter = defaults.find((section) => section.type === "footer")
 
 assert(
-  "o footer do seed tem as mesmas colunas e redes do fallback do storefront",
-  sourceFooter !== undefined &&
-    footerShape(sourceFooter) === footerShape(fallbackFooter),
-  `seed: ${footerShape(sourceFooter)}\n` +
-    `       fallback: ${footerShape(fallbackFooter)}`
+  "o nav do seed é o DEFAULT_HEADER do storefront",
+  headerShape(seedNav) === headerShape(fallbackHeader),
+  `seed: ${headerShape(seedNav)}\n` +
+    `       artefato: ${headerShape(fallbackHeader)}`
 )
 
-// `source` é o que decide se a coluna sai do catálogo ou dos links
-// digitados. A lista é espelhada em três lugares (contrato, espelho do
-// frontend e admin, que é pacote separado e desenha um `<select>`), então
-// ela é conferida — e todo `source` oferecido precisa de um ramo no
-// desenho, senão a coluna aparece vazia na loja.
-const contractSources = loadExport(CONTRACT, "FOOTER_COLUMN_SOURCES")
-const mirrorSources = loadExport(MIRROR, "FOOTER_COLUMN_SOURCES", true)
+assert(
+  "o footer do seed é o DEFAULT_FOOTER do storefront",
+  footerShape(seedFooter) === footerShape(fallbackFooter),
+  `seed: ${footerShape(seedFooter)}\n` +
+    `       artefato: ${footerShape(fallbackFooter)}`
+)
+
+// `source` decide se a coluna sai do catálogo ou dos links digitados, e o
+// `<select>` do admin (pacote separado) desenha a mesma lista. Todo `source`
+// oferecido precisa de um ramo no desenho, senão a coluna aparece vazia na
+// loja.
 const footerColumnSource = readFileSync(FOOTER_COLUMN, "utf8")
-
-assert(
-  "as origens de coluna são as mesmas no contrato e no espelho",
-  JSON.stringify(contractSources) === JSON.stringify(mirrorSources),
-  `backend: ${contractSources.join(", ")}\n` +
-    `       frontend: ${mirrorSources.join(", ")}`
-)
 
 for (const source of contractSources.filter((source) => source !== "links")) {
   assert(
@@ -433,10 +395,10 @@ for (const source of contractSources.filter((source) => source !== "links")) {
 }
 
 // Todo `content.<campo>` lido pelo rodapé precisa existir em
-// `SECTION_FIELDS.footer`. Não é preciosismo: o formulário do admin é montado
-// a partir dessa lista e o PATCH substitui o `data` inteiro pelo que o
-// formulário enviou — então um campo que o render lê mas a lista não declara
-// fica sem editor na tela **e** é apagado do banco no primeiro "Salvar".
+// `SECTION_FIELDS.footer`: é essa lista que monta o formulário do admin, e o
+// PATCH substitui o `data` inteiro — campo que o render lê e a lista não
+// declara fica sem editor na tela **e** é apagado do banco no primeiro
+// "Salvar".
 const footerTemplate = readFileSync(FOOTER_TEMPLATE, "utf8")
 const footerReads = [
   ...new Set(
@@ -504,11 +466,11 @@ for (const kind of scalarKinds) {
 }
 
 const iconKeysByKind = {
-  "list:benefit": loadExport(ICONS, "BENEFIT_ICON_KEYS", true),
-  "list:action": loadExport(ICONS, "HEADER_ACTION_ICON_KEYS", true),
+  "list:benefit": loadExport(ICONS, "BENEFIT_ICON_KEYS"),
+  "list:action": loadExport(ICONS, "HEADER_ACTION_ICON_KEYS"),
 }
 
-const knownIcons = new Set(loadExport(ICONS, "AVAILABLE_ICON_KEYS", true))
+const knownIcons = new Set(loadExport(ICONS, "AVAILABLE_ICON_KEYS"))
 
 for (const [kind, expected] of Object.entries(iconKeysByKind)) {
   const found = readKeys(iconKeysBlock, kind)
@@ -603,54 +565,40 @@ assert(
   "acrescente o campo em backend/src/admin/routes/content/field-input.tsx"
 )
 
-console.log("\nAPARÊNCIA POR SEÇÃO (contrato ⇔ espelho ⇔ loja)")
+console.log("\nAPARÊNCIA POR SEÇÃO (contrato ⇔ loja)")
 
-// Os valores válidos (paleta e papéis de fonte) têm duas cópias, uma por
-// pacote. A terceira ponta — o `<select>` do admin — não guarda cópia
-// nenhuma, de propósito: as opções chegam prontas no `schema` da API, para
-// não haver mais uma lista a dessincronizar.
+// As opções válidas (paleta, papéis de fonte, trilhos) existem num lugar só:
+// o contrato. O `<select>` do admin as recebe prontas no `schema` da API e o
+// storefront as recebe pelo artefato gerado, então não há duas listas para
+// comparar — o que se confere aqui é que elas não estão vazias (o CRM ficaria
+// sem cor e sem trilho para escolher) e que combinam entre si.
 const contractColors = loadExport(CONTRACT, "THEME_COLOR_TOKENS")
-const mirrorColors = loadExport(MIRROR, "THEME_COLOR_TOKENS", true)
 const contractFonts = loadExport(CONTRACT, "FONT_ROLES")
-const mirrorFonts = loadExport(MIRROR, "FONT_ROLES", true)
 const contractDark = loadExport(CONTRACT, "THEME_DARK_TOKENS")
-const mirrorDark = loadExport(MIRROR, "THEME_DARK_TOKENS", true)
 const contractGroups = loadExport(CONTRACT, "APPEARANCE_GROUPS")
-const mirrorGroups = loadExport(MIRROR, "APPEARANCE_GROUPS", true)
 
 assert(
-  "as cores do tema são as mesmas no contrato e no espelho",
-  JSON.stringify(contractColors) === JSON.stringify(mirrorColors),
-  `backend: ${contractColors.join(", ")}\n` +
-    `       frontend: ${mirrorColors.join(", ")}`
+  "a paleta do tema tem as cores que o storefront pinta",
+  contractColors.length > 0,
+  "THEME_COLOR_TOKENS vazio: o CRM não teria cor para oferecer"
 )
 
 assert(
-  "os papéis de fonte são os mesmos no contrato e no espelho",
-  JSON.stringify(contractFonts) === JSON.stringify(mirrorFonts),
-  `backend: ${contractFonts.join(", ")}\n` +
-    `       frontend: ${mirrorFonts.join(", ")}`
+  "os papéis de fonte do tema incluem display e sans",
+  ["display", "sans"].every((role) => contractFonts.includes(role)),
+  `contrato: ${contractFonts.join(", ")}`
 )
 
 assert(
-  "os rótulos dos trilhos de aparência são os mesmos nos dois lados",
-  contractGroups.length > 0 &&
-    JSON.stringify(contractGroups) === JSON.stringify(mirrorGroups),
-  `backend: ${contractGroups.join(", ")}\n` +
-    `       frontend: ${mirrorGroups.join(", ")}`
+  "os trilhos de aparência têm rótulo",
+  contractGroups.length > 0,
+  "APPEARANCE_GROUPS vazio: o CRM desenharia os campos sem trilho"
 )
 
 // `THEME_DARK_TOKENS` não alimenta `<select>` nenhum: é a lista que o
-// storefront usa para auto-legibilizar fundo escuro. Uma cor aqui que não
-// esteja na paleta seria uma regra que nunca dispara (ou pior: um token
-// que não existe, e a seção fica sem texto).
-assert(
-  "as cores de fundo escuro são as mesmas no contrato e no espelho",
-  JSON.stringify(contractDark) === JSON.stringify(mirrorDark),
-  `backend: ${contractDark.join(", ")}\n` +
-    `       frontend: ${mirrorDark.join(", ")}`
-)
-
+// storefront usa para auto-legibilizar fundo escuro. Um token aqui que não
+// esteja na paleta seria uma regra que nunca dispara (ou pior: um token que
+// não existe, e a seção fica sem texto).
 assert(
   "toda cor de fundo escuro é uma cor da paleta do tema",
   contractDark.length > 0 &&
@@ -857,21 +805,7 @@ assert(
 console.log("\nPRÉVIA DE APARÊNCIA (paleta, fontes e os arquivos do painel)")
 
 const contractHexes = loadExport(CONTRACT, "THEME_COLOR_HEXES")
-const mirrorHexes = loadExport(MIRROR, "THEME_COLOR_HEXES", true)
 const contractThemeFonts = loadExport(CONTRACT, "THEME_FONTS")
-const mirrorThemeFonts = loadExport(MIRROR, "THEME_FONTS", true)
-
-assert(
-  "a paleta de prévia é a mesma no contrato e no espelho",
-  JSON.stringify(contractHexes) === JSON.stringify(mirrorHexes),
-  "o hex que o painel desenha precisa ser o mesmo dos dois lados"
-)
-
-assert(
-  "as famílias de fonte são as mesmas no contrato e no espelho",
-  JSON.stringify(contractThemeFonts) === JSON.stringify(mirrorThemeFonts),
-  "a prévia de uma ponta e a da outra precisam ser a mesma fonte"
-)
 
 // O hex é cópia de leitura do tema padrão (`themes/default/theme.json`).
 // Um tema de estação troca os valores — a cópia mostra a cor do padrão, e o
@@ -1029,14 +963,18 @@ assert(
 if (failures.length) {
   console.log(`\n${failures.length} verificação(ões) falharam.`)
   console.log(
-    "Atualize o espelho em frontend/src/lib/content/home-sections.ts " +
-      "para acompanhar backend/src/modules/content/contract.ts."
+    "O contrato é um só: backend/src/modules/content/{contract,defaults}.ts."
+  )
+  console.log(
+    "Se a falha for o artefato do storefront, rode o gerador: " +
+      "node scripts/gen-content.mjs"
   )
   console.log(
     "Já as listas do admin espelham frontend/src/lib/content/icons.ts " +
-      "(chaves de ícone) e os campos de cada lista do contrato."
+      "(chaves de ícone) e os campos de cada lista do contrato — essas são " +
+      "mantidas à mão."
   )
   process.exit(1)
 }
 
-console.log("\nContrato em paridade.")
+console.log("\nContrato em dia.")

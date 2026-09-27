@@ -10,6 +10,8 @@
     "up": "docker compose up -d",
     "down": "docker compose down",
     "logs": "docker compose logs -f backend",
-    "seed": "docker compose exec backend yarn seed"
+    "seed": "docker compose exec backend yarn seed",
+    "gen": "node scripts/gen-content.mjs",
+    "check": "node scripts/gen-content.mjs --check && node scripts/check-contract-parity.mjs"
   }
 }

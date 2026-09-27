@@ -168,7 +168,9 @@ real_valor/
 ├── .env.example                  # modelo do `.env` da raiz
 ├── .nvmrc                        # Node 22 (a mesma versão usada nas imagens)
 ├── scripts/
-│   ├── check-contract-parity.mjs # paridade do conteúdo: backend ↔ storefront ↔ admin
+│   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
+│   ├── check-contract-parity.mjs # guarda: artefato em dia + contrato coerente
+│   ├── dev-host.sh               # modo host (sem Docker): up/down/status/logs
 │   └── vendor-fonts.mjs          # (re)baixa e valida os `.woff2` self-hosted
 │
 ├── backend/                          # Medusa v2 — Store API + Admin
@@ -192,11 +194,41 @@ real_valor/
         ├── app/[countryCode]/        # rotas da loja: `/br`, `/br/store`, produto, carrinho…
         ├── app/api/revalidate/       # `POST /api/revalidate` (purge de ISR por tag)
         ├── modules/                  # componentes por domínio (products, cart, checkout…)
-        ├── lib/                      # dados, contexto, tema, utilitários
+        ├── lib/                      # dados, contexto, tema, contrato de conteúdo (gerado)
         └── middleware.ts             # resolve o `countryCode` da URL
 ```
 
 Os dois repos seguem o **mesmo padrão de Dockerfile**: `deps` (instala tudo, uma vez) → `builder` (compila) → `runner` (só o artefato). O estágio final de cada Dockerfile é o de **produção**, e é justamente por isso que o modo nunca pode depender do estágio default: a base fixa `target: runner` e o override fixa `target: dev`.
+
+### Documentação
+
+| Onde | O que |
+|---|---|
+| [`README.md`](README.md) | este arquivo: subir a stack, operar o dia a dia, troubleshooting |
+| [`backend/src/modules/content/README.md`](backend/src/modules/content/README.md) | o CMS: contrato, seed, API e painel |
+| [`frontend/src/app/fonts/README.md`](frontend/src/app/fonts/README.md) | por que as fontes são self-hosted e como regerá-las |
+| [`docs/DEBITO-TECNICO.md`](docs/DEBITO-TECNICO.md) | entrada do registro de débito (mapa dos quatro assuntos) |
+
+O débito técnico está em quatro assuntos, por severidade — bloqueadores, alto, médio/baixo e as
+armadilhas de ambiente Docker —, cada item com evidência e impacto.
+
+### Contrato de conteúdo: uma fonte, um artefato
+
+O contrato (tipos das seções, listas do tema e conteúdo padrão) existe **só** em
+`backend/src/modules/content/`. O storefront é um pacote npm separado e recebe uma cópia
+**gerada** — `frontend/src/lib/content/contract.generated.ts` —, versionada de propósito: a
+revisão mostra o que o storefront passa a receber.
+
+```bash
+make gen     # regera o artefato (commit o diff junto com a mudança no backend)
+make check   # falha se o artefato estiver velho ou o contrato incoerente
+```
+
+`make check` também roda no commit, pelo hook versionado:
+
+```bash
+git config core.hooksPath .githooks   # uma vez por clone
+```
 
 ---
 

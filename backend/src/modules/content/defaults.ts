@@ -8,6 +8,10 @@ import type { HomeSection } from "./contract"
  *   2. O frontend usa como fallback se a API de conteúdo falhar, para
  *      que a vitrine nunca caia por causa do CMS.
  *
+ * Nos dois casos este arquivo é a única cópia: o fallback do storefront é
+ * este mesmo dado, gerado para `contract.generated.ts` por
+ * `scripts/gen-content.mjs`.
+ *
  * Imagens apontam para `/brand/*.jpg` (servidas pelo Next, em
  * `frontend/public/brand`) porque o `data` do CMS guarda URLs como o
  * navegador as consome. Trocar por fotografia definitiva é só editar
@@ -20,8 +24,8 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
    * ganha um bloco no seed. `position` 5 só serve para manter a lista
    * ordenada; ele é ignorado no render da home.
    *
-   * Espelhado em `frontend/src/lib/content/home-sections.ts`
-   * (`DEFAULT_HEADER`) — os dois são fallback um do outro.
+   * O fallback do storefront (`DEFAULT_HEADER`) é derivado deste bloco pelo
+   * gerador — não há segunda cópia.
    */
   {
     id: "nav",
@@ -177,8 +181,8 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
    * Rodapé. Como o `nav`, não é uma seção da home: o layout o renderiza
    * em todas as rotas, então `position` 80 só mantém a lista ordenada.
    *
-   * Espelhado em `frontend/src/lib/content/home-sections.ts`
-   * (`DEFAULT_FOOTER`) — os dois são fallback um do outro.
+   * O fallback do storefront (`DEFAULT_FOOTER`) é derivado deste bloco pelo
+   * gerador — não há segunda cópia.
    *
    * `columns` nasce vazia de propósito: coluna é conteúdo, não existe
    * coluna padrão, e o lojista insere quantas quiser no admin — digitando

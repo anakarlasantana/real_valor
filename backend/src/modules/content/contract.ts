@@ -1,20 +1,33 @@
 /**
  * Real Valor — Contrato de conteúdo (fonte da verdade)
  * -----------------------------------------------------------------
- * Este arquivo é a ÚNICA definição do formato de conteúdo da vitrine.
+ * Este arquivo é a ÚNICA definição do formato de conteúdo da vitrine:
+ * os tipos das seções, os campos que o CRM edita (`SECTION_FIELDS`) e as
+ * listas fechadas do tema (paleta, papéis de fonte, trilhos).
  *
- * O frontend mantém um espelho em
- * `frontend/src/lib/content/home-sections.ts`. Os dois precisam
- * continuar idênticos: a guarda de paridade
- * (`node scripts/check-contract-parity.mjs`) compara campo por campo e
- * falha se alguém alterar só um lado.
+ * O storefront é outro pacote npm, com `node_modules` próprio, e não tem
+ * como importar daqui. Em vez de manter uma cópia digitada à mão (o antigo
+ * espelho, que precisava de mil linhas de guarda para não divergir), o
+ * storefront recebe o **bloco compartilhado** deste arquivo — tudo o que
+ * está acima do marcador "Bloco compartilhado" — mais o conteúdo padrão de
+ * `./defaults`, gerados por:
  *
- * Necessário porque backend e frontend são pacotes npm separados, com
- * `node_modules` separados — não há como importar um do outro sem
- * publicar um pacote compartilhado.
+ *     node scripts/gen-content.mjs          # regrava o artefato
+ *     node scripts/gen-content.mjs --check  # falha se estiver desatualizado
+ *
+ * O artefato é `frontend/src/lib/content/contract.generated.ts` e NÃO se
+ * edita à mão: `scripts/check-contract-parity.mjs` (`make check`) reprova
+ * artefato fora de sincronia, e o mesmo comando roda no hook de commit.
  *
  * Origem do conteúdo: ./Downloads/real-valor-frontend-prototype
  */
+
+// ===========================================================================
+// INÍCIO DO BLOCO COMPARTILHADO — copiado para
+// `frontend/src/lib/content/contract.generated.ts` por `scripts/gen-content.mjs`.
+// Só acrescente aqui o que o storefront precisa em runtime (tipos e listas
+// fechadas). O que é só do backend/admin fica abaixo do fim do bloco.
+// ===========================================================================
 
 /**
  * Aparência da seção — escolhas do lojista no CRM (opcional).
@@ -438,6 +451,12 @@ export const APPEARANCE_GROUPS = [
 ] as const
 
 export type AppearanceGroup = (typeof APPEARANCE_GROUPS)[number]
+
+// ===========================================================================
+// FIM DO BLOCO COMPARTILHADO. Daqui para baixo é só backend/admin: os
+// atalhos dos trilhos de aparência, o `SECTION_FIELDS` que o CRM consome e a
+// paleta/fontes de prévia (que o painel recebe pelo `schema` da API).
+// ===========================================================================
 
 /** Opções de todo campo de cor: o padrão (`""`) na frente dos 6 tokens. */
 const APPEARANCE_COLOR_OPTIONS = ["", ...THEME_COLOR_TOKENS] as const
