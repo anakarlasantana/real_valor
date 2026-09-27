@@ -21,7 +21,7 @@ Os únicos pré-requisitos são **Docker + Compose v2** (e `curl`, usado por `ma
 Quando o build das imagens é o gargalo do ciclo de edição, `scripts/dev-host.sh` sobe Postgres e Redis em container e roda Medusa e Next **direto no host**, com os `node_modules` locais — nas mesmas portas da stack:
 
 ```bash
-make host-up                     # containers + migrations + seed + os dois servidores
+make host-up                     # containers + migrations + admin + seed + os dois servidores
 make host-status                 # PID e saúde de cada servidor
 make host-logs SVC=frontend      # logs (padrão: backend)
 make host-down                   # para os servidores (containers ficam de pé)
@@ -388,4 +388,10 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:9000/auth/user
 sobrescreve a senha de um usuário existente (ele registra o usuário como já
 existente e segue). Por isso `.env`, `.env.example` e este README mantêm o mesmo
 valor — assim a senha documentada é sempre a verdadeira.
+
+O modo host faz o mesmo: `scripts/dev-host.sh up` cria/verifica o admin logo
+depois das migrations, lendo `ADMIN_EMAIL`/`ADMIN_PASSWORD` do `.env` (o
+container recebe as duas pelo `environment:` do `docker-compose.yml`). Nos dois
+casos "usuário já existe" **não** é falha — no modo host, uma falha de outra
+natureza é distinguida daí e o log da tentativa fica em `.run/admin-user.log`.
 

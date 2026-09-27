@@ -112,6 +112,26 @@ case "${1:-}" in
     wait_healthy
     echo "== migracoes Medusa =="
     ( cd "$ROOT/backend" && ./node_modules/.bin/medusa db:migrate 2>&1 | tail -3 )
+    echo "== usuario admin (idempotente) =="
+    ADMIN_EMAIL="$(sed -n 's/^ADMIN_EMAIL=//p' "$ROOT/.env" 2>/dev/null | head -1)"
+    ADMIN_PASSWORD="$(sed -n 's/^ADMIN_PASSWORD=//p' "$ROOT/.env" 2>/dev/null | head -1)"
+    if [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASSWORD" ]; then
+      # Mesma regra do `backend/docker-entrypoint.sh`: usuario existente faz o
+      # comando sair com erro, e isso conta como sucesso (a senha ja gravada
+      # nao e sobrescrita — ver "Credenciais" no README). O log fica em
+      # `.run/admin-user.log` porque, sem ele, "ja existe" e "o banco nao
+      # respondeu" imprimiriam a mesma linha.
+      admin_log="$RUN/admin-user.log"
+      if ( cd "$ROOT/backend" && ./node_modules/.bin/medusa user -e "$ADMIN_EMAIL" -p "$ADMIN_PASSWORD" 2>&1 | tail -40 > "$admin_log" ); then
+        echo "  admin criado: $ADMIN_EMAIL"
+      elif grep -qi 'already exists' "$admin_log"; then
+        echo "  admin ja existente: $ADMIN_EMAIL"
+      else
+        echo "  AVISO: nao foi possivel criar/verificar o admin — ver .run/admin-user.log" >&2
+      fi
+    else
+      echo "  ADMIN_EMAIL/ADMIN_PASSWORD nao definidos — pulando"
+    fi
     echo "== seed (so quando vazio) =="
     if [ "$(psql_q 'select count(*) from product')" = "0" ]; then
       ( cd "$ROOT/backend" && ./node_modules/.bin/medusa exec ./src/scripts/seed.ts 2>&1 | tail -2 )
