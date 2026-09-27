@@ -58,7 +58,7 @@ paleta/família, o `COPY` extra do `themes/` no Dockerfile e o motivo das 2 cóp
 | **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ✅ **feito** | `content_schema` + `schema.ts` + `seed-schema`; a API lê e valida contra o registro; `schemaVersion` no payload; a loja descarta tipo desconhecido. 9 asserts na guarda |
 | **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ⏸️ etapa 1 pronta, **adiada** | branch `f3-tema-como-dado` (commit `fcdc3500ec`): superfície `theme` no contrato + API + CRM. **Falta:** seed dos `theme.json` e a loja ler do payload |
 | **F4** — CRM de vendas/entrega | agregações (vendas, status, ticket, rastreio) como módulo + rotas `/admin/*`, sobre o mesmo banco | ⏸️ não iniciado | `order-customer-indexer` + `/store/orders/track` são a base |
-| **F5** — Higiene | Makefile interface única; `packages/` só se útil; CI rodando `make check`; `schemaVersion` | ⏸️ parcial | Makefile já é a interface; **falta** CI e `schemaVersion` |
+| **F5** — Higiene | Makefile interface única; `packages/` só se útil; CI rodando `make check`; `schemaVersion` | ⏸️ parcial | Makefile é a interface e `schemaVersion` saiu no F2′; **falta** a CI (vira G1) e o `packages/` (vira G5) |
 
 **O que o F2 virou, em duas etapas.** A primeira entregou a **ponte** (o CRM lê o schema pela
 API, sem espelho no painel). A segunda — o "F2′" — entregou o **registro**, que é o que
@@ -104,6 +104,95 @@ seção descartada — sem o filtro, o `assertNever` do render a transformaria e
 | Cache/ISR não invalida mudança de schema | incluir o schema na tag `content` (hoje a revalidação é por conteúdo) |
 | Unicidade de `position` e "todo tipo tem campos" (hoje garantidas pela guarda) | passam a ser **validação do serviço**, não do script |
 | Assets em 2 origens (`.woff2` em `:9000` e `:8000`) | origem única + CORS, ou gerador + md5 (única asserção que sobrevive) |
+
+## Próximo na fila: eliminar a guarda (G0 → G5)
+
+> Este é o **próximo plano depois de F3/F4**, registrado aqui porque a pergunta
+> "o que ainda falta" não pode depender de sessão de terminal.
+
+### Por que
+
+A tabela de riscos deste documento já dizia o alvo: *"Guarda — só o que a
+linguagem não vê (CSS, binários, migração) — **~6 asserções, não 48**"*. Hoje
+`scripts/check-contract-parity.mjs` tem **89** e **1.294 linhas**, e a
+concentração é enviesada: **45 num único grupo** (`ADMIN (field-input.tsx)`).
+
+Guarda de paridade por texto não é padrão de e-commerce/CRM — é o que se escreve
+quando a fronteira entre dois pacotes **não é linkada pelo compilador**, e a
+fronteira aqui não é linkada porque o install é por app (lockfile em cada um,
+`node_modules` da raiz quase vazio) apesar de a raiz declarar `workspaces`.
+
+O padrão do próprio stack: `@medusajs/types` é um **pacote publicado** que os
+dois apps consomem; o Medusa não tem script de paridade, tem tipos, testes
+(`integration-tests/http/*.spec.ts` — que este repo já tem) e build.
+
+**Destino: `check-contract-parity.mjs` deletado.** O que ele faz vira tipagem,
+teste ou checagem de dado — nenhuma das 89 some sem substituto, e nenhuma das
+~6 que sobrevivem continua sendo assert de regex.
+
+### O mapa (as 89, por grupo)
+
+| Grupo (como está hoje) | Nº | Protege | Destino | Quem faz |
+|---|---|---|---|---|
+| Contrato gerado do storefront | 1 | artefato fresco | **build** | G5: com `packages/contrato` não há cópia — o storefront importa o tipo, e `gen-content.mjs` sai do mundo |
+| `SECTION_TYPES ⇔ SECTION_FIELDS` | 2 | todo tipo tem campos; sem tipo fora | **tipagem** | `Record<SectionType, …>` já é exaustivo; a assert só existe porque a guarda lê a cópia por JSON |
+| `DEFAULTS_HOME_SECTIONS` | 9 | seed cobre os tipos, posições únicas/ordenadas, obrigatórios preenchidos, cromo igual ao fallback | **teste** (1 spec) + **serviço** | `defaults.spec.ts`; `position` único vira validação do serviço (o que a tabela de riscos já previa) |
+| `ADMIN` — espelhos | 5 | o painel não redeclara `ITEM_FIELDS`/`ICON_LABELS`/… | **tipagem** | G2: o painel é do **mesmo pacote** do contrato; `import type` some em build |
+| `ADMIN` — ramo por `kind` | 5 | todo `kind` tem ramo no `FieldInput` | **tipagem** | G2: `Record<FieldKind, JSX>` + `satisfies` → apagar um ramo é erro de compilação |
+| `ADMIN` — cobertura de `ITEM_FIELDS` | 15 | todo `list:*` tem editor e é alcançável | **teste** (1 spec) | percorre `ITEM_FIELDS` contra `SECTION_FIELDS` com os tipos reais |
+| `ADMIN` — opções/ícones/labels ⇔ storefront | 12 | mesmas chaves, toda chave com ícone e com rótulo | **teste** (1 spec) ou **tipagem** com o pacote | `Record<IconKey, …>` torna o registro exaustivo |
+| `ADMIN` — "o editor lê `itemFields`" | 2 | o painel não para de ler o schema | **teste de render** | jsdom + RTL (dep nova) — ou as duas saem e a cobertura fica assumida |
+| `ADMIN` — campos de item = tipo do item | 6 | `ITEM_FIELDS[k]` = chaves de `BenefitItem`… | **teste** (1 spec) | contrato e item estão no mesmo arquivo |
+| `APARÊNCIA` — invariantes do contrato | 8 | trilhos, ordem, opções, tradução | **teste** (1 spec) | dados de um array de contrato: teste é o lugar |
+| `APARÊNCIA` — cobertura CSS | 3 | variável escrita × consumida; classe definida × usada | **checagem que fica** (teste com `fs`) | nada padrão cobre isso; e o alvo é gerar os tokens para não haver o que comparar |
+| `PRÉVIA` — hex/família/pilha | 3 | a prévia bate com o tema | **teste** | após o F3, `theme.json` é seed e o hex vive no contrato |
+| `PRÉVIA` — `@font-face` + **md5 dos `.woff2`** | 2 | a fonte existe e é a mesma | **checagem que fica** (teste com `fs`) | é binário; nenhuma ferramenta padrão faz isso |
+| `PRÉVIA` — schema num lugar / rota lê e não monta | 3 | o schema não volta a ser montado na rota | **tipagem** (payload já é tipado) + **teste** (GET) | a assert de "montado num lugar" é redundante: `ContentSchemaPayload` já é o tipo |
+| `SCHEMA COMO DADO` | 9 | migration só-DDL, model, `getSchema`/`saveSchema`, versão, `--check`, flags, `schemaVersion` + filtro | **teste** (2 specs) + **CI** | `check-schema` na CI é a checagem de **dado** |
+| (novo) `supportedSections` e `resolveTheme` | — | a loja descarta o que não conhece | **teste** (vitest) | dep nova no frontend, que hoje não tem runner |
+
+**Contagem honesta:** as ~6 que ficam (CSS ×2, fontes ×2, migration ×1, e o
+`--check` na CI) são as que nenhuma linguagem nem ferramenta padrão vê. As ~15
+de `ADMIN` viram compilador. As ~30 de paridade entre pacotes só morrem na G5.
+O meio vai para teste.
+
+### Fases
+
+| Fase | O quê | Risco |
+|---|---|---|
+| **G0** | este mapa, escrito | ~zero |
+| **G1** | **CI** no GitHub Actions: `make check`, `make types`, testes, `check-schema` (Postgres de serviço), `next build` | baixo — e é o que torna todo o resto verificável |
+| **G2** | **tipagem no painel**: importar os tipos do contrato, renderer exaustivo por `kind`, constantes importadas em vez de lidas por regex | baixo |
+| **G3** | **testes assumem a guarda**: `defaults`, `appearance`, `itemFields`/ícones/labels, CSS e fontes com `fs`, `validateData`/`isKnownType`/`normalizeSurface`/`getSchema`, vitest no frontend, jsdom+RTL no painel | médio (deps novas) |
+| **G4** | **deletar a guarda**: `git rm scripts/check-contract-parity.mjs`; `make check` = `gen --check` + testes; o hook chama o novo `make check`. O mapa vai na mensagem do commit | médio — por isso a CI precisa estar verde antes |
+| **G5** | **`packages/contrato`**: install unificado (lockfile único), pacote com `contract.ts` + `schema.ts`, os dois apps em `workspace:*`, `transpilePackages` no Next, Medusa com o pacote no build, os dois Dockerfiles ajustados. Sai `gen-content.mjs` e `contract.generated.ts` | **alto** — mexe no build dos dois lados |
+
+**Requisito de G4:** CI verde antes. Sem CI rodando, apagar 89 verificações é
+desligar o alarme antes de ligar outro.
+
+### Validação final exigida (o "100%")
+
+**A — estático:** `make types` 0/0 · `make check` sem a guarda · suíte inteira
+verde (backend jest, frontend vitest, painel jsdom) · `next build` ·
+**`medusa build`** (que compila o admin Vite — é o que prova que o pacote
+compartilhado entrou no bundle) · base limpa com `db:migrate` + `seed` +
+`seed-schema --check`.
+
+**B — aplicação no ar, com fluxo:** `make host-up`; storefront e API de pé;
+`/br`, produto, `/br/cart` e `/store/content` (com `schemaVersion`) 200; e o
+**painel de ponta a ponta via API**: login → `GET /admin/content` com
+`schemaSource: db` → `PATCH` → a vitrine mostra → `POST /api/revalidate?tag=content`
+→ atualiza sem esperar a janela. Mais as provas do schema como dado (campo só
+no registro é aceito; campo fora do registro é 400) e da tolerância (tipo
+desconhecido → home 200, seção descartada).
+
+**C — declarado fora do número:** `/br/categories` e `/br/search` continuam 404
+(dívidas 2.1/4.2); **as imagens Docker não podem ser construídas nesta máquina**
+(daemon down), e como G5 mexe nos Dockerfiles isso é pendência declarada, não
+verde; não há E2E de browser.
+
+**D — regra:** se algo de A ou B falhar, o trabalho para e é reportado — não é
+"pronto" com pendência escondida.
 
 ## Sessão de higiene (2026-09-27)
 
