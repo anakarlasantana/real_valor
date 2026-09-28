@@ -182,10 +182,14 @@ real_valor/
 ├── docker-compose.override.yml   # overlay de DEV (bind mounts + `target: dev`)
 ├── Makefile                      # atalhos; `PROD=1` seleciona o modo
 ├── .env.example                  # modelo do `.env` da raiz
-├── .nvmrc                        # Node 22 (a mesma versão usada nas imagens)
+├── .nvmrc                        # Node 22 para o dia a dia; a CI usa 24 — a guarda
+│                                 #   importa o `contract.ts` como TypeScript, e o
+│                                 #   type-stripping estável só existe do 22.18+
+├── .github/workflows/           # CI: guarda, tipos, registro do schema e build
 ├── scripts/
 │   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
-│   ├── check-contract-parity.mjs # guarda: artefato em dia + contrato coerente
+│   ├── check-contract-parity.mjs # guarda (em redução: 89 → 80 asserts; o resto
+│   │                           #   virou `tsc` e teste — ver docs/plano-centralizacao.md)
 │   ├── dev-host.sh               # modo host (sem Docker): up/down/status/logs
 │   └── vendor-fonts.mjs          # (re)baixa e valida os `.woff2` self-hosted
 │
@@ -199,7 +203,9 @@ real_valor/
 │       ├── api/store/ api/admin/     # rotas customizadas da Store API e do Admin
 │       ├── admin/                    # extensões do painel (rotas + i18n pt-BR)
 │       ├── jobs/ links/ subscribers/ workflows/
-│       └── scripts/                  # `seed.ts` (admin/região/chaves) e `seed-content.ts`
+│       └── scripts/                  # `seed.ts` (admin/região/chaves), `seed-content.ts`
+│                                       #   (conteúdo da home) e `seed-schema.ts`
+│                                       #   (registro do schema no Postgres)
 │
 └── frontend/                         # Next.js 15 (App Router) — storefront
     ├── Dockerfile                    # deps → builder → runner (standalone, PROD) | deps → dev (DEV)
@@ -262,6 +268,26 @@ payload — banco novo funciona antes do primeiro seed. Detalhes em
 ```bash
 git config core.hooksPath .githooks   # uma vez por clone
 ```
+
+### Verificação: o que roda, e onde
+
+| Onde | Comando | O que faz |
+| :--- | :--- | :--- |
+| Commit (hook) + CI | `make check` | artefato do contrato em dia + **80 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ CSS, ⇔ fontes, ⇔ registro do schema). **Não instala nada**: os dois scripts leem arquivos com Node puro |
+| CI | `make types` | `tsc` dos dois pacotes (**0 erros**). Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
+| CI | `yarn test:unit` (em `backend/`) | **37 testes** dos invariantes do contrato, do conteúdo padrão, do registro do schema e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| CI | `yarn test` (em `frontend/`) | **5 testes** da tolerância da loja ao tipo desconhecido (`vitest`) |
+| CI | `make check-schema` | o registro do `content_schema` conferido contra o contrato, num Postgres efêmero |
+| CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |
+
+A CI é [`.github/workflows/check.yml`](.github/workflows/check.yml), com um job por
+dependência (o `guard` não instala nada, o `schema` sobe um Postgres). Ela é o que
+transforma o resto desta tabela em obrigatório — antes dela, tudo dependia de alguém
+lembrar.
+
+O caminho para **não depender mais** da guarda de paridade (ela ainda é o item em
+redução: 89 → 80 asserções, com o resto virando `tsc` e teste) está em
+[`docs/plano-centralizacao.md`](docs/plano-centralizacao.md).
 
 ---
 
