@@ -80,7 +80,7 @@ de conteúdo + render), sem migrar o tema para o CMS nesta rodada.
 
 **Status: resolvido em 2026-09-24, reescrito em 2026-09-26.** O `README.md` documenta o fluxo real
 de execução (seções *Como a Aplicação Roda Localmente*, *Admin do Medusa em Desenvolvimento*,
-*Banco de dados e dados iniciais* e *Troubleshooting*), as portas efetivas (8000/9000/5438/6381) e
+*Banco de dados e dados iniciais* e *Troubleshooting*), as portas efetivas (8000/9000/5439/6382) e
 o arquivo de ambiente único (`.env`, a partir de `.env.example`).
 
 **Pendência residual resolvida em 2026-09-24 (containerização).** O fluxo foi unificado em

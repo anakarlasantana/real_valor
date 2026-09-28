@@ -16,19 +16,6 @@ Os únicos pré-requisitos são **Docker + Compose v2** (e `curl`, usado por `ma
 
 > ⚠️ **Não existem mais `start.sh`, `stop.sh` nem `build-frontend.sh`**, e não há ordem obrigatória de subida — veja [Sem ordem obrigatória de subida](#-sem-ordem-obrigatória-de-subida).
 
-### Editar sem build de imagem (modo host)
-
-Quando o build das imagens é o gargalo do ciclo de edição, `scripts/dev-host.sh` sobe Postgres e Redis em container e roda Medusa e Next **direto no host**, com os `node_modules` locais — nas mesmas portas da stack:
-
-```bash
-make host-up                     # containers + migrations + admin + seed + os dois servidores
-make host-status                 # PID e saúde de cada servidor
-make host-logs SVC=frontend      # logs (padrão: backend)
-make host-down                   # para os servidores (containers ficam de pé)
-```
-
-O modo host é ferramenta de desenvolvimento; a stack canônica continua sendo o Compose (`make up`). PIDs e logs ficam em `.run/` (não versionado), e o script escreve o `frontend/.env.local` a partir da publishable key do banco.
-
 ---
 
 ## 🧭 Como a Aplicação Roda Localmente
@@ -49,8 +36,8 @@ Ou seja: **o `-f` é o seletor de modo**. Por isso não existe `docker-compose.p
 ```
 docker compose up -d
 │
-├── postgres   → real_valor_postgres    127.0.0.1:5438 → 5432   (healthcheck: pg_isready)
-├── redis      → real_valor_redis       127.0.0.1:6381 → 6379   (healthcheck: redis-cli ping)
+├── postgres   → real_valor_postgres    127.0.0.1:5439 → 5432   (healthcheck: pg_isready)
+├── redis      → real_valor_redis       127.0.0.1:6382 → 6379   (healthcheck: redis-cli ping)
 │
 ├── backend    → real_valor_backend     :9000
 │      depends_on: postgres + redis (service_healthy)
@@ -90,11 +77,11 @@ cp .env.example .env
 | Arquivo | Usado por | Aponta para |
 | :--- | :--- | :--- |
 | `.env` (raiz, **não versionado**) | **todos** os containers, via Compose — inclusive as `NEXT_PUBLIC_*` do storefront | `postgres:5432` / `redis:6379` / `backend:9000` |
-| `backend/.env` (**não versionado**) | backend rodando **no host** (CLI Medusa, fora do Docker) | `localhost:5438` / `localhost:6381` |
+| `backend/.env` (**não versionado**) | backend rodando **no host** (CLI Medusa, fora do Docker) | `localhost:5439` / `localhost:6382` |
 | `frontend/.env.local` (**não versionado**) | storefront rodando **no host** (`next dev`/`next build` pela CLI) | `http://localhost:9000` |
 | `frontend/.env.template` (versionado) | modelo do `frontend/.env.local` — só para quem roda o storefront sem Docker | `http://localhost:9000` |
 
-> São **dois arquivos de ambiente distintos, para dois modos de execução distintos**: o `.env` da raiz é o único que os containers leem; o `backend/.env` e o `frontend/.env.local` existem para quem roda as CLIs no host (portas `5438`/`6381` em vez de `postgres`/`redis`). Antes existia um `.env.docker` (e um `backend/.env.docker`) só para o Compose: foram removidos porque o Compose já lê o `.env` da raiz sozinho — o arquivo extra era uma segunda fonte de verdade que saía de sincronia.
+> São **dois arquivos de ambiente distintos, para dois modos de execução distintos**: o `.env` da raiz é o único que os containers leem; o `backend/.env` e o `frontend/.env.local` existem para quem roda as CLIs no host (portas `5439`/`6382` em vez de `postgres`/`redis`). Antes existia um `.env.docker` (e um `backend/.env.docker`) só para o Compose: foram removidos porque o Compose já lê o `.env` da raiz sozinho — o arquivo extra era uma segunda fonte de verdade que saía de sincronia.
 
 > 🔑 O frontend carrega `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` (`pk_...`). Sem ela a Store API responde `400 not_allowed — Publishable API key required`, mesmo com o backend no ar. Veja **Configurações → Chaves de API** no Admin ou a tabela `api_key` no banco.
 >
@@ -110,12 +97,12 @@ curl -s -H "x-publishable-api-key: $(grep NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY .en
 
 | Componente | Container | Porta (host→container) | Logs |
 | :--- | :--- | :--- | :--- |
-| PostgreSQL | `real_valor_postgres` | **5438** → 5432 | `docker logs real_valor_postgres` |
-| Redis | `real_valor_redis` | **6381** → 6379 | `docker logs real_valor_redis` |
+| PostgreSQL | `real_valor_postgres` | **5439** → 5432 | `docker logs real_valor_postgres` |
+| Redis | `real_valor_redis` | **6382** → 6379 | `docker logs real_valor_redis` |
 | Medusa Backend | `real_valor_backend` | **9000** → 9000 | `docker logs -f real_valor_backend` |
 | Storefront | `real_valor_frontend` | **8000** → 8000 | `docker logs -f real_valor_frontend` |
 
-> As portas `5438` e `6381` são intencionais: evitam conflito com as portas padrão `5432`/`6379` de outras stacks da máquina. Postgres e Redis são publicados **apenas no loopback** (`127.0.0.1`), para inspeção local — o frontend e o backend falam com eles pela rede interna `real_valor_net`.
+> As portas `5439` e `6382` são intencionais: evitam conflito com as portas padrão `5432`/`6379` de outras stacks da máquina — e com o Postgres do sistema, que costuma ficar na `5438`. Postgres e Redis são publicados **apenas no loopback** (`127.0.0.1`), para inspeção local — o frontend e o backend falam com eles pela rede interna `real_valor_net`.
 
 ### Comandos
 
@@ -190,7 +177,6 @@ real_valor/
 │   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
 │   ├── check-contract-parity.mjs # guarda (em redução: 89 → 80 asserts; o resto
 │   │                           #   virou `tsc` e teste — ver docs/plano-centralizacao.md)
-│   ├── dev-host.sh               # modo host (sem Docker): up/down/status/logs
 │   └── vendor-fonts.mjs          # (re)baixa e valida os `.woff2` self-hosted
 │
 ├── backend/                          # Medusa v2 — Store API + Admin
@@ -354,7 +340,7 @@ O `--renew-anon-volumes` (ou `-V`) **é obrigatório aqui**: o volume anônimo `
 | `next build` falha com `err: url(...) failed to parse` (domínio `gstatic`/`fonts.googleapis`) | alguma fonte voltou a usar `next/font/google`, que busca CSS do Google **durante o build** | Use `next/font/local` como em `src/app/fonts/` — ver [`frontend/src/app/fonts/README.md`](frontend/src/app/fonts/README.md) |
 | Build aborta com `Failed to collect page data for /[countryCode]/categories/[...category]` | alguma página voltou a declarar `generateStaticParams()` e chama a Store API em build time | Remova a chamada: as páginas renderizam sob demanda com ISR + `POST /api/revalidate`. O build **tem** de ser offline |
 | Migrations travam / `connection timed out` | `DATABASE_URL` sem `?sslmode=disable` contra um Postgres com `ssl = off`: o Medusa tenta TLS e pendura até o timeout | O Compose já embute `?sslmode=disable`; mantenha a query string em qualquer URL nova |
-| `Address already in use` em 5438, 6381, 8000 ou 9000 | outra stack na máquina usando a mesma porta | `docker compose ps` e `ss -ltnp` para identificar. **Não** desça serviços de outros projetos (`devops_*`, `sin-frontend-dev` usa 8080) |
+| `Address already in use` em 5439, 6382, 8000 ou 9000 | outra stack na máquina usando a mesma porta | `docker compose ps` e `ss -ltnp` para identificar. **Não** desça serviços de outros projetos (`devops_*`, `sin-frontend-dev` usa 8080) |
 | Alterei o `.env` e o browser continua igual | em **PROD** a `NEXT_PUBLIC_*` foi **inlinada no bundle** pelo `next build`; em DEV o valor é lido em runtime a cada request, então a causa costuma ser o container antigo (não recriado) | DEV: `make restart`. PROD: `make build && make restart` |
 | `POST /api/revalidate` responde `500` | sem `REVALIDATE_SECRET` o handler é **fail-closed** (não invalida nada e não há default no Compose) | Gere com `openssl rand -hex 32`, coloque no `.env` da raiz e `make restart` |
 | Backend demora a responder na primeira subida em DEV | `medusa develop` compila `medusa-config.ts` e sobe o Vite do admin | Espere o healthcheck (o `start_period` do DEV é de 120s); acompanhe com `make logs` |
@@ -378,8 +364,8 @@ make up && make migrate && make seed
 | **CMS — Conteúdo da vitrine** | [http://localhost:9000/painel/content](http://localhost:9000/painel/content) | Sidebar principal → **Conteúdo da vitrine** |
 | **Store API** | [http://localhost:9000/store](http://localhost:9000/store) | API REST consumida pelo frontend |
 | **Health check** | [http://localhost:9000/health](http://localhost:9000/health) | `200` indica backend operacional |
-| **PostgreSQL** | `localhost:5438` | user `real_valor` / db `real_valor_db` (loopback) |
-| **Redis** | `localhost:6381` | cache e event bus (loopback) |
+| **PostgreSQL** | `localhost:5439` | user `real_valor` / db `real_valor_db` (loopback) |
+| **Redis** | `localhost:6382` | cache e event bus (loopback) |
 
 > **CMS da vitrine:** a página **Conteúdo da vitrine** fica na **sidebar principal** do admin,
 > em `/painel/content` — ao lado dos menus nativos e, por isso, dentro do **personalizar
@@ -436,9 +422,9 @@ sobrescreve a senha de um usuário existente (ele registra o usuário como já
 existente e segue). Por isso `.env`, `.env.example` e este README mantêm o mesmo
 valor — assim a senha documentada é sempre a verdadeira.
 
-O modo host faz o mesmo: `scripts/dev-host.sh up` cria/verifica o admin logo
+O `make up` tambem cria/verifica o admin logo
 depois das migrations, lendo `ADMIN_EMAIL`/`ADMIN_PASSWORD` do `.env` (o
 container recebe as duas pelo `environment:` do `docker-compose.yml`). Nos dois
-casos "usuário já existe" **não** é falha — no modo host, uma falha de outra
+casos "usuário já existe" **não** é falha — no `make up`, uma falha de outra
 natureza é distinguida daí e o log da tentativa fica em `.run/admin-user.log`.
 

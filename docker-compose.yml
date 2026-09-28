@@ -60,8 +60,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-real_valor_db}
     ports:
       # Somente no loopback: permite inspecao local (psql/DBeaver) sem expor o
-      # banco para a rede da maquina.
-      - "127.0.0.1:${POSTGRES_PORT:-5438}:5432"
+      # banco para a rede da maquina. A porta e' 5439 e nao a 5438 padrao porque
+      # a 5438 da maquina pode estar ocupada por um Postgres do sistema — e um
+      # Compose que nao consegue publicar a porta sobe o banco sem ela, e o
+      # ambiente fica com DUAS fontes de 'qual e' o banco' (ver `make doctor`).
+      - "127.0.0.1:${POSTGRES_PORT:-5439}:5432"
     volumes:
       - real_valor_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -90,7 +93,7 @@ services:
     # `--appendonly yes` persiste o cache/event bus entre reinicios.
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "127.0.0.1:${REDIS_PORT:-6381}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6382}:6379"
     volumes:
       - real_valor_redisdata:/data
     healthcheck:

@@ -209,7 +209,7 @@ verde (backend jest, frontend vitest, painel jsdom) · `next build` ·
 compartilhado entrou no bundle) · base limpa com `db:migrate` + `seed` +
 `seed-schema --check`.
 
-**B — aplicação no ar, com fluxo:** `make host-up`; storefront e API de pé;
+**B — aplicação no ar, com fluxo:** `make up` (Compose; o modo host foi removido); storefront e API de pé;
 `/br`, produto, `/br/cart` e `/store/content` (com `schemaVersion`) 200; e o
 **painel de ponta a ponta via API**: login → `GET /admin/content` com
 `schemaSource: db` → `PATCH` → a vitrine mostra → `POST /api/revalidate?tag=content`

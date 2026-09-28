@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen check host-up host-down host-status host-logs
+.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen check
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -54,11 +54,6 @@ help:
 	@echo "    make gen           - Regera o contrato do storefront (commit o diff)"
 	@echo "    make check         - Falha se o artefato estiver velho ou o contrato incoerente"
 	@echo ""
-	@echo "  Modo host (sem Docker): scripts/dev-host.sh"
-	@echo "    make host-up       - Postgres/Redis em container + Medusa e Next no host"
-	@echo "    make host-status   - PID e saude dos dois servidores do modo host"
-	@echo "    make host-logs SVC=frontend - Logs do modo host (padrao: backend)"
-	@echo "    make host-down     - Para os servidores do modo host"
 	@echo ""
 	@echo "  Modo: use PROD=1 para producao (ex.: make up PROD=1)"
 
@@ -104,23 +99,28 @@ build:
 # ---------------------------------------------------------------------------
 # Dados
 # ---------------------------------------------------------------------------
+# `migrate`, `seed` e `seed-schema` rodam com `-u root` de proposito: em DEV o
+# `/app/node_modules` e' um volume anonimo herdado da imagem (dono root), e o
+# runner de migration quer criar `dist/migrations` dentro dos pacotes — sem
+# isso, `make migrate` morre com EACCES. A aplicacao em si (medusa develop,
+# next dev) segue sem root.
 migrate:
-	$(COMPOSE) exec backend yarn medusa db:migrate
+	$(COMPOSE) exec -u root backend yarn medusa db:migrate
 
 seed:
-	$(COMPOSE) exec backend yarn seed
-	$(COMPOSE) exec backend yarn seed-schema
+	$(COMPOSE) exec -u root backend yarn seed
+	$(COMPOSE) exec -u root backend yarn seed-schema
 
 # O registro do schema do CRM no Postgres: o contrato e o bootstrap, o banco e
 # a fonte em runtime. Entra no `seed` porque um banco novo precisa dele para o
 # CRM deixar de servir o bootstrap.
 seed-schema:
-	$(COMPOSE) exec backend yarn seed-schema
+	$(COMPOSE) exec -u root backend yarn seed-schema
 
 # So confere: nao grava nada e sai != 0 quando o registro esta velho (ou nao
 # existe). E o que a CI chama depois de `make check`.
 check-schema:
-	$(COMPOSE) exec backend yarn check-schema
+	$(COMPOSE) exec -u root backend yarn check-schema
 
 clean-db:
 	@echo "AVISO: isto vai APAGAR os dados do Postgres e do Redis."
@@ -197,23 +197,3 @@ types:
 	@cd frontend && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
 	@echo ""
 	@echo "  Tipos conferidos nos dois pacotes."
-
-# ---------------------------------------------------------------------------
-# Modo HOST: editar e validar sem build de imagem
-# ---------------------------------------------------------------------------
-# `scripts/dev-host.sh` sobe Postgres e Redis em container e roda Medusa e Next
-# direto no host, com os `node_modules` locais — mesmas portas do Compose. E o
-# caminho curto para o ciclo de edicao (e para validar o repositorio) quando o
-# build das imagens seria o gargalo. A stack canonica continua sendo o Compose.
-host-up:
-	@scripts/dev-host.sh up
-
-host-down:
-	@scripts/dev-host.sh down
-
-host-status:
-	@scripts/dev-host.sh status
-
-host-logs:
-	@scripts/dev-host.sh logs $(or $(SVC),backend)
-
