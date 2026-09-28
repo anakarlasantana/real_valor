@@ -40,6 +40,8 @@ docker compose up -d
 ├── redis      → real_valor_redis       127.0.0.1:6382 → 6379   (healthcheck: redis-cli ping)
 │
 ├── backend    → real_valor_backend     :9000
+│      + :9001 SOMENTE em DEV = WebSocket de HMR do Vite do admin (HMR_PORT no
+│        override). Sem porta fixa e publicada o painel quebra — Troubleshooting 2.
 │      depends_on: postgres + redis (service_healthy)
 │      └── backend/docker-entrypoint.sh
 │            ├── aguarda o Postgres aceitar conexões (pg_isready, até 60 tentativas)
@@ -174,6 +176,7 @@ real_valor/
 │                                 #   type-stripping estável só existe do 22.18+
 ├── .github/workflows/           # CI: guarda, tipos, registro do schema e build
 ├── scripts/
+│   ├── doctor.sh                    # diagnostico do ambiente (le e nao mexe)
 │   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
 │   ├── check-contract-parity.mjs # guarda (em redução: 89 → 80 asserts; o resto
 │   │                           #   virou `tsc` e teste — ver docs/plano-centralizacao.md)
@@ -329,7 +332,45 @@ docker compose up -d --force-recreate --renew-anon-volumes
 
 O `--renew-anon-volumes` (ou `-V`) **é obrigatório aqui**: o volume anônimo `/app/node_modules` é herdado do container anterior, então recriar o container sem renová-lo manteria a árvore de produção (sem `ts-node`) e o erro voltaria idêntico.
 
-### 2. Outros sintomas frequentes
+Antes de.debugar qualquer sintoma: `make doctor` — ele confere o Docker, container parado com
+nome ocupado, porta do Postgres/Redis, se a publishable key do `.env` é a do banco e se o
+registro do schema está gravado. Sai != 0 e diz o comando que resolve.
+
+### 2. Painel: `Ocorreu um erro` / `Error loading dynamically imported module`
+
+O painel abre (ou já estava aberto) e quebra com a tela de erro do Medusa Admin; no console do browser aparece algo como:
+
+```
+error loading dynamically imported module: http://localhost:9000/painel/@fs/node_modules/.vite/deps/...
+```
+
+Repare no caminho: é `@fs/node_modules/...`, **sem o segmento `/app`** — o caminho válido é `/painel/@fs/app/node_modules/...`. Esse formato é a assinatura de um **módulo que o dev server não resolveu**.
+
+**Por que não dá 404 (e por que `200` aqui é falha).** O `@medusajs/admin-bundler` sobe o Vite do admin com `appType: "spa"` + `middlewareMode: true`. URL de módulo que ele não resolve **não** vira 404: cai no fallback e recebe o `index.html` transformado, com **HTTP 200 e `Content-Type: text/html`**. O browser recebe HTML onde esperava JavaScript e aborta o import dinâmico. Dá para ver a diferença em dois comandos:
+
+```bash
+curl -s -o /dev/null -w '%{content_type} %{http_code}\n' \
+  'http://localhost:9000/painel/@fs/node_modules/.vite/deps/react.js'        # text/html 200      <- fallback
+curl -s -o /dev/null -w '%{content_type} %{http_code}\n' \
+  'http://localhost:9000/painel/@fs/app/node_modules/.vite/deps/react.js'    # text/javascript 200
+```
+
+**Por que `make logs` não mostra nada.** O `@medusajs/framework` (`dist/http/express-loader.js`, lista `NOISY_ENDPOINTS_CHUNKS`) **silencia** no log toda requisição que contenha `@fs`, `@id`, `@vite`, `@react` ou `node_modules`. As requisições que **resolvem** não aparecem; as que caem no fallback aparecem — porque o fallback reescreve a URL — e aparecem com **200**, que é justamente o que ninguém estranha. É o único rastro desse erro, e ele parece inofensivo: o `make logs-admin` agora detecta esse padrão e falha.
+
+**Causa (corrigida aqui): HMR do Vite numa porta que só existe dentro do container.** Sem `HMR_PORT`, o admin-bundler **sorteia** uma porta livre para o WebSocket de HMR (`getPort()`) — ex.: `38073` — e o `@vite/client` servido ao browser passa a apontar para `ws://localhost:38073/painel/`. O Compose publica apenas a `9000`, então o HMR **nunca** conecta. Sem HMR, o Vite deixa de disparar o **full reload** que acompanha a re-otimização de `node_modules/.vite/deps`; a aba continua com o grafo de módulos antigo e passa a pedir chunks cujos hashes não existem mais. (O `@fs/node_modules/...` sem `/app` é o caso extremo: um pedido relativo, que cai direto no fallback.)
+
+Dois comandos para flagrar a porta que o browser está usando:
+
+```bash
+curl -s http://localhost:9000/painel/@vite/client | grep -o 'hmrPort = [0-9]*'   # esperado: hmrPort = 9001
+curl -s -o /dev/null -w '%{http_code}\n' -m 3 http://localhost:9001/painel/      # esperado: 426 (Upgrade Required)
+```
+
+**Correção aplicada:** `HMR_PORT: 9001` no `docker-compose.override.yml` (**só DEV**) + a porta publicada (`9001:9001`). O `ports` do Compose concatena base + override, então a `9000` continua valendo. Para trocar de porta, mude os **dois** valores (`HMR_PORT` e a publicação) e rode `make restart`.
+
+**Ainda quebrou?** Um reload forçado (`Ctrl+Shift+R`) resolve o estado da aba — o servidor já está no grafo novo; depois rode `make logs-admin` para confirmar que nenhum módulo caiu no fallback.
+
+### 3. Outros sintomas frequentes
 
 | Sintoma | Causa | Correção |
 | :--- | :--- | :--- |
@@ -340,7 +381,7 @@ O `--renew-anon-volumes` (ou `-V`) **é obrigatório aqui**: o volume anônimo `
 | `next build` falha com `err: url(...) failed to parse` (domínio `gstatic`/`fonts.googleapis`) | alguma fonte voltou a usar `next/font/google`, que busca CSS do Google **durante o build** | Use `next/font/local` como em `src/app/fonts/` — ver [`frontend/src/app/fonts/README.md`](frontend/src/app/fonts/README.md) |
 | Build aborta com `Failed to collect page data for /[countryCode]/categories/[...category]` | alguma página voltou a declarar `generateStaticParams()` e chama a Store API em build time | Remova a chamada: as páginas renderizam sob demanda com ISR + `POST /api/revalidate`. O build **tem** de ser offline |
 | Migrations travam / `connection timed out` | `DATABASE_URL` sem `?sslmode=disable` contra um Postgres com `ssl = off`: o Medusa tenta TLS e pendura até o timeout | O Compose já embute `?sslmode=disable`; mantenha a query string em qualquer URL nova |
-| `Address already in use` em 5439, 6382, 8000 ou 9000 | outra stack na máquina usando a mesma porta | `docker compose ps` e `ss -ltnp` para identificar. **Não** desça serviços de outros projetos (`devops_*`, `sin-frontend-dev` usa 8080) |
+| `Address already in use` em 5439, 6382, 8000, 9000 ou 9001 | outra stack na máquina usando a mesma porta | `docker compose ps` e `ss -ltnp` para identificar. **Não** desça serviços de outros projetos (`devops_*`, `sin-frontend-dev` usa 8080). Se for a 9001, mude `HMR_PORT` **e** a publicação em `docker-compose.override.yml` |
 | Alterei o `.env` e o browser continua igual | em **PROD** a `NEXT_PUBLIC_*` foi **inlinada no bundle** pelo `next build`; em DEV o valor é lido em runtime a cada request, então a causa costuma ser o container antigo (não recriado) | DEV: `make restart`. PROD: `make build && make restart` |
 | `POST /api/revalidate` responde `500` | sem `REVALIDATE_SECRET` o handler é **fail-closed** (não invalida nada e não há default no Compose) | Gere com `openssl rand -hex 32`, coloque no `.env` da raiz e `make restart` |
 | Backend demora a responder na primeira subida em DEV | `medusa develop` compila `medusa-config.ts` e sobe o Vite do admin | Espere o healthcheck (o `start_period` do DEV é de 120s); acompanhe com `make logs` |

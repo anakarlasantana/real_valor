@@ -95,6 +95,21 @@ services:
       # Em dev as migrations NAO rodam a cada restart — aplique sob demanda
       # com `make migrate`. Evita reexecutar migracoes a cada `up`.
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-0}
+      # Porta do WebSocket de HMR do Vite do admin. Sem ela, o
+      # `@medusajs/admin-bundler` SORTEIA uma porta livre (`getPort()`), e essa
+      # porta existe so DENTRO do container — o `@vite/client` servido ao
+      # browser passa a apontar para `ws://localhost:<porta sorteada>/painel/`
+      # e o HMR nunca conecta. Sem HMR o Vite nao dispara o full reload que
+      # acompanha a re-otimizacao de `node_modules/.vite/deps`: a aba fica
+      # presa no grafo antigo e os imports dinamicos passam a apontar para
+      # chunks que nao existem mais -> "Error loading dynamically imported
+      # module" no painel. Publicada logo abaixo (dev so liga o que esta aqui).
+      HMR_PORT: 9001
+    # WebSocket de HMR do Vite do admin (par do HMR_PORT acima). A lista de
+    # `ports` do Compose CONCATENA base + override, entao o 9000:9000 da base
+    # continua publicado.
+    ports:
+      - "9001:9001"
     volumes:
       # Codigo do host -> container (habilita o hot reload).
       - ./backend/src:/app/src

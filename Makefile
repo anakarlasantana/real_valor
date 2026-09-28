@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen check
+.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen check doctor
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -47,7 +47,7 @@ help:
 	@echo "    make shell-backend - Shell dentro do container do backend"
 	@echo "    make shell-frontend- Shell dentro do container do storefront"
 	@echo "    make health        - Checa /health do backend, a home da loja e o admin"
-	@echo "    make logs-admin    - Falha se o Vite do admin nao resolveu modulos"
+	@echo "    make logs-admin    - Falha se o Vite do admin nao resolveu modulos ou serviu o index.html no lugar de um modulo (import dinamico quebrado)"
 	@echo "    make revalidate TAG=products - Invalida o cache do storefront (ISR)"
 	@echo ""
 	@echo "  Contrato de conteudo"
@@ -148,14 +148,37 @@ health:
 
 # O HTML do admin responde 200 mesmo quando o Vite falha em resolver os modulos
 # de extensao (o painel abre em branco). Este alvo olha o que importa: o log.
+#
+# Sao DUAS falhas diferentes:
+#   1. "Failed to resolve import" — o Vite diz na cara que nao achou o modulo.
+#   2. Requisicao de modulo logada com 200 — o dev server do admin sobe com
+#      `appType: spa`, entao URL de modulo inexistente NAO da 404: cai no
+#      fallback e recebe o `index.html` (200, text/html), e o browser quebra com
+#      "Error loading dynamically imported module".
+#      O `@medusajs/framework` SILENCIA no log tudo que contenha `@fs`, `@id`,
+#      `@vite`, `@react` ou `node_modules` (NOISY_ENDPOINTS_CHUNKS, em
+#      @medusajs/framework/dist/http/express-loader.js): as requisicoes que
+#      RESOLVEM nao aparecem. Logo, modulo logado com 200 = modulo que NAO
+#      resolveu. E' a unica pista desse erro — e ela parece inofensiva.
+ADMIN_FALLBACK_200 := GET /painel/(@fs|@id|@vite|@react|node_modules).*[(]200[)]
+
 logs-admin:
 	@test -n "$$($(COMPOSE) ps -q backend)" || { echo "backend nao esta rodando (rode 'make up')"; exit 1; }
 	@if $(COMPOSE) logs --tail=400 backend 2>&1 | grep -aq "Failed to resolve import"; then \
 	  echo "FALHA: o Vite do admin nao resolveu modulos (painel em branco). Ultimas ocorrencias:"; \
 	  $(COMPOSE) logs --tail=400 backend 2>&1 | grep -a "Failed to resolve import" | tail -5; \
 	  exit 1; \
+	elif $(COMPOSE) logs --tail=400 backend 2>&1 | grep -aqE "$(ADMIN_FALLBACK_200)"; then \
+	  echo "FALHA: o browser pediu um modulo do admin e o fallback da SPA respondeu o index.html (200)."; \
+	  echo "       E' um import dinamico quebrado ('Error loading dynamically imported module')."; \
+	  echo "       Causa tipica: HMR do Vite fora de alcance (aba presa no grafo de modulos velho)."; \
+	  echo "Ultimas ocorrencias:"; \
+	  $(COMPOSE) logs --tail=400 backend 2>&1 | grep -aE "$(ADMIN_FALLBACK_200)" | tail -5; \
+	  echo "Correcao: reload forcado no browser (Ctrl+Shift+R). Se voltar, confira o HMR_PORT do"; \
+	  echo "          docker-compose.override.yml e se a porta esta publicada (make health)."; \
+	  exit 1; \
 	else \
-	  echo "OK: nenhuma falha de resolucao do Vite nos ultimos 400 logs do backend."; \
+	  echo "OK: nenhuma falha do Vite do admin nos ultimos 400 logs do backend."; \
 	fi
 
 revalidate:
@@ -163,6 +186,16 @@ revalidate:
 	@curl -fsS -X POST "http://localhost:8000/api/revalidate?tag=$(TAG)" \
 	  -H "x-revalidate-secret: $$($(COMPOSE) exec -T frontend printenv REVALIDATE_SECRET)" \
 	  && echo " cache invalidado: $(TAG)"
+
+# ---------------------------------------------------------------------------
+# Diagnostico do ambiente local (le e nao mexe)
+# ---------------------------------------------------------------------------
+# Existe porque os problemas que derrubam `make up` nao dizem na cara do erro:
+# container velho com o nome ocupado, porta ja usada por outra coisa e
+# publishable key do `.env` diferente da do banco (esse derruba a LOJA inteira
+# com 500 e nenhuma mensagem aponta a chave).
+doctor:
+	@scripts/doctor.sh
 
 # ---------------------------------------------------------------------------
 # Contrato de conteudo: gerar e verificar
