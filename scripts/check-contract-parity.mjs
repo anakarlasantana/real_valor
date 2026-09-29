@@ -83,6 +83,16 @@ const APPEARANCE_CSS = join(
 )
 const ADMIN_CONTENT_ROUTE = join(root, "backend/src/api/admin/content/route.ts")
 /**
+ * A porta que publica a ordem da vitrine (R6.5) e a regra que ela aplica. A
+ * guarda confere que a numeração sai do módulo e que a tela não faz o serviço
+ * do servidor.
+ */
+const ADMIN_ORDER_ROUTE = join(
+  root,
+  "backend/src/api/admin/content/order/route.ts"
+)
+const ORDER_MODULE = join(root, "backend/src/modules/content/order.ts")
+/**
  * O schema em um lugar so (`modules/content/schema.ts`): e de la que a rota
  * monta o payload e de la que o `seed-schema` tira a linha do banco. As
  * chaves sao conferidas aqui, e nao na rota, porque a montagem saiu dela.
@@ -649,6 +659,45 @@ assert(
   "declarado no painel: " +
     panelTypeShapes.join(", ") +
     " — use `import type` de modules/content/contract"
+)
+
+// Desde a R6.5 o painel também não importa **valor** do backend. O painel é
+// código de **navegador** (`backend/src/admin` tem tsconfig e bundle próprios),
+// e o último valor importado era a regra da ordem (`positionFor`/`renumber`/
+// `nextPosition`): numeração calculada dentro do navegador, com a gravação
+// saindo como N `PATCH`es — o defeito que a fase tirou do caminho. Import de
+// valor aqui **compila** (o módulo importado pode ser puro: `order.ts` era), e é
+// por isso que a proibição precisa de guarda: a divergência volta em silêncio,
+// como uma segunda resposta para "que número esta seção recebe".
+const PANEL_FILES = walk(join(root, "backend/src/admin"), [".ts", ".tsx"])
+
+const panelValueImports = PANEL_FILES.flatMap((file) => {
+  const source = readFileSync(file, "utf8")
+  // `(?:^|\n)[ \t]*import` ancora o começo da **declaração** (o Prettier quebra
+  // o import em várias linhas, e um `import` de dentro de um comentário não tem
+  // esse alinhamento); o `(?!type\b)` separa o que é permitido —
+  // `import type { … }`, que não existe no bundle — do que não é; e o
+  // `(?:(?!\bimport\b)[\s\S])*?` impede que o casamento atravesse a declaração
+  // seguinte (era o falso positivo do `@medusajs/ui` antes de um
+  // `modules/content` mais abaixo no arquivo).
+  const pattern =
+    /(?:^|\n)[ \t]*import\s+(?!type\b)(?:(?!\bimport\b)[\s\S])*?from\s+"([^"]*)"/g
+
+  return [...source.matchAll(pattern)]
+    .filter((match) => match[1].includes("/modules/"))
+    .map((match) => {
+      const file_ = file.slice(root.length + 1)
+      const statement = match[0].trim().split("\n")[0]
+
+      return `${file_}: ${statement}`
+    })
+})
+
+assert(
+  "o painel do CRM não importa valor do backend (só `import type`)",
+  panelValueImports.length === 0,
+  panelValueImports.join("; ") +
+    " — a tela recebe o dado pelo payload da API (ver POST /admin/content/order)"
 )
 
 // E o outro lado do mesmo defeito: um `schema` que ninguém lê é campo que
@@ -1337,6 +1386,51 @@ assert(
 )
 
 console.log("\nCONTRATO COMO DADO (content_contract, o registro do crm)")
+
+// A ordem da vitrine (R6.5). Duas coisas, e as duas são de "uma resposta só".
+//
+// Primeiro a faixa: o numeral que a tela desenha com a ordem **pendente** é
+// previsão do que o `POST /admin/content/order` vai gravar, e a faixa chega como
+// dado (`order: orderFaixa()`), tirada das constantes do módulo. Número digitado
+// na rota seria uma segunda resposta para "onde a numeração começa" — e a
+// divergência apareceria como numeral que não bate com o que a loja recebe.
+//
+// Segundo, que o painel **use** esse dado: um `order` que ninguém lê é payload
+// morto, e a lista pendente voltaria a mostrar o número gravado (o defeito que
+// a fase conserta).
+const orderModule = readFileSync(ORDER_MODULE, "utf8")
+const orderRoute = readFileSync(ADMIN_ORDER_ROUTE, "utf8")
+
+assert(
+  "a faixa da ordem no payload sai das constantes do módulo (`orderFaixa`)",
+  adminRoute.includes("order: orderFaixa()") &&
+    orderModule.includes("export function orderFaixa") &&
+    orderModule.includes("first: FIRST_VITRINE_POSITION") &&
+    orderModule.includes("step: POSITION_STEP"),
+  "em backend/src/api/admin/content/route.ts: `order: orderFaixa()` — a " +
+    "faixa é de modules/content/order.ts"
+)
+
+assert(
+  "a tela numera a ordem pendente com a faixa do payload (não com a regra)",
+  pageSource.includes("order.first + place * order.step") &&
+    pageSource.includes('"/admin/content/order"'),
+  "em backend/src/admin/routes/content/page.tsx: numeral da ordem pendente " +
+    "sai de `order` (payload) e a publicação é o POST /admin/content/order"
+)
+
+// E a porta é uma só: a renumeração é do módulo (`applyOrder`), a loja é avisada
+// **uma vez** e não há `PATCH` por seção. Era esse laço que a fase tirou do
+// navegador — N requisições, N gravações e N avisos, com a ordem podendo ficar
+// pela metade.
+assert(
+  "a porta da ordem renumera pelo módulo e avisa a loja uma vez",
+  orderRoute.includes("applyOrder") &&
+    orderRoute.includes("readOrderIds") &&
+    (orderRoute.match(/notifyStorefront\(/g) ?? []).length === 1 &&
+    !/method: "PATCH"/.test(orderRoute),
+  "em backend/src/api/admin/content/order/route.ts"
+)
 
 const contentService = readFileSync(CONTENT_SERVICE, "utf8")
 const contentContractModel = readFileSync(CONTENT_CONTRACT_MODEL, "utf8")

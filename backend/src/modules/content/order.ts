@@ -1,9 +1,17 @@
 /**
- * A ordem da vitrine — a regra que o CRM usa para numerar as seções.
+ * A ordem da vitrine — a regra que o CRM usa para numerar as seções, e a única
+ * gravação que a aplica.
  * -------------------------------------------------------------------------
  * Mora aqui, e não dentro da página do admin, porque é uma decisão pura e
  * testável: quais tipos entram na ordem, de onde a numeração começa e o que
  * "próxima posição" quer dizer. A página do CRM só clica.
+ *
+ * As funções puras (`nextPosition`, `positionAfter`, `positionFor`, `renumber`,
+ * `orderErrors`) não sabem de banco: recebem listas e devolvem números. A
+ * gravação é **uma só** (`applyOrder`, no fim), e é de propósito que ela more
+ * aqui: publicar a ordem é renumeração + escrita + aviso, e separar as duas
+ * partes convidaria a uma segunda renumeração em outro lugar — que é
+ * exatamente o que a fase R6.5 veio tirar do navegador.
  *
  * O que a regra protege é `position` repetida. A loja ordena por essa coluna
  * (`listSections`, com `order: { position: "ASC" }`), então duas seções com o
@@ -19,6 +27,8 @@
  * não uma lista escrita aqui, e é a mesma que a rota aplica para só existir um
  * cromo de cada tipo.
  */
+import type ContentModuleService from "./service"
+
 
 /**
  * Onde começa a faixa de posições da vitrine.
@@ -148,4 +158,155 @@ export function renumber(
   return sections
     .map((section, index) => ({ id: section.id, position: positionFor(index) }))
     .filter((planned, index) => planned.position !== sections[index].position)
+}
+
+/**
+ * A faixa da numeração, como o **dado** que o CRM recebe no payload.
+ *
+ * O painel precisa do numeral das seções enquanto a ordem está pendente na tela
+ * (o número gravado não corresponde mais ao que se vê), e a alternativa era ele
+ * importar `positionFor` do backend — código de servidor no bundle do
+ * navegador. Com a faixa viajando como dado, o painel desenha o mesmo número
+ * sem importar valor nenhum daqui: quem **grava** continua sendo esta regra
+ * (`applyOrder`), e o que a tela mostra é a previsão dela.
+ */
+export type OrderFaixa = { first: number; step: number }
+
+/** A faixa, a partir das constantes — quem responde é a regra, não o payload. */
+export function orderFaixa(): OrderFaixa {
+  return { first: FIRST_VITRINE_POSITION, step: POSITION_STEP }
+}
+
+/**
+ * Os ids da ordem que vieram no corpo (`{ ids: [...] }`).
+ *
+ * A forma é conferida aqui pelo mesmo motivo das outras listas do CRM
+ * (`resolvers.ts`): o corpo é de terceiros — o painel, um `curl`, um script —,
+ * e uma ordem é uma **sequência**: id repetido significaria duas posições para
+ * a mesma seção, e um id vazio, uma posição para ninguém. `undefined` não é
+ * "não mexe" aqui como nas referências da seção: sem a lista não há o que
+ * ordenar, e a resposta é 400.
+ */
+export function readOrderIds(value: unknown): { ids?: string[]; error?: string } {
+  if (
+    !Array.isArray(value) ||
+    value.some((id) => typeof id !== "string" || !id.trim())
+  ) {
+    return { error: 'Campo "ids" deve ser uma lista de ids de seção.' }
+  }
+
+  const ids = value as string[]
+
+  if (new Set(ids).size !== ids.length) {
+    return {
+      error:
+        'Campo "ids" tem id repetido: a ordem é uma lista, e cada seção ' +
+        "aparece uma vez.",
+    }
+  }
+
+  return { ids }
+}
+
+/**
+ * O que impede esta ordem de ser gravada — a lista vem pronta e a vitrine é a
+ * do banco, então o que se responde é o que **discorda** entre as duas.
+ *
+ * As três conferências são em estágios, e não acumuladas: a lista com um id que
+ * não existe é de outro planeta (uma aba velha do CRM, um id digitado), e nesse
+ * caso cobrar também a completude seria ruído — o que falta é a lista certa.
+ * Mesma coisa com a seção fixa: ela não entra na ordenação, então ela é o
+ * primeiro problema a resolver.
+ *
+ * | Confere | Por que |
+ * | --- | --- |
+ * | existe | o id vem do corpo; um id inventado gravaria posição nenhuma |
+ * | não é fixa | o cromo do site é desenhado em todas as rotas: numerá-lo o jogaria na faixa da vitrine |
+ * | lista inteira | renumera quem veio; quem ficou de fora manteria a posição antiga — e a nova lista pode colidir com ela |
+ */
+export function orderErrors(
+  ids: readonly string[],
+  sections: readonly { id: string; fixed: boolean }[]
+): string[] {
+  const known = new Map(sections.map((section) => [section.id, section]))
+  const unknown = ids.filter((id) => !known.has(id))
+
+  if (unknown.length) {
+    return [
+      `Os ids apontam seção que não existe (ou foi removida): ` +
+        `${unknown.join(", ")}.`,
+    ]
+  }
+
+  const fixed = ids.filter((id) => known.get(id)?.fixed)
+
+  if (fixed.length) {
+    return [
+      `A ordem traz seção fixa (o cromo do site), que não é numerada: ` +
+        `${fixed.join(", ")}.`,
+    ]
+  }
+
+  const absent = sections
+    .filter((section) => !section.fixed)
+    .map((section) => section.id)
+    .filter((id) => !ids.includes(id))
+
+  if (absent.length) {
+    return [
+      `A lista não traz a vitrine inteira: falta ${absent.join(", ")}. ` +
+        `A renumeração escreve só o que veio, e o que ficou de fora ` +
+        `manteria a posição antiga — que a lista nova pode estar ocupando.`,
+    ]
+  }
+
+  return []
+}
+
+/**
+ * Publica a ordem da vitrine: renumera (100, 110, 120…) e grava o que mudou.
+ *
+ * É a **única** porta que grava ordem, e existe para o CRM não fazer isso pelo
+ * navegador: antes o painel mandava um `PATCH` por seção — N requisições, N
+ * gravações, N avisos à loja — e uma falha no meio deixava a vitrine com uma
+ * ordem que ninguém pediu. Aqui a lista chega inteira, a renumeração sai da
+ * regra pura (`renumber`) e a gravação é **uma chamada**: as posições mudam
+ * juntas, ou não mudam.
+ *
+ * Só o que muda de posição é gravado (`renumber` devolve a diferença), então
+ * salvar a mesma ordem duas vezes não escreve nada na segunda — e a rota não
+ * avisa a loja à toa.
+ *
+ * A lista é a da superfície (`surface`, `home` por padrão) e a leitura é a
+ * mesma da tela (`listSections`): o que o CRM mandou tem de bater com o que a
+ * loja vê.
+ */
+export async function applyOrder(
+  service: ContentModuleService,
+  { surface = "home", ids }: { surface?: string; ids: readonly string[] }
+): Promise<{ updated: { id: string; position: number }[]; error?: string }> {
+  const sections = await service.listSections({ surface, onlyEnabled: false })
+  const errors = orderErrors(ids, sections)
+
+  if (errors.length) {
+    return { updated: [], error: errors.join(" ") }
+  }
+
+  // A posição atual vai junto só para o `renumber` poder dizer o que **muda**;
+  // a ordem que decide a numeração é a do array — a que está na tela. O
+  // `flatMap` (em vez de um `map` com asserção) é o que torna impossível uma
+  // posição `undefined` chegar aqui: `orderErrors` já garantiu que todo id
+  // existe, e a linha que não existir simplesmente não entra.
+  const ordered = ids.flatMap((id) => {
+    const section = sections.find((candidate) => candidate.id === id)
+
+    return section ? [{ id: section.id, position: section.position }] : []
+  })
+  const updated = renumber(ordered)
+
+  if (updated.length) {
+    await service.updateContentSections(updated)
+  }
+
+  return { updated }
 }

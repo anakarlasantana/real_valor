@@ -15,6 +15,10 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 | `validation.ts` | A validação de entrada do corpo: `validateData` (o `data` **e** as referências contra o schema do tipo) e `isKnownType` |
 | `resolvers.ts` | Os resolvedores do corpo: a âncora (`id`), a `position`, os ids da curadoria e os ids dos chips — cada um responde `{ valor?, error? }` |
 | `view.ts` | A forma de saída da seção (`toSection`), achatada como a da rota pública |
+| `order.ts` | A ordem da vitrine: as regras puras (faixa, folga, `nextPosition`, `positionAfter`, `renumber`) **e** a única gravação que as aplica (`readOrderIds`, `orderErrors`, `applyOrder`) |
+| `restore.ts` | O "Restaurar padrão"/seed: quais seções padrão faltam e com que posição cada uma nasce |
+| `payload.ts` | O `splitPayload` do corpo: o que é **coluna** × o que é `data` (e as referências `productIds`/`filters`) |
+| `revalidate.ts` | O aviso ao storefront (`notifyStorefront`), que invalida o cache do conteúdo depois de gravar |
 | `schema.ts` | Montagem do schema (`buildSchema()`), `SCHEMA_VERSION` e `SCHEMA_KEY` |
 | `contract.ts` | O formato do conteúdo — **bootstrap** do schema |
 | `defaults.ts` | Cópia do protótipo, usada pelo seed e como fallback |
@@ -525,10 +529,11 @@ existe.
 | Rota | Auth | Para quê |
 | --- | --- | --- |
 | `GET /store/content` | publishable key | Vitrine. Só seções habilitadas. `?surface=`, `?type=`. A curadoria (`productIds`) e os chips (`filters`, com nome e handle lidos ao vivo) vêm nas seções que têm uma |
-| `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + a curadoria de quem tem uma + os chips de quem tem + o catálogo (`categories`, as opções do seletor) + o schema (do registro), `schemaVersion` e `schemaSource` |
-| `POST /admin/content` | admin | Cria. Nasce com o conteúdo padrão do tipo (`DEFAULT_SECTION_DATA`); aceita `id` (a âncora do menu, validada como apelido e livre), `productIds` (curadoria inicial), `filters` (os chips, em ids de categoria) e recusa um segundo bloco de tipo único (`nav`, `footer`, `announcement`) |
+| `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + a curadoria de quem tem uma + os chips de quem tem + o catálogo (`categories`, as opções do seletor) + o schema (do registro), `schemaVersion`, `schemaSource` e a faixa da numeração (`order`: `{ first, step }`, o dado com que a tela desenha o numeral da ordem pendente) |
+| `POST /admin/content` | admin | Cria. Nasce com o conteúdo padrão do tipo (`DEFAULT_SECTION_DATA`); aceita `id` (a âncora do menu, validada como apelido e livre), `productIds` (curadoria inicial), `filters` (os chips, em ids de categoria) e recusa um segundo bloco de tipo único (`nav`, `footer`, `announcement`). Sem `position`, entra no **fim** (`nextPosition`) |
 | `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio. Coluna × conteúdo é decidido pelo **nome da coluna** (ver `modules/content/payload.ts`). `productIds` e `filters` são as referências: a lista manda, e ausente = não mexe |
 | `DELETE /admin/content?id=` | admin | Remove — desvinculando a curadoria e os chips antes (ver `curation.ts` e `filters.ts`) |
+| `POST /admin/content/order` | admin | Publica a ordem da vitrine: `{ ids }` na ordem da tela. Renumera a partir de `FIRST_VITRINE_POSITION`, de `POSITION_STEP` em `POSITION_STEP` (`order.ts`) e grava **só o que muda**, numa chamada. Recusa lista incompleta, id repetido, id inexistente e seção fixa; avisa a loja uma vez |
 | `POST /admin/content/restore` | admin | Recria as seções padrão que faltam. Idempotente (só cria o que não existe) — é o mesmo que `scripts/seed-content.ts` faz |
 
 `GET /store/content` devolve as seções achatadas, prontas para render, mais a
@@ -542,6 +547,14 @@ forma da resposta) e `order.ts` (a posição de uma seção nova, que era uma se
 cópia da regra dentro da rota). Duas razões: a regra fica testável sem servidor
 (`validation.unit.spec.ts`), e as duas portas que criam seção passam a responder
 a mesma pergunta do mesmo jeito.
+
+**A segunda porta é fina pelo mesmo motivo.** `api/admin/content/order/route.ts`
+tem 12 linhas de corpo: lê `{ ids }` (`readOrderIds`), chama `applyOrder` — que lê
+a vitrine, confere a lista (`orderErrors`), renumera (`renumber`) e grava o que
+mudou numa chamada — e avisa a loja **uma vez**. Antes isso tudo acontecia no
+navegador: o "Salvar ordem" do painel importava `renumber` do backend e mandava um
+`PATCH` por seção, cada um gravando e avisando; uma falha no meio deixava a ordem
+pela metade. Com 7 seções mudando de posição, a loja recebe **1** aviso.
 
 ```json
 { "sections": [ { "id": "hero", "type": "hero", "enabled": true,
@@ -572,9 +585,13 @@ menu principal. Como entrada da sidebar principal, a página participa do mesmo
 
 O que a página faz, além de editar os campos de uma seção:
 
-- **Ordem** — setas que regravam a lista de 10 em 10 (`position` é a ordem da
-  loja; duas posições iguais seriam ordem indefinida na vitrine). Só o que muda
-  de fato é enviado. As seções **fixas** — o cromo do site, `fixed` na linha
+- **Ordem** — setas que montam a ordem **na tela**: a loja só muda quando o lojista
+  confirma, e o que sai do navegador é a lista de ids (`POST /admin/content/order`) — quem
+  renumera é o servidor (`order.ts`) e a loja é avisada **uma vez**. Antes era um `PATCH` por
+  seção que mudou de lugar, com a renumeração calculada dentro do painel. O numeral da lista é
+  o gravado, ou o que a seção **vai** receber enquanto a ordem está pendente — a faixa dessa
+  numeração chega como dado no payload (`order: { first, step }`), porque o painel não importa
+  valor do backend. As seções **fixas** — o cromo do site, `fixed` na linha
   (`models/content-section.ts`) — não têm seta: elas vêm no topo da lista com a
   etiqueta **Fixo** no lugar do numeral, porque a loja as resolve por `type` e
   movê-las não mudaria nada no site. É o CRM lendo a **coluna**, e não adivinhando
@@ -608,6 +625,13 @@ silenciosa: um campo novo no contrato não aparecia no editor e um campo
 removido continuava sendo gravado. A guarda de paridade reprova os dois
 sintomas — os nomes dos espelhos antigos não podem voltar e cada
 `ITEM_FIELDS[kind]` tem de casar com o tipo que o storefront lê.
+
+Desde a R6.5 ele também não importa **valor** nenhum do backend: só `import type`
+(o que some no bundle). O último que restava era a regra da ordem
+(`positionFor`/`renumber`/`nextPosition`), que respondia dentro do navegador a
+mesma pergunta que o servidor respondia ao gravar. A tela recebe o dado —
+`position` de cada seção e a faixa (`order`) — e a guarda reprova qualquer
+`import { … } from "…/modules/…"` dentro de `backend/src/admin/`.
 
 ## Operação
 

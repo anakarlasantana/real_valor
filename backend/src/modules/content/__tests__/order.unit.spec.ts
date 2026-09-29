@@ -7,13 +7,23 @@
  * seção (`models/content-section.ts`), gravada na criação. Que o cromo nasça
  * fixo é cobrado em `restore.unit.spec.ts`, contra o contrato
  * (`SINGLETON_SECTION_TYPES`) — este arquivo cobre a numeração.
+ *
+ * O segundo bloco é a porta por onde a ordem é publicada (R6.5): `readOrderIds`
+ * (a forma do corpo), `orderErrors` (o que a lista do CRM tem de bater com o
+ * banco) e `applyOrder` (a gravação — uma chamada, só o que muda). O que se
+ * prova aqui é justamente o que saiu do navegador: a lista inteira chega de uma
+ * vez e as posições mudam juntas, ou não mudam.
  */
+import type ContentModuleService from "../service"
 import {
   FIRST_VITRINE_POSITION,
   POSITION_STEP,
+  applyOrder,
   nextPosition,
+  orderErrors,
   positionAfter,
   positionFor,
+  readOrderIds,
   renumber,
 } from "../order"
 
@@ -132,3 +142,130 @@ describe("renumber", () => {
     )
   })
 })
+
+describe("readOrderIds", () => {
+  it("aceita a lista de ids da vitrine", () => {
+    expect(readOrderIds(["featured", "hero"])).toEqual({
+      ids: ["featured", "hero"],
+    })
+  })
+
+  it("recusa o que não é lista de ids de seção", () => {
+    // `undefined` inclusive: nas outras listas do CRM ele é "não mexe", aqui
+    // não há o que ordenar sem a lista.
+    for (const value of [undefined, null, "hero", 42, ["hero", ""], ["hero", 7]]) {
+      expect(readOrderIds(value).error).toMatch(/"ids"/)
+    }
+  })
+
+  it("recusa id repetido", () => {
+    // A ordem é uma sequência: o mesmo id duas vezes seriam duas posições para
+    // a mesma seção, e nenhuma delas é a ordem que o lojista montou na tela.
+    expect(readOrderIds(["hero", "featured", "hero"]).error).toMatch(/repetido/)
+  })
+})
+
+describe("orderErrors", () => {
+  /** A superfície como o CRM a lê: a vitrine com ordem, e o cromo em volta. */
+  const sections = [
+    { id: "nav", fixed: true },
+    { id: "hero", fixed: false },
+    { id: "featured", fixed: false },
+    { id: "footer", fixed: true },
+  ]
+
+  it("a ordem que a lista traz é a resposta — e o cromo não entra", () => {
+    // Invertida em relação ao banco de propósito: a lista é a ordem nova, e
+    // reordenar não é erro nenhum. O cromo não aparece porque ele não é
+    // numerado (`fixed`), e não porque a função o conheça pelo nome.
+    expect(orderErrors(["featured", "hero"], sections)).toEqual([])
+  })
+
+  it("recusa id que não existe na superfície", () => {
+    const [error] = orderErrors(["hero", "relampago"], sections)
+
+    expect(error).toMatch(/não existe/)
+    expect(error).toMatch(/relampago/)
+  })
+
+  it("recusa seção fixa, e fala dela antes da completude", () => {
+    // `nav` está na lista e `featured` não: os dois são problema, mas o que a
+    // mensagem aponta é o cromo — numerá-lo jogaria a barra de anúncio na faixa
+    // da vitrine. Cobrar a completude junto seria ruído: a lista está errada.
+    const [error] = orderErrors(["hero", "nav"], sections)
+
+    expect(error).toMatch(/fixa/)
+    expect(error).toMatch(/nav/)
+    expect(error).not.toMatch(/featured/)
+  })
+
+  it("recusa a lista que não traz a vitrine inteira", () => {
+    // Renumerar quem veio deixaria `featured` com a posição antiga — que a
+    // lista nova pode estar ocupando. Buraco e repetição no mesmo movimento.
+    const [error] = orderErrors(["hero"], sections)
+
+    expect(error).toMatch(/vitrine inteira/)
+    expect(error).toMatch(/featured/)
+  })
+})
+
+describe("applyOrder", () => {
+  const sections = [
+    { id: "hero", position: FIRST_VITRINE_POSITION, fixed: false },
+    { id: "featured", position: FIRST_VITRINE_POSITION + POSITION_STEP, fixed: false },
+    { id: "nav", position: 10, fixed: true },
+  ]
+
+  /**
+   * O serviço de mentira: só o I/O que a função usa (`listSections` para ler a
+   * vitrine, `updateContentSections` para gravar). Quem decide a numeração é a
+   * regra, conferida acima sem serviço nenhum.
+   */
+  const fakeService = (rows = sections) => {
+    const updateContentSections = jest.fn(async (data: unknown) => data)
+
+    return {
+      updateContentSections,
+      service: {
+        listSections: jest.fn(async () => rows),
+        updateContentSections,
+      } as unknown as ContentModuleService,
+    }
+  }
+
+  it("grava a ordem nova numa chamada só, e só o que muda de posição", async () => {
+    const { service, updateContentSections } = fakeService()
+
+    const { updated } = await applyOrder(service, { ids: ["featured", "hero"] })
+
+    expect(updated).toEqual([
+      { id: "featured", position: FIRST_VITRINE_POSITION },
+      { id: "hero", position: FIRST_VITRINE_POSITION + POSITION_STEP },
+    ])
+    // Uma gravação, com as duas posições juntas: era isto que o navegador
+    // fazia como um `PATCH` por seção — N transações, ordem pela metade quando
+    // uma falhava no meio, e nada dizendo o que ficou gravado.
+    expect(updateContentSections).toHaveBeenCalledTimes(1)
+    expect(updateContentSections).toHaveBeenCalledWith(updated)
+  })
+
+  it("numa ordem já normalizada não grava nada", async () => {
+    const { service, updateContentSections } = fakeService()
+
+    const { updated } = await applyOrder(service, { ids: ["hero", "featured"] })
+
+    expect(updated).toEqual([])
+    expect(updateContentSections).not.toHaveBeenCalled()
+  })
+
+  it("não grava nada quando a lista não serve, e diz por quê", async () => {
+    const { service, updateContentSections } = fakeService()
+
+    const { updated, error } = await applyOrder(service, { ids: ["hero"] })
+
+    expect(updated).toEqual([])
+    expect(error).toMatch(/featured/)
+    expect(updateContentSections).not.toHaveBeenCalled()
+  })
+})
+

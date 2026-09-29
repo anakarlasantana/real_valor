@@ -375,9 +375,16 @@ O que entrou:
    ocupa 10, 20 e 90, exatamente onde a vitrine começaria a ser renumerada, e `position` repetida
    deixa a ordem da lista indefinida a cada carregamento.
 6. **A regra saiu da tela** para `backend/src/modules/content/order.ts`, com
-   `order.unit.spec.ts` (10 casos: faixa, piso numa base semeada antes da regra, `positionFor`,
-   idempotência, "só o que mudou é gravado", nunca repetir posição) e
+   `order.unit.spec.ts` (22 casos: faixa, piso numa base semeada antes da regra, `positionFor`,
+   idempotência, "só o que mudou é gravado", nunca repetir posição e — desde a R6.5 — a forma do
+   corpo da ordem, o que a lista tem de bater com o banco e a gravação em **uma** chamada) e
    `admin/routes/content/__tests__/form-draft.unit.spec.ts` (9 casos de "está alterado?").
+7. **Publicar a ordem é uma porta só** (R6.5). O "Salvar ordem" deixou de ser um laço de `PATCH`
+   dentro do navegador e virou `POST /admin/content/order` com `{ ids }`: o servidor renumera
+   (`applyOrder`), grava as posições numa chamada e avisa a loja **uma vez** — com 7 seções mudando
+   de lugar, 1 aviso. O numeral da lista pendente continua sendo o que a seção **vai** receber, mas a
+   faixa passou a chegar como dado no payload (`order: { first, step }`), porque o painel deixou de
+   importar valor do backend (a guarda reprova a volta).
 
 #### 2.5.8 Publicar em duas etapas: rascunho e prévia — aberto
 

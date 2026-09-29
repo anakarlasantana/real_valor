@@ -179,7 +179,7 @@ real_valor/
 ├── scripts/
 │   ├── doctor.sh                    # diagnostico do ambiente (le e nao mexe)
 │   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
-│   ├── check-contract-parity.mjs # guarda hoje: 90 asserts (o G2 levou de 89 p/ 80;
+│   ├── check-contract-parity.mjs # guarda hoje: 94 asserts (o G2 levou de 89 p/ 80;
 │   │                           #   o resto virou `tsc` e teste — ver docs/plano-centralizacao.md)
 │   └── vendor-fonts.mjs          # (re)baixa e valida os `.woff2` self-hosted
 │
@@ -238,7 +238,7 @@ O painel (`/painel` → **Conteúdo da vitrine**) edita a loja sem deploy:
 | O que | Como |
 | :--- | :--- |
 | Copy, links, imagens e aparência das seções | os campos vêm do contrato — campo novo no `contract.ts` aparece no formulário (`make gen` + `make seed-schema`) |
-| Ordem | setas na listagem **só na vitrine**; a mudança fica na tela até "Salvar ordem", que renumera de 100 em diante (a faixa abaixo de 100 é do cromo) e grava só o que mudou. O numeral da seção aparece ao lado do rótulo — o campo "Ordem" saiu do formulário. As seções marcadas como **Fixo** não têm seta e mostram a etiqueta no lugar do numeral |
+| Ordem | setas na listagem **só na vitrine**; a mudança fica na tela até "Salvar ordem", que manda a lista de ids de uma vez (o servidor renumera de 100 em diante — a faixa abaixo de 100 é do cromo —, grava só o que mudou e avisa a loja **uma vez**). O numeral da seção aparece ao lado do rótulo — o campo "Ordem" saiu do formulário — e, com a ordem ainda não publicada, mostra o número que a seção **vai** receber. As seções marcadas como **Fixo** não têm seta e mostram a etiqueta no lugar do numeral |
 | Criar seção | "Nova seção" escolhe tipo e âncora; a seção nasce com o conteúdo padrão do tipo e entra no fim |
 | Remover seção | lixeira na linha, com confirmação — não há desfazer |
 | Cabeçalho, rodapé e barra de anúncio | são blocos como os outros, no mesmo lugar, e **únicos**: o segundo não é oferecido. Aparecem marcados como **Fixo** (a coluna `fixed` da seção) e não têm setas nem campo "Ordem" — quem os posiciona é a moldura da loja, em todas as rotas, e a loja os resolve por tipo |
@@ -297,9 +297,9 @@ git config core.hooksPath .githooks   # uma vez por clone
 
 | Onde | Comando | O que faz |
 | :--- | :--- | :--- |
-| Commit (hook) + CI | `make check` | artefato do contrato em dia + **90 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ registro do contrato). **Não instala nada**: os dois scripts leem arquivos com Node puro |
-| CI | `make types` | `tsc` dos dois pacotes (**0 erros**). Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI (job `testes`) | `make test` — jest do `backend/` | **147 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração e inserção), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da validação e dos resolvedores do corpo do CRM (campo desconhecido, obrigatório por rota, faixa de número, lista fechada, âncora, `position` e as duas listas de referência) e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| Commit (hook) + CI | `make check` | artefato do contrato em dia + **94 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ registro do contrato, ⇔ a ordem da vitrine e o painel sem import de valor). **Não instala nada**: os dois scripts leem arquivos com Node puro |
+| CI | `make types` | `tsc` dos dois pacotes — e o do painel, com as regras dele (**0 erros**). Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
+| CI (job `testes`) | `make test` — jest do `backend/` | **157 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração, inserção, a forma do corpo de `POST /admin/content/order` e a gravação em uma chamada), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da validação e dos resolvedores do corpo do CRM (campo desconhecido, obrigatório por rota, faixa de número, lista fechada, âncora, `position` e as duas listas de referência) e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
 | CI (job `testes`) | `make test` — vitest do `frontend/` | **20 testes** da tolerância da loja ao tipo desconhecido, do `src` das imagens do CMS (`resolveMediaUrl`) e do tamanho do trilho de lançamentos (`launchesLimit`) |
 | CI | `make check-schema` | o registro do `content_contract` conferido contra o contrato, num Postgres efêmero |
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |
@@ -312,12 +312,12 @@ tudo dependia de alguém lembrar; e os testes eram o caso mais claro, porque exi
 
 O caminho para **não depender mais** da guarda de paridade está em
 [`docs/plano-centralizacao.md`](docs/plano-centralizacao.md). Ela nasceu com **89**
-asserções, o G2 a levou a **80** e hoje ela imprime **90**: cada fase que mexe no
+asserções, o G2 a levou a **80** e hoje ela imprime **94**: cada fase que mexe no
 contrato pode somar verificação, e somar é mais barato que redesenhar. O número se
 confere, não se estima:
 
 ```bash
-make check | grep -c '^  ok'   # 90
+make check | grep -c '^  ok'   # 94
 ```
 
 O alvo, portanto, não é o número — é o *tipo*: o que o compilador e um teste já

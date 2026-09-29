@@ -280,8 +280,10 @@ Conferir: `make types`.
 React 18 × 19 é o que torna a fronteira **física**: o CRM não pode compartilhar `node_modules`
 com o storefront (é por isso que o `packages/` do G5 não resolve o caso do CRM). A guarda passa
 a ser `scripts/check-boundaries.mjs`, que falha quando `admin/` importar **valor** (≠ `import
-type`) de `backend/`. Hoje há **1** import de valor no painel: `nextPosition`, `positionFor` e
-`renumber` (`page.tsx:56`) — e ele sai na R6.5.
+type`) de `backend/`. O painel **não** importa valor nenhum desde a R6.5: eram três (`nextPosition`,
+`positionFor` e `renumber`, em `page.tsx`), e os três saíram — a regra passou a viajar como dado (a
+faixa no payload) e a gravação virou uma porta só (`POST /admin/content/order`). A verificação já
+existe dentro do `check-contract-parity.mjs` (a R6.5 somou-a ali) e a R7 a herda na `check-boundaries.mjs`.
 
 ### Fechamento de toda fase R (R0 → R7)
 
@@ -293,9 +295,11 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 | **Órfão apagado** | script sem chamador, cache de build antigo, manifesto sem dependência ou arquivo que a fase tornou inútil sai **na mesma fase**, e o que a documentação dizia dele é corrigido junto. Não há `arquivo/` de espera para isso: o Git já é o arquivo. |
 
 > **Contagem da guarda — medida, não estimada:** `make check | grep -c '^  ok'`.
-> Nasceu com 89; o G2 a levou a 80; hoje imprime **90**, porque cada fase que mexe no
+> Nasceu com 89; o G2 a levou a 80; hoje imprime **94**, porque cada fase que mexe no
 > contrato pode somar verificação, e somar é mais barato que redesenhar (a R1 somou três: o
-> que a vitrine de destaque lê ⇔ o formulário, o chip como referência e a tabela do link).
+> que a vitrine de destaque lê ⇔ o formulário, o chip como referência e a tabela do link; a R6.5
+> somou quatro: nenhum import de valor no painel, a faixa da ordem vinda das constantes do módulo,
+> o numeral da tela usando essa faixa e a porta de ordem com um aviso só).
 > O alvo do plano nunca foi o número: é ficar só com o que a linguagem não vê (binário, CSS,
 > migração).
 
@@ -307,7 +311,7 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 | **R0.1** ✅ | higiene da raiz: `package.json` (0 dependências, 6 scripts que só duplicavam o `Makefile` e que ninguém chamava), `node_modules` (1 GB, sem lockfile, invisível para o repo) e o `tsconfig.tsbuildinfo` defasado do storefront, apagados; contagem da guarda conferida na doc | `make check` e `make test` verdes com a raiz sem manifesto |
 | **R1** ✅ | os chips do `featured` deixam de ser texto e viram **referência**: link novo `content_section_category`, `modules/content/filters.ts`, o `kind: "list:category"` no contrato, o seletor de categorias no CRM, o `/store/content` devolvendo `{ categoryId, label, handle }` lido ao vivo e a vitrine filtrando por `category_id`. "Todos" deixou de ser dado — não existe categoria "todas": quem o desenha é a loja | 4 linhas em `content_section_category` (posições 10–40) apontando para Vestidos, Blusas & Camisas, Calças & Alfaiataria e Conjuntos; `/store/content` com `schemaVersion: 5` e os chips com nome e `handle`; `/?peca=blusas-camisas` com a peça da categoria e `/?peca=conjuntos` com o estado vazio; `make check` 90 asserções, `make test` 10 suites / 121 testes, `make types` verde |
 | **R6** ✅ | `api/admin/content/route.ts` quebrou em `modules/content/{validation,resolvers,view}.ts`, e o `nextPosition` duplicado saiu: a rota passou a usar o do `order.ts` (que tem o piso da faixa da vitrine e recebe só a vitrine) | rota **812 → 437 linhas**; `make check` 90 asserções e `make test` **11 suites / 147 testes** verdes (a rota em si não tinha teste — a validação e os resolvedores têm `validation.unit.spec.ts` agora) |
-| **R6.5** | `POST /admin/content/order` com `{ ids }`: a renumeração sai do browser (N `PATCH` → 1) e a loja é notificada **uma vez** | nenhum import de valor de `backend/` no painel |
+| **R6.5** ✅ | a ordem da vitrine sai do navegador: `POST /admin/content/order` com `{ ids }`, a renumeração no módulo (`order.ts`: `readOrderIds`, `orderErrors`, `applyOrder`) e a faixa da numeração viajando como **dado** no payload (`order`, para o numeral da lista enquanto a ordem está pendente). O painel deixa de importar valor de `backend/` (eram `nextPosition`, `positionFor` e `renumber`) | uma requisição e **um** aviso à loja com **7** seções mudando de posição (medido no log do frontend: `POST /api/revalidate?tag=content`); a mesma ordem de novo devolve `{"updated":[]}` e nenhum aviso; os 400 por lista incompleta, seção fixa, id inexistente, id repetido e forma inválida; `make check` **94** asserções, `make test` **11 suites / 157 testes** + 20 do vitest, `make types` verde (agora com o `tsc` do painel, que pegou um import morto) |
 | **R7** | o CRM muda de casa: 12 arquivos / 2.282 linhas para `admin/`, com `medusa build` como gate | build do admin sem erro (não precisa de banco) |
 | **R2** | tipagem onde hoje há paridade por texto (o destino do G2) | `tsc` limpo, sem `any` novo |
 | **R3-lite → R5** | tema como dado e `themes/` fora do Dockerfile (o F3 refeito sobre `develop`) | `make gen` + `make check`; R4/R5 pedem o Docker de pé |
@@ -331,4 +335,15 @@ elas mudaram no código:
 | Achado de **dado** (não da R1) | Detalhe |
 |---|---|
 | `vestido-midi-linho-floral` é invisível à Store API | `not_found` por id, ausente com `q`/`handle`, mesmo no canal da chave (`Loja Online Real Valor`), com preço em BRL e `status: published`; a página do produto na loja responde **500**. Por isso o chip "Vestidos" mostra o estado vazio. Fica para uma fase de dados (o seed), não para a R1 |
+
+### R6.5 — o que a fase mediu
+
+| Medição | Resultado, e o que ficou |
+|---|---|
+| Onde a numeração era calculada | No **navegador**: `page.tsx` importava `nextPosition`, `positionFor` e `renumber` do módulo do backend. Com a lista mexida na tela, o numeral do `Badge` saía de `positionFor(índice)` — a tela respondia "que número esta seção vai receber" e o servidor respondia a mesma pergunta na gravação. Duas respostas, uma delas dentro do browser |
+| N requisições → 1 | Publicar a ordem era um `PATCH /admin/content` por seção que mudou de lugar, cada um gravando e **avisando a loja**. Medido no log do frontend (`POST /api/revalidate?tag=content`): com **7** seções mudando de posição, a ordem nova chega em **1** aviso; o mesmo POST de novo devolve `{"updated":[]}` e **nenhum** aviso (nada foi escrito) |
+| A gravação em lote funciona | `updateContentSections([{ id, position }, …])` grava as N linhas numa chamada (é a forma que o `applyOrder` usa). Antes eram N transações e uma ordem pela metade quando uma falhava no meio — o aviso mandava "salvar de novo" para terminar o serviço. Medido: 7 posições (100…160) de uma vez, e a loja (`/store/content` e a home `/br`) na ordem nova |
+| Idempotência | `renumber` devolve só o que muda de posição, então republicar a ordem atual não escreve nada. É o que permite a rota não avisar a loja à toa e o que torna um duplo clique inofensivo |
+| Achado de **dado** (não da R6.5) | `hero` estava com `fixed = true` na base local, e a migration que criou a coluna marca só `announcement`, `nav` e `footer` — o contrato (`SINGLETON_SECTION_TYPES`) também. Consequência: o CRM mostrava o hero como **Fixo** (sem setas) e a porta da ordem recusaria qualquer lista que o trouxesse. A tela **não tem controle** para `fixed`, então o lojista não conserta pela UI. Alinhado via API (`PATCH {"fixed": false}`); fica aberto decidir se o corpo pode dizer `fixed` (hoje pode: decisão da fase do `fixed`) ou se a coluna volta a ser derivada do contrato na criação |
+
 

@@ -56,18 +56,10 @@ import type {
   AppearanceGroup,
   CategoryRef,
 } from "../../../modules/content/contract"
-import {
-  nextPosition,
-  positionFor,
-  renumber,
-} from "../../../modules/content/order"
+import type { OrderFaixa } from "../../../modules/content/order"
 import type { ContentSchemaPayload } from "../../../modules/content/schema"
 import { AppearanceRail } from "./appearance-controls"
-import {
-  FieldInput,
-  type FieldSpec,
-  type ItemFields,
-} from "./field-input"
+import { FieldInput, type FieldSpec } from "./field-input"
 import { isDirty, wireValue } from "./form-draft"
 
 type Section = {
@@ -237,6 +229,16 @@ function freeAnchor(type: string, sections: Section[]): string {
  * `modules/content/order.ts`, com teste próprio (`order.unit.spec.ts`); aqui
  * fica só o que é da tela: as setas, a barra de aviso e o botão de salvar.
  *
+ * **Nada disso é importado.** O painel é código de **navegador** (`admin/` tem
+ * tsconfig e bundle próprios), então trazer a regra do backend para cá seria
+ * código de servidor no bundle — e uma segunda resposta para "que número esta
+ * seção vai receber". As duas coisas que a tela precisa da regra viajam como
+ * **dado** no payload do `GET /admin/content`: a `position` de cada seção e a
+ * faixa da numeração (`order`). A gravação é do servidor, por
+ * `POST /admin/content/order`. Quem cobra isso é a guarda
+ * (`scripts/check-contract-parity.mjs`): um import de valor vindo de
+ * `modules/content` no painel quebra o `make check`.
+ *
  * Quem tem ordem **não** sai daqui: sai da coluna `fixed` da seção, que vem no
  * payload da API. `schema.singletonTypes` continua sendo a lista de tipos únicos
  * — é o que impede oferecer um segundo cabeçalho (`creatableTypes`).
@@ -254,6 +256,15 @@ const ContentPage = () => {
    * no painel do Medusa.
    */
   const [categories, setCategories] = useState<CategoryRef[]>([])
+  /**
+   * A faixa da numeração (`{ first, step }`), como o servidor a manda.
+   *
+   * É o que permite o numeral da lista acompanhar a ordem **pendente** — a
+   * lista já mexida na tela e ainda não publicada, em que o número gravado não
+   * corresponde mais ao que se vê. `null` significa "o payload não trouxe a
+   * faixa"; aí o numeral fica o gravado, que é o que a seção tem hoje.
+   */
+  const [order, setOrder] = useState<OrderFaixa | null>(null)
   const [drafts, setDrafts] = useState<Record<string, Record<string, unknown>>>(
     {}
   )
@@ -297,6 +308,7 @@ const ContentPage = () => {
       setSections(loaded)
       setSchema(json.schema ?? null)
       setCategories(json.categories ?? [])
+      setOrder(json.order ?? null)
       setDrafts(
         Object.fromEntries(
           loaded.map((s) => [s.id, { ...s } as Record<string, unknown>])
@@ -306,7 +318,8 @@ const ContentPage = () => {
       // seções: salvar um texto recarrega a lista, e descartar a ordem que o
       // lojista acabou de montar por causa disso seria perder trabalho sem
       // aviso. Um id que desapareceu sai da ordem, e uma seção criada entra no
-      // fim — que é exatamente onde a ela cabe (ver `nextPosition`).
+      // fim — que é exatamente onde a ela cabe (a regra da posição da seção
+      // nova é do `POST /admin/content`, que a põe depois da última).
       setPendingOrder((current) => {
         if (!current) {
           return null
@@ -454,10 +467,11 @@ const ContentPage = () => {
           // Sem âncora, quem gera é o banco — e aí o link do menu (`/#…`) não
           // tem como apontar para a seção. Por isso o campo vem sugerido.
           ...(newId.trim() ? { id: newId.trim() } : {}),
-          // A seção nova entra no FIM: a ordem que está na loja é a história
-          // que o lojista já contou, e conteúdo novo não tem por que se
-          // intrometer no meio dela.
-          position: nextPosition(vitrine),
+          // `position` não vai: quem põe a seção nova no FIM é a regra do
+          // servidor (`nextPosition`, em `modules/content/order.ts`). Era a
+          // única razão de a tela importar valor do backend — a mesma pergunta
+          // ("que número vem agora?") respondida em dois lugares, um deles o
+          // navegador.
         }),
       })
       const json = await res.json()
@@ -556,21 +570,15 @@ const ContentPage = () => {
   }
 
   /**
-   * Publica a ordem da vitrine: renumera (100, 110, 120…) e grava o que mudou.
+   * Publica a ordem da vitrine: uma requisição, uma gravação, um aviso.
    *
-   * A renumeração da lista inteira, e não a troca de dois valores, é o que
-   * impede `position` repetida — com dois números iguais a loja ordena por
-   * sorteio, e o lojista não tem como consertar isso digitando. A faixa começa em
-   * `FIRST_VITRINE_POSITION` para não invadir a do cromo. Só o que muda de fato é
-   * gravado, uma requisição por seção que mudou de lugar.
-   *
-   * A gravação é sequencial de propósito: em paralelo, uma falha no meio
-   * deixaria a lista da loja com uma ordem que ninguém pediu, e o aviso não
-   * saberia dizer o que ficou gravado. Abortando no primeiro erro, a mensagem é
-   * honesta — "salve de novo" — e a ordem pendente continua na tela.
-   *
-   * O que sai daqui é um PATCH por seção, e a rota admin avisa a loja a cada um
-   * (`notifyStorefront`): a vitrine se reposiciona em segundos.
+   * O corpo é `{ ids }` — a vitrine inteira, na ordem da tela — e quem renumera
+   * é o servidor (`POST /admin/content/order`, com a regra de
+   * `modules/content/order.ts`). Antes isto era um `PATCH` por seção que mudou de
+   * lugar: N requisições, N gravações e N avisos à loja, e uma falha no meio
+   * deixava a vitrine com uma ordem que ninguém pediu — o aviso mandava "salvar
+   * de novo" para terminar um serviço pela metade. Agora as posições mudam
+   * juntas, ou não mudam: ou a ordem está publicada, ou está pendente na tela.
    */
   const saveOrder = async () => {
     if (!orderDirty) {
@@ -580,34 +588,27 @@ const ContentPage = () => {
     setWorking("order")
 
     try {
-      // A numeração sai da regra (`modules/content/order.ts`), que devolve só as
-      // seções que mudam de posição — a ordem do array é a ordem da tela.
-      for (const { id, position } of renumber(shown)) {
-        const res = await fetch(
-          `/admin/content?id=${encodeURIComponent(id)}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ position }),
-          }
-        )
+      const res = await fetch("/admin/content/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        // A lista é `shown` — a vitrine na ordem da tela, e **só** a vitrine: a
+        // seção fixa (o cromo) não entra, e o servidor recusa uma lista que a
+        // traga ou que não traga a vitrine inteira.
+        body: JSON.stringify({ ids: shown.map((section) => section.id) }),
+      })
+      const json = await res.json().catch(() => ({}))
 
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}))
-          toast.error(
-            json.message ??
-              "Falha ao salvar a ordem. Salve de novo para concluir."
-          )
-          return
-        }
+      if (!res.ok) {
+        toast.error(json.message ?? "Falha ao salvar a ordem.")
+        return
       }
 
       setPendingOrder(null)
       await load()
       toast.success("Ordem salva. A loja publica em segundos.")
     } catch (error) {
-      toast.error("Falha ao salvar a ordem. Salve de novo para concluir.")
+      toast.error("Falha ao salvar a ordem.")
       console.error(error)
     } finally {
       setWorking(null)
@@ -899,6 +900,18 @@ const ContentPage = () => {
         // lista se separa por ela.
         const movable = !section.fixed
         const place = vitrineIndex.get(section.id) ?? 0
+        // O numeral da seção: a ordem gravada — ou a que ela **vai** ter. Com a
+        // lista já mexida na tela e ainda não publicada, o número no banco não
+        // corresponde mais ao que se vê, e um numeral que discorda da ordem
+        // visível é pior do que nenhum. A previsão sai da faixa que o servidor
+        // manda como dado (`order`, no payload) e é a mesma numeração que o
+        // "Salvar ordem" vai gravar; quem renumera é o servidor
+        // (`applyOrder`, em `modules/content/order.ts`). Sem a faixa no payload,
+        // fica o numeral gravado.
+        const numeral =
+          orderDirty && order
+            ? order.first + place * order.step
+            : section.position
         // Alteração pendente no formulário: é o que faz a barra com o "Salvar"
         // aparecer (ver `form-draft.ts`).
         const dirty = isDirty(draft, section)
@@ -908,12 +921,9 @@ const ContentPage = () => {
             <div className="flex items-center justify-between gap-x-4 p-4">
               <div className="flex items-center gap-x-3">
                 {movable ? (
-                  // O numeral é a ordem da seção — ou a que ela **vai** ter: com
-                  // a lista já mexida na tela e ainda não salva, o número gravado
-                  // não corresponde mais ao que se vê.
-                  <Badge size="2xsmall">
-                    {orderDirty ? positionFor(place) : section.position}
-                  </Badge>
+                  // O numeral: a ordem gravada, ou a que a seção vai receber
+                  // quando a pendente for publicada (ver `numeral`, acima).
+                  <Badge size="2xsmall">{numeral}</Badge>
                 ) : (
                   <Badge size="2xsmall" color="grey">
                     Fixo

@@ -17,7 +17,7 @@ import {
   withFilters,
   writeFilters,
 } from "../../../modules/content/filters"
-import { nextPosition } from "../../../modules/content/order"
+import { nextPosition, orderFaixa } from "../../../modules/content/order"
 import { splitPayload } from "../../../modules/content/payload"
 import {
   readPosition,
@@ -81,6 +81,18 @@ export async function GET(
      * categoria por trás e devolvia zero peças em silêncio).
      */
     categories: await readCategoryCatalog(query),
+    /**
+     * A faixa da numeração da vitrine (`{ first, step }`), como **dado**.
+     *
+     * O painel mostra o numeral das seções enquanto a ordem está pendente — a
+     * lista já mexida na tela, ainda não publicada — e esse numeral é o que a
+     * regra (`orderFaixa`, em `modules/content/order.ts`) vai gravar. Vem como
+     * dado, e não por import, porque o painel é código de **navegador**:
+     * importar a regra do backend levaria código de servidor para o bundle,
+     * que é o que a R6.5 desfaz (guardado por
+     * `scripts/check-contract-parity.mjs`).
+     */
+    order: orderFaixa(),
     /**
      * Metadados que o widget usa para montar o formulário — lidos do
      * **registro no Postgres** (`service.getContract()`), que é o mesmo lugar de
@@ -185,8 +197,10 @@ export async function POST(
 
   // Sem `position` no corpo, a seção nova entra no FIM. O default da coluna é
   // `0`, que na loja significa **primeira** — uma seção criada por script
-  // apareceria no topo da home sem ninguém ter pedido. O CRM sempre manda a
-  // posição; isto é para quem chama a API direto.
+  // apareceria no topo da home sem ninguém ter pedido. Quem manda a posição é
+  // esta regra, e o CRM **não** manda mais a dele: a R6.5 tirou do painel o
+  // `nextPosition` importado, então a criação (o CRM e o `curl`) usa a mesma
+  // resposta, escrita uma vez só.
   const { position: sentPosition, error: positionError } = readPosition(
     columns.position
   )
