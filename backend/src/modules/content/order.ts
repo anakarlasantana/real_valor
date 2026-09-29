@@ -1,0 +1,89 @@
+/**
+ * A ordem da vitrine — a regra que o CRM usa para numerar as seções.
+ * -------------------------------------------------------------------------
+ * Mora aqui, e não dentro da página do admin, porque é uma decisão pura e
+ * testável: quais tipos entram na ordem, de onde a numeração começa e o que
+ * "próxima posição" quer dizer. A página do CRM só clica.
+ *
+ * O que a regra protege é `position` repetida. A loja ordena por essa coluna
+ * (`listSections`, com `order: { position: "ASC" }`), então duas seções com o
+ * mesmo número têm ordem indefinida — e o lojista não consegue consertar isso
+ * digitando, porque as duas dizem o mesmo número. Vale para o **cromo**, que
+ * tem posição própria e nem sequer é ordenado por ela: se entrar na mesma faixa
+ * numerada, a lista passa a ser sorteio a cada carregamento.
+ */
+
+/**
+ * Onde começa a faixa de posições da vitrine.
+ *
+ * Abaixo dele mora o **cromo do site** (barra de anúncio, cabeçalho e rodapé),
+ * que a loja resolve por `type` — a posição dele não decide nada. Separar as
+ * faixas é o que garante que a renumeração da vitrine nunca colida com ele.
+ */
+export const FIRST_VITRINE_POSITION = 100
+
+/** A folga entre posições, a mesma do seed: sobra espaço para inserir no meio. */
+export const POSITION_STEP = 10
+
+/**
+ * O tipo é cromo do site?
+ *
+ * A lista vem do schema (`singletonTypes`, montado do contrato), e não de um
+ * array escrito aqui: um tipo declarado único no contrato já nasce sem ordem no
+ * CRM, sem edição de tela.
+ */
+export function isChromeType(
+  singletonTypes: readonly string[],
+  type: string
+): boolean {
+  return singletonTypes.includes(type)
+}
+
+/**
+ * A posição da próxima seção da vitrine: depois da última, com a mesma folga do
+ * seed.
+ *
+ * Recebe **só a vitrine** — o cromo não conta. Contá-lo faria a seção nova
+ * nascer depois do rodapé, longe de onde ela aparece.
+ *
+ * O piso é `FIRST_VITRINE_POSITION - POSITION_STEP`, e não o maior número
+ * existente: uma base semeada antes desta regra tem a vitrine em 20, 30, 40…, e
+ * sem o piso a seção nova nasceria em 80 — dentro da faixa do cromo, que é
+ * exatamente a colisão que a faixa existe para evitar. A primeira gravação de
+ * ordem normaliza o resto (`renumber`).
+ */
+export function nextPosition(sections: readonly { position: number }[]): number {
+  return (
+    Math.max(
+      FIRST_VITRINE_POSITION - POSITION_STEP,
+      ...sections.map((section) => section.position)
+    ) + POSITION_STEP
+  )
+}
+
+/**
+ * A posição que a seção na casa `index` recebe quando a ordem é salva.
+ *
+ * É também o numeral que a lista mostra quando há ordem pendente: com a lista já
+ * mexida na tela, o número gravado não corresponde mais ao que se vê, e um
+ * numeral que discorda da ordem visível é pior do que nenhum.
+ */
+export function positionFor(index: number): number {
+  return FIRST_VITRINE_POSITION + index * POSITION_STEP
+}
+
+/**
+ * A numeração da vitrine inteira, na ordem em que ela está na tela.
+ *
+ * Devolve **só o que muda de posição**: a tela já tem as seções, e gravar as que
+ * não se mexeram seria escrever no banco para deixar tudo igual. A ordem do
+ * array é a ordem a gravar, e é ela — e não a troca de dois valores — que
+ * impede buraco e repetição.
+ */
+export function renumber(
+  sections: readonly { id: string; position: number }[]
+): { id: string; position: number }[] {
+  return sections
+    .map((section, index) => ({ id: section.id, position: positionFor(index) }))
+    .filter((planned, index) => planned.position !== sections[index].position)
+}
