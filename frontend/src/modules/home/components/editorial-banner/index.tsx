@@ -1,4 +1,5 @@
 import { type EditorialSection } from "@lib/content/home-sections"
+import { resolveMediaUrl } from "@lib/util/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 
@@ -8,6 +9,9 @@ import Image from "next/image"
  *
  * `imagePosition` controls which column the photograph occupies, so the
  * rhythm can be flipped from the CMS without a code change.
+ *
+ * The photo goes through `resolveMediaUrl` (see `lib/util/media.ts`) so an
+ * upload from the CRM works here exactly as it does in the hero.
  */
 export default function EditorialBanner({
   section,
@@ -15,16 +19,19 @@ export default function EditorialBanner({
   section: EditorialSection
 }) {
   const imageFirst = section.imagePosition === "left"
+  const image = resolveMediaUrl(section.imageUrl)
 
   const media = (
     <div className="relative aspect-[4/5] w-full overflow-hidden bg-rv-dourado/20 small:aspect-[5/6]">
-      <Image
-        src={section.imageUrl}
-        alt={section.imageAlt}
-        fill
-        sizes="(min-width: 1024px) 50vw, 100vw"
-        className="object-cover object-center"
-      />
+      {image && (
+        <Image
+          src={image}
+          alt={section.imageAlt}
+          fill
+          sizes="(min-width: 1024px) 50vw, 100vw"
+          className="object-cover object-center"
+        />
+      )}
     </div>
   )
 

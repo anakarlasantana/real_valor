@@ -1,4 +1,5 @@
 import { type CollectionsSection } from "@lib/content/home-sections"
+import { resolveMediaUrl } from "@lib/util/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 
@@ -37,42 +38,50 @@ export default function CollectionHighlights({
         </header>
 
         <ul className="grid grid-cols-1 gap-6 small:grid-cols-3">
-          {section.items.map((item) => (
-            <li key={item.title} className="group">
-              <LocalizedClientLink
-                href={item.href}
-                className="block focus:outline-none"
-              >
-                <div className="relative aspect-[3/4] w-full overflow-hidden bg-rv-dourado/20">
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.imageAlt}
-                    fill
-                    sizes="(min-width: 1024px) 33vw, 100vw"
-                    className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-gradient-to-t from-rv-preto/70 via-rv-preto/10 to-transparent"
-                  />
+          {section.items.map((item) => {
+            // A imagem pode chegar como chave crua do provider (upload pelo
+            // CRM) ou como URL do backend — ver `lib/util/media.ts`.
+            const image = resolveMediaUrl(item.imageUrl)
 
-                  <div className="absolute inset-x-0 bottom-0 p-6">
-                    <p className="rv-display rv-section-heading-onmedia text-2xl">
-                      {item.title}
-                    </p>
-                    {item.subtitle && (
-                      <p className="rv-section-text-inherit mt-1 text-small-regular">
-                        {item.subtitle}
-                      </p>
+            return (
+              <li key={item.title} className="group">
+                <LocalizedClientLink
+                  href={item.href}
+                  className="block focus:outline-none"
+                >
+                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-rv-dourado/20">
+                    {image && (
+                      <Image
+                        src={image}
+                        alt={item.imageAlt}
+                        fill
+                        sizes="(min-width: 1024px) 33vw, 100vw"
+                        className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                      />
                     )}
-                    <span className="rv-eyebrow rv-section-accent-onmedia mt-4 inline-block border-b border-rv-dourado pb-1">
-                      {item.ctaLabel}
-                    </span>
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-gradient-to-t from-rv-preto/70 via-rv-preto/10 to-transparent"
+                    />
+
+                    <div className="absolute inset-x-0 bottom-0 p-6">
+                      <p className="rv-display rv-section-heading-onmedia text-2xl">
+                        {item.title}
+                      </p>
+                      {item.subtitle && (
+                        <p className="rv-section-text-inherit mt-1 text-small-regular">
+                          {item.subtitle}
+                        </p>
+                      )}
+                      <span className="rv-eyebrow rv-section-accent-onmedia mt-4 inline-block border-b border-rv-dourado pb-1">
+                        {item.ctaLabel}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </LocalizedClientLink>
-            </li>
-          ))}
+                </LocalizedClientLink>
+              </li>
+            )
+          })}
         </ul>
       </div>
     </section>

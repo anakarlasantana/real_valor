@@ -166,6 +166,12 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|images|assets|png|svg|jpg|jpeg|gif|webp).*)",
+    // `uploads` entra na lista porque `/uploads/<chave>` é o caminho das
+    // imagens que o CRM envia (o rewrite do `next.config.js` responde por
+    // elas): sem isso o middleware trataria a chave como rota sem país e
+    // redirecionaria a imagem para `/br/uploads/...`, e cada foto da vitrine
+    // custaria uma consulta de regiões. `static` é a mesma rota do lado do
+    // backend, aceita porque as URLs de upload podem chegar absolutas.
+    "/((?!api|_next/static|_next/image|favicon.ico|images|assets|uploads|static|png|svg|jpg|jpeg|gif|webp).*)",
   ],
 }

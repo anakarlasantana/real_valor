@@ -1,4 +1,5 @@
 import { type HeroSection } from "@lib/content/home-sections"
+import { resolveMediaUrl } from "@lib/util/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 
@@ -15,17 +16,23 @@ import Image from "next/image"
  * keeps its contrast. Its strength comes from `overlay` in the content,
  * and the tone is a translucent cacao so the hero stays inside the
  * brand palette instead of pure black.
+ *
+ * The photograph goes through `resolveMediaUrl`, so a photo uploaded from
+ * the CRM (a bare provider key) and an absolute backend URL both land on
+ * the storefront's own `/uploads/...` — the only form the image optimizer
+ * can fetch from inside the container. See `lib/util/media.ts`.
  */
 export default function Hero({ section }: { section: HeroSection }) {
   const overlay = Math.min(Math.max(section.overlay ?? 0.72, 0), 1)
   const midOverlay = Number((overlay * 0.62).toFixed(3))
+  const image = resolveMediaUrl(section.imageUrl)
 
   return (
     <section className="relative w-full overflow-hidden bg-rv-cacao">
       <div className="relative flex min-h-[560px] items-center small:min-h-[580px]">
-        {section.imageUrl && (
+        {image && (
           <Image
-            src={section.imageUrl}
+            src={image}
             alt={section.imageAlt}
             fill
             priority
