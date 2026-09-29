@@ -51,8 +51,15 @@ import {
  * v3 — o payload ganhou `singletonTypes`: o CRM precisa saber quais tipos são
  *      únicos (cabeçalho, rodapé, barra de anúncio) para não oferecer uma
  *      segunda seção que a loja nunca desenharia.
+ *
+ * v4 — tipo novo: `launches`, o trilho de novidades depois do hero. É um
+ *      formato novo (a loja desenha por `switch` de tipo) e o CRM precisa da
+ *      entrada em `typeLabels` para não chamar a seção de `launches` na tela.
+ *      A seção nova também chega pelos dois caminhos de conteúdo: o padrão
+ *      (`DEFAULT_HOME_SECTIONS`, que a loja usa como fallback) e o
+ *      "Restaurar padrão" do CRM, que cria o que falta pelo `id`.
  */
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.

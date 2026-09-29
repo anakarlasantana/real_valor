@@ -124,6 +124,14 @@ uma peça encalhada entra no lugar de uma vitrine, e não há como destacar a pe
 `FeaturedSection`, com seletor de produtos no admin e a query do front respeitando a seleção.
 Requer migration leve (o formato é JSON, então `data` já comporta os IDs).
 
+> **Nota (2026-09-28).** A seção nova de lançamentos (`launches`, o trilho de novidades logo
+> depois do hero) entrou com a fonte **automática** de propósito: os produtos saem da Store API
+> do mais novo para o mais antigo, e o CMS carrega só a cópia e o `limit`. Curadoria — o que este
+> item pede — é o passo seguinte e vale para as duas seções, porque o campo `kind: "products"`
+> nasce no contrato e não no tipo: as duas queries passam a respeitar a seleção quando ela
+> existir. Enquanto isso, a diferença entre as duas seções é a de sempre: `featured` é catálogo
+> com filtro, `launches` é novidade sem curadoria.
+
 #### 2.5.2 Links das coleções em destaque apontam todos para o mesmo lugar
 
 **Evidência:** `backend/src/modules/content/defaults.ts:82,90,98` — os três cards "Nossas

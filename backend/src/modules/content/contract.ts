@@ -138,6 +138,41 @@ export type FeaturedSection = SectionBase &
     viewAllLabel: string
   }
 
+/**
+ * Lançamentos — o trilho de novidades logo depois do hero.
+ *
+ * É a pergunta que a home não respondia: "o que chegou?". O hero apresenta a
+ * marca, as coleções mostram o universo e esta seção mostra o que é novo, num
+ * trilho horizontal com encaixe (`scroll-snap`) em vez de grade — a mesma
+ * largura de card do resto da loja, mas com o gesto de arrastar.
+ *
+ * **A fonte do conteúdo é a loja, não o CMS.** A seção carrega só a cópia
+ * (eyebrow, título, subtítulo, link) e o `limit`; os produtos vêm da Store API,
+ * do mais novo para o mais antigo. É o que faz a seção se manter sozinha: o
+ * lojista publica uma peça e ela aparece no trilho sem ninguém editar bloco.
+ * Escolher *quais* peças é outro assunto — curadoria manual, com um campo
+ * `kind: "products"` —, e a decisão registrada é automático primeiro.
+ *
+ * A cópia padrão (`defaults.ts`) **não** é cópia do protótipo: o protótipo não
+ * tem esta seção. Ela está escrita na voz da marca e é toda editável no CRM —
+ * o texto de lá é ponto de partida, não redação final.
+ */
+export type LaunchesSection = SectionBase &
+  SectionAppearance & {
+    type: "launches"
+    eyebrow: string
+    title: string
+    subtitle: string
+    /**
+     * Quantos produtos o trilho mostra. A faixa é declarada no campo
+     * (`SECTION_FIELDS.launches`): a API recusa fora dela, e o storefront tem o
+     * mesmo piso como última defesa (`lib/util/launches.ts`).
+     */
+    limit: number
+    viewAllLabel: string
+    viewAllHref: string
+  }
+
 export type EditorialSection = SectionBase &
   SectionAppearance & {
     type: "editorial"
@@ -288,6 +323,7 @@ export type HomeSection =
   | BenefitsSection
   | CollectionsSection
   | FeaturedSection
+  | LaunchesSection
   | EditorialSection
   | InstagramSection
   | NavSection
@@ -297,6 +333,10 @@ export type HomeSection =
 export const SECTION_TYPES = [
   "announcement",
   "hero",
+  // Segunda seção da home: o trilho de novidades, logo depois do hero (é a
+  // posição 25 do padrão). A ordem deste array é a ordem do seletor de tipo
+  // no CRM e a ordem em que as seções se leem na página.
+  "launches",
   "benefits",
   "collections",
   "featured",
@@ -762,6 +802,37 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     },
     // Sem trilho de fundo: o fundo do hero é a fotografia.
   ],
+  launches: [
+    { name: "eyebrow", label: "Eyebrow", kind: "text" },
+    // O destaque do trilho é o eyebrow — e o "ver tudo" do fim.
+    ...appearanceDetails("eyebrow"),
+    { name: "title", label: "Título", kind: "text", required: true },
+    ...appearanceTitles("title"),
+    { name: "subtitle", label: "Subtítulo", kind: "textarea" },
+    ...appearanceTexts("subtitle"),
+    {
+      // O único campo do contrato além do `overlay` do hero com faixa: os
+      // produtos vêm da loja, então o que o lojista escolhe aqui é QUANTOS.
+      // Sem o limite, ou com um limite grande, o trilho viraria o catálogo
+      // inteiro — e um `limit` de 0 devolveria uma seção vazia.
+      name: "limit",
+      label: "Quantos produtos",
+      kind: "number",
+      min: 2,
+      max: 12,
+      step: 1,
+      help: "Os mais recentes primeiro. 8 cabem na tela larga sem cortar um card no meio.",
+    },
+    { name: "viewAllLabel", label: "Link ver tudo", kind: "text" },
+    {
+      name: "viewAllHref",
+      label: "Destino do link",
+      kind: "text",
+      help: "Para onde o link leva (ex.: /store).",
+    },
+    // O fundo fecha a seção: é a única escolha que vale para o bloco todo.
+    ...appearanceBackground("viewAllHref"),
+  ],
   benefits: [
     {
       name: "items",
@@ -922,6 +993,7 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
 export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   announcement: "Barra de anúncio",
   hero: "Hero",
+  launches: "Lançamentos",
   benefits: "Faixa de benefícios",
   collections: "Coleções em destaque",
   featured: "Peças em destaque",

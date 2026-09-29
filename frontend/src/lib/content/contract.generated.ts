@@ -123,6 +123,41 @@ export type FeaturedSection = SectionBase &
     viewAllLabel: string
   }
 
+/**
+ * Lançamentos — o trilho de novidades logo depois do hero.
+ *
+ * É a pergunta que a home não respondia: "o que chegou?". O hero apresenta a
+ * marca, as coleções mostram o universo e esta seção mostra o que é novo, num
+ * trilho horizontal com encaixe (`scroll-snap`) em vez de grade — a mesma
+ * largura de card do resto da loja, mas com o gesto de arrastar.
+ *
+ * **A fonte do conteúdo é a loja, não o CMS.** A seção carrega só a cópia
+ * (eyebrow, título, subtítulo, link) e o `limit`; os produtos vêm da Store API,
+ * do mais novo para o mais antigo. É o que faz a seção se manter sozinha: o
+ * lojista publica uma peça e ela aparece no trilho sem ninguém editar bloco.
+ * Escolher *quais* peças é outro assunto — curadoria manual, com um campo
+ * `kind: "products"` —, e a decisão registrada é automático primeiro.
+ *
+ * A cópia padrão (`defaults.ts`) **não** é cópia do protótipo: o protótipo não
+ * tem esta seção. Ela está escrita na voz da marca e é toda editável no CRM —
+ * o texto de lá é ponto de partida, não redação final.
+ */
+export type LaunchesSection = SectionBase &
+  SectionAppearance & {
+    type: "launches"
+    eyebrow: string
+    title: string
+    subtitle: string
+    /**
+     * Quantos produtos o trilho mostra. A faixa é declarada no campo
+     * (`SECTION_FIELDS.launches`): a API recusa fora dela, e o storefront tem o
+     * mesmo piso como última defesa (`lib/util/launches.ts`).
+     */
+    limit: number
+    viewAllLabel: string
+    viewAllHref: string
+  }
+
 export type EditorialSection = SectionBase &
   SectionAppearance & {
     type: "editorial"
@@ -273,6 +308,7 @@ export type HomeSection =
   | BenefitsSection
   | CollectionsSection
   | FeaturedSection
+  | LaunchesSection
   | EditorialSection
   | InstagramSection
   | NavSection
@@ -282,6 +318,10 @@ export type HomeSection =
 export const SECTION_TYPES = [
   "announcement",
   "hero",
+  // Segunda seção da home: o trilho de novidades, logo depois do hero (é a
+  // posição 25 do padrão). A ordem deste array é a ordem do seletor de tipo
+  // no CRM e a ordem em que as seções se leem na página.
+  "launches",
   "benefits",
   "collections",
   "featured",
@@ -542,6 +582,18 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     "imageUrl": "/brand/hero.jpg",
     "imageAlt": "Alfaiataria feminina Real Valor",
     "overlay": 0.72,
+  },
+  {
+    "id": "lancamentos",
+    "type": "launches",
+    "enabled": true,
+    "position": 25,
+    "eyebrow": "Novidades",
+    "title": "Chegou agora",
+    "subtitle": "As peças que acabaram de entrar na vitrine, na ordem em que chegaram.",
+    "limit": 8,
+    "viewAllLabel": "Ver tudo",
+    "viewAllHref": "/store",
   },
   {
     "id": "benefits",

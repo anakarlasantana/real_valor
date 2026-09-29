@@ -3,6 +3,11 @@ import type { HomeSection } from "./contract"
 /**
  * Conteúdo padrão da home — a cópia exata do protótipo.
  *
+ * Uma exceção, e ela está marcada na própria seção: `lancamentos` (o trilho de
+ * novidades depois do hero) não existe no protótipo — a cópia dela foi escrita
+ * aqui, na voz da marca, e é o ponto de partida que o lojista troca no CRM
+ * inteiro. As demais são cópia literal.
+ *
  * Usado por três caminhos:
  *   1. `scripts/seed-content.ts` popula o banco com isto quando a base nasce
  *      (`make seed`), pela CLI.
@@ -73,6 +78,21 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     imageUrl: "/brand/hero.jpg",
     imageAlt: "Alfaiataria feminina Real Valor",
     overlay: 0.72,
+  },
+  {
+    id: "lancamentos",
+    type: "launches",
+    enabled: true,
+    position: 25,
+    // Cópia escrita AQUI, e não copiada do protótipo: ele não tem esta seção.
+    // É ponto de partida na voz da marca — o lojista troca tudo no CRM.
+    eyebrow: "Novidades",
+    title: "Chegou agora",
+    subtitle:
+      "As peças que acabaram de entrar na vitrine, na ordem em que chegaram.",
+    limit: 8,
+    viewAllLabel: "Ver tudo",
+    viewAllHref: "/store",
   },
   {
     id: "benefits",

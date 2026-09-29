@@ -13,6 +13,7 @@ import EditorialBanner from "@modules/home/components/editorial-banner"
 import FeaturedProducts from "@modules/home/components/featured-products"
 import Hero from "@modules/home/components/hero"
 import InstagramGrid from "@modules/home/components/instagram-grid"
+import LaunchesRail from "@modules/home/components/launches-rail"
 import { HttpTypes } from "@medusajs/types"
 import { type ReactNode } from "react"
 
@@ -37,9 +38,9 @@ export const metadata: Metadata = {
  * (`/#editorial` is the "Sobre" item), so the wrapper has to exist for
  * every section — see `renderSection`.
  *
- * Only `hero` and `featured` need commerce data (the current region),
- * which is why a missing region degrades those two sections instead of
- * failing the whole page.
+ * Only `hero`, `featured` and `launches` need commerce data (the current
+ * region), which is why a missing region degrades those three sections
+ * instead of failing the whole page.
  *
  * 60s, keyed by the `content` cache tag on the fetch itself: an admin
  * edit becomes visible within a minute, and `revalidateTag("content")`
@@ -152,6 +153,13 @@ function renderSection(
       return null
     case "hero":
       return <Hero section={section} />
+    case "launches":
+      // Como o `featured`: sem região não há preço, e um trilho de cards sem
+      // preço é pior do que nenhum trilho. A seção some, a home fica de pé.
+      if (!region) {
+        return null
+      }
+      return <LaunchesRail section={section} region={region} />
     case "benefits":
       return <BenefitsBar items={section.items} />
     case "collections":

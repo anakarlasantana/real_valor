@@ -110,6 +110,20 @@ const STOREFRONT_SUPPORTED_SECTIONS = join(
   "frontend/src/lib/data/supported-sections.ts"
 )
 /**
+ * O trilho de lançamentos: o render da seção e a decisão do tamanho.
+ *
+ * O render é o outro lado do `SECTION_FIELDS.launches` — campo que ele lê e o
+ * contrato não declara fica sem editor no CRM (e o PATCH apaga o valor no
+ * primeiro "Salvar"). A util guarda a faixa do `limit` como espelho à mão,
+ * porque o artefato gerado do storefront não leva `SECTION_FIELDS` (ele é só
+ * do CRM): três números que precisam bater com o contrato.
+ */
+const LAUNCHES_RAIL = join(
+  root,
+  "frontend/src/modules/home/components/launches-rail/index.tsx"
+)
+const LAUNCHES_UTIL = join(root, "frontend/src/lib/util/launches.ts")
+/**
  * As fontes da prévia: `THEME_FONTS` diz a família e a pilha, mas quem
  * entrega os bytes ao navegador do painel é o `@font-face` do
  * `appearance.css` apontando para a cópia local. Conferir a família sem
@@ -423,6 +437,69 @@ assert(
     footerReads.every((name) => footerSpecFields.includes(name)),
   `render lê: ${footerReads.join(", ") || "nenhum"}\n` +
     `       contrato: ${footerSpecFields.join(", ") || "NENHUM"}`
+)
+
+console.log("\nTRILHO DE LANÇAMENTOS (render ⇔ contrato)")
+
+// Mesma regra do rodapé, para a seção que o lojista ganha nova: todo
+// `section.<campo>` que o trilho lê precisa ter editor em
+// `SECTION_FIELDS.launches`. Campo lido e não declarado aparece na loja, não
+// tem como ser editado no CRM — e o PATCH substitui o `data` inteiro, então o
+// primeiro "Salvar" da seção apaga o valor.
+const launchesRail = readFileSync(LAUNCHES_RAIL, "utf8")
+const railReads = [
+  ...new Set(
+    [...launchesRail.matchAll(/\bsection\.([A-Za-z_$][\w$]*)/g)].map(
+      (match) => match[1]
+    )
+  ),
+]
+const launchesSpecFields = (sourceFields.launches ?? []).map(
+  (field) => field.name
+)
+
+assert(
+  "todo campo que o trilho de lançamentos lê tem editor em SECTION_FIELDS.launches",
+  railReads.length > 0 &&
+    railReads.every((name) => launchesSpecFields.includes(name)),
+  `render lê: ${railReads.join(", ") || "nenhum"}\n` +
+    `       contrato: ${launchesSpecFields.join(", ") || "NENHUM"}`
+)
+
+// E a faixa do `limit`: o mínimo, o máximo e o tamanho padrão existem em dois
+// lugares — o campo do contrato (que o CRM desenha e a API valida) e a util do
+// storefront (que é a última defesa, porque o que está gravado pode ser
+// anterior à faixa). Faixa divergente aqui é o tipo de erro que só aparece em
+// produção: o CRM deixa digitar 6 e a loja desenha 2.
+const launchesUtil = readFileSync(LAUNCHES_UTIL, "utf8")
+const utilConstant = (name) => {
+  const match = new RegExp(`export const ${name} = (\\d+)`).exec(launchesUtil)
+
+  return match ? Number(match[1]) : null
+}
+const limitField = (sourceFields.launches ?? []).find(
+  (field) => field.name === "limit"
+)
+const seedLaunches = defaults.find((section) => section.type === "launches")
+
+assert(
+  "a faixa do `limit` do trilho é a do campo declarado no contrato",
+  limitField?.min !== undefined &&
+    limitField?.max !== undefined &&
+    utilConstant("LAUNCHES_LIMIT_MIN") === limitField.min &&
+    utilConstant("LAUNCHES_LIMIT_MAX") === limitField.max,
+  `util: ${utilConstant("LAUNCHES_LIMIT_MIN")}–${utilConstant(
+    "LAUNCHES_LIMIT_MAX"
+  )}\n` +
+    `       campo: ${limitField?.min}–${limitField?.max}`
+)
+
+assert(
+  "o tamanho padrão do trilho é o `limit` do conteúdo padrão",
+  seedLaunches?.limit !== undefined &&
+    utilConstant("LAUNCHES_LIMIT_FALLBACK") === seedLaunches.limit,
+  `util: ${utilConstant("LAUNCHES_LIMIT_FALLBACK")}\n` +
+    `       padrão: ${seedLaunches?.limit}`
 )
 
 console.log("\nADMIN (field-input.tsx)")

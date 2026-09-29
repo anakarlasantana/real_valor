@@ -290,10 +290,10 @@ git config core.hooksPath .githooks   # uma vez por clone
 
 | Onde | Comando | O que faz |
 | :--- | :--- | :--- |
-| Commit (hook) + CI | `make check` | artefato do contrato em dia + **80 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ CSS, ⇔ fontes, ⇔ registro do schema). **Não instala nada**: os dois scripts leem arquivos com Node puro |
+| Commit (hook) + CI | `make check` | artefato do contrato em dia + **83 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ CSS, ⇔ fontes, ⇔ registro do schema). **Não instala nada**: os dois scripts leem arquivos com Node puro |
 | CI | `make types` | `tsc` dos dois pacotes (**0 erros**). Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI | `yarn test:unit` (em `backend/`) | **45 testes** dos invariantes do contrato, do conteúdo padrão, do registro do schema, da divisão coluna×conteúdo do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
-| CI | `yarn test` (em `frontend/`) | **12 testes** da tolerância da loja ao tipo desconhecido e do `src` das imagens do CMS (`resolveMediaUrl`) — `vitest` |
+| CI | `yarn test:unit` (em `backend/`) | **72 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração e inserção), do registro do schema, da divisão coluna×conteúdo do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| CI | `yarn test` (em `frontend/`) | **20 testes** da tolerância da loja ao tipo desconhecido, do `src` das imagens do CMS (`resolveMediaUrl`) e do tamanho do trilho de lançamentos (`launchesLimit`) — `vitest` |
 | CI | `make check-schema` | o registro do `content_schema` conferido contra o contrato, num Postgres efêmero |
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |
 
