@@ -179,8 +179,8 @@ real_valor/
 ├── scripts/
 │   ├── doctor.sh                    # diagnostico do ambiente (le e nao mexe)
 │   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
-│   ├── check-contract-parity.mjs # guarda (em redução: 89 → 80 asserts; o resto
-│   │                           #   virou `tsc` e teste — ver docs/plano-centralizacao.md)
+│   ├── check-contract-parity.mjs # guarda hoje: 85 asserts (o G2 levou de 89 p/ 80;
+│   │                           #   o resto virou `tsc` e teste — ver docs/plano-centralizacao.md)
 │   └── vendor-fonts.mjs          # (re)baixa e valida os `.woff2` self-hosted
 │
 ├── backend/                          # Medusa v2 — Store API + Admin
@@ -209,6 +209,12 @@ real_valor/
         ├── lib/                      # dados, contexto, tema, contrato de conteúdo (gerado)
         └── middleware.ts             # resolve o `countryCode` da URL
 ```
+
+A raiz **não é um pacote**: não há `package.json` nem `node_modules` nela. Os únicos
+manifestos são `backend/package.json` e `frontend/package.json` (cada um com o seu
+`yarn.lock`), e o único ponto de entrada de comandos é o `Makefile` — os dois pacotes
+têm `node_modules` separados de propósito, porque as duas pilhas trazem React de maior
+(18.3.1 no painel do Medusa, 19 na loja).
 
 Os dois repos seguem o **mesmo padrão de Dockerfile**: `deps` (instala tudo, uma vez) → `builder` (compila) → `runner` (só o artefato). O estágio final de cada Dockerfile é o de **produção**, e é justamente por isso que o modo nunca pode depender do estágio default: a base fixa `target: runner` e o override fixa `target: dev`.
 
@@ -304,9 +310,18 @@ sobe um Postgres). Ela é o que transforma o resto desta tabela em obrigatório 
 tudo dependia de alguém lembrar; e os testes eram o caso mais claro, porque existiam nos
 `package.json`, passavam, e nenhum job os chamava.
 
-O caminho para **não depender mais** da guarda de paridade (ela ainda é o item em
-redução: 89 → 80 asserções, com o resto virando `tsc` e teste) está em
-[`docs/plano-centralizacao.md`](docs/plano-centralizacao.md).
+O caminho para **não depender mais** da guarda de paridade está em
+[`docs/plano-centralizacao.md`](docs/plano-centralizacao.md). Ela nasceu com **89**
+asserções, o G2 a levou a **80** e hoje ela imprime **85**: cada fase que mexe no
+contrato pode somar verificação, e somar é mais barato que redesenhar. O número se
+confere, não se estima:
+
+```bash
+make check | grep -c '^  ok'   # 85
+```
+
+O alvo, portanto, não é o número — é o *tipo*: o que o compilador e um teste já
+garantem não precisa de asserção. Sobra o que só a guarda vê (binário, CSS, migração).
 
 ---
 

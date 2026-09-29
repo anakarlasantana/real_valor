@@ -283,11 +283,26 @@ a ser `scripts/check-boundaries.mjs`, que falha quando `admin/` importar **valor
 type`) de `backend/`. Hoje há **1** import de valor no painel: `nextPosition`, `positionFor` e
 `renumber` (`page.tsx:56`) — e ele sai na R6.5.
 
+### Fechamento de toda fase R (R0 → R7)
+
+Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
+
+| Item | O que significa |
+|---|---|
+| **Documentação ajustada** | o `README.md`, este plano e o comentário do próprio código passam a dizer o que **ficou** verdade — número, caminho, comando. Doc que descreve o estado anterior é dívida, não histórico: o histórico o Git guarda. |
+| **Órfão apagado** | script sem chamador, cache de build antigo, manifesto sem dependência ou arquivo que a fase tornou inútil sai **na mesma fase**, e o que a documentação dizia dele é corrigido junto. Não há `arquivo/` de espera para isso: o Git já é o arquivo. |
+
+> **Contagem da guarda — medida, não estimada:** `make check | grep -c '^  ok'`.
+> Nasceu com 89; o G2 a levou a 80; hoje imprime **85**, porque cada fase que mexe no
+> contrato pode somar verificação, e somar é mais barato que redesenhar. O alvo do plano
+> nunca foi o número: é ficar só com o que a linguagem não vê (binário, CSS, migração).
+
 ### A fila, na ordem fixada
 
 | Fase | O que é | Gate |
 |---|---|---|
 | **R0** ✅ | o teste que existia passa a rodar: `make test`, job `testes` na CI, raiz sem `workspaces`, `f3` congelada em `arquivo/` | `make test` (9 suites / 91 testes + 3 arquivos / 20 testes), `make check` e `make types` verdes |
+| **R0.1** ✅ | higiene da raiz: `package.json` (0 dependências, 6 scripts que só duplicavam o `Makefile` e que ninguém chamava), `node_modules` (1 GB, sem lockfile, invisível para o repo) e o `tsconfig.tsbuildinfo` defasado do storefront, apagados; contagem da guarda conferida na doc | `make check` e `make test` verdes com a raiz sem manifesto |
 | **R1** | a curadoria vira referência: os 4 chips do CRM apontam para as 4 categorias que existem (Todos, Vestidos, Blusas & Camisas, Calças & Alfaiataria); `module/filters.ts`; payload; `/store/content` filtrando | linhas em `content_section_category` conferidas e o filtro visível na loja |
 | **R6** | `api/admin/content/route.ts` (636 linhas, 5 responsabilidades) quebra em `modules/content/{validation,resolvers,view}.ts`; o `nextPosition` duplicado sai | rota ~150 linhas, os 91 testes intactos |
 | **R6.5** | `POST /admin/content/order` com `{ ids }`: a renumeração sai do browser (N `PATCH` → 1) e a loja é notificada **uma vez** | nenhum import de valor de `backend/` no painel |
