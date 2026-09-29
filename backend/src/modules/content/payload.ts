@@ -1,23 +1,29 @@
 /**
- * A fronteira entre COLUNAS e CONTEÚDO no corpo que o CRM envia.
+ * A fronteira entre COLUNAS, CONTEÚDO e REFERÊNCIA no corpo que o CRM envia.
  * -------------------------------------------------------------------------
  * Uma seção é uma linha com colunas fixas — `surface`, `type`, `enabled`,
  * `position` (ver `models/content-section.ts`) — e um `data` JSON com o que o
  * tipo define (`contract.ts`). O corpo que o CRM manda, porém, é achatado:
- * `{ enabled, position, headline, imageUrl, … }`, porque é assim que o
- * formulário o monta. Alguém tem que dizer onde cada chave cai.
+ * `{ enabled, position, headline, imageUrl, productIds, … }`, porque é assim que
+ * o formulário o monta. Alguém tem que dizer onde cada chave cai — e desde a
+ * curadoria são **três** destinos, não dois.
  *
- * **A regra é o nome da coluna, e nada mais.** Coluna é o que se filtra ou
- * ordena, são poucas e estão em `COLUMN_COERCIONS`; tudo o mais é conteúdo do
- * tipo. Não há ambiguidade a resolver: nenhum campo do contrato se chama
- * `surface`, `type`, `enabled` ou `position` — e `payload.unit.spec.ts` confere
- * isso contra `SECTION_FIELDS`, para o dia em que alguém quiser criar um campo
- * com um desses nomes (a resposta certa é renomear o campo).
+ * **Coluna:** o que se filtra ou ordena, poucas e conhecidas
+ * (`COLUMN_COERCIONS`). Tudo o mais é conteúdo do tipo — não há ambiguidade a
+ * resolver: nenhum campo do contrato se chama `surface`, `type`, `enabled` ou
+ * `position`, e `payload.unit.spec.ts` confere isso contra `SECTION_FIELDS`,
+ * para o dia em que alguém quiser criar um campo com um desses nomes (a resposta
+ * certa é renomear o campo).
+ *
+ * **Referência:** `productIds` (a curadoria) **não** é coluna nem conteúdo — é o
+ * link do Medusa (`curation.ts`), e por isso sai daqui separado, sem passar pelo
+ * `validateData` (que reprovaria como "campo desconhecido", já que o contrato do
+ * tipo não o declara e não deve declarar: ele não vive em `data`).
  *
  * **A regra já foi outra, e custou caro.** `title` era coluna (o rótulo da
  * listagem) **e** campo de conteúdo em quatro tipos (`collections`, `featured`,
- * `editorial`, `instagram`), então a divisão precisava consultar o schema do
- * tipo para desempatar. Quem pagava era o lojista: tratado como coluna, o PATCH
+ * `editorial`, `instagram`), então a divisão precisava consultar o schema do tipo
+ * para desempatar. Quem pagava era o lojista: tratado como coluna, o PATCH
  * respondia 200, a vitrine não mudava e o "Título" digitado ia para uma coluna
  * que nada lê. A coluna `title` foi removida em 2026-09-29 (ver
  * `models/content-section.ts`) e o `title` do corpo passou a ser sempre
@@ -26,6 +32,7 @@
  * A função é pura e **não muda o corpo recebido**: a rota continua lendo o
  * `type` do mesmo objeto depois de dividi-lo.
  */
+import { CURATION_FIELD } from "./curation"
 
 /**
  * As chaves que são coluna da seção, e como cada uma é convertida.
@@ -53,18 +60,33 @@ export const COLUMN_NAMES: readonly string[] = Object.keys(COLUMN_COERCIONS)
 export type SplitPayload = {
   columns: Record<string, unknown>
   data: Record<string, unknown>
+  /**
+   * A curadoria, **como veio** — e `undefined` quando a chave não estava no
+   * corpo, que é diferente de `[]`: `undefined` é "não mexe na curadoria" (o
+   * PATCH que só mudou um texto) e `[]` é "esvazia". Quem valida (lista de ids,
+   * sem repetição, todos existentes) é a rota.
+   */
+  curation?: unknown
 }
 
-/** Divide o corpo entre colunas da seção e `data`. */
+/** Divide o corpo entre colunas da seção, `data` e a curadoria. */
 export function splitPayload(body: Record<string, unknown>): SplitPayload {
   const columns: Record<string, unknown> = {}
   const data: Record<string, unknown> = {}
+  let curation: unknown
 
   for (const [key, value] of Object.entries(body)) {
     // `id` e `type` são identidade da seção, não conteúdo: quem os define é a
     // rota — o `id` do query param no PATCH, o tipo já validado no POST.
     // Aceitos e ignorados, como antes.
     if (key === "id" || key === "type") {
+      continue
+    }
+
+    // A curadoria é referência, não conteúdo: `productIds` fora do `data`, e
+    // daqui para o link. Ver o cabeçalho deste arquivo.
+    if (key === CURATION_FIELD) {
+      curation = value
       continue
     }
 
@@ -78,5 +100,7 @@ export function splitPayload(body: Record<string, unknown>): SplitPayload {
     data[key] = value
   }
 
-  return { columns, data }
+  return curation === undefined
+    ? { columns, data }
+    : { columns, data, curation }
 }

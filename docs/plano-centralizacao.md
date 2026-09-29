@@ -13,7 +13,8 @@
 **Um só serviço, um só banco.** O "espelho do contrato" não é problema de build: é um
 **dado no lugar errado**. Ele está em código (e por isso duplicado por pacote) quando
 deveria estar no banco, servido uma vez pela API. O repositório já é um monólito modular
-com banco único — `content_section` é a única tabela de conteúdo, `/store/content` e
+com banco único — `content_section` é a única tabela de conteúdo e
+`content_section_product` (o link da curadoria) a única de referência, `/store/content` e
 `/admin/content` são as duas portas, e o painel é servido pelo próprio serviço. O que
 está fora do lugar são três coisas: **contrato em código duplicado**, **tema em arquivos
 JSON** em vez de dado, e **workspaces vestigiais** (cada app tem lockfile/contexto

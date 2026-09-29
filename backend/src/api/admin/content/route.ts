@@ -3,6 +3,14 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { CONTENT_MODULE } from "../../../modules/content"
 import {
+  CURATION_FIELD,
+  readCuration,
+  withCuration,
+  writeCuration,
+  type QueryGraph,
+  type RemoteLink,
+} from "../../../modules/content/curation"
+import {
   isSingletonSectionType,
   type FieldKind,
 } from "../../../modules/content/contract"
@@ -123,6 +131,69 @@ function validateData(
 }
 
 /**
+ * A curadoria que veio no corpo: lista de `id` de produto, sem repetição, e
+ * todos existentes.
+ *
+ * `undefined` é "não veio" (não mexe); `[]` é "esvazia" — e a diferença é o que
+ * faz um PATCH de texto não apagar a curadoria de ninguém.
+ *
+ * A **existência** é conferida aqui, e não pelo banco, porque a tabela do link
+ * não tem chave estrangeira (é gerada pelo módulo de links do Medusa, que não as
+ * cria — ver `modules/content/curation.ts`). Sem esta checagem, um id inventado
+ * viraria uma linha que nenhuma query de produto hidrata: um buraco silencioso na
+ * vitrine, que é o defeito que a curadoria como link veio evitar.
+ */
+async function resolveProductIds(
+  value: unknown,
+  query: QueryGraph
+): Promise<{ ids?: string[]; error?: string }> {
+  if (value === undefined) {
+    return {}
+  }
+
+  if (
+    !Array.isArray(value) ||
+    value.some((id) => typeof id !== "string" || !id.trim())
+  ) {
+    return {
+      error: `Campo "${CURATION_FIELD}" deve ser uma lista de ids de produto.`,
+    }
+  }
+
+  const ids = value as string[]
+
+  if (new Set(ids).size !== ids.length) {
+    return {
+      error:
+        `Campo "${CURATION_FIELD}" tem id repetido: a curadoria é uma lista ` +
+        `ordenada, e cada produto aparece uma vez.`,
+    }
+  }
+
+  if (!ids.length) {
+    return { ids }
+  }
+
+  const { data } = await query.graph({
+    entity: "product",
+    fields: ["id"],
+    filters: { id: ids },
+  })
+  const found = new Set((data as { id: string }[]).map((product) => product.id))
+  const missing = ids.filter((id) => !found.has(id))
+
+  if (missing.length) {
+    return {
+      error:
+        `A curadoria aponta produto que não existe (ou foi removido): ` +
+        `${missing.join(", ")}.`,
+    }
+  }
+
+  return { ids }
+}
+
+/**
  * Avisa o storefront para tirar o conteúdo do cache (`/api/revalidate`).
  *
  * Sem `await` de propósito: a gravação já está feita e a resposta ao CRM não
@@ -155,19 +226,30 @@ function toSection(block: {
  *
  * Diferente da rota pública, aqui não se filtra `enabled`, porque o
  * admin precisa listar (e reabilitar) o que está oculto.
+ *
+ * A curadoria vem junto, e vem **sempre que existe**: o painel edita a lista, e
+ * `productIds` ausente é "esta seção não tem curadoria" (o tipo que lista o
+ * catálogo sozinho).
  */
 export async function GET(
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<void> {
   const service: ContentModuleService = req.scope.resolve(CONTENT_MODULE)
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
   const { surface = "home" } = req.query as { surface?: string }
   const sections = await service.listSections({ surface, onlyEnabled: false })
+  const curation = await readCuration(
+    query,
+    sections.map((section) => section.id)
+  )
   const stored = await service.getContract()
 
   res.json({
-    sections,
+    sections: sections.map((section) =>
+      withCuration(section, curation[section.id])
+    ),
     /**
      * Metadados que o widget usa para montar o formulário — lidos do
      * **registro no Postgres** (`service.getContract()`), que é o mesmo lugar de
@@ -286,6 +368,10 @@ export async function POST(
   res: MedusaResponse
 ): Promise<void> {
   const service: ContentModuleService = req.scope.resolve(CONTENT_MODULE)
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const link: RemoteLink = req.scope.resolve(
+    ContainerRegistrationKeys.REMOTE_LINK
+  )
 
   const body = (req.body ?? {}) as Record<string, unknown>
   const type = body.type
@@ -325,7 +411,17 @@ export async function POST(
     return
   }
 
-  const { columns, data: sent } = splitPayload(body)
+  const { columns, data: sent, curation } = splitPayload(body)
+
+  const { ids: productIds, error: curationError } = await resolveProductIds(
+    curation,
+    query
+  )
+
+  if (curationError) {
+    res.status(400).json({ type: "invalid_data", message: curationError })
+    return
+  }
 
   // A seção nova nasce com o conteúdo padrão do tipo e o que veio no corpo por
   // cima (`DEFAULT_SECTION_DATA`). Sem isso, criar exigiria os campos
@@ -373,9 +469,19 @@ export async function POST(
     data,
   })
 
+  // A curadoria é gravada **depois** da seção: o link precisa do id dela (que
+  // pode ter vindo do corpo ou do banco). Se esta chamada falhar, a seção fica
+  // sem curadoria — e é isso que o CRM diz, porque a resposta abaixo só traz
+  // `productIds` quando a gravação deu certo.
+  if (productIds?.length) {
+    await writeCuration({ link, query, sectionId: created.id, productIds })
+  }
+
   notifyStorefront(req)
 
-  res.status(201).json({ section: toSection(created) })
+  res.status(201).json({
+    section: withCuration(toSection(created), productIds),
+  })
 }
 
 /** PATCH /admin/content?id=... — atualiza uma seção existente. */
@@ -384,6 +490,10 @@ export async function PATCH(
   res: MedusaResponse
 ): Promise<void> {
   const service: ContentModuleService = req.scope.resolve(CONTENT_MODULE)
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const link: RemoteLink = req.scope.resolve(
+    ContainerRegistrationKeys.REMOTE_LINK
+  )
 
   const { id } = req.query as { id?: string }
 
@@ -415,9 +525,19 @@ export async function PATCH(
     return
   }
 
-  const { columns, data } = splitPayload(
+  const { columns, data, curation } = splitPayload(
     (req.body ?? {}) as Record<string, unknown>
   )
+
+  const { ids: productIds, error: curationError } = await resolveProductIds(
+    curation,
+    query
+  )
+
+  if (curationError) {
+    res.status(400).json({ type: "invalid_data", message: curationError })
+    return
+  }
 
   // `position` passa pela mesma conferência do POST: `Number("abc")` é `NaN`, e
   // `NaN` na coluna não dá erro — dá ordem indefinida na loja, que é o defeito
@@ -450,9 +570,21 @@ export async function PATCH(
       : {}),
   })
 
+  // `productIds` ausente = "não mexe"; presente (mesmo `[]`) = a lista manda.
+  // Quando ele não veio, a curadoria de agora é lida para a resposta dizer a
+  // verdade sobre o que ficou gravado — a tela do CRM atualiza o estado com este
+  // corpo, e um `productIds` faltando ali apagaria a lista na tela sem que nada
+  // tivesse mudado no banco.
+  const curationAfter =
+    productIds ?? (await readCuration(query, [id]))[id] ?? []
+
+  if (productIds) {
+    await writeCuration({ link, query, sectionId: id, productIds })
+  }
+
   notifyStorefront(req)
 
-  res.json({ section: toSection(updated) })
+  res.json({ section: withCuration(toSection(updated), curationAfter) })
 }
 
 /** DELETE /admin/content?id=... — remove uma seção. */
@@ -461,6 +593,9 @@ export async function DELETE(
   res: MedusaResponse
 ): Promise<void> {
   const service: ContentModuleService = req.scope.resolve(CONTENT_MODULE)
+  const link: RemoteLink = req.scope.resolve(
+    ContainerRegistrationKeys.REMOTE_LINK
+  )
 
   const { id } = req.query as { id?: string }
 
@@ -472,6 +607,13 @@ export async function DELETE(
     return
   }
 
+  // A curadoria vai **antes** da seção: tirar o vínculo é um soft delete
+  // (`deleted_at`), e a seção some depois. Nesta ordem, uma falha no meio deixa
+  // a seção inteira com a curadoria vazia — que o lojista recompõe pela tela —
+  // em vez de uma seção apagada com a lista de produtos ainda ativa. Ver
+  // `modules/content/curation.ts` para o que o Medusa faz em cada uma das
+  // operações (nenhuma delas é `DELETE` de linha: link é estado).
+  await link.delete({ [CONTENT_MODULE]: { content_section_id: id } })
   await service.deleteContentSections(id)
 
   notifyStorefront(req)

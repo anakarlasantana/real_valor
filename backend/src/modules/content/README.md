@@ -10,10 +10,52 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 | `models/content-section.ts` | Tabela `content_section` (uma linha por seção) |
 | `models/content-contract.ts` | Tabela `content_contract` (uma linha: o contrato do CRM) |
 | `service.ts` | `listSections()`, `getContract()`, `saveContract()` |
+| `curation.ts` | A curadoria de produtos: leitura, escrita e as regras puras |
 | `schema.ts` | Montagem do schema (`buildSchema()`), `SCHEMA_VERSION` e `SCHEMA_KEY` |
 | `contract.ts` | O formato do conteúdo — **bootstrap** do schema |
 | `defaults.ts` | Cópia do protótipo, usada pelo seed e como fallback |
 | `migrations/` | Geradas com `medusa db:generate content` |
+| [`../links/content-section-product.ts`](../links/content-section-product.ts) | O link seção ↔ produto (a curadoria) — fora do módulo porque é assim que o Medusa carrega links (`src/links/`) |
+
+## Onde os dados moram
+
+Três tabelas, e a regra que decide em qual delas cada coisa entra:
+
+| O quê | Onde | Regra |
+| --- | --- | --- |
+| `surface`, `type`, `enabled`, `position` | **colunas** de `content_section` | o que se **filtra ou ordena** |
+| `title`, `headline`, `imageUrl`, listas de itens… | **`data`** (JSONB) | o que é **cópia**: veio do formulário e é desenhado como veio |
+| a lista de produtos de uma seção | **`content_section_product`** (link) | o que é **referência**: aponta para outra linha, e a ordem é `position` na própria tabela |
+
+O que **não** entra em `data` é a última linha da tabela: um `id` de produto dentro
+do JSON é uma string igual às outras — apagar o produto deixaria a vitrine
+apontando para o nada, sem erro e sem log. Referência vai para o **link do
+Medusa**, que é quem sabe atravessar módulos, cascatear o vínculo e ordenar por
+uma coluna de verdade.
+
+As duas primeiras linhas vivem no módulo; a terceira é gerada pelo framework:
+`defineLink` em `src/links/` faz o módulo de links criar e versionar a tabela
+(ela aparece em `link_module_migrations`, junto das 20 do Medusa). Consequência
+que vale saber de cor: **a tabela do link não tem chave estrangeira** — o Medusa
+não as cria para link (nem na dele: `product_variant_inventory_item` também não
+tem). A integridade é de aplicação, e é por isso que a rota confere que cada `id`
+existe antes de gravar.
+
+## A curadoria: referência, não cópia
+
+O que o CMS já faz por API (`productIds`), com o seletor no painel vindo depois:
+
+| Operação | Como |
+| --- | --- |
+| Ler | `query.graph` na entidade **do link** (`product_content_section`), com `order: { position: "ASC" }` — ordenar pela seção (`product_link.position`) **não** ordena: é medido, e está no comentário de `readCuration` |
+| Gravar / reordenar | `remoteLink.create`, que é **upsert**: a lista manda, e a posição sai do índice (10, 20, 30…) |
+| Tirar um produto | `remoteLink.dismiss` (soft: marca `deleted_at`) — readicionar depois restaura a mesma linha |
+| Apagar a seção | `remoteLink.delete({ content: { content_section_id } })` antes da seção (também soft: `Link.delete` cascateia com `softDelete`) |
+| Sem curadoria | a chave `productIds` **não sai no payload**: a seção volta ao modo automático (a loja desenha o que a Store API devolver) |
+
+`productIds` não é coluna nem `data`: é o **terceiro destino** de uma chave do
+corpo (`payload.ts`), e por isso não passa pelo `validateData` — o contrato do
+tipo não o declara, e não deve declarar.
 
 ## Por que uma tabela só, com `data` em JSON
 
@@ -27,6 +69,10 @@ Aqui as colunas que se filtram e ordenam (`surface`, `type`, `enabled`,
 `position`) ficam indexáveis e o resto — que é só payload — vive em
 `data`. Isso **não** afrouxa a tipagem: `data` é validado contra o
 contrato na entrada e na saída da API.
+
+O que **não** é nem coluna nem payload é a **referência** (a lista de produtos
+de uma seção): ela é um link do Medusa, com tabela própria — ver "Onde os dados
+moram", acima.
 
 Como o `type` não é um `enum` no banco, adicionar um tipo novo de seção
 é só código, sem migration.
@@ -395,11 +441,11 @@ existe.
 
 | Rota | Auth | Para quê |
 | --- | --- | --- |
-| `GET /store/content` | publishable key | Vitrine. Só seções habilitadas. `?surface=`, `?type=` |
-| `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + o schema (do registro), `schemaVersion` e `schemaSource` |
-| `POST /admin/content` | admin | Cria. Nasce com o conteúdo padrão do tipo (`DEFAULT_SECTION_DATA`); aceita `id` (a âncora do menu, validada como apelido e livre) e recusa um segundo bloco de tipo único (`nav`, `footer`, `announcement`) |
-| `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio. Coluna × conteúdo é decidido pelo **nome da coluna** (ver `modules/content/payload.ts`) |
-| `DELETE /admin/content?id=` | admin | Remove |
+| `GET /store/content` | publishable key | Vitrine. Só seções habilitadas. `?surface=`, `?type=`. A curadoria (`productIds`) vem nas seções que têm uma |
+| `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + a curadoria de quem tem uma + o schema (do registro), `schemaVersion` e `schemaSource` |
+| `POST /admin/content` | admin | Cria. Nasce com o conteúdo padrão do tipo (`DEFAULT_SECTION_DATA`); aceita `id` (a âncora do menu, validada como apelido e livre), `productIds` (curadoria inicial) e recusa um segundo bloco de tipo único (`nav`, `footer`, `announcement`) |
+| `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio. Coluna × conteúdo é decidido pelo **nome da coluna** (ver `modules/content/payload.ts`). `productIds` é o terceiro destino: a lista manda, e ausente = não mexe |
+| `DELETE /admin/content?id=` | admin | Remove — desvinculando a curadoria antes (ver `curation.ts`) |
 | `POST /admin/content/restore` | admin | Recria as seções padrão que faltam. Idempotente (só cria o que não existe) — é o mesmo que `scripts/seed-content.ts` faz |
 
 `GET /store/content` devolve as seções achatadas, prontas para render, mais a

@@ -132,6 +132,25 @@ Requer migration leve (o formato é JSON, então `data` já comporta os IDs).
 > existir. Enquanto isso, a diferença entre as duas seções é a de sempre: `featured` é catálogo
 > com filtro, `launches` é novidade sem curadoria.
 
+> **Nota (2026-09-29) — a metade de baixo está pronta, e não como o texto acima previa.** A
+> curadoria existe de ponta a ponta **na API**: `PATCH /admin/content?id=…` aceita
+> `productIds` (lista ordenada), `GET /admin/content` e `GET /store/content` devolvem a
+> curadoria de quem tem uma, e `DELETE` desvincula antes de apagar a seção.
+>
+> A previsão de "migration leve, o `data` já comporta os IDs" estava errada, e por sorte: id de
+> produto dentro do `data` é **cópia**, não referência — apagar um produto deixaria a vitrine
+> apontando para o nada, sem erro e sem log. O que entrou no lugar foi o **link do Medusa**
+> (`links/content-section-product.ts`): tabela `content_section_product`, com a ordem numa
+> coluna `position` de verdade e o ciclo de vida dos dois lados ligado. Custo honesto: a tabela
+> do link **não tem chave estrangeira** (o módulo de links do Medusa não as cria), então a
+> existência do produto é validada na rota, e um `DELETE` cru no psql ainda pode deixar a linha
+> ativa apontando para nada (ver `modules/content/curation.ts`).
+>
+> **Falta (Block 2):** o campo `kind: "products"` no contrato, o seletor no painel e a loja
+> lendo `productIds` em vez de só a Store API — é o que faz o lojista **escolher** as peças. E
+> aí entra o bump de `SCHEMA_VERSION` (o formato do payload muda para o CRM): hoje a curadoria
+> trafega ao lado do `data`, e nenhum formulário do painel a edita ainda.
+
 #### 2.5.2 Links das coleções em destaque apontam todos para o mesmo lugar
 
 **Evidência:** `backend/src/modules/content/defaults.ts:82,90,98` — os três cards "Nossas

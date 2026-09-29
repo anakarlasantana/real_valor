@@ -1,8 +1,10 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { CONTENT_MODULE } from "../../../modules/content"
 import type ContentModuleService from "../../../modules/content/service"
 import { isSectionType } from "../../../modules/content/contract"
+import { readCuration, withCuration } from "../../../modules/content/curation"
 
 /**
  * GET /store/content
@@ -24,6 +26,7 @@ export async function GET(
   res: MedusaResponse
 ): Promise<void> {
   const service: ContentModuleService = req.scope.resolve(CONTENT_MODULE)
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
   const { surface = "home", type } = req.query as {
     surface?: string
@@ -42,10 +45,18 @@ export async function GET(
     surface,
     onlyEnabled: true,
   })
+  const wanted = type ? sections.filter((section) => section.type === type) : sections
+  // A curadoria entra por seção que **tem** curadoria (ver `withCuration`): sem
+  // ela, o tipo que lista o catálogo sozinho continua no modo automático, e a
+  // lista de produtos que a loja desenha vem da Store API de produto.
+  const curation = await readCuration(
+    query,
+    wanted.map((section) => section.id)
+  )
   const { version } = await service.getContract()
 
   res.json({
-    sections: type ? sections.filter((s) => s.type === type) : sections,
+    sections: wanted.map((section) => withCuration(section, curation[section.id])),
     /**
      * A versão do schema com que estes dados foram gravados.
      *

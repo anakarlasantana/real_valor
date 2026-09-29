@@ -293,7 +293,7 @@ git config core.hooksPath .githooks   # uma vez por clone
 | :--- | :--- | :--- |
 | Commit (hook) + CI | `make check` | artefato do contrato em dia + **85 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ CSS, ⇔ fontes, ⇔ registro do contrato). **Não instala nada**: os dois scripts leem arquivos com Node puro |
 | CI | `make types` | `tsc` dos dois pacotes (**0 erros**). Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI | `yarn test:unit` (em `backend/`) | **74 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração e inserção), do registro do contrato, da divisão coluna×conteúdo do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| CI | `yarn test:unit` (em `backend/`) | **89 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração e inserção), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), da divisão coluna×conteúdo×referência do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
 | CI | `yarn test` (em `frontend/`) | **20 testes** da tolerância da loja ao tipo desconhecido, do `src` das imagens do CMS (`resolveMediaUrl`) e do tamanho do trilho de lançamentos (`launchesLimit`) — `vitest` |
 | CI | `make check-schema` | o registro do `content_contract` conferido contra o contrato, num Postgres efêmero |
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |

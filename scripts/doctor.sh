@@ -76,15 +76,33 @@ if [ "$stack_up" -gt 0 ]; then
     ok "publishable key do .env = a do banco"
   fi
 
-  # 4. Registro do schema: sem ele a API serve o bootstrap e o CRM edita o
+  # 4. Registro do contrato: sem ele a API serve o bootstrap e o CRM edita o
   #    contrato em vez do registro.
-  if [ "$(pg_q "select to_regclass('public.content_schema') is not null")" = "t" ]; then
-    linhas="$(pg_q 'select count(*) from content_schema')"
-    if [ "${linhas:-0}" -gt 0 ]; then ok "registro do schema gravado (${linhas} linha)"
+  if [ "$(pg_q "select to_regclass('public.content_contract') is not null")" = "t" ]; then
+    linhas="$(pg_q 'select count(*) from content_contract')"
+    if [ "${linhas:-0}" -gt 0 ]; then ok "registro do contrato gravado (${linhas} linha)"
     else warn "tabela existe, mas o registro não foi gravado" "make seed-schema"
     fi
   else
-    warn "a tabela content_schema ainda não existe" "make migrate"
+    warn "a tabela content_contract ainda não existe" "make migrate"
+  fi
+
+  # 5. Ordem das seções: `position` repetida é ordem indefinida na vitrine (a
+  #    loja ordena por ela), e o banco não proíbe — não há índice único, de
+  #    propósito, porque o Medusa não usa um para coluna de ordenação (o
+  #    `image.rank` dele é índice comum). O CRM numera de 10 em 10 e nunca
+  #    repete; quem repete é edição à mão, e o sintoma que aparece é "a home
+  #    muda de ordem sozinha", que não aponta para o banco. Por isso a checagem
+  #    é aqui, na leitura, e não numa constraint.
+  if [ "$(pg_q "select to_regclass('public.content_section') is not null")" = "t" ]; then
+    duplicadas="$(pg_q "select string_agg(pos::text, ', ') from (select position as pos from content_section where deleted_at is null group by position having count(*) > 1) d")"
+    if [ -z "$duplicadas" ]; then
+      ok "nenhuma seção com position repetida"
+    else
+      bad "posição repetida em content_section: $duplicadas" "abra Conteúdo da vitrine e use 'Salvar ordem' (ele renumera a vitrine de 10 em 10)"
+    fi
+  else
+    warn "a tabela content_section ainda não existe" "make migrate"
   fi
 else
   warn "stack não está de pé: as checagens de chave e registro foram puladas" "make up"
