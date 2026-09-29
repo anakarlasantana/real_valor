@@ -2,10 +2,6 @@
   "name": "real-valor",
   "private": true,
   "description": "E-commerce Real Valor - Moda Feminina (Medusa v2 + Next.js 15)",
-  "workspaces": [
-    "backend",
-    "frontend"
-  ],
   "scripts": {
     "up": "docker compose up -d",
     "down": "docker compose down",

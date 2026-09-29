@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen check doctor
+.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen test check doctor
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -53,6 +53,9 @@ help:
 	@echo "  Contrato de conteudo"
 	@echo "    make gen           - Regera o contrato do storefront (commit o diff)"
 	@echo "    make check         - Falha se o artefato estiver velho ou o contrato incoerente"
+	@echo ""
+	@echo "  Testes"
+	@echo "    make test          - Jest do backend e vitest do storefront (nao precisa da stack)"
 	@echo ""
 	@echo ""
 	@echo "  Modo: use PROD=1 para producao (ex.: make up PROD=1)"
@@ -223,6 +226,31 @@ check:
 	@node scripts/check-contract-parity.mjs
 	@echo ""
 	@echo "  Contrato e artefato conferidos."
+
+# ---------------------------------------------------------------------------
+# Testes: o jest do backend e o vitest do storefront
+# ---------------------------------------------------------------------------
+# Os dois sao de UNIDADE e nao precisam da stack de pe nem de banco: o setup do
+# jest zera o `MetadataStorage` do MikroORM (`integration-tests/setup.js`) e os
+# specs do storefront sao de funcao pura (`supported-sections`, `launches`,
+# `media`). Por isso este alvo serve o terminal, o pre-push e a CI sem `make up`
+# antes — a mesma propriedade do `make check`.
+#
+# Ate agora os testes existiam nos `package.json` (`test:unit` no backend,
+# `test` no storefront) e ninguem os chamava: nem o `make`, nem o hook de
+# commit, nem a CI. Teste que nao roda e' documentacao. O que este alvo passa a
+# exigir, em numero: 9 suites / 91 testes no backend e 3 arquivos / 20 testes
+# no storefront.
+#
+# `--silent --runInBand --forceExit` sao os mesmos do script do backend, sem
+# mudanca: os specs compartilham o `MetadataStorage` global do MikroORM, entao
+# arquivo em paralelo e' corrida entre arquivos. `--silent` esconde o log de
+# aplicacao para a falha aparecer sozinha no terminal.
+test:
+	@cd backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules ./node_modules/.bin/jest --silent --runInBand --forceExit
+	@cd frontend && ./node_modules/.bin/vitest run
+	@echo ""
+	@echo "  Testes conferidos nos dois pacotes."
 
 # ---------------------------------------------------------------------------
 # Tipos: o `tsc` dos dois pacotes

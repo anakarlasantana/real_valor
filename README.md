@@ -293,15 +293,16 @@ git config core.hooksPath .githooks   # uma vez por clone
 | :--- | :--- | :--- |
 | Commit (hook) + CI | `make check` | artefato do contrato em dia + **85 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ CSS, ⇔ fontes, ⇔ registro do contrato). **Não instala nada**: os dois scripts leem arquivos com Node puro |
 | CI | `make types` | `tsc` dos dois pacotes (**0 erros**). Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI | `yarn test:unit` (em `backend/`) | **89 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração e inserção), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), da divisão coluna×conteúdo×referência do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
-| CI | `yarn test` (em `frontend/`) | **20 testes** da tolerância da loja ao tipo desconhecido, do `src` das imagens do CMS (`resolveMediaUrl`) e do tamanho do trilho de lançamentos (`launchesLimit`) — `vitest` |
+| CI (job `testes`) | `make test` — jest do `backend/` | **91 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração e inserção), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), da divisão coluna×conteúdo×referência do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| CI (job `testes`) | `make test` — vitest do `frontend/` | **20 testes** da tolerância da loja ao tipo desconhecido, do `src` das imagens do CMS (`resolveMediaUrl`) e do tamanho do trilho de lançamentos (`launchesLimit`) |
 | CI | `make check-schema` | o registro do `content_contract` conferido contra o contrato, num Postgres efêmero |
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |
 
 A CI é [`.github/workflows/check.yml`](.github/workflows/check.yml), com um job por
-dependência (o `guard` não instala nada, o `schema` sobe um Postgres). Ela é o que
-transforma o resto desta tabela em obrigatório — antes dela, tudo dependia de alguém
-lembrar.
+dependência (o `guard` não instala nada, o `testes` só precisa de `node_modules`, o `schema`
+sobe um Postgres). Ela é o que transforma o resto desta tabela em obrigatório — antes dela,
+tudo dependia de alguém lembrar; e os testes eram o caso mais claro, porque existiam nos
+`package.json`, passavam, e nenhum job os chamava.
 
 O caminho para **não depender mais** da guarda de paridade (ela ainda é o item em
 redução: 89 → 80 asserções, com o resto virando `tsc` e teste) está em

@@ -6,7 +6,7 @@
 # e o que torna exigível tudo o mais que o build de verificação ganhou: tipos,
 # testes, o build do storefront, e o `--check` do registro do schema.
 #
-# Quatro jobs, porque as dependências não são as mesmas:
+# Cinco jobs, porque as dependências não são as mesmas:
 #
 #   guard  — `make check`. NÃO instala nada: os dois scripts leem arquivos com
 #            Node puro (é por isso que o hook de commit roda em segundos).
@@ -17,7 +17,11 @@
 #   build  — `next build`, que tem de passar **sem infra** (o build não pode
 #            depender de API no ar; ver o item 3.2 do registro de débito).
 #
-# Os testes entram na fase G3 (quando existirem specs de verdade).
+#   testes — `make test`: o jest do backend (9 suites / 91 testes) e o vitest do
+#            storefront (3 arquivos / 20 testes). São de unidade: não abrem banco
+#            nem precisam da stack — a mesma propriedade do `guard`. Antes disto
+#            os testes existiam nos `package.json` e ninguém os chamava: nem o
+#            `make`, nem o hook de commit, nem a CI.
 name: check
 
 on:
@@ -66,6 +70,25 @@ jobs:
           (cd backend && yarn install --immutable)
           (cd frontend && yarn install --immutable)
       - run: make types
+
+  testes:
+    name: testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+          cache-dependency-path: |
+            backend/yarn.lock
+            frontend/yarn.lock
+      - name: instalar dependências
+        run: |
+          corepack enable
+          (cd backend && yarn install --immutable)
+          (cd frontend && yarn install --immutable)
+      - run: make test
 
   schema:
     name: registro do schema

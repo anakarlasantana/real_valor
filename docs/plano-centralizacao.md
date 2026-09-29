@@ -57,7 +57,7 @@ paleta/família, o `COPY` extra do `themes/` no Dockerfile e o motivo das 2 cóp
 | **F0** — Rede e ruído | `make check` + hook de commit, docs enxutas (1 entrada + 4 assuntos), READMEs de template e pastas vazias fora | ✅ feito | `make check`, `docs/DEBITO-TECNICO.md` |
 | **F1** — Fonte única do contrato | gerador emite tipos/defaults/tokens/mapas em cada app; artefato versionado com `--check` | ✅ feito | `scripts/gen-content.mjs`, `frontend/src/lib/content/contract.generated.ts`; guarda 1.042 → **69 asserts** |
 | **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ✅ **feito** | `content_contract` + `schema.ts` + `seed-schema`; a API lê e valida contra o registro; `schemaVersion` no payload; a loja descarta tipo desconhecido. 11 asserts na guarda |
-| **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ⏸️ etapa 1 pronta, **adiada** | branch `f3-tema-como-dado` (commit `fcdc3500ec`): superfície `theme` no contrato + API + CRM. **Falta:** seed dos `theme.json` e a loja ler do payload |
+| **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ⏸️ etapa 1 pronta, **adiada** e congelada em `arquivo/` | branch `arquivo/f3-tema-como-dado-nao-mergear` (era `f3-tema-como-dado`), commit `fcdc3500ec`: superfície `theme` no contrato + API + CRM. **Não mergear:** o ponto de ramificação é `f4fe7c07` e o `develop` andou **32 commits** desde então; a simulação de merge (`git merge-tree`) conflita em **5 arquivos** — `admin/routes/content/{field-input.tsx,page.tsx}`, `api/admin/content/route.ts`, `modules/content/contract.ts` e `scripts/check-contract-parity.mjs` —, três deles justamente os que a R6/R6.5/R7 reescrevem. A etapa 2 é refeita sobre `develop` na R4. **Falta:** seed dos `theme.json` e a loja ler do payload |
 | **F4** — CRM de vendas/entrega | agregações (vendas, status, ticket, rastreio) como módulo + rotas `/admin/*`, sobre o mesmo banco | ⏸️ não iniciado | `order-customer-indexer` + `/store/orders/track` são a base |
 | **F5** — Higiene | Makefile interface única; `packages/` só se útil; CI rodando `make check`; `schemaVersion` | ⏸️ parcial | Makefile é a interface e `schemaVersion` saiu no F2′; **falta** a CI (vira G1) e o `packages/` (vira G5) |
 
@@ -232,7 +232,7 @@ Enquanto o schema/banco ficou adiado, "arrumou-se a casa":
 
 | Item | O quê | Status |
 |---|---|---|
-| H1 | Etapa 1 do F3 (não commitada) guardada na branch `f3-tema-como-dado`; `develop` limpo | ✅ commit `fcdc3500ec` |
+| H1 | Etapa 1 do F3 (não commitada) guardada na branch hoje renomeada para `arquivo/f3-tema-como-dado-nao-mergear` (R0: nome que anuncia o congelamento); `develop` limpo | ✅ commit `fcdc3500ec` |
 | H2 | Este arquivo de plano versionado | ✅ |
 | H3 | `assets` morto dos `theme.json` (apontava para `.jpg` inexistentes) e do tipo `Theme` | ✅ commit `825080511a` |
 | H4 | Dependência morta: **corrigido** — `ansi-colors` é usada por `frontend/check-env-variables.js`, que o `next.config.js` carrega (o build aborta se falta variável). No lugar, saiu o que era mesmo morto: `campaign-1/2/3.jpg`, sem nenhuma referência | ✅ commit `825080511a` |
@@ -260,3 +260,41 @@ O que cada um era, e o que virou:
 | `medusa-config.ts:28` (backend) | 1 | `path` do admin é `\`/${string}\`` e o valor vinha como `string` | cast no ponto: mesma string em runtime, com o tipo que o Medusa declara |
 
 Conferir: `make types`.
+
+## Plano de separação (R0 → R7): três pacotes, um por runtime
+
+> Registrado em 2026-09-29, ao lado do G0→G5 e pelo mesmo motivo: o que não está no repo se
+> perde. A fila **G** elimina a guarda; a fila **R** ataca a razão de ela ter crescido — a
+> fronteira entre *manipular dado* e *apresentar dado* não está no layout do repositório.
+> `backend/src/admin` é a extensão do Admin do Medusa: **React 18.3.1**, Vite, servida em
+> `/painel` pelo próprio backend. É CRM, não back-end — e hoje mora debaixo de `backend/`.
+
+### A regra
+
+| Pacote | Runtime | Papel | Fonte de dado |
+|---|---|---|---|
+| `backend/` | Node/Medusa | módulos, schema no banco, `/admin/*` e `/store/*` | **Postgres — dono único** |
+| `admin/` (novo) | Vite + React **18.3.1** + `@medusajs/ui` | CRM (`/painel`) | nenhuma: só chama a API |
+| `frontend/` | Next 15 + React **19.0.5** | storefront (SSR/ISR, SEO, checkout) | nenhuma: render + validação |
+
+React 18 × 19 é o que torna a fronteira **física**: o CRM não pode compartilhar `node_modules`
+com o storefront (é por isso que o `packages/` do G5 não resolve o caso do CRM). A guarda passa
+a ser `scripts/check-boundaries.mjs`, que falha quando `admin/` importar **valor** (≠ `import
+type`) de `backend/`. Hoje há **1** import de valor no painel: `nextPosition`, `positionFor` e
+`renumber` (`page.tsx:56`) — e ele sai na R6.5.
+
+### A fila, na ordem fixada
+
+| Fase | O que é | Gate |
+|---|---|---|
+| **R0** ✅ | o teste que existia passa a rodar: `make test`, job `testes` na CI, raiz sem `workspaces`, `f3` congelada em `arquivo/` | `make test` (9 suites / 91 testes + 3 arquivos / 20 testes), `make check` e `make types` verdes |
+| **R1** | a curadoria vira referência: os 4 chips do CRM apontam para as 4 categorias que existem (Todos, Vestidos, Blusas & Camisas, Calças & Alfaiataria); `module/filters.ts`; payload; `/store/content` filtrando | linhas em `content_section_category` conferidas e o filtro visível na loja |
+| **R6** | `api/admin/content/route.ts` (636 linhas, 5 responsabilidades) quebra em `modules/content/{validation,resolvers,view}.ts`; o `nextPosition` duplicado sai | rota ~150 linhas, os 91 testes intactos |
+| **R6.5** | `POST /admin/content/order` com `{ ids }`: a renumeração sai do browser (N `PATCH` → 1) e a loja é notificada **uma vez** | nenhum import de valor de `backend/` no painel |
+| **R7** | o CRM muda de casa: 12 arquivos / 2.282 linhas para `admin/`, com `medusa build` como gate | build do admin sem erro (não precisa de banco) |
+| **R2** | tipagem onde hoje há paridade por texto (o destino do G2) | `tsc` limpo, sem `any` novo |
+| **R3-lite → R5** | tema como dado e `themes/` fora do Dockerfile (o F3 refeito sobre `develop`) | `make gen` + `make check`; R4/R5 pedem o Docker de pé |
+
+**Por que esta ordem:** R6.5 antes de R7 tira a última importação de valor do painel (a R7 deixa
+de depender da R5); R6 antes de R6.5 porque a rota de ordenação nasce do que já foi extraído; R2
+depois de R7 porque só então o CRM tem `tsconfig` e tipo próprios.
