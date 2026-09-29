@@ -47,7 +47,7 @@ function validateData(
   // desconhecido" — e nenhum guard reprovava, porque a paridade tolera a
   // chave faltando dos dois lados. Tipo sem campos é bug de contrato, não
   // dado ruim: melhor uma mensagem que aponta o arquivo.
-  // Os campos vêm do **registro no banco** (`service.getSchema()`), e não do
+  // Os campos vêm do **registro no banco** (`service.getContract()`), e não do
   // `SECTION_FIELDS` do código: é o registro que diz o que o CRM pode gravar.
   // O `contract.ts` só entra por baixo, quando o registro não existe.
   const specs = fields[type] ?? []
@@ -123,20 +123,6 @@ function validateData(
 }
 
 /**
- * Os nomes dos campos de `data` de um tipo, como o **registro** os declara.
- *
- * É o que `splitPayload` precisa para desempatar uma chave que é coluna e
- * campo de conteúdo ao mesmo tempo (`title`, em quatro tipos): quem decide é o
- * schema do tipo, não o nome da chave. Ver `modules/content/payload.ts`.
- */
-function fieldNamesOf(
-  type: string,
-  fields: ContentSchemaPayload["fields"]
-): ReadonlySet<string> {
-  return new Set((fields[type] ?? []).map((field) => field.name))
-}
-
-/**
  * Avisa o storefront para tirar o conteúdo do cache (`/api/revalidate`).
  *
  * Sem `await` de propósito: a gravação já está feita e a resposta ao CRM não
@@ -178,13 +164,13 @@ export async function GET(
 
   const { surface = "home" } = req.query as { surface?: string }
   const sections = await service.listSections({ surface, onlyEnabled: false })
-  const stored = await service.getSchema()
+  const stored = await service.getContract()
 
   res.json({
     sections,
     /**
      * Metadados que o widget usa para montar o formulário — lidos do
-     * **registro no Postgres** (`service.getSchema()`), que é o mesmo lugar de
+     * **registro no Postgres** (`service.getContract()`), que é o mesmo lugar de
      * onde o `seed-schema` tira a linha. A montagem a partir do contrato
      * (`buildSchema()`, em `modules/content/schema.ts`) é o bootstrap: só entra
      * quando o registro não existe, e o `schemaSource` abaixo diz qual dos
@@ -282,10 +268,10 @@ async function resolveSectionId(
     }
   }
 
-  // `listContentBlocks` (e não `retrieveContentBlock`): o `retrieve` de um id
-  // inexistente **lança** um 404 do Medusa ("ContentBlock with id: x was not
-  // found"), e aqui o caso "não existe" é o caminho feliz.
-  const taken = await service.listContentBlocks({ id: requested })
+  // `listContentSections` (e não `retrieveContentSection`): o `retrieve` de um
+  // id inexistente **lança** um 404 do Medusa ("ContentSection with id: x was
+  // not found"), e aqui o caso "não existe" é o caminho feliz.
+  const taken = await service.listContentSections({ id: requested })
 
   if (taken.length) {
     return { error: `Já existe uma seção com o id "${requested}".` }
@@ -306,7 +292,7 @@ export async function POST(
   /** A superfície onde a seção nasce (`home`, o padrão do modelo). */
   const surface = typeof body.surface === "string" ? body.surface : "home"
 
-  const { schema } = await service.getSchema()
+  const { schema } = await service.getContract()
 
   if (!isKnownType(type, schema)) {
     res.status(400).json({
@@ -339,10 +325,7 @@ export async function POST(
     return
   }
 
-  const { columns, data: sent } = splitPayload(
-    body,
-    fieldNamesOf(type, schema.fields)
-  )
+  const { columns, data: sent } = splitPayload(body)
 
   // A seção nova nasce com o conteúdo padrão do tipo e o que veio no corpo por
   // cima (`DEFAULT_SECTION_DATA`). Sem isso, criar exigiria os campos
@@ -382,7 +365,7 @@ export async function POST(
     return
   }
 
-  const created = await service.createContentBlocks({
+  const created = await service.createContentSections({
     ...(sectionId ? { id: sectionId } : {}),
     ...columns,
     position,
@@ -412,7 +395,7 @@ export async function PATCH(
     return
   }
 
-  const existing = await service.retrieveContentBlock(id)
+  const existing = await service.retrieveContentSection(id)
 
   if (!existing) {
     res
@@ -421,7 +404,7 @@ export async function PATCH(
     return
   }
 
-  const { schema } = await service.getSchema()
+  const { schema } = await service.getContract()
   const type = existing.type
 
   if (!isKnownType(type, schema)) {
@@ -433,8 +416,7 @@ export async function PATCH(
   }
 
   const { columns, data } = splitPayload(
-    (req.body ?? {}) as Record<string, unknown>,
-    fieldNamesOf(type, schema.fields)
+    (req.body ?? {}) as Record<string, unknown>
   )
 
   // `position` passa pela mesma conferência do POST: `Number("abc")` é `NaN`, e
@@ -459,7 +441,7 @@ export async function PATCH(
     return
   }
 
-  const updated = await service.updateContentBlocks({
+  const updated = await service.updateContentSections({
     id,
     ...columns,
     ...(position !== undefined ? { position } : {}),
@@ -490,9 +472,9 @@ export async function DELETE(
     return
   }
 
-  await service.deleteContentBlocks(id)
+  await service.deleteContentSections(id)
 
   notifyStorefront(req)
 
-  res.json({ id, object: "content_block", deleted: true })
+  res.json({ id, object: "content_section", deleted: true })
 }

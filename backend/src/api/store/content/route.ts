@@ -42,7 +42,7 @@ export async function GET(
     surface,
     onlyEnabled: true,
   })
-  const { version } = await service.getSchema()
+  const { version } = await service.getContract()
 
   res.json({
     sections: type ? sections.filter((s) => s.type === type) : sections,

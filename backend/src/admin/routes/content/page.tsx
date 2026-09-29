@@ -85,7 +85,7 @@ type Section = {
  * campo que não existe mais e a tela simplesmente perder um editor.
  *
  * `import type` não vira dependência de runtime: o *dado* continua chegando
- * pelo `schema` da API, e é esse registro (o `content_schema` no Postgres) que
+ * pelo `schema` da API, e é esse registro (o `content_contract` no Postgres) que
  * decide o formulário.
  */
 type Schema = ContentSchemaPayload

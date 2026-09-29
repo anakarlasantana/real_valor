@@ -236,7 +236,8 @@ que a rota `POST /admin/content/restore` chama —, e o alvo `seed` do Makefile 
 sem ninguém abrir o painel; o botão "Restaurar padrão" cobre o caso de uma base que já subiu vazia
 (ou de uma seção apagada por engano), porque nos dois o efeito é criar **só o que falta**.
 
-**Comprovado em 2026-09-28:** com a tabela `content_block` vazia (nove `DELETE` pela API),
+**Comprovado em 2026-09-28:** com a tabela `content_block` (hoje `content_section` — o rename
+de 2026-09-29 está em `migrations/Migration20260929204616.ts`) vazia (nove `DELETE` pela API),
 `POST /admin/content/restore` respondeu
 `{"created":["nav","announcement","hero","benefits","collections","featured","editorial","instagram","footer"],"kept":0}`
 e a home voltou a renderizar o conteúdo do banco; repetir o POST devolve `{"created":[],"kept":9}`.
@@ -273,6 +274,14 @@ Depois da correção, o mesmo PATCH muda `data.title` e **não** encosta na colu
 de listagem, e o CRM nem a mostra). `collections`, `featured`, `editorial` e `instagram` criam por
 POST — e a seção nova nasce preenchida com o conteúdo padrão do tipo
 (`DEFAULT_SECTION_DATA`), então a validação estrita continua valendo.
+
+**Fechado de vez em 2026-09-29:** a coluna `title` **saiu** de `content_section` (era
+`content_block`). A correção de 09-28 desempatava coluna × conteúdo pelo schema do tipo —
+e desempate é o lugar onde o defeito mora. Sem a coluna, a divisão do corpo
+(`modules/content/payload.ts`) passa a ser só o nome da coluna, e a colisão que exigiria
+desempate virou asserção: nenhum campo de `SECTION_FIELDS` pode se chamar `enabled`,
+`position` ou `surface` (`payload.unit.spec.ts`), e a guarda reprova o `title` voltando.
+O `restore.ts` também deixou de montar a chave: o `title` do padrão vai inteiro no `data`.
 
 Cobertura: `backend/src/modules/content/__tests__/payload.unit.spec.ts` (8 casos, incluindo
 "campo do tipo ganha do nome da coluna", `enabled: "false"` e "não muda o corpo recebido").
@@ -361,7 +370,7 @@ Dois desenhos, com custos bem diferentes:
 | Desenho | Como funciona | Custo |
 | :--- | :--- | :--- |
 | **Publicado como fotografia** (recomendado) | uma linha `content_publish` guarda as seções publicadas; a loja lê a fotografia e os blocos passam a ser o **rascunho** (o CRM continua gravando neles, sem mudança nenhuma nas ações); "Publicar" copia blocos → fotografia e revalida; a prévia lê os blocos | 1 model + 1 migration + 3 rotas + modo prévia na loja. Rollback vem de graça: republicar uma fotografia antiga |
-| **Rascunho por bloco** | coluna `status` (`draft` / `published`) na `content_block`, e cada ação escreve na cópia de rascunho | mais caro: **toda** ação do CRM muda, a listagem passa a ter duas linhas por seção e a ordenação única vira ordenação por status |
+| **Rascunho por bloco** | coluna `status` (`draft` / `published`) na `content_section`, e cada ação escreve na cópia de rascunho | mais caro: **toda** ação do CRM muda, a listagem passa a ter duas linhas por seção e a ordenação única vira ordenação por status |
 
 Duas decisões antes de implementar: **como a prévia abre** (cookie de draft mode do Next com link
 assinado, ou `?preview=<token>` na URL) e **o que acontece com duas abas abertas** — o rascunho é da

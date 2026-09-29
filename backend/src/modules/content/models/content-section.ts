@@ -1,7 +1,7 @@
 import { model } from "@medusajs/framework/utils"
 
 /**
- * Bloco de conteúdo da vitrine (CMS da Real Valor).
+ * Seção de conteúdo da vitrine (CMS da Real Valor).
  *
  * Um registro = uma seção renderizada na home (ou em qualquer outra
  * superfície, via `surface`).
@@ -16,8 +16,22 @@ import { model } from "@medusajs/framework/utils"
  *
  * Isto NÃO afrouxa a tipagem: `data` é validado contra o contrato em
  * `src/modules/content/contract.ts` na entrada e na saída da API.
+ *
+ * **A regra da coluna:** aqui só entra o que se **filtra ou ordena**
+ * (`surface`, `type`, `enabled`, `position`). Um campo que é só cópia —
+ * "Título", "Texto do selo" — vive em `data`, mesmo que pareça um rótulo:
+ * era o caso da coluna `title`, removida em 2026-09-29. Ela duplicava o
+ * `data.title` de quatro tipos (`collections`, `featured`, `editorial`,
+ * `instagram`), o CRM não a mostrava e a loja nunca a leu — duas fontes
+ * para a mesma palavra, e a que se editava não era a que se desenhava.
+ *
+ * **O que aponta para outra tabela não é coluna nem `data`:** a curadoria
+ * de produtos de uma seção (`kind: "products"`) é um **link do Medusa**
+ * (`src/links/content-section-product.ts`), com a ordem da vitrine na
+ * coluna `position` do link. É o `id` de produto como referência de
+ * verdade, e não uma lista de ids dentro do JSON — ver `README.md`.
  */
-const ContentBlock = model.define("content_block", {
+const ContentSection = model.define("content_section", {
   id: model.id().primaryKey(),
 
   /** `home` por padrão. Permite reaproveitar o módulo noutras páginas. */
@@ -32,9 +46,6 @@ const ContentBlock = model.define("content_block", {
    */
   type: model.text(),
 
-  /** Rótulo humano, mostrado na listagem do admin. */
-  title: model.text().nullable(),
-
   /** Seções desabilitadas nunca chegam à vitrine. */
   enabled: model.boolean().default(true),
 
@@ -45,4 +56,4 @@ const ContentBlock = model.define("content_block", {
   data: model.json(),
 })
 
-export default ContentBlock
+export default ContentSection

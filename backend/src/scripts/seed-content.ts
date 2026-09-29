@@ -31,10 +31,10 @@ export default async function seedContent({
   const surface = "home"
 
   if (scriptFlags(args).includes("--force")) {
-    const existing = await service.listContentBlocks({ surface })
+    const existing = await service.listContentSections({ surface })
 
     if (existing.length) {
-      await service.deleteContentBlocks(existing.map((block) => block.id))
+      await service.deleteContentSections(existing.map((section) => section.id))
       console.log(`Removidas ${existing.length} seção(ões) existentes.`)
     }
   }

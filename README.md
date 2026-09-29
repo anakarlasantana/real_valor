@@ -264,12 +264,13 @@ make gen     # regera o artefato (commit o diff junto com a mudança no backend)
 make check   # falha se o artefato estiver velho ou o contrato incoerente
 ```
 
-O **schema do CRM** (os formulários: tipos, rótulos, campos, opções) é um **registro no
-Postgres** — a tabela `content_schema` —, não uma leitura do código: o `contract.ts` é o
+O **contrato do CRM** (os formulários: tipos, rótulos, campos, opções) é um **registro no
+Postgres** — a tabela `content_contract` —, não uma leitura do código: o `contract.ts` é o
 *bootstrap* e o `seed-schema` grava a linha. A API tira do registro tanto o formulário que o
 painel desenha quanto as regras do que pode ser gravado, então **um campo novo no registro
 aparece no CRM sem deploy**, e um campo que o código declara e o registro não tem é
-recusado com 400.
+recusado com 400. (O **dado** gravado continua se chamando `schema`: o payload tem `schema` e
+`schemaVersion` — contrato é o registro, schema é o dado.)
 
 ```bash
 make seed-schema   # grava (o `make seed` já chama)
@@ -290,11 +291,11 @@ git config core.hooksPath .githooks   # uma vez por clone
 
 | Onde | Comando | O que faz |
 | :--- | :--- | :--- |
-| Commit (hook) + CI | `make check` | artefato do contrato em dia + **83 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ CSS, ⇔ fontes, ⇔ registro do schema). **Não instala nada**: os dois scripts leem arquivos com Node puro |
+| Commit (hook) + CI | `make check` | artefato do contrato em dia + **85 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ CSS, ⇔ fontes, ⇔ registro do contrato). **Não instala nada**: os dois scripts leem arquivos com Node puro |
 | CI | `make types` | `tsc` dos dois pacotes (**0 erros**). Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI | `yarn test:unit` (em `backend/`) | **72 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração e inserção), do registro do schema, da divisão coluna×conteúdo do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| CI | `yarn test:unit` (em `backend/`) | **74 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração e inserção), do registro do contrato, da divisão coluna×conteúdo do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
 | CI | `yarn test` (em `frontend/`) | **20 testes** da tolerância da loja ao tipo desconhecido, do `src` das imagens do CMS (`resolveMediaUrl`) e do tamanho do trilho de lançamentos (`launchesLimit`) — `vitest` |
-| CI | `make check-schema` | o registro do `content_schema` conferido contra o contrato, num Postgres efêmero |
+| CI | `make check-schema` | o registro do `content_contract` conferido contra o contrato, num Postgres efêmero |
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |
 
 A CI é [`.github/workflows/check.yml`](.github/workflows/check.yml), com um job por

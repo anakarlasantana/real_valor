@@ -13,7 +13,7 @@
 **Um só serviço, um só banco.** O "espelho do contrato" não é problema de build: é um
 **dado no lugar errado**. Ele está em código (e por isso duplicado por pacote) quando
 deveria estar no banco, servido uma vez pela API. O repositório já é um monólito modular
-com banco único — `content_block` é a única tabela de conteúdo, `/store/content` e
+com banco único — `content_section` é a única tabela de conteúdo, `/store/content` e
 `/admin/content` são as duas portas, e o painel é servido pelo próprio serviço. O que
 está fora do lugar são três coisas: **contrato em código duplicado**, **tema em arquivos
 JSON** em vez de dado, e **workspaces vestigiais** (cada app tem lockfile/contexto
@@ -55,7 +55,7 @@ paleta/família, o `COPY` extra do `themes/` no Dockerfile e o motivo das 2 cóp
 |---|---|---|---|
 | **F0** — Rede e ruído | `make check` + hook de commit, docs enxutas (1 entrada + 4 assuntos), READMEs de template e pastas vazias fora | ✅ feito | `make check`, `docs/DEBITO-TECNICO.md` |
 | **F1** — Fonte única do contrato | gerador emite tipos/defaults/tokens/mapas em cada app; artefato versionado com `--check` | ✅ feito | `scripts/gen-content.mjs`, `frontend/src/lib/content/contract.generated.ts`; guarda 1.042 → **69 asserts** |
-| **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ✅ **feito** | `content_schema` + `schema.ts` + `seed-schema`; a API lê e valida contra o registro; `schemaVersion` no payload; a loja descarta tipo desconhecido. 9 asserts na guarda |
+| **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ✅ **feito** | `content_contract` + `schema.ts` + `seed-schema`; a API lê e valida contra o registro; `schemaVersion` no payload; a loja descarta tipo desconhecido. 11 asserts na guarda |
 | **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ⏸️ etapa 1 pronta, **adiada** | branch `f3-tema-como-dado` (commit `fcdc3500ec`): superfície `theme` no contrato + API + CRM. **Falta:** seed dos `theme.json` e a loja ler do payload |
 | **F4** — CRM de vendas/entrega | agregações (vendas, status, ticket, rastreio) como módulo + rotas `/admin/*`, sobre o mesmo banco | ⏸️ não iniciado | `order-customer-indexer` + `/store/orders/track` são a base |
 | **F5** — Higiene | Makefile interface única; `packages/` só se útil; CI rodando `make check`; `schemaVersion` | ⏸️ parcial | Makefile é a interface e `schemaVersion` saiu no F2′; **falta** a CI (vira G1) e o `packages/` (vira G5) |
@@ -66,10 +66,10 @@ faz *mudar schema sem deploy*:
 
 | Onde | O quê |
 |---|---|
-| `models/content-schema.ts` | Tabela `content_schema`: `key` (uma linha), `version`, `data` |
+| `models/content-contract.ts` | Tabela `content_contract`: `key` (uma linha), `version`, `data` (era `content_schema` até 2026-09-29) |
 | `migrations/Migration*.ts` | **Só DDL** — o dado é do seed, não do histórico |
 | `schema.ts` | `buildSchema()` (montagem única), `SCHEMA_VERSION`, `SCHEMA_KEY` |
-| `service.ts` | `getSchema()` (registro, com fallback no contrato) e `saveSchema()` |
+| `service.ts` | `getContract()` (registro, com fallback no contrato) e `saveContract()` |
 | `scripts/seed-schema.ts` | Writer idempotente; `--check` sai ≠ 0 e diz o que diverge |
 | `api/admin/content` | Serve o registro; `POST`/`PATCH` validam contra **ele** |
 | `api/store/content` | `schemaVersion` no payload |
@@ -148,7 +148,7 @@ teste ou checagem de dado — nenhuma das 89 some sem substituto, e nenhuma das
 | `PRÉVIA` — hex/família/pilha | 3 | a prévia bate com o tema | **teste** | após o F3, `theme.json` é seed e o hex vive no contrato |
 | `PRÉVIA` — `@font-face` + **md5 dos `.woff2`** | 2 | a fonte existe e é a mesma | **checagem que fica** (teste com `fs`) | é binário; nenhuma ferramenta padrão faz isso |
 | `PRÉVIA` — schema num lugar / rota lê e não monta | 3 | o schema não volta a ser montado na rota | **tipagem** (payload já é tipado) + **teste** (GET) | a assert de "montado num lugar" é redundante: `ContentSchemaPayload` já é o tipo |
-| `SCHEMA COMO DADO` | 9 | migration só-DDL, model, `getSchema`/`saveSchema`, versão, `--check`, flags, `schemaVersion` + filtro | **teste** (2 specs) + **CI** | `check-schema` na CI é a checagem de **dado** |
+| `SCHEMA COMO DADO` | 11 | migration só-DDL, histórico do rename, model, `getContract`/`saveContract`, versão, `--check`, flags, `schemaVersion` + filtro | **teste** (2 specs) + **CI** | `check-schema` na CI é a checagem de **dado** |
 | (novo) `supportedSections` e `resolveTheme` | — | a loja descarta o que não conhece | **teste** (vitest) | dep nova no frontend, que hoje não tem runner |
 
 **Contagem honesta:** as ~6 que ficam (CSS ×2, fontes ×2, migration ×1, e o
@@ -163,7 +163,7 @@ O meio vai para teste.
 | **G0** | este mapa, escrito | ~zero |
 | **G1** | **CI** no GitHub Actions: `make check`, `make types`, testes, `check-schema` (Postgres de serviço), `next build` | baixo — e é o que torna todo o resto verificável |
 | **G2** | **tipagem no painel**: importar os tipos do contrato, renderer exaustivo por `kind`, constantes importadas em vez de lidas por regex | baixo |
-| **G3** | **testes assumem a guarda**: `defaults`, `appearance`, `itemFields`/ícones/labels, CSS e fontes com `fs`, `resolveSchema`/`getSchema`, vitest no frontend | médio (deps novas) — ✅ **feito** (37 + 5 testes) |
+| **G3** | **testes assumem a guarda**: `defaults`, `appearance`, `itemFields`/ícones/labels, CSS e fontes com `fs`, `resolveSchema`/`getContract`, vitest no frontend | médio (deps novas) — ✅ **feito** (37 + 5 testes) |
 | **G4** | **deletar a guarda**: `git rm scripts/check-contract-parity.mjs`; `make check` = `gen --check` + testes; o hook chama o novo `make check`. O mapa vai na mensagem do commit | médio — por isso a CI precisa estar verde antes |
 | **G5** | **`packages/contrato`**: install unificado (lockfile único), pacote com `contract.ts` + `schema.ts`, os dois apps em `workspace:*`, `transpilePackages` no Next, Medusa com o pacote no build, os dois Dockerfiles ajustados. Sai `gen-content.mjs` e `contract.generated.ts` | **alto** — mexe no build dos dois lados |
 

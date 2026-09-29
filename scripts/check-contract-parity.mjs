@@ -89,9 +89,18 @@ const ADMIN_CONTENT_ROUTE = join(root, "backend/src/api/admin/content/route.ts")
  */
 const CONTENT_SCHEMA = join(root, "backend/src/modules/content/schema.ts")
 const CONTENT_SERVICE = join(root, "backend/src/modules/content/service.ts")
-const CONTENT_SCHEMA_MODEL = join(
+const CONTENT_CONTRACT_MODEL = join(
   root,
-  "backend/src/modules/content/models/content-schema.ts"
+  "backend/src/modules/content/models/content-contract.ts"
+)
+/**
+ * O modelo das seções (`content_section`): a tabela da vitrine. Lida aqui
+ * porque a guarda confere o que **só existe em DDL** — que a coluna morta
+ * `title` não volte, por exemplo.
+ */
+const CONTENT_SECTION_MODEL = join(
+  root,
+  "backend/src/modules/content/models/content-section.ts"
 )
 const CONTENT_MIGRATIONS = join(
   root,
@@ -1229,8 +1238,8 @@ assert(
 // sem ninguém perceber.
 // A rota **lê** o schema do serviço…
 assert(
-  "a rota do admin lê o schema do registro (`service.getSchema()`)",
-  adminRoute.includes("service.getSchema()") &&
+  "a rota do admin lê o schema do registro (`service.getContract()`)",
+  adminRoute.includes("service.getContract()") &&
     adminRoute.includes("schema: stored.schema") &&
     adminRoute.includes("schemaVersion: stored.version") &&
     adminRoute.includes("schemaSource: stored.source"),
@@ -1249,14 +1258,15 @@ assert(
   "a rota do admin não monta o schema (isso é do `schema.ts`/bootstrap)",
   !/import\s*\{[^}]*\bbuildSchema\b/.test(adminRoute) &&
     !schemaKeys.some((key) => adminRoute.includes(key)),
-  "em backend/src/api/admin/content/route.ts: use `service.getSchema()` — " +
+  "em backend/src/api/admin/content/route.ts: use `service.getContract()` — " +
     "a montagem do schema é do `schema.ts`"
 )
 
-console.log("\nSCHEMA COMO DADO (content_schema, o registro do crm)")
+console.log("\nCONTRATO COMO DADO (content_contract, o registro do crm)")
 
 const contentService = readFileSync(CONTENT_SERVICE, "utf8")
-const contentSchemaModel = readFileSync(CONTENT_SCHEMA_MODEL, "utf8")
+const contentContractModel = readFileSync(CONTENT_CONTRACT_MODEL, "utf8")
+const contentSectionModel = readFileSync(CONTENT_SECTION_MODEL, "utf8")
 const seedSchemaScript = readFileSync(SEED_SCHEMA_SCRIPT, "utf8")
 const flagsScript = readFileSync(FLAGS_SCRIPT, "utf8")
 const storeContentRoute = readFileSync(STORE_CONTENT_ROUTE, "utf8")
@@ -1268,36 +1278,89 @@ const supportedSections = readFileSync(STOREFRONT_SUPPORTED_SECTIONS, "utf8")
 // um banco novo em 2027 nasceria com o schema de 2027, e o de 2026 ficaria com
 // o de 2026 — divergencia entre ambientes, que e o oposto do objetivo. O
 // conteudo da linha e dado derivado de codigo, e quem escreve e o seed-schema.
+//
+// As duas leituras juntas explicam o historico da tabela: `create table` a
+// criou com o nome antigo (`content_schema`) e o `rename to` a trouxe para o
+// nome de hoje (`content_contract`). Exigir as duas e o que impede alguem de
+// "arrumar" a migration antiga em vez de escrever um rename — reescrever
+// historico de migration e o que deixa dois bancos com o mesmo commit em
+// estados diferentes.
 const migrationFiles = readdirSync(CONTENT_MIGRATIONS)
   .filter((file) => file.startsWith("Migration") && file.endsWith(".ts"))
-const schemaMigration = migrationFiles.filter((file) => {
-  const text = readFileSync(join(CONTENT_MIGRATIONS, file), "utf8")
-  return /create table[^"]*"?content_schema"?/i.test(text)
-})
-const insertingMigrations = schemaMigration.filter((file) => {
-  const text = readFileSync(join(CONTENT_MIGRATIONS, file), "utf8")
-  return /insert\s+into/i.test(text)
-})
-
-assert(
-  "existe migration criando a tabela `content_schema`",
-  schemaMigration.length > 0,
-  `gerada por \`medusa db:generate content\` — nenhuma migration cria a tabela`
+const migrationText = (file) =>
+  readFileSync(join(CONTENT_MIGRATIONS, file), "utf8")
+/**
+ * O SQL de uma migration, **sem os comentários**: as asserções têm de valer
+ * sobre o que roda no banco. A docstring do rename cita `create table` e
+ * `drop table` justamente para explicar por que elas não são o caminho aqui, e
+ * uma guarda que reprova comentário obriga o próximo a apagar a explicação (a
+ * mesma razão de a rota do admin ser conferida por import, e não por menção).
+ */
+const migrationSql = (text) =>
+  [...text.matchAll(/addSql\(`([^`]*)`\)/g)].map(([, sql]) => sql).join("\n")
+/**
+ * O SQL do `up()`. O `down()` desfaz a mesma coisa no sentido inverso — e
+ * devolve o `title` vazio de propósito —, então conferir o arquivo inteiro
+ * acusaria o rollback como se a coluna estivesse voltando.
+ */
+const upSql = (text) => migrationSql(text.split(/override async down/)[0])
+const contractMigrations = migrationFiles.filter((file) =>
+  /create table[^"]*"?content_(schema|contract)"?/i.test(
+    migrationSql(migrationText(file))
+  )
+)
+const contractRenameMigrations = migrationFiles.filter((file) =>
+  /rename to "?content_contract"?/i.test(migrationSql(migrationText(file)))
+)
+const sectionRenameMigrations = migrationFiles.filter((file) =>
+  /rename to "?content_section"?/i.test(migrationSql(migrationText(file)))
+)
+const insertingMigrations = migrationFiles.filter((file) =>
+  /insert\s+into/i.test(migrationSql(migrationText(file)))
 )
 
 assert(
-  "a migration do schema nao insere linha (so DDL): o dado e do seed-schema",
-  schemaMigration.length > 0 && insertingMigrations.length === 0,
+  "existe migration criando a tabela do contrato (e o rename que a nomeou de novo)",
+  contractMigrations.length > 0 && contractRenameMigrations.length > 0,
+  `gerada por \`medusa db:generate content\` — nenhuma migration cria a tabela; ` +
+    `rename to "content_contract": ${contractRenameMigrations.join(", ") || "nenhum"}`
+)
+
+assert(
+  "a migration do contrato nao insere linha (so DDL): o dado e do seed-schema",
+  insertingMigrations.length === 0,
   `com insert: ${insertingMigrations.join(", ")}`
 )
 
 assert(
-  "o model tem chave, versão e data (uma linha só)",
-  contentSchemaModel.includes('model.define("content_schema"') &&
-    contentSchemaModel.includes("model.text().primaryKey()") &&
-    contentSchemaModel.includes("version: model.number()") &&
-    contentSchemaModel.includes("data: model.json()"),
-  "em backend/src/modules/content/models/content-schema.ts"
+  "o model do contrato tem chave, versão e data (uma linha só)",
+  contentContractModel.includes('model.define("content_contract"') &&
+    contentContractModel.includes("model.text().primaryKey()") &&
+    contentContractModel.includes("version: model.number()") &&
+    contentContractModel.includes("data: model.json()"),
+  "em backend/src/modules/content/models/content-contract.ts"
+)
+
+// A coluna `title` da seção **não volta**. Ela duplicava o `data.title` de
+// quatro tipos, o CRM não a mostrava e a loja nunca a leu: o PATCH de "Título"
+// ia para a coluna, respondia 200 e a vitrine não mudava. Como a divisão do
+// corpo (`payload.ts`) hoje é por nome de coluna, uma coluna nova que também
+// fosse campo do contrato voltaria a exigir desempate — e o desempate é onde o
+// defeito morava. As migrations antigas continuam criando a coluna (historico);
+// quem tem de estar limpo é o **model** e o **up** do rename.
+assert(
+  "existe migration renomeando a tabela das seções para `content_section`",
+  sectionRenameMigrations.length > 0,
+  `rename to "content_section": ${sectionRenameMigrations.join(", ") || "nenhum"}`
+)
+
+assert(
+  "a seção não tem mais a coluna `title` (nem no model, nem no up do rename)",
+  !/^ {2}title: model\./m.test(contentSectionModel) &&
+    !/add column "?title"?/i.test(
+      upSql(sectionRenameMigrations.map(migrationText).join("\n"))
+    ),
+  "em backend/src/modules/content/models/content-section.ts — título é `data.title`"
 )
 
 // O serviço é quem decide a fonte: registro primeiro, contrato por baixo, e
@@ -1310,10 +1373,10 @@ assert(
   contentSchema.includes("export function resolveSchema") &&
     contentSchema.includes('source: "db"') &&
     contentSchema.includes('source: "contract"') &&
-    contentService.includes("async getSchema") &&
-    contentService.includes("listContentSchemas") &&
+    contentService.includes("async getContract") &&
+    contentService.includes("listContentContracts") &&
     contentService.includes("resolveSchema(row)") &&
-    contentService.includes("async saveSchema"),
+    contentService.includes("async saveContract"),
   "em backend/src/modules/content/{schema,service}.ts"
 )
 
@@ -1336,7 +1399,7 @@ assert(
 
 assert(
   "o seed-schema grava a linha com a versão do contrato e a chave fixa",
-  seedSchemaScript.includes("service.saveSchema") &&
+  seedSchemaScript.includes("service.saveContract") &&
     seedSchemaScript.includes("version: SCHEMA_VERSION") &&
     contentService.includes("SCHEMA_KEY") &&
     typeof schemaKey === "string" &&

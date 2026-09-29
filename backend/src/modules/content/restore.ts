@@ -90,13 +90,14 @@ export async function restoreDefaultSections(
   }
 
   // `id` e `position` vêm do padrão e do plano (ver `planRestoredPositions`).
-  // `title` não aparece aqui — quando o tipo o tem (`editorial`,
-  // `collections`…), ele é conteúdo e vai junto no `data`.
+  // O resto é o `data` do tipo — inclusive o `title`, quando o tipo o tem
+  // (`editorial`, `collections`…): ele é conteúdo, e não há coluna para ele
+  // desde que `content_section.title` saiu.
   const missing = DEFAULT_HOME_SECTIONS.filter((section) =>
     planned.has(section.id)
   )
 
-  await service.createContentBlocks(
+  await service.createContentSections(
     missing.map((section) => {
       const { id, type, enabled, position: _default, ...data } = section
 

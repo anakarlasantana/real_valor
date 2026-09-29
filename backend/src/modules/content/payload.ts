@@ -1,26 +1,34 @@
 /**
  * A fronteira entre COLUNAS e CONTEÚDO no corpo que o CRM envia.
  * -------------------------------------------------------------------------
- * Um bloco de conteúdo é uma linha com colunas fixas — `title`, `enabled`,
- * `position`, `surface` (ver `models/content-block.ts`) — e um `data` JSON com
- * o que o tipo define (`contract.ts`). O corpo que o CRM manda, porém, é
- * achatado: `{ enabled, position, headline, imageUrl, … }`, porque é assim que
- * o formulário o monta. Alguém tem que dizer onde cada chave cai.
+ * Uma seção é uma linha com colunas fixas — `surface`, `type`, `enabled`,
+ * `position` (ver `models/content-section.ts`) — e um `data` JSON com o que o
+ * tipo define (`contract.ts`). O corpo que o CRM manda, porém, é achatado:
+ * `{ enabled, position, headline, imageUrl, … }`, porque é assim que o
+ * formulário o monta. Alguém tem que dizer onde cada chave cai.
  *
- * **A regra é o schema do tipo, não o nome da chave.** `title` é o caso que
- * obrigou a escrever isto: é coluna (o rótulo da listagem) **e** campo de
- * conteúdo em quatro tipos (`collections`, `featured`, `editorial`,
- * `instagram`). Tratá-lo sempre como coluna — como era antes — fazia o
- * formulário salvar um "Título" que a loja nunca lia: o `data.title` (é o que
- * o storefront desenha) ficava intacto, o PATCH respondia 200 e o lojista lia
- * "Conteúdo salvo" sem nada mudar na vitrine.
+ * **A regra é o nome da coluna, e nada mais.** Coluna é o que se filtra ou
+ * ordena, são poucas e estão em `COLUMN_COERCIONS`; tudo o mais é conteúdo do
+ * tipo. Não há ambiguidade a resolver: nenhum campo do contrato se chama
+ * `surface`, `type`, `enabled` ou `position` — e `payload.unit.spec.ts` confere
+ * isso contra `SECTION_FIELDS`, para o dia em que alguém quiser criar um campo
+ * com um desses nomes (a resposta certa é renomear o campo).
+ *
+ * **A regra já foi outra, e custou caro.** `title` era coluna (o rótulo da
+ * listagem) **e** campo de conteúdo em quatro tipos (`collections`, `featured`,
+ * `editorial`, `instagram`), então a divisão precisava consultar o schema do
+ * tipo para desempatar. Quem pagava era o lojista: tratado como coluna, o PATCH
+ * respondia 200, a vitrine não mudava e o "Título" digitado ia para uma coluna
+ * que nada lê. A coluna `title` foi removida em 2026-09-29 (ver
+ * `models/content-section.ts`) e o `title` do corpo passou a ser sempre
+ * conteúdo — que é onde ele é desenhado.
  *
  * A função é pura e **não muda o corpo recebido**: a rota continua lendo o
  * `type` do mesmo objeto depois de dividi-lo.
  */
 
 /**
- * As chaves que são coluna do bloco, e como cada uma é convertida.
+ * As chaves que são coluna da seção, e como cada uma é convertida.
  *
  * A conversão continua aqui (e não é delegada ao banco) porque o corpo chega
  * como JSON cru: `enabled` pode vir `"true"`, `position` pode vir `"30"`. O
@@ -28,7 +36,6 @@
  * tabela.
  */
 const COLUMN_COERCIONS: Record<string, (value: unknown) => unknown> = {
-  title: (value) => String(value),
   // `Boolean("false")` é `true`, e um corpo escrito à mão (um `curl`, um
   // script de seed) com `enabled: "false"` ligaria a seção sem ninguém ver.
   // A coluna é booleana de verdade: a string é recusada antes da conversão.
@@ -37,27 +44,24 @@ const COLUMN_COERCIONS: Record<string, (value: unknown) => unknown> = {
   surface: (value) => String(value),
 }
 
+/**
+ * Os nomes das colunas da seção, para quem precisa conferir que nenhum campo
+ * do contrato colide com eles (`payload.unit.spec.ts`).
+ */
+export const COLUMN_NAMES: readonly string[] = Object.keys(COLUMN_COERCIONS)
+
 export type SplitPayload = {
   columns: Record<string, unknown>
   data: Record<string, unknown>
 }
-/**
- * Divide o corpo entre colunas e `data`.
- *
- * `fieldNames` são os nomes dos campos de `data` do tipo, como o schema os
- * declara (`schema.fields[type]`). Só isso é preciso para desempatar o
- * `title` — e é o que faz um campo novo no contrato cair no lugar certo sem
- * ninguém mexer nesta função.
- */
-export function splitPayload(
-  body: Record<string, unknown>,
-  fieldNames: ReadonlySet<string>
-): SplitPayload {
+
+/** Divide o corpo entre colunas da seção e `data`. */
+export function splitPayload(body: Record<string, unknown>): SplitPayload {
   const columns: Record<string, unknown> = {}
   const data: Record<string, unknown> = {}
 
   for (const [key, value] of Object.entries(body)) {
-    // `id` e `type` são identidade do bloco, não conteúdo: quem os define é a
+    // `id` e `type` são identidade da seção, não conteúdo: quem os define é a
     // rota — o `id` do query param no PATCH, o tipo já validado no POST.
     // Aceitos e ignorados, como antes.
     if (key === "id" || key === "type") {
@@ -66,8 +70,7 @@ export function splitPayload(
 
     const coerce = COLUMN_COERCIONS[key]
 
-    // Campo do tipo ganha do nome da coluna: é o schema que decide.
-    if (coerce && !fieldNames.has(key)) {
+    if (coerce) {
       columns[key] = coerce(value)
       continue
     }

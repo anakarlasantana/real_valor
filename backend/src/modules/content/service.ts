@@ -1,7 +1,7 @@
 import { MedusaService } from "@medusajs/framework/utils"
 
-import ContentBlock from "./models/content-block"
-import ContentSchemaModel from "./models/content-schema"
+import ContentContractModel from "./models/content-contract"
+import ContentSection from "./models/content-section"
 import {
   SCHEMA_KEY,
   SCHEMA_VERSION,
@@ -12,32 +12,26 @@ import {
 } from "./schema"
 
 /**
- * O schema do CRM, e de onde ele veio.
- *
- * `source` existe para o payload dizer a verdade: `"db"` é o registro no
- * Postgres (o caso normal depois do `make seed`), `"contract"` é o fallback —
- * o schema montado de `contract.ts`, para um banco novo ainda sem a linha. Não
- * é depuração: é o que permite a UI e a auditoria saberem se o formulário que
- * estão vendo é o gravado ou o de bootstrap.
- */
-
-
-/**
  * Serviço do módulo de conteúdo.
  *
- * Além dos métodos gerados (`listContentBlocks`, `retrieveContentBlock`,
- * `createContentBlocks`, `updateContentBlocks`, `deleteContentBlocks`,
- * `listContentSchemas`…), expõe:
+ * Além dos métodos gerados (`listContentSections`, `retrieveContentSection`,
+ * `createContentSections`, `updateContentSections`, `deleteContentSections`,
+ * `listContentContracts`…), expõe:
  *
  * - `listSections` — as seções já no formato do contrato, com `data` desaninhado
  *   no nível raiz. É o que as duas rotas de API usam, para que achatamento e
  *   normalização fiquem num lugar só;
- * - `getSchema`/`saveSchema` — o schema do CRM: **do banco**, com o contrato
- *   como bootstrap/fallback (`schema.ts` monta, `seed-schema` grava).
+ * - `getContract`/`saveContract` — o **registro** do contrato no Postgres: o
+ *   schema que o CRM desenha e contra o qual a API valida. O `contract.ts` é o
+ *   bootstrap/fallback (`schema.ts` monta, `seed-schema` grava).
+ *
+ * O nome `getContract` (e não `getSchema`) diz de que camada se está falando: a
+ * linha é o contrato, o `schema` que ela carrega é o dado — ver o cabeçalho de
+ * `models/content-contract.ts`.
  */
 class ContentModuleService extends MedusaService({
-  ContentBlock,
-  ContentSchema: ContentSchemaModel,
+  ContentSection,
+  ContentContract: ContentContractModel,
 }) {
   /**
    * Lista as seções de uma superfície, ordenadas e achatadas.
@@ -49,7 +43,7 @@ class ContentModuleService extends MedusaService({
     surface = "home",
     onlyEnabled = false,
   }: { surface?: string; onlyEnabled?: boolean } = {}) {
-    const blocks = await this.listContentBlocks(
+    const sections = await this.listContentSections(
       {
         surface,
         ...(onlyEnabled ? { enabled: true } : {}),
@@ -57,17 +51,18 @@ class ContentModuleService extends MedusaService({
       { order: { position: "ASC" } }
     )
 
-    return blocks.map((block) => ({
-      id: block.id,
-      enabled: block.enabled,
-      position: block.position,
-      type: block.type,
-      ...(block.data ?? {}),
+    return sections.map((section) => ({
+      id: section.id,
+      enabled: section.enabled,
+      position: section.position,
+      type: section.type,
+      ...(section.data ?? {}),
     }))
   }
 
   /**
-   * O schema do CRM: do Postgres, com o contrato como fallback.
+   * O contrato do CRM: o registro no Postgres, com o contrato do código como
+   * fallback.
    *
    * O registro é a fonte — o `contract.ts` é o bootstrap. O fallback existe
    * para o banco novo (ou a base limpa) não derrubar o painel: sem a linha, o
@@ -78,23 +73,23 @@ class ContentModuleService extends MedusaService({
    * (criada à mão, ou por um seed antigo) serviria um formulário vazio para o
    * CRM, que é pior do que servir o contrato.
    */
-  async getSchema(): Promise<StoredSchema> {
+  async getContract(): Promise<StoredSchema> {
     // A regra ("registro ou bootstrap?") está em `resolveSchema`, no
     // `schema.ts`: é pura e testável sem container. Aqui é só a leitura.
-    const [row] = await this.listContentSchemas({ key: SCHEMA_KEY })
+    const [row] = await this.listContentContracts({ key: SCHEMA_KEY })
 
     return resolveSchema(row)
   }
 
   /**
-   * Grava (ou regrava) o schema a partir do contrato.
+   * Grava (ou regrava) o contrato a partir do `contract.ts`.
    *
    * Idempotente de propósito: é a mesma linha (`SCHEMA_KEY`) reescrita com a
    * versão carimbada, então rodar o `seed-schema` mil vezes deixa o banco num
    * estado só. `version` e `schema` aceitam override para o `--check` não
    * precisar montar o schema duas vezes.
    */
-  async saveSchema({
+  async saveContract({
     schema = buildSchema(),
     version = SCHEMA_VERSION,
   }: { schema?: ContentSchemaPayload; version?: number } = {}): Promise<void> {
@@ -108,18 +103,18 @@ class ContentModuleService extends MedusaService({
     // a chave é fixa (`SCHEMA_KEY`), nunca nascem duas linhas em disputa.
     // `take` é opção da query, não filtro: vai no segundo argumento, como em
     // `listSections` — no primeiro ele vira coluna e o MikroORM reprova com
-    // "Trying to query by not existing property ContentSchema.take".
-    const [existing] = await this.listContentSchemas(
+    // "Trying to query by not existing property ContentContract.take".
+    const [existing] = await this.listContentContracts(
       { key: SCHEMA_KEY },
       { take: 1 }
     )
 
     if (existing) {
-      await this.updateContentSchemas(row)
+      await this.updateContentContracts(row)
       return
     }
 
-    await this.createContentSchemas(row)
+    await this.createContentContracts(row)
   }
 }
 

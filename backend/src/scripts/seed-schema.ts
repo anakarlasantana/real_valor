@@ -19,7 +19,7 @@ import { scriptFlags } from "./flags"
  *   yarn seed-schema
  *
  * Este é o **writer**: `contract.ts` é o bootstrap e esta linha é a fonte em
- * runtime (`service.getSchema()` prefere o banco). A migration cria só a
+ * runtime (`service.getContract()` prefere o banco). A migration cria só a
  * tabela — deixar o `insert` numa migration faria o histórico depender do
  * código do dia em que rodou, e um banco novo em 2027 nasceria com o schema de
  * 2027 enquanto o de 2026 tem o de 2026.
@@ -40,7 +40,7 @@ export default async function seedSchema({
   const check = scriptFlags(args).includes("--check")
 
   const fromContract = buildSchema()
-  const { schema: stored, version, source } = await service.getSchema()
+  const { schema: stored, version, source } = await service.getContract()
 
   if (check) {
     // `isDeepStrictEqual`, e não comparar string: o `data` é `jsonb`, que não
@@ -71,7 +71,7 @@ export default async function seedSchema({
     return
   }
 
-  await service.saveSchema({ schema: fromContract, version: SCHEMA_VERSION })
+  await service.saveContract({ schema: fromContract, version: SCHEMA_VERSION })
 
   console.log(
     `Schema gravado (chave "${SCHEMA_KEY}", versão ${SCHEMA_VERSION}, ` +

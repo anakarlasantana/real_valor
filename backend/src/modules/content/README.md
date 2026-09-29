@@ -7,9 +7,9 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 
 | Arquivo | Papel |
 | --- | --- |
-| `models/content-block.ts` | Tabela `content_block` (uma linha por seção) |
-| `models/content-schema.ts` | Tabela `content_schema` (uma linha: o schema do CRM) |
-| `service.ts` | `listSections()`, `getSchema()`, `saveSchema()` |
+| `models/content-section.ts` | Tabela `content_section` (uma linha por seção) |
+| `models/content-contract.ts` | Tabela `content_contract` (uma linha: o contrato do CRM) |
+| `service.ts` | `listSections()`, `getContract()`, `saveContract()` |
 | `schema.ts` | Montagem do schema (`buildSchema()`), `SCHEMA_VERSION` e `SCHEMA_KEY` |
 | `contract.ts` | O formato do conteúdo — **bootstrap** do schema |
 | `defaults.ts` | Cópia do protótipo, usada pelo seed e como fallback |
@@ -352,16 +352,22 @@ a ordem certa. O próximo "Salvar ordem" normaliza a faixa de 10 em 10.
 
 
 O formulário do CRM (tipos, rótulos, campos, opções, grupos) é uma **linha** em
-`content_schema`, não uma leitura do código. `contract.ts` é o **bootstrap**;
+`content_contract`, não uma leitura do código. `contract.ts` é o **bootstrap**;
 `schema.ts` monta o schema a partir dele; `seed-schema` grava a linha; e é do
 registro que a API tira tanto o formulário que o painel desenha quanto as regras
 do que pode ser gravado.
 
 ```
-contract.ts ──buildSchema()──▶ schema.ts ──saveSchema()──▶ content_schema
-                                     │                            │
-                                     └──── getSchema() ◀──────────┘
+contract.ts ──buildSchema()──▶ schema.ts ──saveContract()──▶ content_contract
+                                     │                             │
+                                     └──── getContract() ◀─────────┘
 ```
+
+O nome da camada é este par: **contrato** é o registro (a tabela, o arquivo), e
+**schema** é o dado que ele carrega — `ContentSchemaPayload`, `SCHEMA_VERSION`, e
+o payload que a loja lê (`schema`, `schemaVersion`). A tabela se chamava
+`content_schema` até 2026-09-29; o rename está em
+`migrations/Migration20260929204616.ts`.
 
 Três decisões que sustentam isso:
 
@@ -372,7 +378,7 @@ Três decisões que sustentam isso:
 - **A versão mora no contrato** (`SCHEMA_VERSION`), carimbada na gravação. Se
   derivasse do banco, ninguém veria a divergência entre o schema que gravou os
   dados e o do código — que é o que `seed-schema --check` acusa.
-- **Sem a linha, a API não quebra:** `getSchema()` cai no contrato e declara
+- **Sem a linha, a API não quebra:** `getContract()` cai no contrato e declara
   `schemaSource: "contract"`, o que torna visível que o registro ainda não foi
   gravado. Banco novo funciona antes do primeiro `make seed`.
 
@@ -392,7 +398,7 @@ existe.
 | `GET /store/content` | publishable key | Vitrine. Só seções habilitadas. `?surface=`, `?type=` |
 | `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + o schema (do registro), `schemaVersion` e `schemaSource` |
 | `POST /admin/content` | admin | Cria. Nasce com o conteúdo padrão do tipo (`DEFAULT_SECTION_DATA`); aceita `id` (a âncora do menu, validada como apelido e livre) e recusa um segundo bloco de tipo único (`nav`, `footer`, `announcement`) |
-| `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio. Coluna × conteúdo é decidido pelo schema do tipo (ver `modules/content/payload.ts`) |
+| `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio. Coluna × conteúdo é decidido pelo **nome da coluna** (ver `modules/content/payload.ts`) |
 | `DELETE /admin/content?id=` | admin | Remove |
 | `POST /admin/content/restore` | admin | Recria as seções padrão que faltam. Idempotente (só cria o que não existe) — é o mesmo que `scripts/seed-content.ts` faz |
 
