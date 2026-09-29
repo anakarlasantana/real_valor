@@ -7,18 +7,36 @@ import { HttpTypes } from "@medusajs/types"
 /**
  * Featured products — the "Peças em destaque" rail.
  *
- * Two differences from the prototype, both deliberate:
+ * O filtro é um parâmetro de verdade (`?peca=vestidos`) sobre uma consulta de
+ * catálogo de verdade: o chip carrega um `categoryId`, então a Store API filtra
+ * por `category_id` — o mesmo caminho que a listagem da loja usa.
  *
- * 1. The prototype filtered cards client-side by toggling
- *    `card.style.display`. Here the filter is a real query parameter
- *    (`?peca=Blazers`) resolved by the Medusa Store API, so the URL is
- *    shareable and the catalogue never has to be shipped wholesale.
- * 2. The prototype had one rail per collection. This is a single rail
- *    with filter chips, matching the prototype's layout.
+ * É a diferença que a R1 conserta. Antes os chips eram rótulos **copiados** para
+ * dentro da seção (`"Blazers"` entre eles) e a vitrine mandava o rótulo como
+ * busca (`q=Blazers`). Medido no catálogo real: "Blazers" não existe — aquele
+ * chip devolvia zero peças **em silêncio**, e renomear uma categoria no painel
+ * não mudava chip nenhum. Aqui o rótulo é só o que se lê no botão; quem filtra é
+ * a categoria, e a ordem dos chips é a que o lojista escolheu no CRM.
  *
- * Products always come from the Store API — the content section only
- * carries the copy (title, subtitle, filter labels).
+ * **"Todos" não vem do CMS.** Não existe categoria "todas": o chip que limpa o
+ * filtro é desenhado aqui, e `section.filters` traz só as categorias escolhidas.
+ * Antes ele era o primeiro item da lista — `filters[0]` —, e reordenar os chips
+ * trocava o significado de cada um sem nada acusar.
+ *
+ * Products always come from the Store API — the content section carries the
+ * copy (title, subtitle, chips).
  */
+/** O chip que limpa o filtro. É cópia da loja, não conteúdo do CMS. */
+const ALL_LABEL = "Todos"
+
+/** O visual de um chip: ativo é preenchido, inativo é contorno. */
+const chipClass = (isActive: boolean) =>
+  "rv-eyebrow whitespace-nowrap border px-4 py-2 transition-colors duration-200 ease-in " +
+  (isActive
+    ? "border-rv-grafite bg-rv-grafite text-rv-offwhite"
+    : "border-rv-border text-rv-grafite hover:border-rv-rose hover:text-rv-rose")
+
+
 export default async function FeaturedProducts({
   section,
   region,
@@ -26,25 +44,29 @@ export default async function FeaturedProducts({
 }: {
   section: FeaturedSection
   region: HttpTypes.StoreRegion
-  /** Active chip; the first entry in `section.filters` means "all". */
+  /** O chip ativo, pelo `handle` da categoria; ausente é "todos". */
   selectedFilter?: string
 }) {
-  const filters = section.filters ?? []
-  const allLabel = filters[0]
-  const active =
-    selectedFilter && selectedFilter !== allLabel ? selectedFilter : undefined
+  const chips = section.filters ?? []
+  // Handle que não é de nenhum chip — um link antigo, uma categoria renomeada —
+  // não filtra nada em vez de devolver zero peças: sem chip ativo, a lista é o
+  // catálogo. É a mesma tolerância do resto da loja: o que não se reconhece é
+  // ignorado, nunca quebra a página.
+  const active = selectedFilter
+    ? chips.find((chip) => chip.handle === selectedFilter)
+    : undefined
 
   const queryParams: HttpTypes.FindParams & HttpTypes.StoreProductListParams = {
     limit: 8,
     fields: "*variants.calculated_price,+variants.images,+metadata,+tags",
   }
 
-  // Medusa matches `q` against title/handle/description, which is the
-  // closest server-side equivalent of the prototype's client-side
-  // name filtering — and it stays generic, so the admin keeps control
-  // of the chip labels.
+  // O filtro é a **categoria**: `category_id` é o mesmo parâmetro da listagem da
+  // loja (`modules/store/templates/paginated-products.tsx`), então o chip e a
+  // página de categoria filtram pelo mesmo caminho do catálogo — e não por
+  // semelhança de texto no título.
   if (active) {
-    queryParams.q = active
+    queryParams["category_id"] = [active.categoryId]
   }
 
   const {
@@ -73,31 +95,36 @@ export default async function FeaturedProducts({
           )}
         </header>
 
-        {filters.length > 1 && (
+        {chips.length > 0 && (
           <nav
             aria-label="Filtrar peças em destaque"
             className="no-scrollbar mb-10 flex items-center gap-2 overflow-x-auto border-b border-rv-border pb-4"
           >
-            {filters.map((filter) => {
-              const isAll = filter === allLabel
-              const isActive = isAll ? !active : filter === active
-              const href = isAll ? "/" : `/?peca=${encodeURIComponent(filter)}`
+            {/* O chip que limpa o filtro: desenhado pela loja, porque não há
+                categoria "todas" para o CMS apontar. */}
+            <LocalizedClientLink
+              href="/"
+              scroll={false}
+              aria-current={active ? undefined : "true"}
+              data-testid="featured-filter-todos"
+              className={chipClass(!active)}
+            >
+              {ALL_LABEL}
+            </LocalizedClientLink>
+
+            {chips.map((chip) => {
+              const isActive = chip.categoryId === active?.categoryId
 
               return (
                 <LocalizedClientLink
-                  key={filter}
-                  href={href}
+                  key={chip.categoryId}
+                  href={`/?peca=${encodeURIComponent(chip.handle)}`}
                   scroll={false}
                   aria-current={isActive ? "true" : undefined}
-                  data-testid={`featured-filter-${filter.toLowerCase()}`}
-                  className={
-                    "rv-eyebrow whitespace-nowrap border px-4 py-2 transition-colors duration-200 ease-in " +
-                    (isActive
-                      ? "border-rv-grafite bg-rv-grafite text-rv-offwhite"
-                      : "border-rv-border text-rv-grafite hover:border-rv-rose hover:text-rv-rose")
-                  }
+                  data-testid={`featured-filter-${chip.handle}`}
+                  className={chipClass(isActive)}
                 >
-                  {filter}
+                  {chip.label}
                 </LocalizedClientLink>
               )
             })}

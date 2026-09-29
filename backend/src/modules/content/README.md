@@ -11,11 +11,13 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 | `models/content-contract.ts` | Tabela `content_contract` (uma linha: o contrato do CRM) |
 | `service.ts` | `listSections()`, `getContract()`, `saveContract()` |
 | `curation.ts` | A curadoria de produtos: leitura, escrita e as regras puras |
+| `filters.ts` | Os chips de categoria (a vitrine de destaque): a segunda referência — leitura, escrita, regras puras e a conversão das bases anteriores à R1 |
 | `schema.ts` | Montagem do schema (`buildSchema()`), `SCHEMA_VERSION` e `SCHEMA_KEY` |
 | `contract.ts` | O formato do conteúdo — **bootstrap** do schema |
 | `defaults.ts` | Cópia do protótipo, usada pelo seed e como fallback |
 | `migrations/` | Geradas com `medusa db:generate content` — com duas exceções escritas à mão, explicadas abaixo |
 | [`../links/content-section-product.ts`](../links/content-section-product.ts) | O link seção ↔ produto (a curadoria) — fora do módulo porque é assim que o Medusa carrega links (`src/links/`) |
+| [`../links/content-section-category.ts`](../links/content-section-category.ts) | O link seção ↔ categoria do catálogo (os chips da vitrine) — mesma razão, `src/links/` é de onde o Medusa os carrega |
 
 **As exceções das migrations.** Rename de tabela e backfill de coluna não saem do
 gerador: ele compara os models com o `.snapshot-content.json`, e um model
@@ -36,6 +38,7 @@ Três tabelas, e a regra que decide em qual delas cada coisa entra:
 | `surface`, `type`, `enabled`, `position`, `fixed` | **colunas** de `content_section` | o que se **filtra ou ordena** — `fixed` é o que se **decide na tela**: a seção **não tem ordem** (o cromo do site) |
 | `title`, `headline`, `imageUrl`, listas de itens… | **`data`** (JSONB) | o que é **cópia**: veio do formulário e é desenhado como veio |
 | a lista de produtos de uma seção | **`content_section_product`** (link) | o que é **referência**: aponta para outra linha, e a ordem é `position` na própria tabela |
+| a lista de categorias dos chips | **`content_section_category`** (link) | idem — e o **rótulo** do chip também não se grava: é o nome da categoria, lido ao vivo |
 
 O que **não** entra em `data` é a última linha da tabela: um `id` de produto dentro
 do JSON é uma string igual às outras — apagar o produto deixaria a vitrine
@@ -63,9 +66,72 @@ O que o CMS já faz por API (`productIds`), com o seletor no painel vindo depois
 | Apagar a seção | `remoteLink.delete({ content: { content_section_id } })` antes da seção (também soft: `Link.delete` cascateia com `softDelete`) |
 | Sem curadoria | a chave `productIds` **não sai no payload**: a seção volta ao modo automático (a loja desenha o que a Store API devolver) |
 
-`productIds` não é coluna nem `data`: é o **terceiro destino** de uma chave do
-corpo (`payload.ts`), e por isso não passa pelo `validateData` — o contrato do
-tipo não o declara, e não deve declarar.
+`productIds` não é coluna nem `data`: é um **destino** próprio de uma chave do
+corpo (`payload.ts`) — a referência. Ele é o único assim *em ser campo só do
+corpo*: `filters` (os chips, abaixo) também é referência e **é** campo de
+contrato, porque o CRM o edita no formulário. Os dois saem do `data` pelo mesmo
+caminho, e é isso que `payload.ts` mostra: três destinos, duas chaves de
+referência.
+
+## Os chips: a segunda referência
+
+O `featured` (a vitrine de destaque) tem chips de filtro acima dos produtos, e
+eles **eram texto**: `data.filters = ["Todos", "Blazers", "Conjuntos", "Calças"]`,
+e a loja mandava o rótulo como busca (`q=Blazers`). Duas consequências, medidas
+no banco real em 2026-09-29:
+
+- "Blazers" **não existe** em `product_category` — as quatro categorias são
+  Vestidos, Blusas & Camisas, Calças & Alfaiataria e Conjuntos —, então aquele
+  chip devolvia **zero peças em silêncio**: sem erro, sem log, sem nada na tela;
+- renomear uma categoria no painel não mudava chip nenhum, porque a cópia é que
+  era o dado.
+
+Agora o chip é referência, no link irmão do da curadoria:
+
+| Operação | Como |
+| --- | --- |
+| Ler | `query.graph` na entidade do link (`product_category_content_section` — o nome que o `defineLink` compõe; medido), com `order: { position: "ASC" }` |
+| Gravar / reordenar | `remoteLink.create` (upsert): a lista manda, e a posição sai do índice (10, 20, 30…) |
+| Tirar uma categoria | `remoteLink.dismiss` (soft: `deleted_at`) |
+| Apagar a seção | `remoteLink.delete({ content: { content_section_id } })` — medido na R1: as **duas** tabelas de link ficam com `deleted_at` preenchido |
+| Sem chips | a chave `filters` **não sai no payload**, e a vitrine mostra o catálogo inteiro |
+
+Três coisas que o chip não é, e cada uma custou uma medição:
+
+- **não é `data`** — um id solto no JSON não teria quem o limpasse quando a
+  categoria fosse apagada; o link é limpo pelo workflow do Medusa e pela rota de
+  remoção da seção;
+- **não é rótulo** — o que a loja desenha é `{ categoryId, label, handle }` lido
+  ao vivo (`readChips`), e o que filtra é `categoryId` (`category_id` na Store
+  API, o mesmo parâmetro da listagem da loja);
+- **não tem "Todos"** — não existe categoria "todas": o chip que limpa o filtro é
+  desenhado pela loja. Antes era a **posição** que dizia qual chip limpava
+  (`filters[0]`), então reordenar os chips trocava o significado de cada um sem
+  nada acusar.
+
+**As duas formas de `filters`, e onde cada uma vive.** No corpo que o CRM manda
+(e, portanto, no link) `filters` é a lista de **ids**; no payload que a loja
+recebe é a lista de chips prontos (id + nome + handle). Quem separa as duas é a
+leitura (`readChips`). O mesmo campo é o `list:category` do formulário — o
+seletor de categorias do painel (`field-input.tsx`), alimentado pelo catálogo que
+o `GET /admin/content` devolve em `categories`: lista **do banco**, e não `options`
+do contrato, porque categoria nasce e morre no painel do Medusa (uma lista
+fechada ofereceria o que não existe — era exatamente o "Blazers").
+
+**As bases anteriores à R1.** `scripts/seed-content.ts` fecha a conversão
+(`retireTextFilters`): a chave antiga de texto é **neutralizada** (`null`) e a
+seção que ficou sem chips recebe os do padrão, por **handle**
+(`DEFAULT_FEATURED_FILTERS` — o id é criado pelo seed a cada base, então o que se
+declara é o handle). Neutralizar, e não remover a chave, é o que a medição de
+2026-09-29 mandou: o `update` do serviço **mescla** o JSON, então gravar o `data`
+sem a chave não a tira de lá (ver a nota sobre `SECTION_FIELDS.footer`, abaixo).
+A leitura descarta a chave de qualquer forma (`withFilters`) — inclusive numa base
+que ninguém converteu, em que a lista antiga de rótulos chegaria com a mesma
+chave do link e shape nenhum de chip.
+
+**A versão do schema subiu para 5** por isso: o campo dos chips mudou de `kind`
+(`list:text` → `list:category`), o editor do CRM muda de caixa de texto para
+seletor, e o `--check` do `seed-schema` acusa um registro v4 gravado.
 
 ## Por que uma tabela só, com `data` em JSON
 
@@ -353,12 +419,16 @@ toda origem oferecida no admin tem ramo lá.
 publicar o rodapé antes de o catálogo existir.
 
 **Cuidado ao mexer em `SECTION_FIELDS.footer`**: essa lista é a definição do formulário **e** o
-contrato de escrita. O `GET /admin/content` devolve as specs, o formulário do admin monta o corpo do
-PATCH a partir delas e o PATCH substitui o `data` inteiro pelo que veio — campo que sai da lista
-some da tela **e** é apagado do banco no primeiro "Salvar". Tirar o bloco `footer` inteiro (o que já
-aconteceu uma vez, na tentativa de remover a FAQ) deixava o cartão do rodapé sem nenhum campo e a
-validação estourava com 500. O guard de paridade reprova os dois sintomas: `"footer" declara campos
-nos dois arquivos` e `todo campo que o rodapé lê tem editor em SECTION_FIELDS.footer`.
+contrato de escrita. O `GET /admin/content` devolve as specs e o formulário do admin monta o corpo
+do PATCH a partir delas — mas campo que sai da lista **não** é apagado do banco no primeiro
+"Salvar". Medido em 2026-09-29, com uma sonda: o `updateContentSections` do módulo **mescla** o
+JSON da coluna `data` no nível raiz, então gravar o `data` sem uma chave deixa a chave onde estava
+(a sonda gravou `{probe: true}` e o `data` ficou com a chave nova **mais** todas as antigas). O que
+acontece é mais silencioso e igualmente ruim: o campo some da tela, o valor continua no banco e
+ninguém o lê — **órfão, não apagado**. Tirar o bloco `footer` inteiro (o que já aconteceu uma vez,
+na tentativa de remover a FAQ) deixava o cartão do rodapé sem nenhum campo e a validação estourava
+com 500. O guard de paridade reprova os dois sintomas: `"footer" declara campos nos dois arquivos`
+e `todo campo que o rodapé lê tem editor em SECTION_FIELDS.footer`.
 
 Os `links` passam pelo mesmo `nav-link` do menu (âncora, rota interna, `https://`, `mailto:`), e
 os ícones saem de `frontend/src/lib/content/social-icons.tsx`. Esse registro é separado de
@@ -451,11 +521,11 @@ existe.
 
 | Rota | Auth | Para quê |
 | --- | --- | --- |
-| `GET /store/content` | publishable key | Vitrine. Só seções habilitadas. `?surface=`, `?type=`. A curadoria (`productIds`) vem nas seções que têm uma |
-| `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + a curadoria de quem tem uma + o schema (do registro), `schemaVersion` e `schemaSource` |
-| `POST /admin/content` | admin | Cria. Nasce com o conteúdo padrão do tipo (`DEFAULT_SECTION_DATA`); aceita `id` (a âncora do menu, validada como apelido e livre), `productIds` (curadoria inicial) e recusa um segundo bloco de tipo único (`nav`, `footer`, `announcement`) |
-| `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio. Coluna × conteúdo é decidido pelo **nome da coluna** (ver `modules/content/payload.ts`). `productIds` é o terceiro destino: a lista manda, e ausente = não mexe |
-| `DELETE /admin/content?id=` | admin | Remove — desvinculando a curadoria antes (ver `curation.ts`) |
+| `GET /store/content` | publishable key | Vitrine. Só seções habilitadas. `?surface=`, `?type=`. A curadoria (`productIds`) e os chips (`filters`, com nome e handle lidos ao vivo) vêm nas seções que têm uma |
+| `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + a curadoria de quem tem uma + os chips de quem tem + o catálogo (`categories`, as opções do seletor) + o schema (do registro), `schemaVersion` e `schemaSource` |
+| `POST /admin/content` | admin | Cria. Nasce com o conteúdo padrão do tipo (`DEFAULT_SECTION_DATA`); aceita `id` (a âncora do menu, validada como apelido e livre), `productIds` (curadoria inicial), `filters` (os chips, em ids de categoria) e recusa um segundo bloco de tipo único (`nav`, `footer`, `announcement`) |
+| `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio. Coluna × conteúdo é decidido pelo **nome da coluna** (ver `modules/content/payload.ts`). `productIds` e `filters` são as referências: a lista manda, e ausente = não mexe |
+| `DELETE /admin/content?id=` | admin | Remove — desvinculando a curadoria e os chips antes (ver `curation.ts` e `filters.ts`) |
 | `POST /admin/content/restore` | admin | Recria as seções padrão que faltam. Idempotente (só cria o que não existe) — é o mesmo que `scripts/seed-content.ts` faz |
 
 `GET /store/content` devolve as seções achatadas, prontas para render, mais a

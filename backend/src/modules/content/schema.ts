@@ -58,8 +58,17 @@ import {
  *      A seção nova também chega pelos dois caminhos de conteúdo: o padrão
  *      (`DEFAULT_HOME_SECTIONS`, que a loja usa como fallback) e o
  *      "Restaurar padrão" do CRM, que cria o que falta pelo `id`.
+ *
+ * v5 — os chips do `featured` deixaram de ser texto e passaram a ser
+ *      **referência**: o campo `filters` é `kind: "list:category"`
+ *      (`SECTION_FIELDS`) e o que ele guarda é a lista de ids de categoria, num
+ *      link (`content_section_category`) — não no `data`. O editor do CRM muda
+ *      de caixa de texto para seletor de categorias, e por isso o formato é
+ *      outro: sem reescrever o registro (`make seed-schema`) o CRM continua
+ *      desenhando a caixa de texto antiga, e os chips gravados como rótulo
+ *      ficam sem leitura — o `--check` do seed-schema acusa o registro velho.
  */
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.

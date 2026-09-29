@@ -127,14 +127,47 @@ export type CollectionsSection = SectionBase &
     items: CollectionHighlight[]
   }
 
+/**
+ * Uma categoria do catálogo, como a vitrine e o CRM precisam dela.
+ *
+ * `categoryId` é a **referência** — é ele que filtra, no `category_id` da Store
+ * API —, e `label`/`handle` são leitura ao vivo de `product_category`: quem
+ * renomeia a categoria no painel vê o chip mudar, porque não há cópia gravada.
+ *
+ * O tipo é o mesmo nos dois lados (o chip escolhido e o catálogo oferecido): um
+ * chip **é** uma entrada do catálogo, com a diferença de estar na lista da
+ * seção.
+ */
+export type CategoryRef = {
+  categoryId: string
+  label: string
+  handle: string
+}
+
 export type FeaturedSection = SectionBase &
   SectionAppearance & {
     type: "featured"
     eyebrow: string
     title: string
     subtitle: string
-    /** Chips de filtro acima da vitrine. `"Todos"` significa "todas". */
-    filters: string[]
+    /**
+     * Chips de filtro acima da vitrine: **referências** às categorias do
+     * catálogo, na ordem em que aparecem (o link `content_section_category`).
+     *
+     * Não é lista de rótulos, e é essa a diferença que a R1 conserta: os chips
+     * eram texto dentro do `data` (`["Todos", "Blazers", "Conjuntos", "Calças"]`)
+     * e a loja mandava o rótulo como busca. Medido no banco real, "Blazers" não
+     * existe no catálogo — aquele chip devolvia zero peças **em silêncio** —, e
+     * renomear uma categoria no painel não mudava chip nenhum, porque a cópia é
+     * que era o dado. Aqui o filtro é `categoryId`, e o rótulo é o nome da
+     * categoria lido na hora.
+     *
+     * O chip "Todos" (limpa o filtro) **não** está nesta lista: não existe
+     * categoria "todas", e quem o desenha é a loja. Antes era a posição —
+     * `filters[0]` — que dizia qual dos chips limpava, então reordenar os chips
+     * trocava o significado de cada um sem nada acusar.
+     */
+    filters?: CategoryRef[]
     viewAllLabel: string
   }
 
@@ -696,6 +729,18 @@ export type FieldKind =
   // `validateData` da rota admin reprova o que estiver fora de `options`.
   | "color"
   | "font"
+  // Lista de **referências** a categorias (ids), com a ordem da lista: é o campo
+  // dos chips da vitrine. Não é lista de objetos — não há sub-formulário —, e
+  // por isso o editor é um seletor próprio (`field-input.tsx`) e `ITEM_FIELDS`
+  // traz a entrada vazia (a guarda de paridade cobra editor para todo `list:*`).
+  // O que **não** se grava aqui é o rótulo: `label` e `handle` são lidos da
+  // categoria na hora de desenhar (`modules/content/filters.ts`).
+  | "list:category"
+  // Lista de textos simples: um input separado por vírgula, sem sub-campos.
+  // Nenhum campo a usa desde que os chips do `featured` viraram referência
+  // (`list:category`) — ela fica por ser o caminho declarado de uma lista de
+  // strings (a guarda de paridade e o editor a tratam como a exceção que não
+  // precisa de entrada em `ITEM_FIELDS`).
   | "list:text"
   | "list:benefit"
   | "list:highlight"
@@ -872,8 +917,13 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     {
       name: "filters",
       label: "Filtros",
-      kind: "list:text",
-      help: 'Separe por vírgula. Inclua "Todos" para o filtro que limpa.',
+      // Referência, e não texto: o que se escolhe aqui são **categorias do
+      // catálogo**, e o chip da vitrine passa a ser o nome delas, lido na hora.
+      // Era um `list:text` — os chips eram rótulos digitados, e um rótulo sem
+      // categoria por trás (o "Blazers" do padrão) devolvia zero peças em
+      // silêncio.
+      kind: "list:category",
+      help: 'Escolha as categorias que viram chips na vitrine. O chip "Todos" (limpa o filtro) a loja desenha sozinha: ele não é uma categoria.',
     },
     { name: "viewAllLabel", label: "Link ver todos", kind: "text" },
     // O fundo fecha a seção: é a única escolha que vale para o bloco todo.
@@ -1083,10 +1133,12 @@ export type ItemFields = Partial<Record<FieldKind, readonly ItemFieldSpec[]>>
  * Sub-formulário de cada `kind` de lista, na ordem em que o editor o desenha.
  *
  * Só os `kind` de objeto aparecem: `list:text` é um input separado por
- * vírgula, sem sub-campos. Todo `list:*` de `SECTION_FIELDS` precisa estar
- * aqui — sem editor o campo aparece na tela e não dá para preencher —, e a
- * guarda de paridade cobra os dois sentidos (nenhum `kind` sem sub-formulário,
- * nenhuma chave que não seja um `kind` declarado nas seções).
+ * vírgula, sem sub-campos, e `list:category` é o seletor de categorias do
+ * `filters` — os dois sem sub-campos, e por isso os dois de fora. Todo `list:*`
+ * de `SECTION_FIELDS` precisa estar aqui — sem editor o campo aparece na tela e
+ * não dá para preencher —, e a guarda de paridade cobra os dois sentidos
+ * (nenhum `kind` sem editor, nenhuma chave que não seja um `kind` declarado nas
+ * seções).
  *
  * Cada `kind` tem um tipo no bloco compartilhado (`BenefitItem`,
  * `CollectionHighlight`, `HeaderLink`, `HeaderAction`, `FooterColumn`,
@@ -1109,6 +1161,14 @@ export type ItemFields = Partial<Record<FieldKind, readonly ItemFieldSpec[]>>
  */
 
 export const ITEM_FIELDS: ItemFields = {
+  // Lista de **referências**, não de objetos: o valor é o id da categoria, e o
+  // rótulo dela é lido ao vivo (não há sub-formulário para desenhar). A entrada
+  // vazia existe porque a guarda de paridade cobra editor para todo `list:*` de
+  // `SECTION_FIELDS` — e o editor de verdade é o seletor de categorias
+  // (`field-input.tsx`), que recebe o catálogo pelo payload. Sem a entrada, o
+  // campo apareceria na tela sem como ser preenchido, que é o defeito que a
+  // guarda procura.
+  "list:category": [],
   "list:benefit": [
     {
       name: "icon",

@@ -44,7 +44,7 @@ import type {
 import { Modules } from "@medusajs/framework/utils"
 
 import { CONTENT_MODULE } from "."
-import { curationPositionFor } from "./order"
+import { listPositionFor } from "./order"
 
 /**
  * A entidade do link, como o `query.graph` a conhece.
@@ -157,7 +157,7 @@ export function curationLinks(
   return productIds.map((productId, index) => ({
     [Modules.PRODUCT]: { product_id: productId },
     [CONTENT_MODULE]: { content_section_id: sectionId },
-    data: { position: curationPositionFor(index) },
+    data: { position: listPositionFor(index) },
   }))
 }
 

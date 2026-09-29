@@ -106,26 +106,32 @@ export function positionFor(index: number): number {
 }
 
 /**
- * Onde começa a faixa da **curadoria** (os produtos de uma seção).
+ * Onde começa a faixa de uma **lista referenciada** de uma seção.
  *
- * Mesma folga do seed, sem a faixa reservada ao cromo: a curadoria é uma lista
- * própria — a de **uma** seção —, e a numeração dela não concorre com a da
- * vitrine. Poderia começar em qualquer número; começar na folga (10) é o que faz
- * o `\d` da tabela de link mostrar 10, 20, 30 em vez de 100, 110, 120, que é a
- * faixa que a vitrine já usa para dizer "seções".
+ * São duas hoje, e as duas são a lista de **uma** seção: a curadoria de produtos
+ * (`curation.ts`) e os chips de categoria (`filters.ts`). Cada uma tem a própria
+ * numeração, então elas não concorrem entre si nem com a vitrine.
+ *
+ * Mesma folga do seed, sem a faixa reservada ao cromo. Poderia começar em
+ * qualquer número; começar na folga (10) é o que faz o `\d` da tabela de link
+ * mostrar 10, 20, 30 em vez de 100, 110, 120, que é a faixa que a vitrine já usa
+ * para dizer "seções".
  */
-export const FIRST_CURATION_POSITION = POSITION_STEP
+export const FIRST_LIST_POSITION = POSITION_STEP
 
 /**
- * A posição do produto na casa `index` da curadoria.
+ * A posição do item na casa `index` de uma lista referenciada.
  *
  * A lista **é** a ordem: o CRM manda os ids na ordem da tela e a posição sai
  * daqui, em vez de ser digitada. É a mesma ideia do `positionFor` das seções, e
  * pelo mesmo motivo: duas posições iguais são ordem indefinida na vitrine, e o
  * lojista não consegue consertar isso pela tela.
+ *
+ * Vale para as duas listas: o produto na curadoria e o chip na vitrine ocupam a
+ * mesma faixa, porque a ordem de cada uma é lida na entidade do próprio link.
  */
-export function curationPositionFor(index: number): number {
-  return FIRST_CURATION_POSITION + index * POSITION_STEP
+export function listPositionFor(index: number): number {
+  return FIRST_LIST_POSITION + index * POSITION_STEP
 }
 
 /**

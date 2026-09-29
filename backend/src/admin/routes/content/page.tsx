@@ -52,7 +52,10 @@ import {
 } from "@medusajs/ui"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
-import type { AppearanceGroup } from "../../../modules/content/contract"
+import type {
+  AppearanceGroup,
+  CategoryRef,
+} from "../../../modules/content/contract"
 import {
   nextPosition,
   positionFor,
@@ -65,7 +68,7 @@ import {
   type FieldSpec,
   type ItemFields,
 } from "./field-input"
-import { isDirty } from "./form-draft"
+import { isDirty, wireValue } from "./form-draft"
 
 type Section = {
   id: string
@@ -242,6 +245,15 @@ function freeAnchor(type: string, sections: Section[]): string {
 const ContentPage = () => {
   const [sections, setSections] = useState<Section[]>([])
   const [schema, setSchema] = useState<Schema | null>(null)
+  /**
+   * O catálogo de categorias, para o seletor de chips (`list:category`).
+   *
+   * Vem no mesmo payload do conteúdo (`GET /admin/content`, chave `categories`)
+   * porque é isso que ele é: uma opção de campo, como a paleta e as fontes — só
+   * que vinda do **catálogo**, e não do contrato, já que categoria nasce e morre
+   * no painel do Medusa.
+   */
+  const [categories, setCategories] = useState<CategoryRef[]>([])
   const [drafts, setDrafts] = useState<Record<string, Record<string, unknown>>>(
     {}
   )
@@ -284,6 +296,7 @@ const ContentPage = () => {
       const loaded: Section[] = json.sections ?? []
       setSections(loaded)
       setSchema(json.schema ?? null)
+      setCategories(json.categories ?? [])
       setDrafts(
         Object.fromEntries(
           loaded.map((s) => [s.id, { ...s } as Record<string, unknown>])
@@ -697,7 +710,10 @@ const ContentPage = () => {
         enabled: draft.enabled,
       }
       for (const spec of specs) {
-        body[spec.name] = draft[spec.name]
+        // O valor da tela vira o valor da API em `wireValue`: um campo de
+        // referência (os chips) viaja como a lista de **ids** — o nome da
+        // categoria é leitura da loja, não conteúdo da seção.
+        body[spec.name] = wireValue(spec.kind, draft[spec.name])
       }
 
       const res = await fetch(
@@ -1031,6 +1047,7 @@ const ContentPage = () => {
                       itemFields={schema?.itemFields ?? {}}
                       palette={schema?.palette}
                       fonts={schema?.fonts}
+                      categories={categories}
                     />
                   )
 

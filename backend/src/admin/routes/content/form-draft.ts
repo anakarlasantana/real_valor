@@ -9,7 +9,13 @@
  * O `JSON.stringify` não serve: um campo numérico do formulário devolve `"8"` e
  * o servidor guardou `8`, e a barra acenderia sozinha numa seção intocada — o
  * aviso que não merece confiança é pior do que a ausência dele.
+ *
+ * E é também aqui que o valor da tela vira o valor **da API** (`wireValue`): um
+ * campo de referência é um objeto na tela (o chip precisa do nome para ser
+ * desenhado) e uma lista de ids no corpo — a conversão mora num lugar só, com
+ * teste, em vez de dentro do `onSave`.
  */
+import type { FieldKind } from "../../../modules/content/contract"
 
 /** Uma impressão do valor, para comparar formulário e conteúdo gravado. */
 export function fingerprint(value: unknown): string {
@@ -40,4 +46,30 @@ export function isDirty(
   }
 
   return false
+}
+
+/**
+ * O valor de um campo, como a **API** o recebe.
+ *
+ * Um campo de referência (`list:category`, os chips de categoria) viaja como a
+ * lista de **ids**: o que se grava é a referência, e o rótulo é lido ao vivo da
+ * categoria (`backend/src/modules/content/filters.ts`). A tela, porém, precisa
+ * do nome — é ele que o chip desenha —, então o rascunho guarda o objeto
+ * inteiro e a conversão acontece aqui.
+ *
+ * Sem ela o corpo levaria `{ categoryId, label, handle }` e a rota recusaria com
+ * "deve ser uma lista de ids de categoria" — que é a resposta certa, mas por um
+ * motivo que o lojista não tem como consertar pela tela.
+ *
+ * A referência é a única exceção: todo o resto do formulário vai como está (o
+ * que a tela mostra é o que a API grava).
+ */
+export function wireValue(kind: FieldKind, value: unknown): unknown {
+  if (kind !== "list:category" || !Array.isArray(value)) {
+    return value
+  }
+
+  return value
+    .map((chip) => (chip as { categoryId?: unknown } | null)?.categoryId)
+    .filter((id): id is string => typeof id === "string" && Boolean(id))
 }

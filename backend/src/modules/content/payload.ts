@@ -15,10 +15,21 @@
  * `SECTION_FIELDS`, para o dia em que alguém quiser criar um campo com um desses
  * nomes (a resposta certa é renomear o campo).
  *
- * **Referência:** `productIds` (a curadoria) **não** é coluna nem conteúdo — é o
- * link do Medusa (`curation.ts`), e por isso sai daqui separado, sem passar pelo
- * `validateData` (que reprovaria como "campo desconhecido", já que o contrato do
- * tipo não o declara e não deve declarar: ele não vive em `data`).
+ * **Referência:** `productIds` (a curadoria) e `filters` (os chips de categoria)
+ * **não** são coluna nem conteúdo — são links do Medusa (`curation.ts`,
+ * `filters.ts`). Os dois saem daqui separados, mas por chaves diferentes, e a
+ * diferença é de propósito:
+ *
+ *   `productIds`  não é campo de contrato — a curadoria não tem editor no CRM,
+ *                 então validá-lo como `data` seria reprová-lo;
+ *   `filters`     é campo de contrato (o CRM escolhe as categorias no
+ *                 formulário), e o que a lista guarda é o **id** da categoria,
+ *                 nunca o texto dela.
+ *
+ * Sem a segunda linha `filters` continuaria sendo `data` — o defeito que a fase
+ * conserta: o chip era o rótulo digitado, e a loja o mandava como busca. Quem
+ * valida o valor dos dois (lista de ids, sem repetição, todos existentes) é a
+ * rota admin; aqui só se diz para onde a chave vai.
  *
  * **A regra já foi outra, e custou caro.** `title` era coluna (o rótulo da
  * listagem) **e** campo de conteúdo em quatro tipos (`collections`, `featured`,
@@ -33,6 +44,7 @@
  * `type` do mesmo objeto depois de dividi-lo.
  */
 import { CURATION_FIELD } from "./curation"
+import { FILTERS_FIELD } from "./filters"
 
 /**
  * As chaves que são coluna da seção, e como cada uma é convertida.
@@ -74,12 +86,22 @@ export type SplitPayload = {
    * sem repetição, todos existentes) é a rota.
    */
   curation?: unknown
+  /**
+   * Os campos de contrato que são **referência**, como vieram no corpo.
+   *
+   * Hoje é só `filters` (os chips de categoria), e o destino dele é o link —
+   * ver `modules/content/filters.ts`. Vale a mesma leitura do `curation`: chave
+   * ausente é "não mexe" (o PATCH de um texto não encosta na lista de
+   * categorias da seção) e `[]` é "esvazia os chips".
+   */
+  references?: Record<string, unknown>
 }
 
-/** Divide o corpo entre colunas da seção, `data` e a curadoria. */
+/** Divide o corpo entre colunas da seção, `data`, a curadoria e os chips. */
 export function splitPayload(body: Record<string, unknown>): SplitPayload {
   const columns: Record<string, unknown> = {}
   const data: Record<string, unknown> = {}
+  const references: Record<string, unknown> = {}
   let curation: unknown
 
   for (const [key, value] of Object.entries(body)) {
@@ -97,6 +119,14 @@ export function splitPayload(body: Record<string, unknown>): SplitPayload {
       continue
     }
 
+    // Os chips também — e `filters` é a única chave que é campo de contrato
+    // (o CRM a desenha) **e** referência (o valor é o id da categoria). Fora do
+    // `data`, o rótulo digitado deixa de ter onde morar.
+    if (key === FILTERS_FIELD) {
+      references[FILTERS_FIELD] = value
+      continue
+    }
+
     const coerce = COLUMN_COERCIONS[key]
 
     if (coerce) {
@@ -107,7 +137,12 @@ export function splitPayload(body: Record<string, unknown>): SplitPayload {
     data[key] = value
   }
 
-  return curation === undefined
-    ? { columns, data }
-    : { columns, data, curation }
+  return {
+    columns,
+    data,
+    // As chaves opcionais saem só quando têm o que dizer: um corpo sem
+    // referência nenhuma continua sendo `{ columns, data }`, como antes.
+    ...(Object.keys(references).length ? { references } : {}),
+    ...(curation === undefined ? {} : { curation }),
+  }
 }

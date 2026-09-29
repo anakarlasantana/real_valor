@@ -11,6 +11,7 @@
  * padrão é a ordem certa, e ela vale para a lista inteira.
  */
 import { SINGLETON_SECTION_TYPES, isSingletonSectionType } from "../contract"
+import type { QueryGraph, RemoteLink } from "../curation"
 import { DEFAULT_HOME_SECTIONS } from "../defaults"
 import { planRestoredPositions, restoreDefaultSections } from "../restore"
 import type ContentModuleService from "../service"
@@ -189,8 +190,48 @@ describe("restoreDefaultSections", () => {
 
     const result = await restoreDefaultSections(service)
 
-    expect(result).toEqual({ created: [], kept: DEFAULT_HOME_SECTIONS.length })
+    expect(result).toEqual({
+      created: [],
+      kept: DEFAULT_HOME_SECTIONS.length,
+      chips: [],
+    })
     expect(createContentSections).not.toHaveBeenCalled()
+  })
+
+  /**
+   * Os chips da seção que nasce.
+   *
+   * É a parte da seção que não viaja no `data` — os chips são referência (o link
+   * `content_section_category`) —, e por isso o "Restaurar padrão" precisa de um
+   * segundo passo, com o id da seção recém-criada. Sem ele, a vitrine nasceria
+   * sem chip nenhum: o catálogo inteiro no lugar do que o padrão promete.
+   */
+  it("a seção que nasce leva os chips padrão", async () => {
+    const { service } = fakeService()
+    const calls: string[] = []
+    const link = {
+      create: async (links: readonly unknown[]) => {
+        calls.push(`create:${links.length}`)
+        return links
+      },
+      dismiss: async () => [],
+      delete: async () => [],
+    } as unknown as RemoteLink
+    const query = {
+      graph: (async ({ entity }: { entity: string }) => ({
+        data:
+          entity === "product_category"
+            ? [{ id: "pcat_v", name: "Vestidos", handle: "vestidos" }]
+            : [],
+      })) as unknown as QueryGraph["graph"],
+    } as QueryGraph
+
+    const result = await restoreDefaultSections(service, { link, query })
+
+    // Só a seção que declara o campo no contrato recebe chips — e ela recebe o
+    // que o `defaultFilterIds` resolveu a partir dos handles do padrão.
+    expect(result.chips).toEqual(["featured"])
+    expect(calls).toEqual(["create:1"])
   })
 })
 

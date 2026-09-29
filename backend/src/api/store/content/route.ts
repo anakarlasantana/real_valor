@@ -4,6 +4,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { CONTENT_MODULE } from "../../../modules/content"
 import type ContentModuleService from "../../../modules/content/service"
 import { isSectionType } from "../../../modules/content/contract"
+import { readChips, withFilters } from "../../../modules/content/filters"
 import { readCuration, withCuration } from "../../../modules/content/curation"
 
 /**
@@ -53,10 +54,20 @@ export async function GET(
     query,
     wanted.map((section) => section.id)
   )
+  // E os chips, com nome e `handle` lidos **ao vivo** da categoria
+  // (`readChips`): é o que faz o chip acompanhar uma categoria renomeada no
+  // painel, e é o `categoryId` que a loja usa para filtrar de verdade — não o
+  // rótulo como busca, que era o defeito do chip "Blazers".
+  const chips = await readChips(
+    query,
+    wanted.map((section) => section.id)
+  )
   const { version } = await service.getContract()
 
   res.json({
-    sections: wanted.map((section) => withCuration(section, curation[section.id])),
+    sections: wanted.map((section) =>
+      withFilters(withCuration(section, curation[section.id]), chips[section.id])
+    ),
     /**
      * A versão do schema com que estes dados foram gravados.
      *

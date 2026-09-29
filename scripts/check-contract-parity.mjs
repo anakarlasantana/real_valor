@@ -153,6 +153,23 @@ const FOOTER_TEMPLATE = join(
   root,
   "frontend/src/modules/layout/templates/footer/index.tsx"
 )
+/**
+ * A vitrine de destaque — a seção que passou a ter **referência** na R1.
+ *
+ * Os chips dela deixaram de ser rótulos digitados (`"Blazers"`, que não existe
+ * no catálogo) e viraram link para categoria; o que se confere aqui é que o
+ * render e o formulário falam do mesmo campo, e que esse campo continua sendo
+ * uma referência.
+ */
+const FEATURED_PRODUCTS = join(
+  root,
+  "frontend/src/modules/home/components/featured-products/index.tsx"
+)
+/** O link dos chips: a tabela e o lado do catálogo que a leitura pressupõe. */
+const CATEGORY_LINK = join(
+  root,
+  "backend/src/links/content-section-category.ts"
+)
 
 /**
  * Onde as classes `.rv-section-*` do `brand.css` podem ser usadas: o
@@ -365,9 +382,11 @@ assert(
   )
 )
 
-// O formulário do admin é montado a partir de `SECTION_FIELDS` e o PATCH
-// substitui o `data` inteiro pelo que ele enviou: campo obrigatório vazio no
-// seed vira campo apagado no primeiro "Salvar".
+// O formulário do admin é montado a partir de `SECTION_FIELDS` e o PATCH manda
+// de volta todo campo que a lista declara. Campo obrigatório vazio no seed é o
+// que o formulário enviaria vazio no primeiro "Salvar" — e, medido em
+// 2026-09-29 (na R1), o `update` do módulo **mescla** o `data` em vez de
+// substituí-lo: o valor antigo ficaria órfão no banco, invisível para quem edita.
 assert(
   "todo campo obrigatório do contrato está preenchido",
   defaults.every((section) =>
@@ -426,10 +445,10 @@ for (const source of contractSources.filter((source) => source !== "links")) {
 }
 
 // Todo `content.<campo>` lido pelo rodapé precisa existir em
-// `SECTION_FIELDS.footer`: é essa lista que monta o formulário do admin, e o
-// PATCH substitui o `data` inteiro — campo que o render lê e a lista não
-// declara fica sem editor na tela **e** é apagado do banco no primeiro
-// "Salvar".
+// `SECTION_FIELDS.footer`: é essa lista que monta o formulário do admin —
+// campo que o render lê e a lista não declara fica sem editor na tela, e o
+// valor gravado fica órfão (o `update` **mescla** o `data`; medido em
+// 2026-09-29, na R1).
 const footerTemplate = readFileSync(FOOTER_TEMPLATE, "utf8")
 const footerReads = [
   ...new Set(
@@ -453,8 +472,8 @@ console.log("\nTRILHO DE LANÇAMENTOS (render ⇔ contrato)")
 // Mesma regra do rodapé, para a seção que o lojista ganha nova: todo
 // `section.<campo>` que o trilho lê precisa ter editor em
 // `SECTION_FIELDS.launches`. Campo lido e não declarado aparece na loja, não
-// tem como ser editado no CRM — e o PATCH substitui o `data` inteiro, então o
-// primeiro "Salvar" da seção apaga o valor.
+// tem como ser editado no CRM, e o valor gravado fica órfão no `data` (o
+// `update` mescla; medido em 2026-09-29, na R1).
 const launchesRail = readFileSync(LAUNCHES_RAIL, "utf8")
 const railReads = [
   ...new Set(
@@ -509,6 +528,61 @@ assert(
     utilConstant("LAUNCHES_LIMIT_FALLBACK") === seedLaunches.limit,
   `util: ${utilConstant("LAUNCHES_LIMIT_FALLBACK")}\n` +
     `       padrão: ${seedLaunches?.limit}`
+)
+
+console.log("\nVITRINE DE DESTAQUE (render ⇔ contrato)")
+
+// Mesma regra do rodapé e do trilho, agora para a seção que ganhou referência:
+// todo `section.<campo>` que a vitrine lê precisa ter editor em
+// `SECTION_FIELDS.featured`. Sem ele o campo aparece na loja e não dá para
+// editar — e foi por não haver campo nenhum que o chip era texto livre.
+const featuredRail = readFileSync(FEATURED_PRODUCTS, "utf8")
+const featuredReads = [
+  ...new Set(
+    [...featuredRail.matchAll(/\bsection\.([A-Za-z_$][\w$]*)/g)].map(
+      (match) => match[1]
+    )
+  ),
+]
+const featuredSpecFields = (sourceFields.featured ?? []).map(
+  (field) => field.name
+)
+
+assert(
+  "todo campo que a vitrine de destaque lê tem editor em SECTION_FIELDS.featured",
+  featuredReads.length > 0 &&
+    featuredReads.every((name) => featuredSpecFields.includes(name)),
+  `render lê: ${featuredReads.join(", ") || "nenhum"}\n` +
+    `       contrato: ${featuredSpecFields.join(", ") || "NENHUM"}`
+)
+
+// E o outro lado da mesma fase: os chips são **referência** (`list:category`),
+// não texto. `filters` de volta a `list:text` traria de volta o chip de rótulo
+// digitado — e o `q=Blazers` que devolvia zero peças sem erro nenhum. O que a
+// loja filtra é `categoryId` (`category_id` na Store API), e é isso que o
+// campo declara.
+const filtersField = (sourceFields.featured ?? []).find(
+  (field) => field.name === "filters"
+)
+
+assert(
+  "os chips da vitrine são referência (`list:category`), não texto",
+  filtersField?.kind === "list:category",
+  `filters é "${filtersField?.kind ?? "não declarado"}"`
+)
+
+// A referência mora num **link**, e o default do link é o nome composto pelo
+// Medusa (`product_category_content_section`): a tabela é `content_section_category`
+// porque o nome foi declarado. Nome de tabela errado não quebra nada visível —
+// ele cria uma segunda tabela e a leitura devolve vazio (vitrine sem chips), que
+// é a falha silenciosa que esta asserção existe para não repetir.
+const categoryLink = readFileSync(CATEGORY_LINK, "utf8")
+
+assert(
+  "o link dos chips declara a tabela `content_section_category`",
+  categoryLink.includes('table: "content_section_category"') &&
+    categoryLink.includes("ProductModule.linkable.productCategory"),
+  "ver backend/src/links/content-section-category.ts: `table` e o lado da categoria"
 )
 
 console.log("\nADMIN (field-input.tsx)")

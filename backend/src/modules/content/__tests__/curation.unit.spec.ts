@@ -32,7 +32,7 @@ import {
   type QueryGraph,
   type RemoteLink,
 } from "../curation"
-import { FIRST_CURATION_POSITION, curationPositionFor } from "../order"
+import { FIRST_LIST_POSITION, listPositionFor } from "../order"
 
 const linkSource = readFileSync(
   join(__dirname, "..", "..", "..", "links", "content-section-product.ts"),
@@ -119,12 +119,13 @@ describe("curationLinks", () => {
     ])
   })
 
-  it("a faixa da curadoria começa na folga, não na faixa das seções", () => {
-    expect(FIRST_CURATION_POSITION).toBe(10)
-    expect([0, 1, 2].map(curationPositionFor)).toEqual([10, 20, 30])
-    // A vitrine começa em 100 (a faixa do cromo é abaixo): se a curadoria
-    // começasse lá, o `\d` das duas tabelas contaria a mesma história.
-    expect(curationPositionFor(0)).toBeLessThan(FIRST_CURATION_POSITION + 100)
+  it("a faixa da lista referenciada começa na folga, não na faixa das seções", () => {
+    expect(FIRST_LIST_POSITION).toBe(10)
+    expect([0, 1, 2].map(listPositionFor)).toEqual([10, 20, 30])
+    // A vitrine começa em 100 (a faixa do cromo é abaixo): se a curadoria — ou
+    // os chips, que usam a mesma função — começasse lá, o `\d` das duas tabelas
+    // contaria a mesma história.
+    expect(listPositionFor(0)).toBeLessThan(FIRST_LIST_POSITION + 100)
   })
 
   it("sem produto não há link para gravar", () => {

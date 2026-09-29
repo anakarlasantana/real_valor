@@ -112,14 +112,47 @@ export type CollectionsSection = SectionBase &
     items: CollectionHighlight[]
   }
 
+/**
+ * Uma categoria do catálogo, como a vitrine e o CRM precisam dela.
+ *
+ * `categoryId` é a **referência** — é ele que filtra, no `category_id` da Store
+ * API —, e `label`/`handle` são leitura ao vivo de `product_category`: quem
+ * renomeia a categoria no painel vê o chip mudar, porque não há cópia gravada.
+ *
+ * O tipo é o mesmo nos dois lados (o chip escolhido e o catálogo oferecido): um
+ * chip **é** uma entrada do catálogo, com a diferença de estar na lista da
+ * seção.
+ */
+export type CategoryRef = {
+  categoryId: string
+  label: string
+  handle: string
+}
+
 export type FeaturedSection = SectionBase &
   SectionAppearance & {
     type: "featured"
     eyebrow: string
     title: string
     subtitle: string
-    /** Chips de filtro acima da vitrine. `"Todos"` significa "todas". */
-    filters: string[]
+    /**
+     * Chips de filtro acima da vitrine: **referências** às categorias do
+     * catálogo, na ordem em que aparecem (o link `content_section_category`).
+     *
+     * Não é lista de rótulos, e é essa a diferença que a R1 conserta: os chips
+     * eram texto dentro do `data` (`["Todos", "Blazers", "Conjuntos", "Calças"]`)
+     * e a loja mandava o rótulo como busca. Medido no banco real, "Blazers" não
+     * existe no catálogo — aquele chip devolvia zero peças **em silêncio** —, e
+     * renomear uma categoria no painel não mudava chip nenhum, porque a cópia é
+     * que era o dado. Aqui o filtro é `categoryId`, e o rótulo é o nome da
+     * categoria lido na hora.
+     *
+     * O chip "Todos" (limpa o filtro) **não** está nesta lista: não existe
+     * categoria "todas", e quem o desenha é a loja. Antes era a posição —
+     * `filters[0]` — que dizia qual dos chips limpava, então reordenar os chips
+     * trocava o significado de cada um sem nada acusar.
+     */
+    filters?: CategoryRef[]
     viewAllLabel: string
   }
 
@@ -666,12 +699,6 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     "eyebrow": "Shop",
     "title": "Peças em destaque",
     "subtitle": "Uma vitrine editorial com navegação simples, foco no produto e preço sempre visível.",
-    "filters": [
-      "Todos",
-      "Blazers",
-      "Conjuntos",
-      "Calças",
-    ],
     "viewAllLabel": "Ver todos os produtos",
   },
   {

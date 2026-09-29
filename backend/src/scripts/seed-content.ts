@@ -1,6 +1,9 @@
 import { ExecArgs } from "@medusajs/framework/types"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { CONTENT_MODULE } from "../modules/content"
+import type { QueryGraph, RemoteLink } from "../modules/content/curation"
+import { retireTextFilters } from "../modules/content/filters"
 import { restoreDefaultSections } from "../modules/content/restore"
 import type ContentModuleService from "../modules/content/service"
 import { scriptFlags } from "./flags"
@@ -28,6 +31,10 @@ export default async function seedContent({
   args,
 }: ExecArgs & { args?: string[] }) {
   const service: ContentModuleService = container.resolve(CONTENT_MODULE)
+  const query = container.resolve(ContainerRegistrationKeys.QUERY) as QueryGraph
+  const link = container.resolve(
+    ContainerRegistrationKeys.REMOTE_LINK
+  ) as RemoteLink
   const surface = "home"
 
   if (scriptFlags(args).includes("--force")) {
@@ -39,14 +46,44 @@ export default async function seedContent({
     }
   }
 
-  const { created, kept } = await restoreDefaultSections(service, { surface })
+  const { created, kept, chips } = await restoreDefaultSections(service, {
+    surface,
+    link,
+    query,
+  })
 
   console.log(
     created.length
       ? `Criadas ${created.length} seção(ões) em "${surface}": ${created.join(
           ", "
-        )}. Já existiam ${kept}, nenhuma alterada.`
+        )}. Já existiam ${kept}, nenhuma alterada.` +
+          (chips.length ? ` Chips padrão ligados em: ${chips.join(", ")}.` : "")
       : `Já existem ${kept} seção(ões) em "${surface}" — nenhuma faltando. ` +
           `Nada foi alterado; use --force para recriar do zero.`
   )
+
+  // E o fecho da conversão dos chips de **texto** (as bases anteriores à R1): a
+  // chave antiga sai do `data` — ela não é campo de contrato há dois passos, e o
+  // `PATCH` mescla o `data`, então ficaria lá para sempre — e a seção que ficou
+  // sem chips no link recebe os do padrão. Numa base já convertida isso não
+  // grava nada (ver `retireTextFilters`, em `modules/content/filters.ts`).
+  //
+  // A linha **crua** (`listContentSections`), e não a achatada (`listSections`):
+  // quem sabe onde a chave mora é o `data`, e é ele que a conversão reescreve —
+  // `listSections` desaninha o `data` no nível raiz e ali não há o que limpar.
+  const { cleaned, chipped } = await retireTextFilters({
+    service,
+    link,
+    query,
+    sections: await service.listContentSections({ surface }),
+  })
+
+  if (cleaned.length) {
+    console.log(
+      `Chips de texto aposentados em: ${cleaned.join(", ")}.` +
+        (chipped.length
+          ? ` Chips padrão ligados em: ${chipped.join(", ")}.`
+          : "")
+    )
+  }
 }

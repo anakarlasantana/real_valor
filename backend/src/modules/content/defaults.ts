@@ -167,7 +167,6 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     title: "Peças em destaque",
     subtitle:
       "Uma vitrine editorial com navegação simples, foco no produto e preço sempre visível.",
-    filters: ["Todos", "Blazers", "Conjuntos", "Calças"],
     viewAllLabel: "Ver todos os produtos",
   },
   {
@@ -230,6 +229,31 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     ],
   },
 ]
+/**
+ * As categorias que o padrão liga aos chips da vitrine.
+ *
+ * São **handles**, e não ids: o id de uma categoria é criado pelo seed a cada
+ * base (`pcat_…`), então um id escrito aqui não existiria em lugar nenhum. O
+ * `handle` é estável e legível — é o mesmo que a loja usa na URL do chip
+ * (`/?peca=vestidos`) —, e quem resolve handle → id é quem cria a seção
+ * (`modules/content/restore.ts`) e quem repõe os chips de uma base antiga
+ * (`scripts/seed-content.ts`), os dois por `defaultFilterIds`
+ * (`modules/content/filters.ts`).
+ *
+ * **A lista não mora na seção do padrão** (`DEFAULT_HOME_SECTIONS.featured`)
+ * porque o chip não é conteúdo dela: é referência, e o link só existe depois de
+ * a seção existir. O que estava lá era a cópia — `["Todos", "Blazers",
+ * "Conjuntos", "Calças"]` —, e "Blazers" não existe no catálogo: aquele chip
+ * devolvia zero peças em silêncio.
+ */
+export const DEFAULT_FEATURED_FILTERS = [
+  "vestidos",
+  "blusas-camisas",
+  "calcas-alfaiataria",
+  "conjuntos",
+] as const
+
+
 
 /**
  * O `data` de uma seção NOVA, por tipo — o que a rota admin usa quando o

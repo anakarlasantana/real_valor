@@ -11,6 +11,14 @@ import {
   type RemoteLink,
 } from "../../../modules/content/curation"
 import {
+  FILTERS_FIELD,
+  listCategoryRefs,
+  readCategoryCatalog,
+  readChips,
+  withFilters,
+  writeFilters,
+} from "../../../modules/content/filters"
+import {
   isSingletonSectionType,
   type FieldKind,
 } from "../../../modules/content/contract"
@@ -46,7 +54,22 @@ function validateData(
   {
     strict,
     fields,
-  }: { strict: boolean; fields: ContentSchemaPayload["fields"] }
+    references = {},
+  }: {
+    strict: boolean
+    fields: ContentSchemaPayload["fields"]
+    /**
+     * Os campos de contrato que são **referência** (`filters`, os chips de
+     * categoria): vieram no corpo, mas não vivem no `data` — quem os tira de lá
+     * é o `splitPayload` (`modules/content/payload.ts`).
+     *
+     * Eles entram na conferência por dois motivos: um `filters` num tipo que não
+     * tem o campo é erro (como qualquer chave desconhecida), e o `kind` do campo
+     * vale para ele igual — `list:category` é lista, e uma lista que não é lista
+     * é o mesmo defeito de um `items` que não é lista.
+     */
+    references?: Record<string, unknown>
+  }
 ): string[] {
   const errors: string[] = []
   // `?? []` e a checagem abaixo existem por causa de um caso real: a entrada
@@ -75,9 +98,22 @@ function validateData(
     }
   }
 
+  // A referência passa pela mesma porta: `filters` num tipo que não declara o
+  // campo é campo desconhecido — a seção não tem chips, e gravar o link dela
+  // seria uma linha que nenhum render lê.
+  for (const key of Object.keys(references)) {
+    if (!known.has(key)) {
+      errors.push(`Campo desconhecido para "${type}": "${key}".`)
+    }
+  }
+
   for (const spec of specs) {
-    const present = Object.prototype.hasOwnProperty.call(data, spec.name)
-    const value = data[spec.name]
+    // O valor pode estar no `data` ou na referência — os dois chegaram no corpo,
+    // e o `kind` do campo decide o que fazer com ele.
+    const inData = Object.prototype.hasOwnProperty.call(data, spec.name)
+    const present =
+      inData || Object.prototype.hasOwnProperty.call(references, spec.name)
+    const value = inData ? data[spec.name] : references[spec.name]
 
     // Ausente num PATCH não é erro: mantém o valor atual.
     if (!present && !strict) {
@@ -194,6 +230,72 @@ async function resolveProductIds(
 }
 
 /**
+ * Os chips que vieram no corpo: lista de `id` de categoria, sem repetição, e
+ * todas existentes.
+ *
+ * Mesma leitura da curadoria: `undefined` é "não veio" (não mexe nos chips, o
+ * PATCH que só mudou um texto) e `[]` é "esvazia" — a vitrine volta a mostrar o
+ * catálogo inteiro.
+ *
+ * A **existência** é conferida aqui, e não pelo banco, porque a tabela do link
+ * não tem chave estrangeira (é gerada pelo módulo de links do Medusa — ver
+ * `modules/content/filters.ts`). Sem esta checagem, um id inventado viraria uma
+ * linha que nenhuma leitura de categoria hidrata, ou seja, um chip que não
+ * filtra nada — o mesmo buraco silencioso que o chip "Blazers" era.
+ *
+ * O produto, ao lado, tem a mesma função e o mesmo motivo: são as duas
+ * referências da seção (`productIds` e `filters`), e o que muda entre elas é só
+ * o que a lista aponta.
+ */
+async function resolveCategoryIds(
+  value: unknown,
+  query: QueryGraph
+): Promise<{ ids?: string[]; error?: string }> {
+  if (value === undefined) {
+    return {}
+  }
+
+  if (
+    !Array.isArray(value) ||
+    value.some((id) => typeof id !== "string" || !id.trim())
+  ) {
+    return {
+      error: `Campo "${FILTERS_FIELD}" deve ser uma lista de ids de categoria.`,
+    }
+  }
+
+  const ids = value as string[]
+
+  if (new Set(ids).size !== ids.length) {
+    return {
+      error:
+        `Campo "${FILTERS_FIELD}" tem id repetido: os chips são uma lista ` +
+        `ordenada, e cada categoria aparece uma vez.`,
+    }
+  }
+
+  if (!ids.length) {
+    return { ids }
+  }
+
+  // A leitura é a mesma que a dos chips (`listCategoryRefs`), e de propósito: um
+  // id que ela não devolve é exatamente o id que não viraria chip nenhum.
+  const refs = await listCategoryRefs(query, ids)
+  const found = new Set(refs.map((ref) => ref.categoryId))
+  const missing = ids.filter((id) => !found.has(id))
+
+  if (missing.length) {
+    return {
+      error:
+        `Os filtros apontam categoria que não existe (ou foi removida): ` +
+        `${missing.join(", ")}.`,
+    }
+  }
+
+  return { ids }
+}
+
+/**
  * Avisa o storefront para tirar o conteúdo do cache (`/api/revalidate`).
  *
  * Sem `await` de propósito: a gravação já está feita e a resposta ao CRM não
@@ -235,6 +337,11 @@ function toSection(block: {
  * A curadoria vem junto, e vem **sempre que existe**: o painel edita a lista, e
  * `productIds` ausente é "esta seção não tem curadoria" (o tipo que lista o
  * catálogo sozinho).
+ *
+ * Os chips também, e pelo mesmo motivo — com uma diferença: lá o `filters` **é**
+ * campo do formulário (o seletor de categorias), então o que a tela devolve no
+ * "Salvar" é a mesma lista de ids, e o catálogo que a alimenta viaja em
+ * `categories`.
  */
 export async function GET(
   req: MedusaRequest,
@@ -245,16 +352,30 @@ export async function GET(
 
   const { surface = "home" } = req.query as { surface?: string }
   const sections = await service.listSections({ surface, onlyEnabled: false })
-  const curation = await readCuration(
-    query,
-    sections.map((section) => section.id)
-  )
+  const sectionIds = sections.map((section) => section.id)
+  const curation = await readCuration(query, sectionIds)
+  // A leitura dos chips é a mesma do storefront (`readChips`): o id é a
+  // referência que a seção guarda e o nome/`handle` são lidos agora, para a
+  // tela mostrar o nome que a categoria tem hoje — e não o texto que alguém
+  // digitou quando montou a vitrine.
+  const chips = await readChips(query, sectionIds)
   const stored = await service.getContract()
 
   res.json({
     sections: sections.map((section) =>
-      withCuration(section, curation[section.id])
+      withFilters(withCuration(section, curation[section.id]), chips[section.id])
     ),
+    /**
+     * O catálogo de categorias, para o seletor de chips — o que a seção **pode**
+     * escolher.
+     *
+     * Vem do catálogo, e não de um `options` no contrato: a lista de categorias
+     * é dado do banco (o lojista cria e apaga no painel do Medusa), e uma lista
+     * fechada no contrato ofereceria categorias que não existem — que é
+     * exatamente o defeito que a fase conserta (o chip "Blazers", que não tinha
+     * categoria por trás e devolvia zero peças em silêncio).
+     */
+    categories: await readCategoryCatalog(query),
     /**
      * Metadados que o widget usa para montar o formulário — lidos do
      * **registro no Postgres** (`service.getContract()`), que é o mesmo lugar de
@@ -416,7 +537,7 @@ export async function POST(
     return
   }
 
-  const { columns, data: sent, curation } = splitPayload(body)
+  const { columns, data: sent, curation, references } = splitPayload(body)
 
   const { ids: productIds, error: curationError } = await resolveProductIds(
     curation,
@@ -425,6 +546,16 @@ export async function POST(
 
   if (curationError) {
     res.status(400).json({ type: "invalid_data", message: curationError })
+    return
+  }
+
+  const { ids: categoryIds, error: filtersError } = await resolveCategoryIds(
+    references?.[FILTERS_FIELD],
+    query
+  )
+
+  if (filtersError) {
+    res.status(400).json({ type: "invalid_data", message: filtersError })
     return
   }
 
@@ -452,6 +583,7 @@ export async function POST(
   const errors = validateData(type, data, {
     strict: true,
     fields: schema.fields,
+    references,
   })
 
   if (errors.length) {
@@ -491,10 +623,25 @@ export async function POST(
     await writeCuration({ link, query, sectionId: created.id, productIds })
   }
 
+  // E os chips, pela mesma ordem e pelo mesmo motivo: o link precisa do id da
+  // seção, e uma falha aqui deixa a seção sem chips (o catálogo inteiro na
+  // vitrine) em vez de com uma lista pela metade.
+  if (categoryIds?.length) {
+    await writeFilters({ link, query, sectionId: created.id, categoryIds })
+  }
+
   notifyStorefront(req)
 
   res.status(201).json({
-    section: withCuration(toSection(created), productIds),
+    // Os chips da resposta são **relidos** quando o corpo os trouxe: é a mesma
+    // verdade da curadoria (a resposta diz o que ficou gravado, com o nome da
+    // categoria que a tela vai desenhar).
+    section: withFilters(
+      withCuration(toSection(created), productIds),
+      categoryIds?.length
+        ? (await readChips(query, [created.id]))[created.id]
+        : undefined
+    ),
   })
 }
 
@@ -539,7 +686,7 @@ export async function PATCH(
     return
   }
 
-  const { columns, data, curation } = splitPayload(
+  const { columns, data, curation, references } = splitPayload(
     (req.body ?? {}) as Record<string, unknown>
   )
 
@@ -550,6 +697,16 @@ export async function PATCH(
 
   if (curationError) {
     res.status(400).json({ type: "invalid_data", message: curationError })
+    return
+  }
+
+  const { ids: categoryIds, error: filtersError } = await resolveCategoryIds(
+    references?.[FILTERS_FIELD],
+    query
+  )
+
+  if (filtersError) {
+    res.status(400).json({ type: "invalid_data", message: filtersError })
     return
   }
 
@@ -568,6 +725,7 @@ export async function PATCH(
   const errors = validateData(type, data, {
     strict: false,
     fields: schema.fields,
+    references,
   })
 
   if (errors.length) {
@@ -596,9 +754,21 @@ export async function PATCH(
     await writeCuration({ link, query, sectionId: id, productIds })
   }
 
+  // `filters` ausente = "não mexe"; presente (mesmo `[]`) = a lista manda. Como
+  // a curadoria, a resposta traz os chips **relidos** — e aqui sempre, mesmo
+  // quando o corpo não os tocou: o `filters` que o CRM manda é o id, e é o
+  // objeto com nome e `handle` que a tela desenha.
+  if (categoryIds) {
+    await writeFilters({ link, query, sectionId: id, categoryIds })
+  }
+
+  const chipsAfter = (await readChips(query, [id]))[id]
+
   notifyStorefront(req)
 
-  res.json({ section: withCuration(toSection(updated), curationAfter) })
+  res.json({
+    section: withFilters(withCuration(toSection(updated), curationAfter), chipsAfter),
+  })
 }
 
 /** DELETE /admin/content?id=... — remove uma seção. */
@@ -627,6 +797,12 @@ export async function DELETE(
   // em vez de uma seção apagada com a lista de produtos ainda ativa. Ver
   // `modules/content/curation.ts` para o que o Medusa faz em cada uma das
   // operações (nenhuma delas é `DELETE` de linha: link é estado).
+  //
+  // O mesmo vale para os chips (`content_section_category`): o `delete` abaixo
+  // é por seção, e limpa **todos** os links dela — a curadoria e os chips —,
+  // que é o que a leitura de ambos os lados espera de uma seção que não existe
+  // mais. Medido no gate da R1: as duas tabelas ficam com `deleted_at`
+  // preenchido depois desta chamada.
   await link.delete({ [CONTENT_MODULE]: { content_section_id: id } })
   await service.deleteContentSections(id)
 

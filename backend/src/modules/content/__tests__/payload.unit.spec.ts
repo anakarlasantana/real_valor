@@ -87,6 +87,23 @@ describe("splitPayload", () => {
 
     expect(body).toEqual({ type: "hero", enabled: false, headline: "h" })
   })
+
+  it("`filters` é REFERÊNCIA, não `data` (o id sai para o link)", () => {
+    // O chip era conteúdo — os rótulos moravam no `data` e a loja os mandava
+    // como busca —, e é esse o defeito que a R1 conserta: a chave vai para o
+    // destino de referência, e o que ela carrega é o id da categoria.
+    expect(splitPayload({ title: "Peças", filters: ["pcat_a"] })).toEqual({
+      columns: {},
+      data: { title: "Peças" },
+      references: { filters: ["pcat_a"] },
+    })
+  })
+
+  it("`filters` ausente não cria a chave de referência", () => {
+    // O PATCH que só mudou um texto não encosta nos chips: sem a chave no
+    // corpo, nada de referência sai daqui.
+    expect("references" in splitPayload({ title: "Peças" })).toBe(false)
+  })
 })
 
 describe("colunas da seção × contrato", () => {

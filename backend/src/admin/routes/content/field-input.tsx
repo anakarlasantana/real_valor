@@ -20,6 +20,8 @@
  * comum.
  */
 import { Button, Input, Label, Text, Textarea } from "@medusajs/ui"
+import { ArrowDownMini, ArrowUpMini } from "@medusajs/icons"
+import type { ReactNode } from "react"
 
 import {
   ColorPicker,
@@ -43,6 +45,7 @@ import { ImageInput } from "./image-input"
  * procurava com texto.
  */
 import type {
+  CategoryRef,
   FieldKind,
   FieldSpec,
   ItemFieldSpec,
@@ -67,6 +70,11 @@ type HandledKind =
   | "color"
   | "font"
   | "list:text"
+  // Referência ao catálogo: a lista de ids de categoria que vira chip na
+  // vitrine. Tem ramo próprio (`CategoryChipsInput`) porque o valor não é texto
+  // nem objeto editável — é uma escolha dentro do catálogo, que chega pelo
+  // payload em `categories`.
+  | "list:category"
   | `list:${string}`
 
 /**
@@ -232,6 +240,130 @@ function ObjectListInput({
   )
 }
 
+/**
+ * O seletor dos chips de categoria (`list:category`).
+ *
+ * O valor é a **referência**: uma lista ordenada de `CategoryRef`. Não há campo
+ * de digitação aqui, e é o ponto da fase — o que se escolhe é uma categoria que
+ * existe, e o nome do chip é o nome dela, lido ao vivo pela API. O que estava
+ * aqui antes era uma caixa de texto com rótulos separados por vírgula, e um
+ * rótulo sem categoria por trás (o "Blazers" do padrão) virava um chip que
+ * devolvia zero peças em silêncio.
+ *
+ * Duas ausências deliberadas:
+ *
+ * - **"Todos" não aparece na lista.** Ele não é categoria, é o gesto de limpar o
+ *   filtro, e quem o desenha é a loja. Antes ele era um item da lista, e a
+ *   posição (`filters[0]`) dizia que era ele — reordenar os chips trocava o
+ *   significado de cada um sem nada acusar.
+ * - **Nada de texto livre.** O catálogo vem no `categories` do payload: uma
+ *   categoria nova no Medusa aparece aqui sem ninguém mexer neste arquivo.
+ *
+ * A ordem é da lista (as setas), e a API grava `position` a partir dela — o
+ * lojista não digita número, como na ordem das seções.
+ */
+function CategoryChipsInput({
+  label,
+  value,
+  onChange,
+  categories,
+}: {
+  label: ReactNode
+  value: unknown
+  onChange: (value: unknown) => void
+  categories: readonly CategoryRef[]
+}) {
+  const chips = Array.isArray(value) ? (value as CategoryRef[]) : []
+  const chosen = new Set(chips.map((chip) => chip.categoryId))
+  const available = categories.filter(
+    (category) => !chosen.has(category.categoryId)
+  )
+
+  const move = (index: number, delta: number) => {
+    const target = index + delta
+    const next = [...chips]
+
+    if (target < 0 || target >= next.length) {
+      return
+    }
+
+    ;[next[index], next[target]] = [next[target], next[index]]
+    onChange(next)
+  }
+
+  return (
+    <div className="flex flex-col gap-y-2">
+      {label}
+
+      {chips.map((chip, index) => (
+        <div
+          key={chip.categoryId}
+          className="flex items-center gap-x-2 rounded-md border border-ui-border-base p-2"
+        >
+          <Text size="small" className="flex-1 truncate">
+            {chip.label}
+          </Text>
+          <Button
+            variant="transparent"
+            size="small"
+            disabled={index === 0}
+            onClick={() => move(index, -1)}
+          >
+            <ArrowUpMini />
+          </Button>
+          <Button
+            variant="transparent"
+            size="small"
+            disabled={index === chips.length - 1}
+            onClick={() => move(index, 1)}
+          >
+            <ArrowDownMini />
+          </Button>
+          <Button
+            variant="transparent"
+            size="small"
+            onClick={() => onChange(chips.filter((_, i) => i !== index))}
+          >
+            Remover
+          </Button>
+        </div>
+      ))}
+
+      {available.length ? (
+        <select
+          className="h-8 rounded-md border border-ui-border-base bg-ui-bg-field px-2 text-sm"
+          // O `<select>` é de adicionar: escolher uma categoria a acrescenta no
+          // fim da lista e ele volta ao rótulo. Editar a lista é pelas setas e
+          // pelo "Remover", que é onde a ordem se mexe.
+          value=""
+          onChange={(e) => {
+            const picked = categories.find(
+              (category) => category.categoryId === e.target.value
+            )
+
+            if (picked) {
+              onChange([...chips, picked])
+            }
+          }}
+        >
+          <option value="">Adicionar categoria…</option>
+          {available.map((category) => (
+            <option key={category.categoryId} value={category.categoryId}>
+              {category.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <Text size="xsmall" className="text-ui-fg-subtle">
+          {categories.length
+            ? "Todas as categorias do catálogo já estão na lista."
+            : "Nenhuma categoria no catálogo — crie uma no painel de produtos."}
+        </Text>
+      )}
+    </div>
+  )
+}
+
 type FieldInputProps = {
   spec: FieldSpec
   value: unknown
@@ -252,6 +384,15 @@ type FieldInputProps = {
    */
   palette?: Palette
   fonts?: Fonts
+  /**
+   * O catálogo de categorias — as opções do seletor de chips (`list:category`).
+   *
+   * Vem no payload do `GET /admin/content` (`categories`), e não de um `options`
+   * no contrato: categoria nasce e morre no painel do Medusa, e uma lista
+   * fechada no contrato ofereceria o que não existe — o "Blazers" do padrão era
+   * exatamente isso. Opcional porque só esse `kind` o usa, como a paleta.
+   */
+  categories?: readonly CategoryRef[]
 }
 
 export const FieldInput = ({
@@ -261,6 +402,7 @@ export const FieldInput = ({
   itemFields,
   palette,
   fonts,
+  categories,
 }: FieldInputProps) => {
   const label = (
     <div className="flex flex-col">
@@ -276,6 +418,18 @@ export const FieldInput = ({
     </div>
   )
 
+  /* ---- chips de categoria (referência ao catálogo) ---- */
+  if (spec.kind === "list:category") {
+    return (
+      <CategoryChipsInput
+        label={label}
+        value={value}
+        onChange={onChange}
+        categories={categories ?? []}
+      />
+    )
+  }
+
   /* ---- listas de texto simples (ex.: filtros) ---- */
   if (spec.kind === "list:text") {
     const items = Array.isArray(value) ? (value as string[]) : []
@@ -285,7 +439,7 @@ export const FieldInput = ({
         {label}
         <Input
           value={items.join(", ")}
-          placeholder="Todos, Blazers, Conjuntos"
+          placeholder="Primeiro, Segundo, Terceiro"
           onChange={(e) =>
             onChange(
               e.target.value

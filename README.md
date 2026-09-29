@@ -179,7 +179,7 @@ real_valor/
 ├── scripts/
 │   ├── doctor.sh                    # diagnostico do ambiente (le e nao mexe)
 │   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
-│   ├── check-contract-parity.mjs # guarda hoje: 85 asserts (o G2 levou de 89 p/ 80;
+│   ├── check-contract-parity.mjs # guarda hoje: 90 asserts (o G2 levou de 89 p/ 80;
 │   │                           #   o resto virou `tsc` e teste — ver docs/plano-centralizacao.md)
 │   └── vendor-fonts.mjs          # (re)baixa e valida os `.woff2` self-hosted
 │
@@ -297,9 +297,9 @@ git config core.hooksPath .githooks   # uma vez por clone
 
 | Onde | Comando | O que faz |
 | :--- | :--- | :--- |
-| Commit (hook) + CI | `make check` | artefato do contrato em dia + **85 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ CSS, ⇔ fontes, ⇔ registro do contrato). **Não instala nada**: os dois scripts leem arquivos com Node puro |
+| Commit (hook) + CI | `make check` | artefato do contrato em dia + **90 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ registro do contrato). **Não instala nada**: os dois scripts leem arquivos com Node puro |
 | CI | `make types` | `tsc` dos dois pacotes (**0 erros**). Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI (job `testes`) | `make test` — jest do `backend/` | **91 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração e inserção), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), da divisão coluna×conteúdo×referência do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| CI (job `testes`) | `make test` — jest do `backend/` | **121 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração e inserção), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da divisão coluna×conteúdo×referência do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
 | CI (job `testes`) | `make test` — vitest do `frontend/` | **20 testes** da tolerância da loja ao tipo desconhecido, do `src` das imagens do CMS (`resolveMediaUrl`) e do tamanho do trilho de lançamentos (`launchesLimit`) |
 | CI | `make check-schema` | o registro do `content_contract` conferido contra o contrato, num Postgres efêmero |
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |
@@ -312,12 +312,12 @@ tudo dependia de alguém lembrar; e os testes eram o caso mais claro, porque exi
 
 O caminho para **não depender mais** da guarda de paridade está em
 [`docs/plano-centralizacao.md`](docs/plano-centralizacao.md). Ela nasceu com **89**
-asserções, o G2 a levou a **80** e hoje ela imprime **85**: cada fase que mexe no
+asserções, o G2 a levou a **80** e hoje ela imprime **90**: cada fase que mexe no
 contrato pode somar verificação, e somar é mais barato que redesenhar. O número se
 confere, não se estima:
 
 ```bash
-make check | grep -c '^  ok'   # 85
+make check | grep -c '^  ok'   # 90
 ```
 
 O alvo, portanto, não é o número — é o *tipo*: o que o compilador e um teste já

@@ -10,6 +10,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { CONTENT_MODULE } from "../../../../modules/content"
+import type { RemoteLink } from "../../../../modules/content/curation"
 import { revalidateContent } from "../../../../modules/content/revalidate"
 import { restoreDefaultSections } from "../../../../modules/content/restore"
 import type ContentModuleService from "../../../../modules/content/service"
@@ -19,19 +20,27 @@ export async function POST(
   res: MedusaResponse
 ): Promise<void> {
   const service: ContentModuleService = req.scope.resolve(CONTENT_MODULE)
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const link: RemoteLink = req.scope.resolve(
+    ContainerRegistrationKeys.REMOTE_LINK
+  )
   const { surface = "home" } = req.query as { surface?: string }
 
-  const { created, kept } = await restoreDefaultSections(service, { surface })
+  const { created, kept, chips } = await restoreDefaultSections(service, {
+    surface,
+    link,
+    query,
+  })
 
-  if (created.length) {
+  if (created.length || chips.length) {
     // Sem `await`: a gravação já está feita e a resposta não espera o storefront
     // (a função não lança — ver `modules/content/revalidate.ts`).
     void revalidateContent(req.scope.resolve(ContainerRegistrationKeys.LOGGER))
 
-    res.status(201).json({ created, kept })
+    res.status(201).json({ created, kept, chips })
     return
   }
 
-  res.json({ created, kept })
+  res.json({ created, kept, chips })
 }
 

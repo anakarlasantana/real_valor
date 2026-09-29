@@ -13,6 +13,13 @@
  * seção para quem quer mexer numa só. Assim a operação é idempotente: rodar de
  * novo com tudo no lugar não muda nada.
  *
+ * **A seção criada nasce completa**, e isso inclui os chips: eles são
+ * referência (o link `content_section_category`), não conteúdo, então não
+ * podem viajar na linha do `data` — o segundo passo (`writeDefaultChips`)
+ * liga as categorias padrão na seção que acabou de nascer. Uma seção criada
+ * pela metade seria uma vitrine que o lojista não pediu: "Peças em destaque"
+ * sem nenhum chip mostra o catálogo inteiro.
+ *
  * A fonte é `DEFAULT_HOME_SECTIONS` (`defaults.ts`), a mesma do fallback da
  * vitrine: uma terceira lista de conteúdo padrão seria mais um lugar para
  * divergir.
@@ -24,7 +31,9 @@
  * pergunta do mesmo jeito.
  */
 import { isSingletonSectionType } from "./contract"
+import type { QueryGraph, RemoteLink } from "./curation"
 import { DEFAULT_HOME_SECTIONS } from "./defaults"
+import { hasChips, writeDefaultChips } from "./filters"
 import { positionAfter } from "./order"
 import type ContentModuleService from "./service"
 
@@ -33,6 +42,16 @@ export type RestoreResult = {
   created: string[]
   /** Quantas já existiam (não foram tocadas). */
   kept: number
+  /**
+   * Os `id` das seções criadas que receberam os chips **padrão**.
+   *
+   * É a parte da seção que não mora no `data`: os chips são referência (o link
+   * `content_section_category`), então não viajam na linha criada lá em cima —
+   * precisam de um segundo passo, com o id da seção que acabou de nascer. Vem
+   * na resposta porque a operação diz o que fez: uma seção criada sem chips
+   * seria uma vitrine com o catálogo inteiro, e ninguém saberia por quê.
+   */
+  chips: string[]
 }
 
 /**
@@ -86,14 +105,18 @@ export function planRestoredPositions(
 
 export async function restoreDefaultSections(
   service: ContentModuleService,
-  { surface = "home" }: { surface?: string } = {}
+  {
+    surface = "home",
+    link,
+    query,
+  }: { surface?: string; link?: RemoteLink; query?: QueryGraph } = {}
 ): Promise<RestoreResult> {
   const existing = await service.listSections({ surface, onlyEnabled: false })
   const plan = planRestoredPositions(existing)
   const planned = new Map(plan.map(({ id, position }) => [id, position]))
 
   if (!plan.length) {
-    return { created: [], kept: existing.length }
+    return { created: [], kept: existing.length, chips: [] }
   }
 
   // `id` e `position` vêm do padrão e do plano (ver `planRestoredPositions`).
@@ -125,8 +148,20 @@ export async function restoreDefaultSections(
     })
   )
 
+  // Os chips das seções que **nasceram agora**: o chip é referência, e o link
+  // precisa da seção no banco. Só as que declaram o campo no contrato
+  // (`hasChips`) — a lista de tipos sai de lá, e não daqui. Sem `link`/`query`
+  // (um teste de unidade, por exemplo) a função devolve lista vazia e a seção
+  // criada continua válida: sem chips, a vitrine mostra o catálogo inteiro.
+  const chips = await writeDefaultChips({
+    link,
+    query,
+    sectionIds: missing.filter((section) => hasChips(section.type)).map(({ id }) => id),
+  })
+
   return {
     created: missing.map((section) => section.id),
     kept: existing.length,
+    chips,
   }
 }

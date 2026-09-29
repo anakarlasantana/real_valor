@@ -293,9 +293,11 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 | **Órfão apagado** | script sem chamador, cache de build antigo, manifesto sem dependência ou arquivo que a fase tornou inútil sai **na mesma fase**, e o que a documentação dizia dele é corrigido junto. Não há `arquivo/` de espera para isso: o Git já é o arquivo. |
 
 > **Contagem da guarda — medida, não estimada:** `make check | grep -c '^  ok'`.
-> Nasceu com 89; o G2 a levou a 80; hoje imprime **85**, porque cada fase que mexe no
-> contrato pode somar verificação, e somar é mais barato que redesenhar. O alvo do plano
-> nunca foi o número: é ficar só com o que a linguagem não vê (binário, CSS, migração).
+> Nasceu com 89; o G2 a levou a 80; hoje imprime **90**, porque cada fase que mexe no
+> contrato pode somar verificação, e somar é mais barato que redesenhar (a R1 somou três: o
+> que a vitrine de destaque lê ⇔ o formulário, o chip como referência e a tabela do link).
+> O alvo do plano nunca foi o número: é ficar só com o que a linguagem não vê (binário, CSS,
+> migração).
 
 ### A fila, na ordem fixada
 
@@ -303,8 +305,8 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 |---|---|---|
 | **R0** ✅ | o teste que existia passa a rodar: `make test`, job `testes` na CI, raiz sem `workspaces`, `f3` congelada em `arquivo/` | `make test` (9 suites / 91 testes + 3 arquivos / 20 testes), `make check` e `make types` verdes |
 | **R0.1** ✅ | higiene da raiz: `package.json` (0 dependências, 6 scripts que só duplicavam o `Makefile` e que ninguém chamava), `node_modules` (1 GB, sem lockfile, invisível para o repo) e o `tsconfig.tsbuildinfo` defasado do storefront, apagados; contagem da guarda conferida na doc | `make check` e `make test` verdes com a raiz sem manifesto |
-| **R1** | a curadoria vira referência: os 4 chips do CRM apontam para as 4 categorias que existem (Todos, Vestidos, Blusas & Camisas, Calças & Alfaiataria); `module/filters.ts`; payload; `/store/content` filtrando | linhas em `content_section_category` conferidas e o filtro visível na loja |
-| **R6** | `api/admin/content/route.ts` (636 linhas, 5 responsabilidades) quebra em `modules/content/{validation,resolvers,view}.ts`; o `nextPosition` duplicado sai | rota ~150 linhas, os 91 testes intactos |
+| **R1** ✅ | os chips do `featured` deixam de ser texto e viram **referência**: link novo `content_section_category`, `modules/content/filters.ts`, o `kind: "list:category"` no contrato, o seletor de categorias no CRM, o `/store/content` devolvendo `{ categoryId, label, handle }` lido ao vivo e a vitrine filtrando por `category_id`. "Todos" deixou de ser dado — não existe categoria "todas": quem o desenha é a loja | 4 linhas em `content_section_category` (posições 10–40) apontando para Vestidos, Blusas & Camisas, Calças & Alfaiataria e Conjuntos; `/store/content` com `schemaVersion: 5` e os chips com nome e `handle`; `/?peca=blusas-camisas` com a peça da categoria e `/?peca=conjuntos` com o estado vazio; `make check` 90 asserções, `make test` 10 suites / 121 testes, `make types` verde |
+| **R6** | `api/admin/content/route.ts` (636 linhas, 5 responsabilidades) quebra em `modules/content/{validation,resolvers,view}.ts`; o `nextPosition` duplicado sai | rota ~150 linhas, os **121** testes intactos |
 | **R6.5** | `POST /admin/content/order` com `{ ids }`: a renumeração sai do browser (N `PATCH` → 1) e a loja é notificada **uma vez** | nenhum import de valor de `backend/` no painel |
 | **R7** | o CRM muda de casa: 12 arquivos / 2.282 linhas para `admin/`, com `medusa build` como gate | build do admin sem erro (não precisa de banco) |
 | **R2** | tipagem onde hoje há paridade por texto (o destino do G2) | `tsc` limpo, sem `any` novo |
@@ -313,3 +315,20 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 **Por que esta ordem:** R6.5 antes de R7 tira a última importação de valor do painel (a R7 deixa
 de depender da R5); R6 antes de R6.5 porque a rota de ordenação nasce do que já foi extraído; R2
 depois de R7 porque só então o CRM tem `tsconfig` e tipo próprios.
+
+### R1 — o que a fase mediu
+
+Quatro sondas, todas descartadas depois de responder (nenhuma virou script de produção), e o que
+elas mudaram no código:
+
+| Medição | Resultado, e o que ficou |
+|---|---|
+| Nome da entidade do link | `product_category_content_section` — o `defineLink` compõe o alias com os dois lados na ordem declarada (`product_category` + `content_section`); a **tabela** é `content_section_category`, porque foi declarada. Em runtime a leitura funcionou de primeira (`/store/content` devolveu os chips), e o par (arquivo, constante) virou teste e asserção da guarda |
+| `remoteLink.delete` por seção | limpa **as duas** tabelas de link: `content_section_product` e `content_section_category` ficam com `deleted_at` preenchido (é soft, como todo link no Medusa) |
+| `updateContentSections` com `data` | **mescla** o JSON, não substitui — a sonda gravou `{probe: true}` e o `data` ficou com a chave nova **mais** todas as antigas. Consequência para o repositório: chave que sai do contrato **não** desaparece da linha, fica órfã. Por isso a conversão da base antiga **neutraliza** (`filters: null`) em vez de tentar apagar, e a leitura descarta a chave (`withFilters`). As três afirmações de doc que diziam "o PATCH substitui o `data` inteiro" (README do módulo e os comentários da guarda) foram corrigidas nesta fase |
+| O bug, em número | `q=Blazers` → **0 peças** (a categoria não existe); `category_id=<categoria>` → as peças da categoria. Era exatamente isso que o chip fazia — busca por texto —, e é o caminho que ele deixou de usar |
+
+| Achado de **dado** (não da R1) | Detalhe |
+|---|---|
+| `vestido-midi-linho-floral` é invisível à Store API | `not_found` por id, ausente com `q`/`handle`, mesmo no canal da chave (`Loja Online Real Valor`), com preço em BRL e `status: published`; a página do produto na loja responde **500**. Por isso o chip "Vestidos" mostra o estado vazio. Fica para uma fase de dados (o seed), não para a R1 |
+
