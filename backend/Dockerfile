@@ -111,6 +111,14 @@ RUN corepack enable \
     && yarn workspaces focus --production --all 2>/dev/null \
     || yarn install --production --mode=skip-build
 
+# Pasta de uploads do painel — a MESMA que o Medusa serve em `/static/...`
+# (ver `@medusajs/file-local` no medusa-config.ts). Ela precisa existir na
+# IMAGEM com o dono certo: o volume nomeado `real_valor_uploads` do compose
+# nasce copiando conteudo e permissao deste caminho, e um volume montado sobre
+# caminho inexistente fica com dono `root` — a aplicacao roda como `medusa` e
+# todo upload morreria com EACCES.
+RUN mkdir -p /app/static && chown medusa:medusa /app/static
+
 # Entrypoint: aguarda o Postgres, roda migrations sob demanda e cria o admin.
 COPY --chown=medusa:medusa docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
@@ -176,6 +184,10 @@ COPY --chown=medusa:medusa docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 # nova com todo o `node_modules` (~1,4 GB) duplicado so para mudar metadados.
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
     && chown medusa:medusa /app /app/node_modules
+
+# Mesma pasta do estagio `runner` (ver comentario la): em DEV o overlay monta o
+# volume `real_valor_uploads` sobre ela.
+RUN mkdir -p /app/static && chown medusa:medusa /app/static
 
 USER medusa
 

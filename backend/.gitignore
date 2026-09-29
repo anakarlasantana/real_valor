@@ -2,6 +2,10 @@
 .env
 .DS_Store
 /uploads
+# Arquivos enviados pelo painel (ver `@medusajs/file-local` em medusa-config.ts).
+# Em Docker a pasta e' o volume `real_valor_uploads`; rodando o backend direto
+# na maquina, e' aqui que o upload cai. Foto de cliente nao vai para o Git.
+/static
 /node_modules
 yarn-error.log
 

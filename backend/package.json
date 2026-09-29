@@ -15,6 +15,7 @@
   "scripts": {
     "build": "medusa build",
     "seed": "medusa exec ./src/scripts/seed.ts",
+    "seed-content": "medusa exec ./src/scripts/seed-content.ts",
     "seed-schema": "medusa exec ./src/scripts/seed-schema.ts",
     "check-schema": "medusa exec ./src/scripts/seed-schema.ts -- --check",
     "start": "medusa start",
@@ -26,6 +27,7 @@
   "dependencies": {
     "@medusajs/admin-sdk": "2.18.0",
     "@medusajs/cli": "2.18.0",
+    "@medusajs/file-local": "2.18.0",
     "@medusajs/framework": "2.18.0",
     "@medusajs/medusa": "2.18.0"
   },

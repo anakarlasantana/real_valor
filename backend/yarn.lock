@@ -14782,6 +14782,7 @@ __metadata:
   dependencies:
     "@medusajs/admin-sdk": "npm:2.18.0"
     "@medusajs/cli": "npm:2.18.0"
+    "@medusajs/file-local": "npm:2.18.0"
     "@medusajs/framework": "npm:2.18.0"
     "@medusajs/medusa": "npm:2.18.0"
     "@medusajs/test-utils": "npm:2.18.0"

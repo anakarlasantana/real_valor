@@ -40,7 +40,7 @@ help:
 	@echo "  Build e dados"
 	@echo "    make build         - Reconstroi as imagens do backend e do frontend"
 	@echo "    make migrate       - Aplica as migracoes do Medusa v2"
-	@echo "    make seed          - Popula o catalogo (roupas femininas + regras BR)"
+	@echo "    make seed          - Popula catalogo, conteudo da vitrine e o schema do CRM"
 	@echo "    make clean-db      - APAGA os volumes do banco e reinicia do zero"
 	@echo ""
 	@echo "  Utilitarios"
@@ -107,8 +107,16 @@ build:
 migrate:
 	$(COMPOSE) exec -u root backend yarn medusa db:migrate
 
+# `seed` = comércio (`seed.ts`) + conteúdo da vitrine (`seed-content.ts`) +
+# registro do schema (`seed-schema.ts`). Os três são idempotentes: rodar de novo
+# numa base já semeada não altera nada.
+#
+# O conteúdo entra aqui para uma base nova nascer montada sem ninguém precisar
+# abrir o painel — e é a MESMA regra do botão "Restaurar padrão" do CRM
+# (`backend/src/modules/content/restore.ts`): só cria o que falta.
 seed:
 	$(COMPOSE) exec -u root backend yarn seed
+	$(COMPOSE) exec -u root backend yarn seed-content
 	$(COMPOSE) exec -u root backend yarn seed-schema
 
 # O registro do schema do CRM no Postgres: o contrato e o bootstrap, o banco e

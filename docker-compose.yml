@@ -151,6 +151,19 @@ services:
       # deste container e, em DEV, quebra a resolucao dos modulos de extensao
       # do admin (ver `admin.path` em backend/medusa-config.ts e o README).
       MEDUSA_ADMIN_PATH: ${MEDUSA_ADMIN_PATH:-/painel}
+      # Aviso ao storefront depois de gravar conteúdo: o backend chama
+      # `POST /api/revalidate?tag=content` com o MESMO segredo que o frontend
+      # tem no ambiente dele. Sem `REVALIDATE_SECRET` (ou sem `FRONTEND_URL`) o
+      # aviso é pulado e nada quebra — a loja se atualiza sozinha em até 60s.
+      # Ver `backend/src/modules/content/revalidate.ts`.
+      FRONTEND_URL: ${FRONTEND_URL:-http://frontend:8000}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
+    volumes:
+      # Uploads do painel (`@medusajs/file-local`, ver medusa-config.ts): o que
+      # o CRM envia fica no volume, e nao na camada de escrita do container —
+      # que e' descartada na proxima recriacao. O storefront publica a MESMA
+      # pasta em `/uploads/...` (rewrite em frontend/next.config.js).
+      - real_valor_uploads:/app/static
     ports:
       - "9000:9000"
     logging:
@@ -228,6 +241,12 @@ volumes:
     name: real_valor_pgdata
   real_valor_redisdata:
     name: real_valor_redisdata
+  # Fotos e imagens enviadas pelo painel. Volume NOMEADO (e nao um diretorio do
+  # projeto) porque e' dado de cliente: nao pertence ao Git e nao tem por que
+  # aparecer no build context. O Dockerfile cria `/app/static` com dono `medusa`
+  # para o volume nascer gravavel.
+  real_valor_uploads:
+    name: real_valor_uploads
 
 networks:
   real_valor_net:

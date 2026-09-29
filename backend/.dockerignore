@@ -6,3 +6,6 @@ dist
 .env.*
 !.env.example
 uploads
+# Uploads do painel: nao entram na imagem (o Dockerfile cria a pasta vazia com
+# o dono certo e o compose monta o volume `real_valor_uploads` por cima).
+static
