@@ -12,8 +12,8 @@
  * flag vem na prática.
  *
  * Um lugar só porque a tentação é reescrever a mesma linha em cada script, e o
- * `--force` do `seed-content` estava documentado e não funcionava justamente por
- * causa dessa leitura.
+ * `--force` do `seed-content` já esteve documentado sem funcionar, justamente
+ * por causa dessa leitura.
  */
 export function scriptFlags(args?: string[]): string[] {
   const fromArgv = process.argv.slice(2).filter((arg) => arg.startsWith("--"))

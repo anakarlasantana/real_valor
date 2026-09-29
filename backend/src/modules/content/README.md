@@ -349,9 +349,10 @@ existe.
 | --- | --- | --- |
 | `GET /store/content` | publishable key | Vitrine. Só seções habilitadas. `?surface=`, `?type=` |
 | `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + o schema (do registro), `schemaVersion` e `schemaSource` |
-| `POST /admin/content` | admin | Cria. Campos obrigatórios exigidos |
-| `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio |
+| `POST /admin/content` | admin | Cria. Nasce com o conteúdo padrão do tipo (`DEFAULT_SECTION_DATA`); aceita `id` (a âncora do menu, validada como apelido e livre) e recusa um segundo bloco de tipo único (`nav`, `footer`, `announcement`) |
+| `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio. Coluna × conteúdo é decidido pelo schema do tipo (ver `modules/content/payload.ts`) |
 | `DELETE /admin/content?id=` | admin | Remove |
+| `POST /admin/content/restore` | admin | Recria as seções padrão que faltam. Idempotente (só cria o que não existe) — é o mesmo que `scripts/seed-content.ts` faz |
 
 `GET /store/content` devolve as seções achatadas, prontas para render, mais a
 versão do schema com que foram gravadas:
@@ -378,6 +379,25 @@ menu principal. Como entrada da sidebar principal, a página participa do mesmo
 **personalizar layout** dos menus nativos
 (`/admin/layouts/main-sidebar/configuration`).
 
+O que a página faz, além de editar os campos de uma seção:
+
+- **Ordem** — setas que regravam a lista de 10 em 10 (`position` é a ordem da
+  loja; duas posições iguais seriam ordem indefinida na vitrine). Só o que muda
+  de fato é enviado.
+- **Criar** — escolhe o tipo e a âncora (`hero`, `hero-2`…, o `id` que o menu usa
+  como `/#hero`, validado como apelido livre). A seção nasce com o conteúdo
+  padrão do tipo (`DEFAULT_SECTION_DATA`) e entra no fim da lista; os tipos únicos
+  que já existem (`schema.singletonTypes`: cabeçalho, rodapé e a barra de
+  anúncio) não são oferecidos, porque a loja desenha um de cada.
+- **Remover** — com confirmação: não há desfazer.
+- **Restaurar padrão** — recria as seções que faltam, pela mesma função que o
+  `seed-content.ts` chama (`modules/content/restore.ts`).
+
+Depois de qualquer escrita, o backend avisa o storefront para invalidar o cache
+(`modules/content/revalidate.ts`), e a loja reflete a edição na hora. Sem
+`FRONTEND_URL` e `REVALIDATE_SECRET` o aviso é pulado — nada quebra, a loja só
+espera a janela de 60s do ISR.
+
 O formulário não repete nada do contrato em React: `schema.fields` traz os
 campos de cada seção, `schema.itemFields` o sub-formulário de cada item de
 lista (os mesmos `ITEM_FIELDS` do contrato, por `kind`) e `schema.typeLabels`
@@ -395,7 +415,7 @@ sintomas — os nomes dos espelhos antigos não podem voltar e cada
 
 ## Operação
 
-Semear a cópia do protótipo (idempotente):
+Semear a cópia do protótipo (idempotente; o `make seed` já chama):
 
 ```bash
 cd backend
