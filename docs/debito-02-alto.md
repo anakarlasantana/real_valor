@@ -361,11 +361,14 @@ O que entrou:
    comparação vive em `admin/routes/content/form-draft.ts`, com teste — `JSON.stringify` cru diria
    "alterado" para um campo numérico que o formulário devolve como texto (`"8"` × `8`) e acenderia o
    aviso sozinho.
-4. **Cromo sem ordem.** `nav`, `announcement` e `footer` — os `singletonTypes` do schema — aparecem
-   com etiqueta **Cromo**, sem setas e sem numeral de ordem. A loja resolve os três por `type`
+4. **Seção sem ordem.** `nav`, `announcement` e `footer` — os `singletonTypes` do schema — aparecem
+   com etiqueta **Fixo**, sem setas e sem numeral de ordem. A loja resolve os três por `type`
    (`announcementSections` / `headerSections` / `footerSections`, em
    `frontend/src/lib/content/home-sections.ts`), nunca por `position`: mover o cabeçalho na lista do
-   CRM não moveria nada no site.
+   CRM não moveria nada no site. Desde 2026-09-29 a etiqueta e as setas leem a **coluna `fixed`** da
+   seção, e não o tipo: quem cria a seção grava a resposta (`restore.ts` e o `POST /admin/content`, a
+   partir de `SINGLETON_SECTION_TYPES`), e a tela mostra o que está gravado — o `db:generate` da
+   coluna é no-op e o backfill da migration marcou o cromo que já existia.
 5. **A faixa de posições da vitrine começa em 100** (`modules/content/order.ts`,
    `FIRST_VITRINE_POSITION`), e o cromo fica abaixo dela. É o que impede a renumeração da vitrine —
    que agora ignora o cromo — de cair em cima dos números do cromo: no estado atual do banco ele

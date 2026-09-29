@@ -2,18 +2,18 @@
  * A fronteira entre COLUNAS, CONTEÚDO e REFERÊNCIA no corpo que o CRM envia.
  * -------------------------------------------------------------------------
  * Uma seção é uma linha com colunas fixas — `surface`, `type`, `enabled`,
- * `position` (ver `models/content-section.ts`) — e um `data` JSON com o que o
- * tipo define (`contract.ts`). O corpo que o CRM manda, porém, é achatado:
+ * `position`, `fixed` (ver `models/content-section.ts`) — e um `data` JSON com o
+ * que o tipo define (`contract.ts`). O corpo que o CRM manda, porém, é achatado:
  * `{ enabled, position, headline, imageUrl, productIds, … }`, porque é assim que
  * o formulário o monta. Alguém tem que dizer onde cada chave cai — e desde a
  * curadoria são **três** destinos, não dois.
  *
  * **Coluna:** o que se filtra ou ordena, poucas e conhecidas
  * (`COLUMN_COERCIONS`). Tudo o mais é conteúdo do tipo — não há ambiguidade a
- * resolver: nenhum campo do contrato se chama `surface`, `type`, `enabled` ou
- * `position`, e `payload.unit.spec.ts` confere isso contra `SECTION_FIELDS`,
- * para o dia em que alguém quiser criar um campo com um desses nomes (a resposta
- * certa é renomear o campo).
+ * resolver: nenhum campo do contrato se chama `surface`, `type`, `enabled`,
+ * `position` ou `fixed`, e `payload.unit.spec.ts` confere isso contra
+ * `SECTION_FIELDS`, para o dia em que alguém quiser criar um campo com um desses
+ * nomes (a resposta certa é renomear o campo).
  *
  * **Referência:** `productIds` (a curadoria) **não** é coluna nem conteúdo — é o
  * link do Medusa (`curation.ts`), e por isso sai daqui separado, sem passar pelo
@@ -42,11 +42,18 @@ import { CURATION_FIELD } from "./curation"
  * que o campo significa é do contrato; o que ele é **na linha** é desta
  * tabela.
  */
+const asBoolean = (value: unknown): boolean =>
+  // `Boolean("false")` é `true`, e um corpo escrito à mão (um `curl`, um script
+  // de seed) com `enabled: "false"` ligaria a seção sem ninguém ver. A coluna é
+  // booleana de verdade: a string é recusada antes da conversão.
+  value !== false && value !== "false" && value !== 0
+
 const COLUMN_COERCIONS: Record<string, (value: unknown) => unknown> = {
-  // `Boolean("false")` é `true`, e um corpo escrito à mão (um `curl`, um
-  // script de seed) com `enabled: "false"` ligaria a seção sem ninguém ver.
-  // A coluna é booleana de verdade: a string é recusada antes da conversão.
-  enabled: (value) => value !== false && value !== "false" && value !== 0,
+  enabled: asBoolean,
+  // Mesma armadilha do `enabled`, mesma resposta. O CRM não manda esta coluna
+  // (a tela decide por ela, não sobre ela — ver `models/content-section.ts`),
+  // mas quem chama a API direto pode, e `"false"` não pode virar `true`.
+  fixed: asBoolean,
   position: (value) => Number(value),
   surface: (value) => String(value),
 }

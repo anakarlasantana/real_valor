@@ -10,8 +10,10 @@
  * O caso da base vazia é o outro lado: sem nenhum vizinho, a numeração do
  * padrão é a ordem certa, e ela vale para a lista inteira.
  */
+import { SINGLETON_SECTION_TYPES, isSingletonSectionType } from "../contract"
 import { DEFAULT_HOME_SECTIONS } from "../defaults"
-import { planRestoredPositions } from "../restore"
+import { planRestoredPositions, restoreDefaultSections } from "../restore"
+import type ContentModuleService from "../service"
 
 /** A ordem em que as seções aparecem, dado o plano. */
 const order = (positions: { id: string; position: number }[]) =>
@@ -99,3 +101,96 @@ describe("planRestoredPositions", () => {
     expect(new Set(positions).size).toBe(positions.length)
   })
 })
+
+/**
+ * A coluna `fixed` de quem **nasce**.
+ *
+ * O CRM não adivinha o cromo pelo tipo na hora de desenhar: ele lê a coluna da
+ * seção (`models/content-section.ts`). Se quem cria não gravasse a resposta, a
+ * barra de anúncio nasceria "móvel" — numeral, setas e um movimento que a loja
+ * não faz, porque o layout resolve o cromo por `type`.
+ *
+ * A lista de tipos únicos sai do **contrato** (`SINGLETON_SECTION_TYPES`), e não
+ * de uma cópia aqui: se um tipo deixar de ser único, este teste passa a cobrar a
+ * consequência em vez de concordar com a cópia.
+ */
+describe("restoreDefaultSections", () => {
+  type CreatedRow = {
+    id: string
+    surface: string
+    type: string
+    enabled: boolean
+    position: number
+    fixed: boolean
+    data: Record<string, unknown>
+  }
+
+  /**
+   * O serviço de mentira: só o I/O que a função usa (`listSections` para saber o
+   * que falta, `createContentSections` para gravar). A regra de onde cada seção
+   * entra é conferida acima, sem serviço nenhum.
+   */
+  const fakeService = (existing: readonly { id: string; position: number }[] = []) => {
+    const createContentSections = jest.fn(async (rows: readonly unknown[]) => rows)
+    const listSections = jest.fn(async () =>
+      existing.map((row) => ({ ...row, enabled: true, fixed: false, type: "" }))
+    )
+
+    return {
+      createContentSections,
+      service: {
+        createContentSections,
+        listSections,
+      } as unknown as ContentModuleService,
+    }
+  }
+
+  /** As linhas que a função mandou criar. */
+  const createdRows = (create: jest.Mock): CreatedRow[] =>
+    (create.mock.calls[0]?.[0] ?? []) as CreatedRow[]
+
+  it("a seção do cromo nasce fixa; a da vitrine, não", async () => {
+    const { createContentSections, service } = fakeService()
+
+    const result = await restoreDefaultSections(service)
+    const rows = createdRows(createContentSections)
+
+    expect(result.created).toEqual(DEFAULT_HOME_SECTIONS.map(({ id }) => id))
+    expect(rows.map((row) => row.fixed)).toEqual(
+      DEFAULT_HOME_SECTIONS.map(({ type }) => isSingletonSectionType(type))
+    )
+    // E o cromo gravado é exatamente a lista do contrato — nem a mais, nem a
+    // menos: uma seção dele sem `fixed` voltaria a receber setas na tela.
+    expect(rows.filter((row) => row.fixed).map((row) => row.type).sort()).toEqual(
+      [...SINGLETON_SECTION_TYPES].sort()
+    )
+  })
+
+  it("o cromo que já existe não é recriado", async () => {
+    // Numa base em que só falta a vitrine, nada do que nasce é fixo: o cromo já
+    // está lá (e continua sendo o que a coluna dele diz).
+    const existing = [
+      { id: "nav", position: 10 },
+      { id: "announcement", position: 20 },
+      { id: "footer", position: 90 },
+    ]
+    const { createContentSections, service } = fakeService(existing)
+
+    const result = await restoreDefaultSections(service)
+
+    expect(result.kept).toBe(existing.length)
+    expect(createdRows(createContentSections).some((row) => row.fixed)).toBe(false)
+  })
+
+  it("não grava nada quando todas as seções já existem", async () => {
+    const { createContentSections, service } = fakeService(
+      DEFAULT_HOME_SECTIONS.map(({ id, position }) => ({ id, position }))
+    )
+
+    const result = await restoreDefaultSections(service)
+
+    expect(result).toEqual({ created: [], kept: DEFAULT_HOME_SECTIONS.length })
+    expect(createContentSections).not.toHaveBeenCalled()
+  })
+})
+

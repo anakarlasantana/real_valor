@@ -2,7 +2,8 @@
  * A divisão entre colunas da seção e conteúdo.
  * -------------------------------------------------------------------------
  * A regra é o **nome da coluna**: coluna é o que se filtra ou ordena
- * (`surface`, `enabled`, `position`), e todo o resto do corpo é conteúdo do
+ * (`surface`, `enabled`, `position`) — mais o `fixed`, que é o que a tela lê
+ * para saber se a seção tem ordem —, e todo o resto do corpo é conteúdo do
  * tipo. O primeiro bloco prende a regra; o segundo é o que evita que ela volte
  * a ter exceção.
  *
@@ -45,6 +46,13 @@ describe("splitPayload", () => {
     expect(splitPayload({ enabled: "false" }).columns).toEqual({
       enabled: false,
     })
+  })
+
+  it("`fixed: \"false\"` não fixa a seção (mesma armadilha do `enabled`)", () => {
+    // O CRM não manda esta coluna — a tela decide por ela —, mas o corpo de quem
+    // chama a API direto passa por aqui, e `\"false\"` não pode virar `true`:
+    // seria a seção do cromo se declarando móvel.
+    expect(splitPayload({ fixed: "false" }).columns).toEqual({ fixed: false })
   })
 
   it("campo de conteúdo vai para `data`, inclusive lista e número", () => {

@@ -17,8 +17,9 @@ import { model } from "@medusajs/framework/utils"
  * Isto NÃO afrouxa a tipagem: `data` é validado contra o contrato em
  * `src/modules/content/contract.ts` na entrada e na saída da API.
  *
- * **A regra da coluna:** aqui só entra o que se **filtra ou ordena**
- * (`surface`, `type`, `enabled`, `position`). Um campo que é só cópia —
+ * **A regra da coluna:** aqui só entra o que se **filtra, ordena ou decide na
+ * tela** (`surface`, `type`, `enabled`, `position`, `fixed`). Um campo que é só
+ * cópia —
  * "Título", "Texto do selo" — vive em `data`, mesmo que pareça um rótulo:
  * era o caso da coluna `title`, removida em 2026-09-29. Ela duplicava o
  * `data.title` de quatro tipos (`collections`, `featured`, `editorial`,
@@ -51,6 +52,28 @@ const ContentSection = model.define("content_section", {
 
   /** Ordem de renderização, ascendente. */
   position: model.number().default(0),
+
+  /**
+   * A seção é **fixa**: ela não tem ordem.
+   *
+   * É o cromo do site — barra de anúncio, cabeçalho e rodapé
+   * (`SINGLETON_SECTION_TYPES`, no contrato) —, que a moldura da loja desenha em
+   * todas as rotas. A loja resolve os três por `type`, nunca por `position`:
+   * mover o cabeçalho na lista do CRM não moveria nada no site.
+   *
+   * A coluna é o que o CRM lê para decidir o que a lista mostra: numa seção
+   * fixa, o lugar do numeral é a etiqueta **Fixo** e as setas de mover não
+   * existem — oferecer o movimento prometeria o que a vitrine não faz. Quem
+   * grava a coluna são as duas portas que criam seção (o seed/`Restaurar padrão`
+   * e o `POST /admin/content`), sempre a partir do tipo: `type` diz quem é
+   * cromo, a linha guarda a resposta.
+   *
+   * Por que não derivar do tipo na hora de desenhar? Porque aí a resposta viveria
+   * no código e a lista seria uma adivinhação sobre dados antigos; na linha, ela
+   * é o que está gravado — e a migration que criou a coluna já marcou o cromo que
+   * existia.
+   */
+  fixed: model.boolean().default(false),
 
   /** Payload específico do tipo — ver `contract.ts`. */
   data: model.json(),

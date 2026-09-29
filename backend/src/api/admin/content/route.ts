@@ -209,6 +209,7 @@ function toSection(block: {
   id: string
   enabled: boolean
   position: number
+  fixed: boolean
   type: string
   data: unknown
 }) {
@@ -216,6 +217,10 @@ function toSection(block: {
     id: block.id,
     enabled: block.enabled,
     position: block.position,
+    // O CRM lê esta coluna para saber se a seção tem ordem: é ela que decide o
+    // numeral × a etiqueta "Fixo" e a existência das setas (ver
+    // `models/content-section.ts`).
+    fixed: block.fixed,
     type: block.type,
     ...((block.data ?? {}) as Record<string, unknown>),
   }
@@ -465,6 +470,15 @@ export async function POST(
     ...(sectionId ? { id: sectionId } : {}),
     ...columns,
     position,
+    // A seção do cromo nasce **fixa** (sem ordem), como no seed/`Restaurar
+    // padrão`: é a coluna que a tela lê para mostrar "Fixo" no lugar do numeral
+    // e não oferecer as setas. O tipo que responde é o do contrato — a mesma
+    // regra da unicidade logo acima (`SINGLETON_SECTION_TYPES`) —, e o corpo pode
+    // dizer outra coisa: `fixed` é coluna, como `enabled`, e o que veio manda.
+    fixed:
+      typeof columns.fixed === "boolean"
+        ? columns.fixed
+        : isSingletonSectionType(type),
     type,
     data,
   })

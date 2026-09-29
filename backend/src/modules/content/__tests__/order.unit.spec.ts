@@ -1,16 +1,16 @@
 /**
  * A numeração da vitrine: o que impede `position` repetida (ordem indefinida na
- * loja) e o que mantém o cromo fora da faixa numerada da vitrine.
+ * loja) e o que mantém as seções fixas — o cromo do site — fora da faixa
+ * numerada da vitrine.
  *
- * O teste do cromo sai do **contrato** (`SINGLETON_SECTION_TYPES`), e não de uma
- * lista copiada aqui: se um tipo deixar de ser único, este arquivo passa a
- * cobrar a consequência em vez de concordar com a cópia.
+ * Quem **não** tem ordem não se decide aqui: a resposta é a coluna `fixed` da
+ * seção (`models/content-section.ts`), gravada na criação. Que o cromo nasça
+ * fixo é cobrado em `restore.unit.spec.ts`, contra o contrato
+ * (`SINGLETON_SECTION_TYPES`) — este arquivo cobre a numeração.
  */
-import { SINGLETON_SECTION_TYPES } from "../contract"
 import {
   FIRST_VITRINE_POSITION,
   POSITION_STEP,
-  isChromeType,
   nextPosition,
   positionAfter,
   positionFor,
@@ -46,20 +46,6 @@ describe("positionAfter", () => {
     expect(positionAfter([{ position: 100 }, { position: 101 }], 100)).toBe(
       101 + POSITION_STEP
     )
-  })
-})
-
-describe("isChromeType", () => {
-  it("reconhece o cromo do site pelo contrato", () => {
-    for (const type of SINGLETON_SECTION_TYPES) {
-      expect(isChromeType(SINGLETON_SECTION_TYPES, type)).toBe(true)
-    }
-  })
-
-  it("não confunde uma seção da vitrine com cromo", () => {
-    for (const type of ["hero", "benefits", "collections", "featured"]) {
-      expect(isChromeType(SINGLETON_SECTION_TYPES, type)).toBe(false)
-    }
   })
 })
 

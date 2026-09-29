@@ -16,7 +16,14 @@
  * A fonte é `DEFAULT_HOME_SECTIONS` (`defaults.ts`), a mesma do fallback da
  * vitrine: uma terceira lista de conteúdo padrão seria mais um lugar para
  * divergir.
+ *
+ * As seções criadas nascem com a **coluna `fixed`** resolvida (ver
+ * `models/content-section.ts`): o cromo do site nasce fixo — ele não tem ordem
+ * —, e a vitrine nasce solta, numerada. É o padrão que também vale para o
+ * `POST /admin/content` — as duas portas que criam seção respondem a mesma
+ * pergunta do mesmo jeito.
  */
+import { isSingletonSectionType } from "./contract"
 import { DEFAULT_HOME_SECTIONS } from "./defaults"
 import { positionAfter } from "./order"
 import type ContentModuleService from "./service"
@@ -107,6 +114,12 @@ export async function restoreDefaultSections(
         type,
         enabled,
         position: planned.get(id) as number,
+        // A seção do cromo (barra de anúncio, cabeçalho, rodapé) nasce **fixa**:
+        // ela não tem ordem, e é a coluna que a tela lê para mostrar "Fixo" no
+        // lugar do numeral e não oferecer as setas. Quem diz que o tipo é cromo é
+        // o contrato — a mesma regra que a rota do admin aplica para só existir
+        // um de cada tipo.
+        fixed: isSingletonSectionType(type),
         data,
       }
     })

@@ -8,9 +8,16 @@
  * O que a regra protege é `position` repetida. A loja ordena por essa coluna
  * (`listSections`, com `order: { position: "ASC" }`), então duas seções com o
  * mesmo número têm ordem indefinida — e o lojista não consegue consertar isso
- * digitando, porque as duas dizem o mesmo número. Vale para o **cromo**, que
- * tem posição própria e nem sequer é ordenado por ela: se entrar na mesma faixa
- * numerada, a lista passa a ser sorteio a cada carregamento.
+ * digitando, porque as duas dizem o mesmo número. Vale para a seção **fixa**,
+ * que tem posição própria e nem sequer é ordenado por ela: se entrar na mesma
+ * faixa numerada, a lista passa a ser sorteio a cada carregamento.
+ *
+ * Quem **tem** ordem é a coluna `fixed` da linha: a tela lê a coluna, e o que
+ * nasce fixo (o cromo do site, `SINGLETON_SECTION_TYPES` no contrato) é gravado
+ * na criação, pelas duas portas que criam seção — `restore.ts`, pelo botão
+ * "Restaurar padrão"/seed, e o `POST /admin/content`. A regra é a do contrato e
+ * não uma lista escrita aqui, e é a mesma que a rota aplica para só existir um
+ * cromo de cada tipo.
  */
 
 /**
@@ -24,20 +31,6 @@ export const FIRST_VITRINE_POSITION = 100
 
 /** A folga entre posições, a mesma do seed: sobra espaço para inserir no meio. */
 export const POSITION_STEP = 10
-
-/**
- * O tipo é cromo do site?
- *
- * A lista vem do schema (`singletonTypes`, montado do contrato), e não de um
- * array escrito aqui: um tipo declarado único no contrato já nasce sem ordem no
- * CRM, sem edição de tela.
- */
-export function isChromeType(
-  singletonTypes: readonly string[],
-  type: string
-): boolean {
-  return singletonTypes.includes(type)
-}
 
 /**
  * A posição da próxima seção da vitrine: depois da última, com a mesma folga do

@@ -36,6 +36,16 @@ class ContentModuleService extends MedusaService({
   /**
    * Lista as seções de uma superfície, ordenadas e achatadas.
    *
+   * O achatamento é um lugar só porque são as duas rotas que o usam: o CRM
+   * (`GET /admin/content`, que também precisa das desabilitadas) e a vitrine
+   * (`GET /store/content`, só as habilitadas).
+   *
+   * `fixed` sai aqui junto das outras colunas de controle: é o que o CRM lê para
+   * saber se a seção tem ordem — a etiqueta "Fixo" no lugar do numeral, e as
+   * setas que a seção fixa não tem (ver `models/content-section.ts`). A loja
+   * recebe o campo e o ignora: ela resolve o cromo por `type` e ordena o resto
+   * por `position`.
+   *
    * @param surface  `home` por padrão.
    * @param onlyEnabled  Quando true, filtra as desabilitadas no banco.
    */
@@ -55,6 +65,7 @@ class ContentModuleService extends MedusaService({
       id: section.id,
       enabled: section.enabled,
       position: section.position,
+      fixed: section.fixed,
       type: section.type,
       ...(section.data ?? {}),
     }))

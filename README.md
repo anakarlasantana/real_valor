@@ -232,10 +232,10 @@ O painel (`/painel` → **Conteúdo da vitrine**) edita a loja sem deploy:
 | O que | Como |
 | :--- | :--- |
 | Copy, links, imagens e aparência das seções | os campos vêm do contrato — campo novo no `contract.ts` aparece no formulário (`make gen` + `make seed-schema`) |
-| Ordem | setas na listagem **só na vitrine**; a mudança fica na tela até "Salvar ordem", que renumera de 100 em diante (a faixa abaixo de 100 é do cromo) e grava só o que mudou. O numeral da seção aparece ao lado do rótulo — o campo "Ordem" saiu do formulário |
+| Ordem | setas na listagem **só na vitrine**; a mudança fica na tela até "Salvar ordem", que renumera de 100 em diante (a faixa abaixo de 100 é do cromo) e grava só o que mudou. O numeral da seção aparece ao lado do rótulo — o campo "Ordem" saiu do formulário. As seções marcadas como **Fixo** não têm seta e mostram a etiqueta no lugar do numeral |
 | Criar seção | "Nova seção" escolhe tipo e âncora; a seção nasce com o conteúdo padrão do tipo e entra no fim |
 | Remover seção | lixeira na linha, com confirmação — não há desfazer |
-| Cabeçalho, rodapé e barra de anúncio | são blocos como os outros, no mesmo lugar, e **únicos**: o segundo não é oferecido. Aparecem marcados como **Cromo** e não têm setas nem campo "Ordem" — quem os posiciona é a moldura da loja, em todas as rotas, e a loja os resolve por tipo |
+| Cabeçalho, rodapé e barra de anúncio | são blocos como os outros, no mesmo lugar, e **únicos**: o segundo não é oferecido. Aparecem marcados como **Fixo** (a coluna `fixed` da seção) e não têm setas nem campo "Ordem" — quem os posiciona é a moldura da loja, em todas as rotas, e a loja os resolve por tipo |
 | Restaurar o padrão | recria as seções que faltam (é o mesmo que `yarn seed-content` faz dentro do `make seed`); não altera o que já existe |
 | Salvar a edição de uma seção | a barra “Alterações não salvas” aparece no topo do formulário quando algo mudou, com **Salvar** e **Descartar** — sem alteração, não há o que salvar |
 | Fotos | envio pelo botão do campo de imagem; o valor gravado é a **chave** do arquivo |

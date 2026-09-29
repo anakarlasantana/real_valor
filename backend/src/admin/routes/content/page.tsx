@@ -54,7 +54,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import type { AppearanceGroup } from "../../../modules/content/contract"
 import {
-  isChromeType,
   nextPosition,
   positionFor,
   renumber,
@@ -73,6 +72,13 @@ type Section = {
   type: string
   enabled: boolean
   position: number
+  /**
+   * A seção não tem ordem: é o cromo do site (barra de anúncio, cabeçalho,
+   * rodapé), que a moldura da loja desenha em todas as rotas. Vem da coluna
+   * `fixed` da seção (`models/content-section.ts`), e é o que decide a etiqueta
+   * "Fixo" no lugar do numeral e a existência das setas.
+   */
+  fixed: boolean
   [key: string]: unknown
 }
 
@@ -227,8 +233,11 @@ function freeAnchor(type: string, sections: Section[]): string {
  * A regra da ordem — a faixa de posições, a folga e quem tem ordem — vive em
  * `modules/content/order.ts`, com teste próprio (`order.unit.spec.ts`); aqui
  * fica só o que é da tela: as setas, a barra de aviso e o botão de salvar.
+ *
+ * Quem tem ordem **não** sai daqui: sai da coluna `fixed` da seção, que vem no
+ * payload da API. `schema.singletonTypes` continua sendo a lista de tipos únicos
+ * — é o que impede oferecer um segundo cabeçalho (`creatableTypes`).
  */
-const singletonTypesOf = (schema: Schema | null) => schema?.singletonTypes ?? []
 
 const ContentPage = () => {
   const [sections, setSections] = useState<Section[]>([])
@@ -315,24 +324,24 @@ const ContentPage = () => {
     [sections]
   )
 
-  /** Os tipos que não têm ordem, como o schema os declara. */
-  const singletons = useMemo(() => singletonTypesOf(schema), [schema])
-
   /**
-   * A vitrine e o cromo, separados: só a vitrine tem ordem.
+   * O cromo e a vitrine, separados: só a vitrine tem ordem.
    *
-   * A separação sai do schema (`singletonTypes`), não de uma lista escrita
-   * aqui, então um tipo declarado único no contrato já nasce sem setas — sem
-   * edição nesta tela.
+   * A separação sai da **coluna `fixed`** da seção — o que está gravado —, e não
+   * de uma lista de tipos escrita aqui: a seção que a loja não reordena é
+   * exatamente a que nasceu fixa (o seed/`Restaurar padrão` e o `POST
+   * /admin/content` gravam a coluna a partir do tipo), então a tela não tem como
+   * oferecer seta para o que a vitrine não move nem esconder a seta de quem tem
+   * ordem.
    */
   const chrome = useMemo(
-    () => ordered.filter((section) => isChromeType(singletons, section.type)),
-    [ordered, singletons]
+    () => ordered.filter((section) => section.fixed),
+    [ordered]
   )
 
   const vitrine = useMemo(
-    () => ordered.filter((section) => !isChromeType(singletons, section.type)),
-    [ordered, singletons]
+    () => ordered.filter((section) => !section.fixed),
+    [ordered]
   )
 
   /** A vitrine na ordem que está na tela: a pendente, quando existe. */
@@ -732,12 +741,13 @@ const ContentPage = () => {
           <Heading level="h1">Conteúdo da vitrine</Heading>
           <Text size="small" className="text-ui-fg-subtle">
             Estas seções montam a página inicial. A ordem é a das setas e só vale
-            depois de “Salvar ordem”. As seções marcadas como Cromo — barra de
-            anúncio, cabeçalho e rodapé — aparecem em todas as páginas da loja e
-            não têm ordem. Ao editar uma seção, a barra “Alterações não salvas”
-            aparece com o botão Salvar. A aparência entra junto do campo que ela
-            muda: em branco, a seção segue o tema da loja — inclusive quando o
-            tema é sazonal.
+            depois de “Salvar ordem”. As seções marcadas como Fixo — a barra de
+            anúncio, o cabeçalho e o rodapé, que aparecem em todas as páginas da
+            loja — não têm ordem: a loja resolve as três pelo tipo, e movê-las na
+            lista não moveria nada no site. Ao editar uma seção, a barra
+            “Alterações não salvas” aparece com o botão Salvar. A aparência entra
+            junto do campo que ela muda: em branco, a seção segue o tema da loja —
+            inclusive quando o tema é sazonal.
           </Text>
         </div>
         <div className="flex shrink-0 items-center gap-x-2">
@@ -867,9 +877,11 @@ const ContentPage = () => {
         const draft = drafts[section.id] ?? {}
         const specs = schema?.fields[section.type] ?? []
         const isOpen = openId === section.id
-        // Só a vitrine tem ordem: o cromo é desenhado pela moldura da loja, em
-        // todas as rotas, e a posição dele não muda o que aparece onde.
-        const movable = !isChromeType(singletons, section.type)
+        // Só a vitrine tem ordem: a seção fixa é o cromo, desenhado pela moldura
+        // da loja em todas as rotas, e a posição dele não muda o que aparece
+        // onde. Quem responde é a coluna — não o tipo —, pelo mesmo motivo que a
+        // lista se separa por ela.
+        const movable = !section.fixed
         const place = vitrineIndex.get(section.id) ?? 0
         // Alteração pendente no formulário: é o que faz a barra com o "Salvar"
         // aparecer (ver `form-draft.ts`).
@@ -888,7 +900,7 @@ const ContentPage = () => {
                   </Badge>
                 ) : (
                   <Badge size="2xsmall" color="grey">
-                    Cromo
+                    Fixo
                   </Badge>
                 )}
                 <div>

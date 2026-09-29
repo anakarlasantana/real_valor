@@ -14,8 +14,18 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 | `schema.ts` | Montagem do schema (`buildSchema()`), `SCHEMA_VERSION` e `SCHEMA_KEY` |
 | `contract.ts` | O formato do conteúdo — **bootstrap** do schema |
 | `defaults.ts` | Cópia do protótipo, usada pelo seed e como fallback |
-| `migrations/` | Geradas com `medusa db:generate content` |
+| `migrations/` | Geradas com `medusa db:generate content` — com duas exceções escritas à mão, explicadas abaixo |
 | [`../links/content-section-product.ts`](../links/content-section-product.ts) | O link seção ↔ produto (a curadoria) — fora do módulo porque é assim que o Medusa carrega links (`src/links/`) |
+
+**As exceções das migrations.** Rename de tabela e backfill de coluna não saem do
+gerador: ele compara os models com o `.snapshot-content.json`, e um model
+renomeado é, para ele, tabela nova + tabela removida — o `create table` + `drop
+table cascade` que apagaria o conteúdo. A do rename
+(`Migration20260929204616.ts`) leva `alter table … rename` no lugar; a da coluna
+`fixed` (`Migration20260929211634.ts`) leva o `add column` gerado e, junto, o
+`update` que marca o cromo que já existia. O `.snapshot-content.json` é regerado
+nas duas — ele é o alvo do próximo `db:generate`, e sem isso o gerador volta a
+propor `create` + `drop`.
 
 ## Onde os dados moram
 
@@ -23,7 +33,7 @@ Três tabelas, e a regra que decide em qual delas cada coisa entra:
 
 | O quê | Onde | Regra |
 | --- | --- | --- |
-| `surface`, `type`, `enabled`, `position` | **colunas** de `content_section` | o que se **filtra ou ordena** |
+| `surface`, `type`, `enabled`, `position`, `fixed` | **colunas** de `content_section` | o que se **filtra ou ordena** — `fixed` é o que se **decide na tela**: a seção **não tem ordem** (o cromo do site) |
 | `title`, `headline`, `imageUrl`, listas de itens… | **`data`** (JSONB) | o que é **cópia**: veio do formulário e é desenhado como veio |
 | a lista de produtos de uma seção | **`content_section_product`** (link) | o que é **referência**: aponta para outra linha, e a ordem é `position` na própria tabela |
 
@@ -65,9 +75,9 @@ de imagens. Um schema relacional daria uma tabela, uma migration e uma
 tela de admin **por tipo** — dez hoje, e cada tipo novo pediria as três
 de novo.
 
-Aqui as colunas que se filtram e ordenam (`surface`, `type`, `enabled`,
-`position`) ficam indexáveis e o resto — que é só payload — vive em
-`data`. Isso **não** afrouxa a tipagem: `data` é validado contra o
+Aqui as colunas de controle (`surface`, `type`, `enabled`, `position` e `fixed`,
+que diz se a seção tem ordem) ficam indexáveis e o resto — que é só payload —
+vive em `data`. Isso **não** afrouxa a tipagem: `data` é validado contra o
 contrato na entrada e na saída da API.
 
 O que **não** é nem coluna nem payload é a **referência** (a lista de produtos
@@ -453,9 +463,14 @@ versão do schema com que foram gravadas:
 
 ```json
 { "sections": [ { "id": "hero", "type": "hero", "enabled": true,
-  "position": 20, "headline": "...", "overlay": 0.72 } ],
+  "position": 20, "fixed": false, "headline": "...", "overlay": 0.72 } ],
   "schemaVersion": 1 }
 ```
+
+`fixed` viaja junto das outras colunas porque o achatamento é um só
+(`service.listSections`): a **loja** ignora o campo — ela resolve o cromo por
+`type` e ordena o resto por `position` —, e quem o usa é o **CRM**, que troca o
+numeral pela etiqueta **Fixo** e não oferece as setas.
 
 `POST`/`PATCH` validam contra o **registro**: um campo que o `contract.ts`
 declare e o registro não tem é recusado com 400, e um campo que só o registro
@@ -477,7 +492,12 @@ O que a página faz, além de editar os campos de uma seção:
 
 - **Ordem** — setas que regravam a lista de 10 em 10 (`position` é a ordem da
   loja; duas posições iguais seriam ordem indefinida na vitrine). Só o que muda
-  de fato é enviado.
+  de fato é enviado. As seções **fixas** — o cromo do site, `fixed` na linha
+  (`models/content-section.ts`) — não têm seta: elas vêm no topo da lista com a
+  etiqueta **Fixo** no lugar do numeral, porque a loja as resolve por `type` e
+  movê-las não mudaria nada no site. É o CRM lendo a **coluna**, e não adivinhando
+  o cromo pelo tipo na hora de desenhar: quem criou a seção já gravou a resposta
+  (`restore.ts` e o `POST`, a partir de `SINGLETON_SECTION_TYPES`).
 - **Criar** — escolhe o tipo e a âncora (`hero`, `hero-2`…, o `id` que o menu usa
   como `/#hero`, validado como apelido livre). A seção nasce com o conteúdo
   padrão do tipo (`DEFAULT_SECTION_DATA`) e entra no fim da lista; os tipos únicos

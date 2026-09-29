@@ -27,11 +27,15 @@ import { Migration } from "@medusajs/framework/mikro-orm/migrations";
  * `data.title` é que é desenhado. Ver `models/content-section.ts`.
  *
  * Índices e constraint também são renomeados: `content_block_pkey`,
- * `IDX_content_block_deleted_at` e os equivalentes do schema. O Medusa não os
- * conhece por nome (o índice parcial `WHERE deleted_at IS NULL` nem é gerado
- * por ele — foi escrito à mão), mas deixar o nome da tabela antiga no `\d` é
- * exatamente o tipo de resíduo que faz a próxima pessoa procurar uma tabela que
- * não existe mais.
+ * `IDX_content_block_deleted_at` e os equivalentes do schema. Renomear, e não
+ * criar e apagar, é o mesmo motivo da tabela: o índice é o **mesmo objeto** com
+ * outro nome, e o `rename` não recalcula nada sobre as linhas. Vale dizer que o
+ * índice parcial `WHERE deleted_at IS NULL` não é invenção daqui — a DML de soft
+ * delete o injeta em toda entidade com `deleted_at`
+ * (`@medusajs/utils/dist/dml/helpers/mikro-orm/apply-indexes.js`), e o snapshot
+ * o traz escrito assim. O que se corrige aqui é só o nome: deixar o da tabela
+ * antiga no `\d` é exatamente o tipo de resíduo que faz a próxima pessoa
+ * procurar uma tabela que não existe mais.
  */
 export class Migration20260929204616 extends Migration {
 
