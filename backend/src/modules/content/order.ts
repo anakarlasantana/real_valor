@@ -62,6 +62,46 @@ export function nextPosition(sections: readonly { position: number }[]): number 
 }
 
 /**
+ * A posição de uma seção que entra **logo depois** de outra na ordem atual.
+ *
+ * É o caso da seção nova que o padrão coloca no meio da vitrine — o trilho de
+ * lançamentos entra depois do hero. A numeração do padrão (`defaults.ts`) é a do
+ * protótipo (hero 20, lançamentos 25, benefícios 30), e ela **só vale** numa
+ * base que ainda está nessa numeração. Numa base que já passou pelo "Salvar
+ * ordem" do CRM a vitrine foi renumerada de 100 em 100, e copiar 25 dali faria
+ * a seção nascer ANTES do hero — no lugar errado da página, e sem nada
+ * apontando o motivo.
+ *
+ * A resposta não é a posição do padrão nem a do vizinho + folga: é a **metade do
+ * vão** até a próxima seção na ordem atual. Com a vitrine em 100, 110, 120…, a
+ * seção que entra depois do hero (100) recebe 105 — entre o hero e a coleção,
+ * que é onde ela deve aparecer — e o próximo "Salvar ordem" a normaliza para a
+ * faixa de 10 em 10.
+ *
+ * Sem ninguém depois, a folga padrão basta. E se o vão não couber um inteiro
+ * (posições adjacentes, que só o CRM cria à mão — a faixa dele é de 10 em 10),
+ * a seção entra depois do vizinho: não há inteiro entre 100 e 101, e a ordem
+ * volta ao lugar na próxima gravação de ordem, que renumera a vitrine inteira.
+ */
+export function positionAfter(
+  sections: readonly { position: number }[],
+  anchor: number
+): number {
+  const next = sections
+    .map((section) => section.position)
+    .filter((position) => position > anchor)
+    .sort((a, b) => a - b)[0]
+
+  if (next === undefined) {
+    return anchor + POSITION_STEP
+  }
+
+  const half = Math.floor((next - anchor) / 2)
+
+  return half >= 1 ? anchor + half : next + POSITION_STEP
+}
+
+/**
  * A posição que a seção na casa `index` recebe quando a ordem é salva.
  *
  * É também o numeral que a lista mostra quando há ordem pendente: com a lista já

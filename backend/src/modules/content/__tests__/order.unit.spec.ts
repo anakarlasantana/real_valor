@@ -12,9 +12,42 @@ import {
   POSITION_STEP,
   isChromeType,
   nextPosition,
+  positionAfter,
   positionFor,
   renumber,
 } from "../order"
+
+describe("positionAfter", () => {
+  it("numa vitrine renumerada (100, 110…), entra na metade do vão", () => {
+    // É o caso real: hero em 100, a coleção em 110, e a seção nova (o trilho,
+    // que no padrão vem logo depois do hero) precisa entrar entre as duas.
+    expect(positionAfter([{ position: 100 }, { position: 110 }], 100)).toBe(105)
+  })
+
+  it("sem ninguém depois do vizinho, usa a folga padrão", () => {
+    expect(positionAfter([{ position: 100 }], 100)).toBe(100 + POSITION_STEP)
+  })
+
+  it("ignora as posições anteriores ao vizinho", () => {
+    // O cromo (10, 20) e o rodapé (90) estão na lista, mas quem manda é o que
+    // vem DEPOIS da âncora.
+    expect(
+      positionAfter(
+        [{ position: 10 }, { position: 20 }, { position: 90 }, { position: 100 }],
+        90
+      )
+    ).toBe(95)
+  })
+
+  it("vão de um inteiro só não tem meio: entra depois, e a renumeração conserta", () => {
+    // Posições adjacentes só existem em base mexida à mão (a faixa do CRM é de
+    // 10 em 10). Não há inteiro entre 100 e 101, então a seção entra depois — e
+    // a próxima gravação de ordem renumera a vitrine inteira.
+    expect(positionAfter([{ position: 100 }, { position: 101 }], 100)).toBe(
+      101 + POSITION_STEP
+    )
+  })
+})
 
 describe("isChromeType", () => {
   it("reconhece o cromo do site pelo contrato", () => {

@@ -19,8 +19,9 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 
 A árvore de conteúdo é heterogênea: `hero` tem `headlineEmphasis` e
 `overlay`, `benefits` tem uma lista de itens, `instagram` tem uma lista
-de imagens. Um schema relacional daria 7 tabelas e 7 migrations, e o
-admin teria 7 telas.
+de imagens. Um schema relacional daria uma tabela, uma migration e uma
+tela de admin **por tipo** — dez hoje, e cada tipo novo pediria as três
+de novo.
 
 Aqui as colunas que se filtram e ordenam (`surface`, `type`, `enabled`,
 `position`) ficam indexáveis e o resto — que é só payload — vive em
@@ -165,6 +166,7 @@ está com o cursor no campo "Título":
 | Seção | Títulos | Textos | Detalhes | Fundo |
 | --- | --- | --- | --- | --- |
 | `hero` | `headline` | `subtitle` | `headlineEmphasis` (o itálico do título) | — |
+| `launches` | `title` | `subtitle` | `eyebrow` | `viewAllHref` |
 | `benefits` | `items` | `items` | `items` (o ícone) | `items` |
 | `collections` | `title` | `subtitle` | `eyebrow` | `items` |
 | `featured` | `title` | `subtitle` | `eyebrow` | `viewAllLabel` |
@@ -307,7 +309,47 @@ os ícones saem de `frontend/src/lib/content/social-icons.tsx`. Esse registro é
 `icons.ts` porque o `@medusajs/icons` não traz glifo de marca (Instagram, WhatsApp…) — e as
 chaves oferecidas no admin (`list:social`) são conferidas pelo script de paridade.
 
-## O schema do CRM é um registro no banco
+## Lançamentos (`launches`)
+
+O trilho de novidades logo depois do hero: cards de produto em `overflow-x-auto`
+com `scroll-snap` (`frontend/src/modules/home/components/launches-rail`), em vez
+da grade das "Peças em destaque".
+
+**Metade da seção não é conteúdo.** O CRM carrega a cópia (`eyebrow`, `title`,
+`subtitle`, `viewAllLabel`, `viewAllHref`) e o **`limit`**; os produtos vêm da
+Store API, do mais novo para o mais antigo (`order: "-created_at"`). É o que faz
+o trilho se manter sozinho: publicar uma peça já a coloca lá, sem ninguém editar
+bloco. Escolher *quais* peças é curadoria manual — campo `kind: "products"`,
+ainda aberto (ver `docs/debito-02-alto.md`, 2.5.1).
+
+O `limit` é o único campo do contrato com faixa além do `overlay` do hero: 2 a
+12, passo 1 (`min`/`max`/`step` no `FieldSpec`). A faixa é do **campo**, e não do
+editor — o mesmo `field-input.tsx` desenha os dois campos numéricos —, e a API
+recusa valor fora dela. O storefront tem os mesmos números como última defesa
+(`frontend/src/lib/util/launches.ts`), porque o que está gravado num banco pode
+ser anterior à faixa existir; a guarda de paridade confere que os três números
+batem com o contrato.
+
+**A cópia padrão é nossa.** As outras seções de `defaults.ts` são cópia literal
+do protótipo; esta não existe lá. O texto ("Chegou agora"…) é ponto de partida
+na voz da marca, e a seção está marcada como exceção no próprio arquivo.
+
+### Como a seção chega numa base que já existe
+
+`restore.ts` cria só o que falta, e a posição **não** vem crua do padrão. A
+numeração de `defaults.ts` é a do protótipo (`hero` 20, `lancamentos` 25,
+`benefits` 30); depois de uma gravação de ordem no CRM a vitrine está em 100,
+110, 120…, e copiar 25 dali faria o trilho nascer **antes do hero** — o defeito
+que apareceu no primeiro "Restaurar padrão" desta seção.
+
+A regra (`planRestoredPositions` + `positionAfter`, em `modules/content/order.ts`)
+é: a seção entra **logo depois do vizinho que ela tem no padrão**, na ordem
+atual, na metade do vão (hero em 100, coleção em 110 → trilho em 105). Sem
+vizinho anterior — é a primeira da lista, ou a base está vazia —, vale a posição
+do padrão, que é o caso em que a lista nasce inteira e a numeração do protótipo é
+a ordem certa. O próximo "Salvar ordem" normaliza a faixa de 10 em 10.
+
+
 
 O formulário do CRM (tipos, rótulos, campos, opções, grupos) é uma **linha** em
 `content_schema`, não uma leitura do código. `contract.ts` é o **bootstrap**;
