@@ -175,7 +175,8 @@ export type HeaderAction = {
  * É a única seção que não é da home: como a barra de anúncio, aparece
  * em todas as rotas da loja. Mas, como todo conteúdo da vitrine, mora na
  * mesma tabela e na mesma superfície (`home`) — daí o `id` fixo `nav`,
- * que o `seed-content.ts` cria.
+ * que o seed cria (e o "Restaurar padrão" do CRM recria, em
+ * `modules/content/restore.ts`).
  *
  * A ordem é a ordem dos arrays: `links` no centro do cabeçalho (e no
  * topo do menu mobile), `actions` no cluster da direita. Os itens da
@@ -300,6 +301,33 @@ export function isSectionType(value: unknown): value is SectionType {
   return (
     typeof value === "string" &&
     (SECTION_TYPES as readonly string[]).includes(value)
+  )
+}
+
+/**
+ * Tipos que só podem existir **uma vez** por superfície.
+ *
+ * Os três são cromo do site — barra de anúncio, cabeçalho e rodapé — e o
+ * layout os resolve por `find` (`announceSections`, `headerSections` e
+ * `footerSections`, em `frontend/src/lib/content/home-sections.ts`): o
+ * primeiro bloco do tipo é o que aparece na loja.
+ *
+ * Um segundo bloco seria o pior defeito possível num CMS: o lojista cria, a
+ * lista do CRM mostra, a loja **nunca** desenha. Por isso a API recusa a
+ * criação (`POST /admin/content`) e o CRM não oferece um tipo que já existe —
+ * as duas pontas leem esta lista, então não há duas opiniões sobre o que é
+ * único.
+ */
+export const SINGLETON_SECTION_TYPES = ["announcement", "nav", "footer"] as const
+
+export type SingletonSectionType = (typeof SINGLETON_SECTION_TYPES)[number]
+
+export function isSingletonSectionType(
+  value: unknown
+): value is SingletonSectionType {
+  return (
+    typeof value === "string" &&
+    (SINGLETON_SECTION_TYPES as readonly string[]).includes(value)
   )
 }
 

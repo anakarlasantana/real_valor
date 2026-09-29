@@ -3,19 +3,26 @@ import type { HomeSection } from "./contract"
 /**
  * Conteúdo padrão da home — a cópia exata do protótipo.
  *
- * Usado por dois caminhos:
- *   1. `scripts/seed-content.ts` popula o banco com isto na primeira vez.
- *   2. O frontend usa como fallback se a API de conteúdo falhar, para
+ * Usado por três caminhos:
+ *   1. `scripts/seed-content.ts` popula o banco com isto quando a base nasce
+ *      (`make seed`), pela CLI.
+ *   2. `POST /admin/content/restore` — o botão "Restaurar padrão" do CRM — faz
+ *      a mesma coisa pelo painel, para uma base que subiu vazia ou uma seção
+ *      apagada por engano. As duas portas chamam a mesma função
+ *      (`modules/content/restore.ts`), de propósito.
+ *   3. O frontend usa como fallback se a API de conteúdo falhar, para
  *      que a vitrine nunca caia por causa do CMS.
  *
- * Nos dois casos este arquivo é a única cópia: o fallback do storefront é
+ * Nos três casos este arquivo é a única cópia: o fallback do storefront é
  * este mesmo dado, gerado para `contract.generated.ts` por
  * `scripts/gen-content.mjs`.
  *
- * Imagens apontam para `/brand/*.jpg` (servidas pelo Next, em
- * `frontend/public/brand`) porque o `data` do CMS guarda URLs como o
- * navegador as consome. Trocar por fotografia definitiva é só editar
- * o campo no admin.
+ * Imagem aponta para `/brand/*.jpg` (servida pelo Next, em
+ * `frontend/public/brand`) enquanto for a foto do protótipo. Depois do primeiro
+ * envio pelo CRM o valor gravado é a **chave** do arquivo
+ * (`1699999999-hero.jpg`): quem traduz chave → endereço é o `resolveMediaUrl`
+ * do storefront (`frontend/src/lib/util/media.ts`), e por isso os dois formatos
+ * convivem sem migração.
  */
 export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
   /**
@@ -203,3 +210,28 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     ],
   },
 ]
+
+/**
+ * O `data` de uma seção NOVA, por tipo — o que a rota admin usa quando o
+ * lojista cria uma seção pelo CRM.
+ *
+ * A seção nasce igual à padrão (o título do hero, os quatro itens da faixa de
+ * benefícios) e o lojista edita a partir daí. As duas alternativas são piores:
+ * exigir os campos obrigatórios de uma seção que ainda não existe obrigaria o
+ * formulário a pedir tudo antes de a seção aparecer na lista, e aceitar a
+ * seção vazia seria gravar algo que a loja não sabe desenhar.
+ *
+ * Derivado de `DEFAULT_HOME_SECTIONS`, e não escrito de novo, porque é o
+ * **mesmo** conteúdo: uma seção nova nasce com a cara da loja. Ficam de fora as
+ * colunas do bloco (`id`, `enabled`, `position`) — quem decide as três é a
+ * rota, e a posição da seção nova vai para o fim da lista.
+ */
+export const DEFAULT_SECTION_DATA: Record<string, Record<string, unknown>> =
+  Object.fromEntries(
+    DEFAULT_HOME_SECTIONS.map(
+      ({ id: _id, enabled: _enabled, position: _position, type, ...data }) => [
+        type,
+        data,
+      ]
+    )
+  )

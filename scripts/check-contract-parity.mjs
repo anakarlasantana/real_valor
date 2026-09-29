@@ -1127,6 +1127,7 @@ assert(
 // jargão e o editor de lista fica sem sub-formulário.
 const adminRoute = readFileSync(ADMIN_CONTENT_ROUTE, "utf8")
 const contentSchema = readFileSync(CONTENT_SCHEMA, "utf8")
+/** As chaves do schema, conferidas no arquivo que as monta (e não na rota). */
 const schemaKeys = [
   "types: SECTION_TYPES",
   "typeLabels: SECTION_TYPE_LABELS",
@@ -1135,12 +1136,13 @@ const schemaKeys = [
   "palette: THEME_COLOR_HEXES",
   "fonts: THEME_FONTS",
   "darkTokens: THEME_DARK_TOKENS",
+  "singletonTypes: SINGLETON_SECTION_TYPES",
 ]
 const offSchema = schemaKeys.filter((key) => !contentSchema.includes(key))
 
 assert(
   "o schema do CRM é montado num lugar só, com tipos, campos, rótulos, " +
-    "campos de item, paleta, fontes e cores escuras",
+    "campos de item, paleta, fontes, cores escuras e tipos únicos",
   offSchema.length === 0,
   `faltando no schema: ${offSchema.join(", ") || "nenhum"}`
 )

@@ -190,7 +190,8 @@ export type HeaderAction = {
  * É a única seção que não é da home: como a barra de anúncio, aparece
  * em todas as rotas da loja. Mas, como todo conteúdo da vitrine, mora na
  * mesma tabela e na mesma superfície (`home`) — daí o `id` fixo `nav`,
- * que o `seed-content.ts` cria.
+ * que o seed cria (e o "Restaurar padrão" do CRM recria, em
+ * `modules/content/restore.ts`).
  *
  * A ordem é a ordem dos arrays: `links` no centro do cabeçalho (e no
  * topo do menu mobile), `actions` no cluster da direita. Os itens da
@@ -315,6 +316,33 @@ export function isSectionType(value: unknown): value is SectionType {
   return (
     typeof value === "string" &&
     (SECTION_TYPES as readonly string[]).includes(value)
+  )
+}
+
+/**
+ * Tipos que só podem existir **uma vez** por superfície.
+ *
+ * Os três são cromo do site — barra de anúncio, cabeçalho e rodapé — e o
+ * layout os resolve por `find` (`announceSections`, `headerSections` e
+ * `footerSections`, em `frontend/src/lib/content/home-sections.ts`): o
+ * primeiro bloco do tipo é o que aparece na loja.
+ *
+ * Um segundo bloco seria o pior defeito possível num CMS: o lojista cria, a
+ * lista do CRM mostra, a loja **nunca** desenha. Por isso a API recusa a
+ * criação (`POST /admin/content`) e o CRM não oferece um tipo que já existe —
+ * as duas pontas leem esta lista, então não há duas opiniões sobre o que é
+ * único.
+ */
+export const SINGLETON_SECTION_TYPES = ["announcement", "nav", "footer"] as const
+
+export type SingletonSectionType = (typeof SINGLETON_SECTION_TYPES)[number]
+
+export function isSingletonSectionType(
+  value: unknown
+): value is SingletonSectionType {
+  return (
+    typeof value === "string" &&
+    (SINGLETON_SECTION_TYPES as readonly string[]).includes(value)
   )
 }
 
@@ -614,6 +642,14 @@ export type FieldKind =
   | "textarea"
   | "number"
   | "select"
+  // Imagem: campo com envio de arquivo. O editor sobe a foto pelo provider de
+  // arquivos (`@medusajs/file-local`, ver `medusa-config.ts`) e grava a
+  // **chave** do arquivo (`1699999999-hero.jpg`) — nunca a URL absoluta, que
+  // amarraria o conteúdo ao endereço do backend. Quem traduz chave → URL é
+  // `resolveMediaUrl` no storefront (`frontend/src/lib/util/media.ts`), o que
+  // mantém a loja funcionando com o mesmo valor gravado hoje (URL do painel
+  // nativo) e depois de trocar o provider por S3.
+  | "image"
   // Aparência: a paleta e as fontes do tema, desenhadas como bolinhas de cor
   // e como uma lista de fontes com prévia — ver `THEME_COLOR_HEXES` e
   // `THEME_FONTS`. Continuam sendo escolha dentro de uma lista fechada: o
@@ -667,6 +703,20 @@ export type FieldSpec = {
    */
   attachedTo?: string
   help?: string
+  /**
+   * Faixa de um campo `number` (mínimo, máximo e passo do `<input>`), e o que
+   * a rota admin usa para reprovar valor fora dela.
+   *
+   * Declaradas no campo, e não no editor: o formulário do painel é desenhado a
+   * partir deste contrato, então um segundo campo numérico — o limite de itens
+   * de uma vitrine, por exemplo — herdaria a faixa do `overlay` do hero (0 a 1)
+   * se ela estivesse escrita no `field-input.tsx`, e o lojista não conseguiria
+   * digitar 8. Campo sem faixa é um número livre.
+   */
+  min?: number
+  max?: number
+  /** Passo do `<input type="number">`; ausente vale 1. */
+  step?: number
 }
 
 /** Campos de `data` por tipo de seção, na ordem em que o admin os mostra. */
@@ -694,12 +744,20 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     ...appearanceTexts("subtitle"),
     { name: "ctaLabel", label: "Texto do botão", kind: "text" },
     { name: "ctaHref", label: "Link do botão", kind: "text" },
-    { name: "imageUrl", label: "Imagem (URL)", kind: "text" },
+    {
+      name: "imageUrl",
+      label: "Imagem",
+      kind: "image",
+      help: "Envie a foto pelo botão, ou informe um caminho do site (ex.: /brand/hero.jpg) ou uma URL.",
+    },
     { name: "imageAlt", label: "Imagem (alt)", kind: "text" },
     {
       name: "overlay",
       label: "Scrim (0 a 1)",
       kind: "number",
+      min: 0,
+      max: 1,
+      step: 0.01,
       help: "Opacidade do overlay escuro no lado do texto.",
     },
     // Sem trilho de fundo: o fundo do hero é a fotografia.
@@ -767,7 +825,12 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     ...appearanceTexts("body"),
     { name: "ctaLabel", label: "Texto do botão", kind: "text" },
     { name: "ctaHref", label: "Link do botão", kind: "text" },
-    { name: "imageUrl", label: "Imagem (URL)", kind: "text" },
+    {
+      name: "imageUrl",
+      label: "Imagem",
+      kind: "image",
+      help: "Envie a foto pelo botão, ou informe um caminho do site (ex.: /brand/story-1.jpg) ou uma URL.",
+    },
     { name: "imageAlt", label: "Imagem (alt)", kind: "text" },
     {
       name: "imagePosition",
@@ -988,13 +1051,23 @@ export const ITEM_FIELDS: ItemFields = {
   "list:highlight": [
     { name: "title", label: "Título" },
     { name: "subtitle", label: "Subtítulo" },
-    { name: "imageUrl", label: "Imagem (URL)" },
+    {
+      name: "imageUrl",
+      label: "Imagem",
+      kind: "image",
+      help: "Envie a foto pelo botão, ou informe um caminho do site (ex.: /brand/collection-1.jpg) ou uma URL.",
+    },
     { name: "imageAlt", label: "Imagem (alt)" },
     { name: "href", label: "Link" },
     { name: "ctaLabel", label: "Texto do botão" },
   ],
   "list:image": [
-    { name: "imageUrl", label: "Imagem (URL)" },
+    {
+      name: "imageUrl",
+      label: "Imagem",
+      kind: "image",
+      help: "Envie a foto pelo botão, ou informe um caminho do site ou uma URL. A moldura é quadrada: corte a foto nesse formato para ela não ser recortada sozinha.",
+    },
     { name: "imageAlt", label: "Imagem (alt)" },
   ],
   "list:link": [

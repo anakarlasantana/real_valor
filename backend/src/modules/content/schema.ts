@@ -18,6 +18,7 @@ import {
   SECTION_FIELDS,
   SECTION_TYPE_LABELS,
   SECTION_TYPES,
+  SINGLETON_SECTION_TYPES,
   THEME_COLOR_HEXES,
   THEME_DARK_TOKENS,
   THEME_FONTS,
@@ -38,8 +39,20 @@ import {
  * Sobe quando o **formato** do schema muda de um jeito que o CRM/storefront
  * precisam notar: chave nova, campo removido, tipo novo. Não precisa subir
  * para ajuste de rótulo ou texto de `help` — é o mesmo formato.
+ *
+ * v2 — os campos de imagem (`imageUrl` do hero, do banner e dos itens de
+ *      coleção e do Instagram) deixaram de ser texto e passaram a ser
+ *      `kind: "image"`: o editor ganha envio de arquivo, e o valor gravado
+ *      passa a ser a chave do arquivo. O `--check` do seed-schema acusa o
+ *      registro velho, então a v1 gravada em um banco existente precisa ser
+ *      reescrita com `make seed-schema` — sem isso o CRM continua mostrando
+ *      uma caixa de texto onde já existe um botão de envio.
+ *
+ * v3 — o payload ganhou `singletonTypes`: o CRM precisa saber quais tipos são
+ *      únicos (cabeçalho, rodapé, barra de anúncio) para não oferecer uma
+ *      segunda seção que a loja nunca desenharia.
  */
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 3
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.
@@ -86,6 +99,16 @@ export type ContentSchemaPayload = {
    * na hora da escolha, em vez de o lojista descobrir depois, olhando a loja.
    */
   darkTokens: readonly string[]
+  /**
+   * Tipos que só podem existir uma vez por superfície (`nav`, `footer` e a
+   * barra de anúncio — ver `SINGLETON_SECTION_TYPES` no contrato).
+   *
+   * Vai no payload porque é decisão de **formulário**: o CRM não pode oferecer
+   * "Nova seção → Cabeçalho" quando já existe um, já que a API recusaria a
+   * criação. O storefront ignora esta chave — o layout dele resolve o cromo
+   * por `find` de qualquer jeito.
+   */
+  singletonTypes: readonly string[]
 }
 
 /**
@@ -166,5 +189,11 @@ export function buildSchema(): ContentSchemaPayload {
     palette: THEME_COLOR_HEXES,
     fonts: THEME_FONTS,
     darkTokens: THEME_DARK_TOKENS,
+    /**
+     * Os tipos únicos, para o CRM não oferecer um segundo cabeçalho. Sai do
+     * contrato pelo mesmo motivo dos campos: é o formulário do painel que
+     * precisa da lista, e ela não pode divergir da regra que a rota aplica.
+     */
+    singletonTypes: SINGLETON_SECTION_TYPES,
   }
 }

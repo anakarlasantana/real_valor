@@ -27,6 +27,7 @@ import {
   type Fonts,
   type Palette,
 } from "./appearance-controls"
+import { ImageInput } from "./image-input"
 
 /**
  * Os tipos do campo vem do **contrato**, não são declarados aqui.
@@ -62,6 +63,7 @@ type HandledKind =
   | "textarea"
   | "number"
   | "select"
+  | "image"
   | "color"
   | "font"
   | "list:text"
@@ -165,6 +167,15 @@ function ObjectListInput({
                     value={item[field.name]}
                     onChange={(next) => update(index, field.name, next)}
                     addLabel={`Adicionar ${field.label.toLowerCase()}`}
+                  />
+                ) : nested === "image" ? (
+                  // O mesmo controle do formulário da seção: item de lista com
+                  // foto (coleção, Instagram) também precisa de envio, e não de
+                  // uma caixa de texto que só aceita chave — a chave é
+                  // consequência do envio, não algo que se digita.
+                  <ImageInput
+                    value={item[field.name]}
+                    onChange={(next) => update(index, field.name, next)}
                   />
                 ) : choices.length > 0 ? (
                   <select
@@ -303,6 +314,16 @@ export const FieldInput = ({
     )
   }
 
+  /* ---- imagem (envio de arquivo) ---- */
+  if (spec.kind === "image") {
+    return (
+      <div className="flex flex-col gap-y-2">
+        {label}
+        <ImageInput value={value} onChange={onChange} />
+      </div>
+    )
+  }
+
   /* ---- textarea ---- */
   if (spec.kind === "textarea") {
     return (
@@ -322,11 +343,18 @@ export const FieldInput = ({
     return (
       <div className="flex flex-col gap-y-2">
         {label}
+        {/*
+          A faixa vem do CAMPO (`min`/`max`/`step` no contrato), não deste
+          editor: era daqui que todo número herdava o 0 a 1 do `overlay` do
+          hero, e um campo novo — o limite de itens de uma vitrine — ficaria
+          impossível de preencher. Campo sem faixa é um número livre; a rota
+          admin cobra exatamente a mesma faixa.
+        */}
         <Input
           type="number"
-          step="0.01"
-          min="0"
-          max="1"
+          step={spec.step ?? 1}
+          min={spec.min}
+          max={spec.max}
           value={String(value ?? "")}
           onChange={(e) => onChange(Number(e.target.value))}
         />
