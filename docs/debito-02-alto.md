@@ -142,7 +142,9 @@ destino quebrado. **Corrigir 2.1 antes.**
 
 **Status: o rodapé entrou no CMS em 2026-09-26; resta a superfície institucional.**
 
-**Evidência:** todos os blocos têm `surface: "home"` (`seed-content.ts:26`) — inclusive o `nav` e
+**Evidência:** todos os blocos são gravados com `surface: "home"` (ver
+`backend/src/modules/content/restore.ts`, que é quem cria `nav` e `footer` com as âncoras padrão) —
+inclusive o `nav` e
 o `footer`, que não são seções da home e quem os renderiza é o layout. Só
 `app/[countryCode]/(main)/page.tsx` consome `getHomeSections()` como corpo de página; as partes
 de cromo saem do mesmo payload via `headerSections()` / `footerSections()`. O rodapé agora é o
@@ -154,37 +156,120 @@ superfície institucional — não há rota nem bloco para Sobre/Contato.
 institucionais continuam exigindo deploy — o lojista edita a maior parte da loja, mas não uma
 página de Sobre. Este é o mesmo problema do item 3.3, listado aqui porque é o teto da integração.
 
-#### 2.5.4 Sem upload de imagem — a liberação do CMS depende de deploy
+#### 2.5.4 Sem upload de imagem — resolvido
 
-**Evidência:** todos os campos de imagem do contrato são `kind: "text"` guardando um **path**
-(ex.: `imageUrl: "/brand/hero.jpg"`, em `frontend/public/brand/`), como explica
-`defaults.ts:11-14`.
+**Status: resolvido em 2026-09-28.** O CMS deixa de depender de deploy para trocar foto.
 
-**Impacto:** o caminho é *de mão única*. O lojista consegue **trocar** a imagem se souber a URL
-de um arquivo que já esteja publicado, mas **não tem como subir** a foto nova. Na prática, trocar
-o hero exige um desenvolvedor publicando em `frontend/public/brand` — a promessa de
-"mudar imagem sem deploy" só vale para o caso restrito de arquivo já existente.
+O que entrou:
 
-**Ação necessária:** endpoint de upload no admin (medusa `File Module` / S3) e o campo de imagem
-passando a devolver a URL do arquivo enviado. Este é o item que **de fato destrava** o CMS para
-o lojista.
+1. **Provider de arquivos registrado.** `@medusajs/file-local` passou a ser dependência declarada
+   do backend (era só transitiva — funcionava por hoisting e quebraria em silêncio num upgrade) e
+   está registrada como **provider** do módulo `file` em `medusa-config.ts`. Antes disso não havia
+   provider nenhum: o painel nativo também não conseguia subir foto de produto.
+2. **O valor gravado é a CHAVE do arquivo**, não a URL. `POST /admin/uploads` devolve
+   `{ id: "1790-hero.jpg", url: "http://localhost:9000/static/1790-hero.jpg" }`, e o campo guarda o
+   `id`. A URL tem o endereço de quem respondeu o upload dentro dela: gravada, o conteúdo passaria
+   a apontar para `localhost:9000` e quebraria quando a loja mudasse de domínio.
+3. **Campos de imagem viraram `kind: "image"`** (`hero`, `editorial`, itens de coleção e do
+   Instagram) e o editor do CRM ganhou envio, prévia e remoção (`image-input.tsx`).
+4. **A loja publica o arquivo no próprio origem**: `resolveMediaUrl`
+   (`frontend/src/lib/util/media.ts`) traduz chave → `/uploads/<chave>`, e o `next.config.js`
+   reescreve para `<MEDUSA_BACKEND_URL>/static/<chave>`. Sem isso o otimizador do `next/image` —
+   que roda **dentro** do container do storefront — não alcança o backend (`localhost:9000` lá
+   dentro é o próprio container) e a foto some, mesmo com o arquivo no ar.
+5. **O disco é volume** (`real_valor_uploads:/app/static`, nos dois modos): sem ele todo upload
+   desapareceria na próxima recriação do container.
 
-#### 2.5.5 O conteúdo não está versionado no seed principal
+**Comprovado em 2026-09-28 (ambiente local, tudo em container):**
 
-**Evidência:** `backend/src/scripts/seed.ts` não referencia `content` nem chama
-`seedContent`. O CMS depende do script dedicado `seed-content.ts`.
+```bash
+# upload pela API do admin (mesma rota que o controle do CRM usa)
+curl -s -X POST localhost:9000/admin/uploads -H "Authorization: Bearer $TOKEN" \
+  -F 'files=@teste.png'
+# {"files":[{"id":"1790641079181-rv-teste.png","url":"http://localhost:9000/static/1790641079181-rv-teste.png"}]}
 
-**Impacto:** provisionar o ambiente pelo caminho padrão (`seed.ts`) deixa a tabela
-`content_block` **vazia**. O frontend não quebra — `lib/data/content.ts:53` cai em
-`DEFAULT_HOME_SECTIONS` — mas o admin abre **sem nenhuma seção** e o lojista não tem o que
-editar. O sintoma ("o CMS está vazio") não aponta para a causa (seed diferente).
+curl -s -o /dev/null -w '%{http_code}' localhost:9000/static/1790641079181-rv-teste.png   # 200 image/png
+curl -s -o /dev/null -w '%{http_code}' localhost:8000/uploads/1790641079181-rv-teste.png  # 200 image/png (rewrite)
+curl -s -o /dev/null -w '%{http_code}' \
+  'localhost:8000/_next/image?url=%2Fuploads%2F1790641079181-rv-teste.png&w=640&q=75'      # 200 image/png (otimizador)
 
-**Ação necessária:** chamar o seed de conteúdo ao final de `seed.ts`, ou documentar
-explicitamente que os dois scripts são necessários no provisionamento.
+# conteúdo: chave no banco -> imagem na home, sem conversão manual
+curl -s -X PATCH 'localhost:9000/admin/content?id=hero' -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"imageUrl":"1790641079181-rv-teste.png"}'
+curl -s localhost:8000/br | grep -o 'url=%2Fuploads%2F[^"&]*'
+# url=%2Fuploads%2F1790641079181-rv-teste.png
+```
 
-#### 2.5.6 `POST /admin/content` não cria seção com `title` obrigatório no contrato
+**O que continua aberto (não é mais bloqueio):** o provider é o **local** — em produção o alvo é
+S3, e trocar é mudar o item de `providers` no `medusa-config.ts` (o banco guarda a chave, então
+nenhum conteúdo migra). A foto de **produto** subida pelo painel nativo ainda guarda a URL
+absoluta do backend: os cards passam a funcionar quando consumirem `resolveMediaUrl` (bloco 3).
 
-**Evidência (2026-09-26, ambiente local):**
+**Evidência (antes, 2026-09-26):** todos os campos de imagem do contrato eram `kind: "text"`
+guardando um **path** (ex.: `imageUrl: "/brand/hero.jpg"`, em `frontend/public/brand/`), como
+explica `defaults.ts:11-14`.
+
+**Impacto (antes):** o caminho era *de mão única*. O lojista conseguia **trocar** a imagem se
+soubesse a URL de um arquivo já publicado, mas **não tinha como subir** a foto nova. Na prática,
+trocar o hero exigia um desenvolvedor publicando em `frontend/public/brand` — a promessa de
+"mudar imagem sem deploy" só valia para o caso restrito de arquivo já existente.
+
+**Ação necessária (feita em 2026-09-28):** endpoint de upload no admin (Medusa `File Module`) e o
+campo de imagem passando a devolver o arquivo enviado.
+
+#### 2.5.5 O conteúdo não está versionado no seed principal — resolvido
+
+**Status: resolvido em 2026-09-28.** O `make seed` passou a semear o conteúdo, e o CRM ganhou
+"Restaurar padrão" para o banco que já subiu vazio.
+
+`seed-content.ts` agora é uma casca fina sobre `modules/content/restore.ts` — a **mesma** função
+que a rota `POST /admin/content/restore` chama —, e o alvo `seed` do Makefile roda
+`yarn seed` → `yarn seed-content` → `yarn seed-schema`. Uma base nova nasce com a vitrine montada,
+sem ninguém abrir o painel; o botão "Restaurar padrão" cobre o caso de uma base que já subiu vazia
+(ou de uma seção apagada por engano), porque nos dois o efeito é criar **só o que falta**.
+
+**Comprovado em 2026-09-28:** com a tabela `content_block` vazia (nove `DELETE` pela API),
+`POST /admin/content/restore` respondeu
+`{"created":["nav","announcement","hero","benefits","collections","featured","editorial","instagram","footer"],"kept":0}`
+e a home voltou a renderizar o conteúdo do banco; repetir o POST devolve `{"created":[],"kept":9}`.
+Durante a janela vazia a loja **não** quebrou: o fallback `DEFAULT_HOME_SECTIONS` do storefront
+manteve a vitrine de pé (HTTP 200).
+
+**Evidência (antes):** `backend/src/scripts/seed.ts` não referenciava `content` nem chamava
+`seedContent`. O CMS dependia do script dedicado `seed-content.ts`, que **nenhum alvo chamava**.
+
+**Impacto (antes):** provisionar o ambiente pelo caminho padrão (`seed.ts`) deixava a tabela
+`content_block` **vazia**. O frontend não quebrava — `lib/data/content.ts` cai em
+`DEFAULT_HOME_SECTIONS` — mas o admin abria **sem nenhuma seção** e o lojista não tinha o que
+editar. O sintoma ("o CMS está vazio") não apontava para a causa (seed diferente).
+
+#### 2.5.6 `POST /admin/content` não cria seção com `title` obrigatório no contrato — resolvido
+
+**Status: resolvido em 2026-09-28.** A divisão entre coluna e conteúdo passou a ser decidida pelo
+**schema do tipo**, e não pelo nome da chave (`backend/src/modules/content/payload.ts`).
+
+O erro era pior do que o POST: o PATCH gravava o `title` na coluna e respondia 200, deixando
+`data.title` — o texto que a loja desenha — intacto. O lojista editava "Título", lia "Conteúdo
+salvo" e a vitrine não mudava. Comprovado antes da correção:
+
+```bash
+curl -s -X PATCH 'localhost:9000/admin/content?id=editorial' -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"title":"TITULO NOVO"}'
+# 200
+docker compose exec -T postgres psql -U real_valor -d real_valor_db -tAc \
+  "select data->>'title', title from content_block where id='editorial'"
+# A alfaiataria que valoriza você, não o seu status. | TITULO NOVO   <- coluna mudou, conteúdo não
+```
+
+Depois da correção, o mesmo PATCH muda `data.title` e **não** encosta na coluna (a coluna é rótulo
+de listagem, e o CRM nem a mostra). `collections`, `featured`, `editorial` e `instagram` criam por
+POST — e a seção nova nasce preenchida com o conteúdo padrão do tipo
+(`DEFAULT_SECTION_DATA`), então a validação estrita continua valendo.
+
+Cobertura: `backend/src/modules/content/__tests__/payload.unit.spec.ts` (8 casos, incluindo
+"campo do tipo ganha do nome da coluna", `enabled: "false"` e "não muda o corpo recebido").
+
+**Evidência (antes, 2026-09-26):**
 
 ```bash
 curl -s -X POST localhost:9000/admin/content -H "Authorization: Bearer $TOKEN" \
@@ -193,20 +278,86 @@ curl -s -X POST localhost:9000/admin/content -H "Authorization: Bearer $TOKEN" \
 # 400: Campo obrigatório ausente: "title".
 ```
 
-`splitPayload` (`backend/src/api/admin/content/route.ts:93`) retira `title` do corpo para a coluna
-`content_block.title`, e o `validateData` valida o que sobrou contra o contrato. Só que
-`collections`, `featured`, `editorial` e `instagram` têm `title` **também** como campo obrigatório do
-`data` — então o POST desses quatro tipos é impossível: o campo some do `data` antes da validação.
-`benefits` (sem obrigatório) funciona, e foi por isso que o problema não apareceu antes.
+`splitPayload` retirava `title` do corpo para a coluna `content_block.title`, e o `validateData`
+validava o que sobrava contra o contrato. Só que `collections`, `featured`, `editorial` e
+`instagram` têm `title` **também** como campo obrigatório do `data` — então o POST desses quatro
+tipos era impossível, e no PATCH a edição era silenciosamente descartada. `benefits` (sem
+obrigatório) funcionava, e foi por isso que o problema não apareceu antes.
 
-O `title` da coluna, aliás, não aparece em saída nenhuma: `listSections` achata apenas
-`id`/`enabled`/`position`/`type` + `data`, e o frontend lê o título de `data.title`.
+**Ação necessária (feita):** manter `title` no `data` quando o contrato do tipo o declara, e cobrir
+com casos de teste por tipo.
 
-**Impacto hoje:** contido — a página do admin só faz PATCH (editar seção existente) e o seed grava
-pelo service, não pela rota. Vira bloqueador no dia em que o CRM ganhar "criar seção".
+#### 2.5.7 Ordem da vitrine: cromo reordenável e gravação sem confirmação — resolvido
 
-**Ação necessária:** manter `title` no `data` quando o contrato do tipo o declara obrigatório (ou
-aposentar a coluna `title`, que já não é lida por ninguém), e cobrir com um caso de POST por tipo.
+**Status: resolvido em 2026-09-28.**
+
+O sintoma relatado foi "a ordem não chega na loja". **Não era isso** — foi medido ao vivo, e a
+ordem chega:
+
+```bash
+curl -s -X PATCH 'localhost:9000/admin/content?id=editorial' -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"position":25}'
+# a home mudou de ordem em 2,2 s, sem nenhum comando manual:
+#   antes   hero, benefits, collections, featured, editorial, instagram
+#   depois  editorial, hero, benefits, collections, featured, instagram
+```
+
+O que faltava era o resto do pedido: (1) as setas **gravavam sozinhas**, então nada na tela dizia
+que a loja já tinha mudado; (2) a lista misturava cromo e vitrine, e oferecer seta no cabeçalho
+promete um movimento que a loja não faz; (3) sem prévia, "salvar" e "publicar" eram o mesmo clique.
+
+O que entrou:
+
+1. **As setas viram ordem pendente na tela** (`pendingOrder`), com barra "Ordem alterada — ainda não
+   salva" e os botões **Salvar ordem** / **Descartar**. Descartar não é decoração: subir e descer a
+   mesma seção **não** acende a barra (a ordem pendente é comparada com a gravada) e salvar sem
+   diferença não gera requisição. O numeral da lista passa a mostrar a ordem **que a seção vai ter**
+   enquanto a alteração está pendente — o número gravado deixaria de corresponder ao que se vê.
+2. **O campo "Ordem" saiu do formulário.** Com as setas e o "Salvar ordem", um número digitável era
+   um terceiro dono da mesma decisão — e o pior deles: um formulário aberto desde antes de uma
+   reordenação devolvia a posição velha no `PATCH`. O `save()` deixou de mandar `position`: quem
+   manda na ordem é a lista. O que ficou no lugar é o **numeral** da seção (`Badge`), ao lado do
+   rótulo.
+3. **O formulário da seção ganhou a barra "Alterações não salvas"**, com **Salvar** e **Descartar**,
+   que aparece só quando há diferença entre a tela e o conteúdo gravado. É o par da barra da ordem:
+   salvar deixou de ser um clique que se dá no escuro, e o botão fica no **topo** da seção (os
+   trilhos de aparência esticam o formulário; um botão no fim é um botão que ninguém acha). A
+   comparação vive em `admin/routes/content/form-draft.ts`, com teste — `JSON.stringify` cru diria
+   "alterado" para um campo numérico que o formulário devolve como texto (`"8"` × `8`) e acenderia o
+   aviso sozinho.
+4. **Cromo sem ordem.** `nav`, `announcement` e `footer` — os `singletonTypes` do schema — aparecem
+   com etiqueta **Cromo**, sem setas e sem numeral de ordem. A loja resolve os três por `type`
+   (`announcementSections` / `headerSections` / `footerSections`, em
+   `frontend/src/lib/content/home-sections.ts`), nunca por `position`: mover o cabeçalho na lista do
+   CRM não moveria nada no site.
+5. **A faixa de posições da vitrine começa em 100** (`modules/content/order.ts`,
+   `FIRST_VITRINE_POSITION`), e o cromo fica abaixo dela. É o que impede a renumeração da vitrine —
+   que agora ignora o cromo — de cair em cima dos números do cromo: no estado atual do banco ele
+   ocupa 10, 20 e 90, exatamente onde a vitrine começaria a ser renumerada, e `position` repetida
+   deixa a ordem da lista indefinida a cada carregamento.
+6. **A regra saiu da tela** para `backend/src/modules/content/order.ts`, com
+   `order.unit.spec.ts` (10 casos: faixa, piso numa base semeada antes da regra, `positionFor`,
+   idempotência, "só o que mudou é gravado", nunca repetir posição) e
+   `admin/routes/content/__tests__/form-draft.unit.spec.ts` (9 casos de "está alterado?").
+
+#### 2.5.8 Publicar em duas etapas: rascunho e prévia — aberto
+
+**Status: aberto (pedido do cliente em 2026-09-28).**
+
+Hoje toda ação do CRM — criar, editar, reordenar, remover, subir foto — grava **direto no que a
+loja lê**, e o aviso de revalidação publica em segundos. É rápido, mas não permite o que o lojista
+pediu: **conferir a vitrine antes de publicar**.
+
+Dois desenhos, com custos bem diferentes:
+
+| Desenho | Como funciona | Custo |
+| :--- | :--- | :--- |
+| **Publicado como fotografia** (recomendado) | uma linha `content_publish` guarda as seções publicadas; a loja lê a fotografia e os blocos passam a ser o **rascunho** (o CRM continua gravando neles, sem mudança nenhuma nas ações); "Publicar" copia blocos → fotografia e revalida; a prévia lê os blocos | 1 model + 1 migration + 3 rotas + modo prévia na loja. Rollback vem de graça: republicar uma fotografia antiga |
+| **Rascunho por bloco** | coluna `status` (`draft` / `published`) na `content_block`, e cada ação escreve na cópia de rascunho | mais caro: **toda** ação do CRM muda, a listagem passa a ter duas linhas por seção e a ordenação única vira ordenação por status |
+
+Duas decisões antes de implementar: **como a prévia abre** (cookie de draft mode do Next com link
+assinado, ou `?preview=<token>` na URL) e **o que acontece com duas abas abertas** — o rascunho é da
+vitrine inteira, então a última gravação vence, e isso precisa de aviso na tela.
 
 ---
 

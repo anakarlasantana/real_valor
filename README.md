@@ -140,8 +140,9 @@ make restart PROD=1                     # PROD (todos)
 # Reprocessar migrations manualmente (ex.: após um git pull com novas migrations)
 make migrate
 
-# Popular o catálogo
-# Idempotente: roda em cima de uma base já semeada sem duplicar nem quebrar.
+# Popular catálogo, conteúdo da vitrine e o registro do schema do CRM.
+# Idempotente: roda em cima de uma base já semeada sem duplicar nem quebrar
+# (o conteúdo só cria as seções que faltam — não encosta no que o CRM editou).
 # No fim imprime a chave do storefront — ponha no `.env` da raiz como
 # NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY.
 make seed
@@ -224,6 +225,33 @@ Os dois repos seguem o **mesmo padrão de Dockerfile**: `deps` (instala tudo, um
 O débito técnico está em quatro assuntos, por severidade — bloqueadores, alto, médio/baixo e as
 armadilhas de ambiente Docker —, cada item com evidência e impacto.
 
+### Conteúdo da vitrine no CRM
+
+O painel (`/painel` → **Conteúdo da vitrine**) edita a loja sem deploy:
+
+| O que | Como |
+| :--- | :--- |
+| Copy, links, imagens e aparência das seções | os campos vêm do contrato — campo novo no `contract.ts` aparece no formulário (`make gen` + `make seed-schema`) |
+| Ordem | setas na listagem **só na vitrine**; a mudança fica na tela até "Salvar ordem", que renumera de 100 em diante (a faixa abaixo de 100 é do cromo) e grava só o que mudou. O numeral da seção aparece ao lado do rótulo — o campo "Ordem" saiu do formulário |
+| Criar seção | "Nova seção" escolhe tipo e âncora; a seção nasce com o conteúdo padrão do tipo e entra no fim |
+| Remover seção | lixeira na linha, com confirmação — não há desfazer |
+| Cabeçalho, rodapé e barra de anúncio | são blocos como os outros, no mesmo lugar, e **únicos**: o segundo não é oferecido. Aparecem marcados como **Cromo** e não têm setas nem campo "Ordem" — quem os posiciona é a moldura da loja, em todas as rotas, e a loja os resolve por tipo |
+| Restaurar o padrão | recria as seções que faltam (é o mesmo que `yarn seed-content` faz dentro do `make seed`); não altera o que já existe |
+| Salvar a edição de uma seção | a barra “Alterações não salvas” aparece no topo do formulário quando algo mudou, com **Salvar** e **Descartar** — sem alteração, não há o que salvar |
+| Fotos | envio pelo botão do campo de imagem; o valor gravado é a **chave** do arquivo |
+
+**Fotos.** O arquivo vai para o provider `@medusajs/file-local`, no volume `real_valor_uploads`
+(montado em `/app/static`), e o storefront o serve no **próprio origem** — `/uploads/<chave>`,
+reescrito para o backend em `frontend/next.config.js`. Mesmo origem é o que faz o otimizador do
+`next/image` funcionar: ele roda dentro do container do storefront, onde `localhost:9000` é o
+próprio container. Trocar por S3 é trocar o `providers` do módulo `file` em
+`backend/medusa-config.ts` — o banco guarda a chave, então nenhum conteúdo precisa migrar.
+
+**Ao salvar, a loja atualiza na hora.** O backend avisa o storefront
+(`POST /api/revalidate?tag=content`) usando `FRONTEND_URL` e o **mesmo** `REVALIDATE_SECRET` do
+frontend. Sem essas duas variáveis o aviso é pulado e nada quebra: a loja se atualiza sozinha
+dentro da janela de 60s do cache.
+
 ### Contrato de conteúdo: uma fonte, um artefato
 
 O contrato (tipos das seções, listas do tema e conteúdo padrão) existe **só** em
@@ -264,8 +292,8 @@ git config core.hooksPath .githooks   # uma vez por clone
 | :--- | :--- | :--- |
 | Commit (hook) + CI | `make check` | artefato do contrato em dia + **80 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ CSS, ⇔ fontes, ⇔ registro do schema). **Não instala nada**: os dois scripts leem arquivos com Node puro |
 | CI | `make types` | `tsc` dos dois pacotes (**0 erros**). Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI | `yarn test:unit` (em `backend/`) | **37 testes** dos invariantes do contrato, do conteúdo padrão, do registro do schema e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
-| CI | `yarn test` (em `frontend/`) | **5 testes** da tolerância da loja ao tipo desconhecido (`vitest`) |
+| CI | `yarn test:unit` (em `backend/`) | **45 testes** dos invariantes do contrato, do conteúdo padrão, do registro do schema, da divisão coluna×conteúdo do corpo do CRM e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| CI | `yarn test` (em `frontend/`) | **12 testes** da tolerância da loja ao tipo desconhecido e do `src` das imagens do CMS (`resolveMediaUrl`) — `vitest` |
 | CI | `make check-schema` | o registro do `content_schema` conferido contra o contrato, num Postgres efêmero |
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |
 
