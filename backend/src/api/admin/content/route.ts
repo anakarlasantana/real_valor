@@ -3,330 +3,35 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { CONTENT_MODULE } from "../../../modules/content"
 import {
-  CURATION_FIELD,
   readCuration,
   withCuration,
   writeCuration,
-  type QueryGraph,
   type RemoteLink,
 } from "../../../modules/content/curation"
+import { isSingletonSectionType } from "../../../modules/content/contract"
+import { DEFAULT_SECTION_DATA } from "../../../modules/content/defaults"
 import {
   FILTERS_FIELD,
-  listCategoryRefs,
   readCategoryCatalog,
   readChips,
   withFilters,
   writeFilters,
 } from "../../../modules/content/filters"
-import {
-  isSingletonSectionType,
-  type FieldKind,
-} from "../../../modules/content/contract"
-import { DEFAULT_SECTION_DATA } from "../../../modules/content/defaults"
+import { nextPosition } from "../../../modules/content/order"
 import { splitPayload } from "../../../modules/content/payload"
-import { revalidateContent } from "../../../modules/content/revalidate"
-import type { ContentSchemaPayload } from "../../../modules/content/schema"
+import {
+  readPosition,
+  resolveCategoryIds,
+  resolveProductIds,
+  resolveSectionId,
+} from "../../../modules/content/resolvers"
+import { notifyStorefront } from "../../../modules/content/revalidate"
 import type ContentModuleService from "../../../modules/content/service"
-
-/**
- * Os `kind` que guardam um valor de `options` — escolha dentro de uma lista
- * fechada. `color` e `font` são a mesma coisa que `select` para a
- * validação: mudam só no desenho do editor (bolinha de cor, lista de fontes
- * com prévia). Quem garante que eles não viram texto livre é esta lista.
- */
-const CHOICE_KINDS: readonly FieldKind[] = ["select", "color", "font"]
-
-/**
- * Validação de entrada do admin contra `contract.ts`.
- *
- * Devolve a lista de erros legíveis, ou `[]` se estiver válido.
- *
- * `strict` controla os campos obrigatórios:
- *   true  → POST. Todo campo obrigatório precisa vir no corpo.
- *   false → PATCH, que é parcial. Um campo ausente continua valendo o
- *           que já está gravado, então só se valida o que foi enviado.
- *           Exigir os obrigatórios aqui acusaria erro em qualquer
- *           edição de um campo só.
- */
-function validateData(
-  type: string,
-  data: Record<string, unknown>,
-  {
-    strict,
-    fields,
-    references = {},
-  }: {
-    strict: boolean
-    fields: ContentSchemaPayload["fields"]
-    /**
-     * Os campos de contrato que são **referência** (`filters`, os chips de
-     * categoria): vieram no corpo, mas não vivem no `data` — quem os tira de lá
-     * é o `splitPayload` (`modules/content/payload.ts`).
-     *
-     * Eles entram na conferência por dois motivos: um `filters` num tipo que não
-     * tem o campo é erro (como qualquer chave desconhecida), e o `kind` do campo
-     * vale para ele igual — `list:category` é lista, e uma lista que não é lista
-     * é o mesmo defeito de um `items` que não é lista.
-     */
-    references?: Record<string, unknown>
-  }
-): string[] {
-  const errors: string[] = []
-  // `?? []` e a checagem abaixo existem por causa de um caso real: a entrada
-  // `footer` saiu de `SECTION_FIELDS` e o `map` estourava com 500 ("Cannot
-  // read properties of undefined"), que para o lojista é só "ocorreu um erro
-  // desconhecido" — e nenhum guard reprovava, porque a paridade tolera a
-  // chave faltando dos dois lados. Tipo sem campos é bug de contrato, não
-  // dado ruim: melhor uma mensagem que aponta o arquivo.
-  // Os campos vêm do **registro no banco** (`service.getContract()`), e não do
-  // `SECTION_FIELDS` do código: é o registro que diz o que o CRM pode gravar.
-  // O `contract.ts` só entra por baixo, quando o registro não existe.
-  const specs = fields[type] ?? []
-
-  if (!specs.length) {
-    return [
-      `O tipo "${type}" não tem campos no schema gravado ` +
-        `(backend/src/modules/content/schema.ts).`,
-    ]
-  }
-
-  const known = new Set(specs.map((f) => f.name))
-
-  for (const key of Object.keys(data)) {
-    if (!known.has(key)) {
-      errors.push(`Campo desconhecido para "${type}": "${key}".`)
-    }
-  }
-
-  // A referência passa pela mesma porta: `filters` num tipo que não declara o
-  // campo é campo desconhecido — a seção não tem chips, e gravar o link dela
-  // seria uma linha que nenhum render lê.
-  for (const key of Object.keys(references)) {
-    if (!known.has(key)) {
-      errors.push(`Campo desconhecido para "${type}": "${key}".`)
-    }
-  }
-
-  for (const spec of specs) {
-    // O valor pode estar no `data` ou na referência — os dois chegaram no corpo,
-    // e o `kind` do campo decide o que fazer com ele.
-    const inData = Object.prototype.hasOwnProperty.call(data, spec.name)
-    const present =
-      inData || Object.prototype.hasOwnProperty.call(references, spec.name)
-    const value = inData ? data[spec.name] : references[spec.name]
-
-    // Ausente num PATCH não é erro: mantém o valor atual.
-    if (!present && !strict) {
-      continue
-    }
-
-    if (value === undefined || value === null || value === "") {
-      if (spec.required) {
-        errors.push(`Campo obrigatório ausente: "${spec.name}".`)
-      }
-      continue
-    }
-
-    if (spec.kind === "number") {
-      if (typeof value !== "number") {
-        errors.push(`Campo "${spec.name}" deve ser número.`)
-      } else {
-        // A faixa vem do CAMPO (`min`/`max` no contrato), não daqui: o
-        // `<input>` do painel mostra a mesma, e um campo numérico novo nasce
-        // com a faixa que precisa. Antes, a única faixa era a do `overlay` do
-        // hero, escrita nesta função — e qualquer número novo herdava 0 a 1.
-        if (typeof spec.min === "number" && value < spec.min) {
-          errors.push(`Campo "${spec.name}" não pode ser menor que ${spec.min}.`)
-        }
-
-        if (typeof spec.max === "number" && value > spec.max) {
-          errors.push(`Campo "${spec.name}" não pode ser maior que ${spec.max}.`)
-        }
-      }
-    }
-
-    if (
-      CHOICE_KINDS.includes(spec.kind) &&
-      !spec.options?.includes(value as never)
-    ) {
-      // A opção vazia não se escreve: sem o "(vazio)" a mensagem sairia
-      // começando por vírgula ("deve ser um de: , rose, …").
-      const options = (spec.options ?? []).map((option) =>
-        option === "" ? "(vazio = padrão do tema)" : option
-      )
-
-      errors.push(`Campo "${spec.name}" deve ser um de: ${options.join(", ")}.`)
-    }
-
-    if (spec.kind.startsWith("list:") && !Array.isArray(value)) {
-      errors.push(`Campo "${spec.name}" deve ser uma lista.`)
-    }
-  }
-
-  return errors
-}
-
-/**
- * A curadoria que veio no corpo: lista de `id` de produto, sem repetição, e
- * todos existentes.
- *
- * `undefined` é "não veio" (não mexe); `[]` é "esvazia" — e a diferença é o que
- * faz um PATCH de texto não apagar a curadoria de ninguém.
- *
- * A **existência** é conferida aqui, e não pelo banco, porque a tabela do link
- * não tem chave estrangeira (é gerada pelo módulo de links do Medusa, que não as
- * cria — ver `modules/content/curation.ts`). Sem esta checagem, um id inventado
- * viraria uma linha que nenhuma query de produto hidrata: um buraco silencioso na
- * vitrine, que é o defeito que a curadoria como link veio evitar.
- */
-async function resolveProductIds(
-  value: unknown,
-  query: QueryGraph
-): Promise<{ ids?: string[]; error?: string }> {
-  if (value === undefined) {
-    return {}
-  }
-
-  if (
-    !Array.isArray(value) ||
-    value.some((id) => typeof id !== "string" || !id.trim())
-  ) {
-    return {
-      error: `Campo "${CURATION_FIELD}" deve ser uma lista de ids de produto.`,
-    }
-  }
-
-  const ids = value as string[]
-
-  if (new Set(ids).size !== ids.length) {
-    return {
-      error:
-        `Campo "${CURATION_FIELD}" tem id repetido: a curadoria é uma lista ` +
-        `ordenada, e cada produto aparece uma vez.`,
-    }
-  }
-
-  if (!ids.length) {
-    return { ids }
-  }
-
-  const { data } = await query.graph({
-    entity: "product",
-    fields: ["id"],
-    filters: { id: ids },
-  })
-  const found = new Set((data as { id: string }[]).map((product) => product.id))
-  const missing = ids.filter((id) => !found.has(id))
-
-  if (missing.length) {
-    return {
-      error:
-        `A curadoria aponta produto que não existe (ou foi removido): ` +
-        `${missing.join(", ")}.`,
-    }
-  }
-
-  return { ids }
-}
-
-/**
- * Os chips que vieram no corpo: lista de `id` de categoria, sem repetição, e
- * todas existentes.
- *
- * Mesma leitura da curadoria: `undefined` é "não veio" (não mexe nos chips, o
- * PATCH que só mudou um texto) e `[]` é "esvazia" — a vitrine volta a mostrar o
- * catálogo inteiro.
- *
- * A **existência** é conferida aqui, e não pelo banco, porque a tabela do link
- * não tem chave estrangeira (é gerada pelo módulo de links do Medusa — ver
- * `modules/content/filters.ts`). Sem esta checagem, um id inventado viraria uma
- * linha que nenhuma leitura de categoria hidrata, ou seja, um chip que não
- * filtra nada — o mesmo buraco silencioso que o chip "Blazers" era.
- *
- * O produto, ao lado, tem a mesma função e o mesmo motivo: são as duas
- * referências da seção (`productIds` e `filters`), e o que muda entre elas é só
- * o que a lista aponta.
- */
-async function resolveCategoryIds(
-  value: unknown,
-  query: QueryGraph
-): Promise<{ ids?: string[]; error?: string }> {
-  if (value === undefined) {
-    return {}
-  }
-
-  if (
-    !Array.isArray(value) ||
-    value.some((id) => typeof id !== "string" || !id.trim())
-  ) {
-    return {
-      error: `Campo "${FILTERS_FIELD}" deve ser uma lista de ids de categoria.`,
-    }
-  }
-
-  const ids = value as string[]
-
-  if (new Set(ids).size !== ids.length) {
-    return {
-      error:
-        `Campo "${FILTERS_FIELD}" tem id repetido: os chips são uma lista ` +
-        `ordenada, e cada categoria aparece uma vez.`,
-    }
-  }
-
-  if (!ids.length) {
-    return { ids }
-  }
-
-  // A leitura é a mesma que a dos chips (`listCategoryRefs`), e de propósito: um
-  // id que ela não devolve é exatamente o id que não viraria chip nenhum.
-  const refs = await listCategoryRefs(query, ids)
-  const found = new Set(refs.map((ref) => ref.categoryId))
-  const missing = ids.filter((id) => !found.has(id))
-
-  if (missing.length) {
-    return {
-      error:
-        `Os filtros apontam categoria que não existe (ou foi removida): ` +
-        `${missing.join(", ")}.`,
-    }
-  }
-
-  return { ids }
-}
-
-/**
- * Avisa o storefront para tirar o conteúdo do cache (`/api/revalidate`).
- *
- * Sem `await` de propósito: a gravação já está feita e a resposta ao CRM não
- * tem por que esperar o storefront. A função não lança (ver
- * `modules/content/revalidate.ts`), então não fica promise rejeitada solta.
- */
-function notifyStorefront(req: MedusaRequest): void {
-  void revalidateContent(req.scope.resolve(ContainerRegistrationKeys.LOGGER))
-}
-
-/** Formato de saída — achatado, igual ao da rota pública. */
-function toSection(block: {
-  id: string
-  enabled: boolean
-  position: number
-  fixed: boolean
-  type: string
-  data: unknown
-}) {
-  return {
-    id: block.id,
-    enabled: block.enabled,
-    position: block.position,
-    // O CRM lê esta coluna para saber se a seção tem ordem: é ela que decide o
-    // numeral × a etiqueta "Fixo" e a existência das setas (ver
-    // `models/content-section.ts`).
-    fixed: block.fixed,
-    type: block.type,
-    ...((block.data ?? {}) as Record<string, unknown>),
-  }
-}
+import {
+  isKnownType,
+  validateData,
+} from "../../../modules/content/validation"
+import { toSection } from "../../../modules/content/view"
 
 /**
  * GET /admin/content — todas as seções, inclusive desabilitadas.
@@ -399,93 +104,6 @@ export async function GET(
      */
     schemaSource: stored.source,
   })
-}
-
-/**
- * O `type` que a API aceita.
- *
- * Sai do **registro** (`schema.types`), não de `isSectionType`: um tipo novo
- * gravado no schema passa a ser gravável sem tocar em código — que é o ponto de
- * o schema ser dado. O contrato segue sendo o bootstrap do registro.
- */
-function isKnownType(
-  type: unknown,
-  schema: ContentSchemaPayload
-): type is string {
-  return (
-    typeof type === "string" &&
-    (schema.types as readonly string[]).includes(type)
-  )
-}
-
-/** A posição da próxima seção: depois da última, com a mesma folga do seed. */
-function nextPosition(sections: { position: number }[]): number {
-  return Math.max(0, ...sections.map((section) => section.position)) + 10
-}
-
-/**
- * A `position` do corpo, quando ela veio.
- *
- * `Number("abc")` é `NaN`, e `NaN` numa coluna `numeric` do Postgres **não** é
- * erro — quem quebra é a ordenação da vitrine, que passa a ser indefinida sem
- * nada acusar. O corpo chega como JSON de terceiros, então o valor é conferido
- * aqui: ausente segue o fluxo de cada rota (no POST, a seção vai para o fim);
- * não-numérico é 400 com o nome do campo.
- */
-function readPosition(value: unknown): { position?: number; error?: string } {
-  if (value === undefined || value === null) {
-    return {}
-  }
-
-  const position = Number(value)
-
-  if (!Number.isFinite(position)) {
-    return { error: 'Campo "position" deve ser um número.' }
-  }
-
-  return { position }
-}
-
-/**
- * A âncora (`id`) da seção nova.
- *
- * `id` é a chave do bloco **e** o fragmento que o menu usa (`/#hero`, o link
- * "Início" do cabeçalho padrão). Daí as duas regras: formato de apelido (só
- * minúsculas, números e hífen — ele vira fragmento de URL) e nenhuma colisão,
- * porque dois blocos com o mesmo id deixariam os dois links rolando para a
- * seção errada.
- *
- * Sem `id` no corpo, quem gera é o banco (o comportamento de antes, para um
- * bloco criado por script). Com `id`, ele é respeitado — é o que permite ao CRM
- * oferecer a âncora e ao "restaurar seções padrão" recriar `hero`, `nav` e
- * `footer` com os ids que a loja já conhece e para os quais aponta.
- */
-async function resolveSectionId(
-  requested: unknown,
-  service: ContentModuleService
-): Promise<{ id?: string; error?: string }> {
-  if (requested === undefined || requested === null || requested === "") {
-    return {}
-  }
-
-  if (typeof requested !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(requested)) {
-    return {
-      error:
-        'Campo "id" deve ser um apelido em minúsculas, sem espaços ' +
-        '(letras, números e hífen): ele vira a âncora do link, como "/#hero".',
-    }
-  }
-
-  // `listContentSections` (e não `retrieveContentSection`): o `retrieve` de um
-  // id inexistente **lança** um 404 do Medusa ("ContentSection with id: x was
-  // not found"), e aqui o caso "não existe" é o caminho feliz.
-  const taken = await service.listContentSections({ id: requested })
-
-  if (taken.length) {
-    return { error: `Já existe uma seção com o id "${requested}".` }
-  }
-
-  return { id: requested }
 }
 
 /** POST /admin/content — cria uma seção. */
@@ -578,7 +196,14 @@ export async function POST(
     return
   }
 
-  const position = sentPosition ?? nextPosition(sections)
+  // A posição vem da **regra do módulo** (`order.ts`), e não de uma cópia
+  // local: era o `nextPosition` duplicado aqui — uma segunda resposta para a
+  // mesma pergunta. A regra tem o piso da faixa da vitrine, que é o que impede a
+  // seção nova de nascer no meio do cromo (o `fixed` mora abaixo dela), e ela
+  // recebe **só a vitrine**: o cromo não conta, porque a posição dele não decide
+  // nada (a loja resolve o cromo por `type`).
+  const position =
+    sentPosition ?? nextPosition(sections.filter((section) => !section.fixed))
 
   const errors = validateData(type, data, {
     strict: true,
@@ -630,7 +255,7 @@ export async function POST(
     await writeFilters({ link, query, sectionId: created.id, categoryIds })
   }
 
-  notifyStorefront(req)
+  notifyStorefront(req.scope)
 
   res.status(201).json({
     // Os chips da resposta são **relidos** quando o corpo os trouxe: é a mesma
@@ -764,7 +389,7 @@ export async function PATCH(
 
   const chipsAfter = (await readChips(query, [id]))[id]
 
-  notifyStorefront(req)
+  notifyStorefront(req.scope)
 
   res.json({
     section: withFilters(withCuration(toSection(updated), curationAfter), chipsAfter),
@@ -806,7 +431,7 @@ export async function DELETE(
   await link.delete({ [CONTENT_MODULE]: { content_section_id: id } })
   await service.deleteContentSections(id)
 
-  notifyStorefront(req)
+  notifyStorefront(req.scope)
 
   res.json({ id, object: "content_section", deleted: true })
 }

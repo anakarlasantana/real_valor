@@ -12,6 +12,9 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 | `service.ts` | `listSections()`, `getContract()`, `saveContract()` |
 | `curation.ts` | A curadoria de produtos: leitura, escrita e as regras puras |
 | `filters.ts` | Os chips de categoria (a vitrine de destaque): a segunda referência — leitura, escrita, regras puras e a conversão das bases anteriores à R1 |
+| `validation.ts` | A validação de entrada do corpo: `validateData` (o `data` **e** as referências contra o schema do tipo) e `isKnownType` |
+| `resolvers.ts` | Os resolvedores do corpo: a âncora (`id`), a `position`, os ids da curadoria e os ids dos chips — cada um responde `{ valor?, error? }` |
+| `view.ts` | A forma de saída da seção (`toSection`), achatada como a da rota pública |
 | `schema.ts` | Montagem do schema (`buildSchema()`), `SCHEMA_VERSION` e `SCHEMA_KEY` |
 | `contract.ts` | O formato do conteúdo — **bootstrap** do schema |
 | `defaults.ts` | Cópia do protótipo, usada pelo seed e como fallback |
@@ -530,6 +533,15 @@ existe.
 
 `GET /store/content` devolve as seções achatadas, prontas para render, mais a
 versão do schema com que foram gravadas:
+
+**A rota é fina de propósito.** `api/admin/content/route.ts` ficou com os quatro
+handlers — ler o corpo, decidir o status, chamar o módulo e responder. O que ela
+fazia por conta própria mora nos módulos: `validation.ts` (o que o corpo **pode
+dizer**), `resolvers.ts` (o que precisa **existir** antes de gravar), `view.ts` (a
+forma da resposta) e `order.ts` (a posição de uma seção nova, que era uma segunda
+cópia da regra dentro da rota). Duas razões: a regra fica testável sem servidor
+(`validation.unit.spec.ts`), e as duas portas que criam seção passam a responder
+a mesma pergunta do mesmo jeito.
 
 ```json
 { "sections": [ { "id": "hero", "type": "hero", "enabled": true,

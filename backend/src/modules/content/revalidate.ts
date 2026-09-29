@@ -20,13 +20,27 @@
  * consequência. Por isso a função nunca lança e o chamador pode disparar sem
  * `await`.
  */
-import type { Logger } from "@medusajs/types"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import type { Logger, MedusaContainer } from "@medusajs/framework/types"
 
 /** Teto do aviso: a rota do conteúdo não fica presa esperando o storefront. */
 const TIMEOUT_MS = 3000
 
 /** A tag que `getHomeSections` usa no cache (`CONTENT_CACHE_TAG`). */
 const CONTENT_TAG = "content"
+
+/**
+ * O aviso, do jeito que as rotas o usam: sem `await`.
+ *
+ * Mora aqui, e não em cada rota, porque **quatro** portas precisam do mesmo
+ * aviso — as três de `/admin/content` e a de ordenação (R6.5) —, e a
+ * alternativa é cada uma repetir o `void` com o logger do scope. Recebe o
+ * **container** (e não a requisição) porque é tudo de que precisa: quem avisa é
+ * a rota, depois de gravar.
+ */
+export function notifyStorefront(scope: MedusaContainer): void {
+  void revalidateContent(scope.resolve(ContainerRegistrationKeys.LOGGER))
+}
 
 export async function revalidateContent(logger: Logger): Promise<void> {
   const url = process.env.FRONTEND_URL
