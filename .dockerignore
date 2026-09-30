@@ -1,16 +1,19 @@
 # =============================================================================
-# Real Valor — contexto de build da RAIZ
+# Real Valor — contexto de build da RAIZ (os DOIS builds, desde o G5)
 # =============================================================================
-# O contexto de build e enviado ao daemon do Docker. Sem este arquivo, os
-# ~914MB de backend/node_modules, ~598MB de frontend/node_modules e ~31MB de
-# frontend/.next seriam transmitidos a cada `docker build`, tornando o build
+# O contexto de build e enviado ao daemon do Docker. Sem este arquivo, o
+# `node_modules` da raiz (o install e' UNICO desde o G5: ~1GB) e os ~31MB de
+# `frontend/.next` seriam transmitidos a cada `docker build`, tornando o build
 # lento e sujeito a falhas por memoria/espaco em disco.
 #
-# Quem usa ESTE arquivo: o build do backend (`backend/Dockerfile`, que o Compose
-# chama com `context: .` — ele leva o backend e o CRM junto, ver o topo daquele
-# Dockerfile). O storefront tem contexto proprio (`./frontend`), com o
-# `.dockerignore` dele; o antigo `backend/.dockerignore` morreu na R7, quando o
-# contexto deixou de ser `./backend`.
+# Quem usa ESTE arquivo: os DOIS Dockerfiles, que desde o G5 tem o mesmo
+# contexto — a raiz do repositorio. Cada imagem precisa da raiz do workspace
+# (`package.json` + `yarn.lock` + `packages/`), porque o install e' um so':
+#       backend/Dockerfile   -> contexto `.` (leva tambem o CRM, `admin/`)
+#       frontend/Dockerfile  -> contexto `.` (leva tambem `packages/contrato`)
+# O `frontend/.dockerignore` morreu junto: um `.dockerignore` dentro de um
+# subdiretorio e' IGNORADO quando o contexto e' a raiz, e a copia antiga so'
+# escondia essa diferenca.
 # =============================================================================
 
 # Dependencias (reinstaladas dentro da imagem)
@@ -19,11 +22,22 @@
 **/.yarn/install-state.gz
 **/.yarn/unplugged
 
+# Restos do install POR APP (extinto no G5). Se sobrarem na maquina de quem
+# clonou o repositorio antes da unificacao, nao podem entrar na imagem: um
+# `yarn.lock` em `frontend/` faria o Yarn tratar aquele diretorio como projeto
+# proprio e recusar a rodar (`Couldn't find the node_modules state file`). As
+# regras tem UM nivel (`*/`), e nao `**/`, para nao pegarem o `yarn.lock` e o
+# `.yarnrc.yml` da RAIZ, que sao a instalacao unica e PRECISAM entrar.
+*/yarn.lock
+*/.yarnrc.yml
+*/.yarn
+
 # Artefatos de build (gerados dentro da imagem)
 **/.next
 **/.medusa
 **/dist
 **/build
+**/out
 **/.turbo
 **/coverage
 **/jest-coverage
@@ -46,10 +60,14 @@ docs
 .idea
 .run
 
-# O storefront nao entra em NENHUMA imagem a partir daqui: o dele compila no
-# contexto `./frontend`. Sem esta linha, `COPY backend/ .` continuaria correto mas
-# o contexto carregaria o `frontend/src` inteiro em vao.
-frontend
+# O `frontend/` DEIXOU de ser ignorado no G5: os dois builds compartilham este
+# contexto, e `frontend/Dockerfile` copia `frontend/` (o backend continua sem
+# copia-lo — ele so' viaja no contexto).
+#
+# `public/` e `themes/` do storefront NAO podem ser ignorados: os assets da
+# marca sao lidos em runtime pelo servidor standalone e o `themes/default/
+# theme.json` e' importado em tempo de build (`src/lib/theme.ts`, o fallback
+# embutido do tema).
 
 # Uploads do painel: nao entram na imagem (o Dockerfile cria a pasta vazia com
 # o dono certo e o compose monta o volume `real_valor_uploads` por cima). Sem

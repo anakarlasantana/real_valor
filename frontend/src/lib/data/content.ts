@@ -36,11 +36,11 @@ type ContentResponse = {
  * Reads the home content from the backend Content module
  * (`GET /store/content`).
  *
- * The contract and the defaults live in the backend Content module
- * (`backend/src/modules/content/`). The storefront receives a generated copy
- * at `lib/content/contract.generated.ts` — `node scripts/gen-content.mjs`
- * writes it and `make check` fails when it is stale, so there is no second
- * hand-typed source to drift.
+ * The contract and the defaults live in the `@rv/contrato` workspace package
+ * (`packages/contrato/src/`), which this app imports directly — there is no
+ * generated copy and no second hand-typed source to drift. `make check` still
+ * guards what the compiler cannot see (the panel's field shapes, the appearance
+ * values and the theme seed).
  *
  * A content failure must never take the storefront down, so every
  * error path falls back to `DEFAULT_HOME_SECTIONS`.

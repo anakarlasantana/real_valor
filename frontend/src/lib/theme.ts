@@ -39,7 +39,7 @@ import defaultTheme from "../../themes/default/theme.json"
  * A paleta e as fontes ativas, papel por papel.
  *
  * Os dois são `Record` das listas do **contrato** (`THEME_COLOR_TOKENS` e
- * `FONT_ROLES`, via `contract.generated.ts`) e não um objeto digitado aqui:
+ * `FONT_ROLES`, via `@rv/contrato`) e não um objeto digitado aqui:
  * era o segundo lugar onde os seis nomes de cor e os três de fonte existiam, e
  * um token novo no contrato deixava este arquivo para trás sem erro nenhum —
  * a variável CSS saía sem valor e a seção ficava com a cor errada. O

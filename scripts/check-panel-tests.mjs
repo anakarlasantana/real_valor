@@ -61,8 +61,11 @@ function specsOnDisk(dir = PANEL_SRC) {
 function specsTheRunnerSees() {
   // O binário e o config são os mesmos que o alvo `test` do Makefile usa: o que
   // este script mede é a superfície que `make test` executa, não uma parecida.
+  // Desde a G5 o binário vem da RAIZ: o install é único e nenhum dos dois apps
+  // tem `node_modules/.bin` próprio (medido: `backend/node_modules/.bin` nasce
+  // vazio e o `jest` fica em `node_modules/.bin`, na raiz do workspace).
   const output = execFileSync(
-    join(ROOT, "backend", "node_modules", ".bin", "jest"),
+    join(ROOT, "node_modules", ".bin", "jest"),
     ["-c", "jest.config.js", "--listTests"],
     { cwd: PANEL, encoding: "utf8" }
   )

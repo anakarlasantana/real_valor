@@ -5,6 +5,25 @@
 # empacota apenas o servidor e as dependencias realmente usadas, gerando uma
 # imagem final bem menor que `node_modules` completo.
 #
+# -----------------------------------------------------------------------------
+# O CONTEXTO DE BUILD E A RAIZ DO REPOSITORIO (desde o G5)
+# -----------------------------------------------------------------------------
+# O contexto deste build NAO e' `./frontend`: e' a RAIZ do repositorio, a mesma
+# do backend/Dockerfile. O install e' unico (Yarn workspace) e o storefront
+# importa o pacote do contrato (`@rv/contrato`) — os dois vivem fora de
+# `./frontend`. O `.dockerignore` que vale e' `/.dockerignore`; o
+# `frontend/.dockerignore` morreu junto com o contexto antigo (um
+# `.dockerignore` de subdiretorio e' ignorado quando o contexto e' a raiz).
+#
+# Dentro da imagem a arvore e' a do repositorio:
+#     /app            raiz do workspace (package.json, yarn.lock, node_modules)
+#     /app/frontend   o app — WORKDIR do build e do dev (`next.config.js`,
+#                     `themes/`, `public/`, `src/`)
+#     /app/packages   o contrato, resolvido pelo symlink de workspace
+#                     (`node_modules/@rv/contrato`); o `transpilePackages` o
+#                     compila para dentro dos chunks, entao ele nao e' preciso
+#                     em runtime — a saida standalone ja' o contem.
+#
 # ATENCAO: `NEXT_PUBLIC_*` e INLINADO em tempo de BUILD, nao lido em runtime.
 # Trocar NEXT_PUBLIC_MEDUSA_BACKEND_URL exige RECONSTRUIR a imagem — passar
 # um novo valor no `environment:` do compose nao tem efeito no bundle.
@@ -28,7 +47,7 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Estagio 1: deps — dependencias completas (cacheable)
+# Estagio 1: deps — dependencias do WORKSPACE, so' a arvore do storefront
 # -----------------------------------------------------------------------------
 FROM node:22-alpine AS deps
 
@@ -38,12 +57,22 @@ RUN apk add --no-cache libc6-compat python3 make g++ git
 
 WORKDIR /app
 
+# Corepack lê `packageManager` do package.json (yarn@4.12.0) — o da RAIZ do
+# workspace, que desde o G5 e' a unica instalacao.
 RUN corepack enable
 
+# Os MANIFESTOS dos membros do workspace: o Yarn resolve o projeto inteiro
+# para montar uma arvore, e o lockfile cita os tres.
 COPY package.json yarn.lock .yarnrc.yml ./
+COPY backend/package.json ./backend/package.json
+COPY frontend/package.json ./frontend/package.json
+COPY packages/contrato/package.json ./packages/contrato/package.json
 COPY .yarn ./.yarn
 
-RUN yarn install --immutable
+# `workspaces focus` instala APENAS a arvore do storefront (o backend nao entra
+# nesta imagem). O `focus` nao tem `--immutable`: quem confere o lockfile e' o
+# `yarn install --immutable` do CI e do host, sobre o MESMO commit.
+RUN yarn workspaces focus medusa-next
 
 # -----------------------------------------------------------------------------
 # Estagio 2: builder — `next build`
@@ -56,9 +85,20 @@ WORKDIR /app
 
 RUN corepack enable
 
+# As dependencias instaladas no `deps` (o `node_modules` do workspace e o Yarn
+# 4 pinado em `.yarn/releases`, que o `yarn build` precisa para rodar).
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/.yarn ./.yarn
-COPY . .
+
+# A arvore do workspace (sem o backend): a raiz, o pacote do contrato e o
+# storefront — o `next build` le `frontend/` e resolve `@rv/contrato` pelo
+# symlink do workspace, como no repositorio.
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY packages/ ./packages/
+COPY frontend/ ./frontend/
+
+# O build roda do APP (onde estao `next.config.js`, `themes/` e `public/`).
+WORKDIR /app/frontend
 
 # `next.config.js` executa `checkEnvVariables()`, que chama `process.exit(1)`
 # se NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY estiver ausente. Ela precisa existir
@@ -102,12 +142,23 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=8000
 ENV HOSTNAME=0.0.0.0
 
-# A saida standalone agrupa o servidor e as dependencias usadas em
-# `.next/standalone`. `public/` e `.next/static` NAO sao copiados
-# automaticamente e precisam ser trazidos explicitamente.
-COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nextjs /app/public ./public
+# A saida standalone de um WORKSPACE espelha a RAIZ do projeto (medido):
+#
+#     standalone/frontend/server.js   o servidor do app
+#     standalone/node_modules/        as dependencias tracadas
+#     standalone/package.json         a raiz do workspace
+#
+# Ou seja: a saida JA' E' a arvore de `/app` — e e' para `/app` que ela e'
+# copiada, ficando identica ao repositorio. `public/` e `.next/static` NAO sao
+# copiados automaticamente e precisam ser trazidos explicitamente, no lugar em
+# que o servidor os procura (dentro do app).
+#
+# O pacote do contrato NAO precisa ser copiado: o `transpilePackages` o compila
+# DENTRO dos chunks do servidor (medido — a saida standalone nao tem
+# `node_modules/@rv`, e o conteudo padrao aparece em `.next/server/chunks/`).
+COPY --from=builder --chown=nextjs:nextjs /app/frontend/.next/standalone ./
+COPY --from=builder --chown=nextjs:nextjs /app/frontend/.next/static ./frontend/.next/static
+COPY --from=builder --chown=nextjs:nextjs /app/frontend/public ./frontend/public
 
 # `themes/` NAO e copiado para a imagem: desde a R5 a loja le o tema do payload
 # (`GET /store/content?surface=theme`, em `src/lib/data/theme.ts`). A unica
@@ -135,7 +186,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=5 \
 # Habilitar o Corepack resolveria, mas seria uma dependencia desnecessaria: o
 # `server.js` gerado pelo Next nao precisa de Yarn para rodar — ele so precisa
 # de `node` e do `node_modules` que ja esta na imagem.
-CMD ["node", "server.js"]
+# O `server.js` mora DENTRO do app (`standalone/frontend/`), porque o tracing
+# root de um workspace e' a raiz do projeto: o comando roda de `/app`, como o
+# `next start` rodaria do app em desenvolvimento.
+CMD ["node", "frontend/server.js"]
 
 # -----------------------------------------------------------------------------
 # Estagio 4: dev — imagem para DESENVOLVIMENTO (hot reload)
@@ -165,12 +219,18 @@ FROM deps AS dev
 
 WORKDIR /app
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/.yarn ./.yarn
-COPY . .
+# A arvore do workspace (a mesma que o build monta): o pacote do contrato e o
+# frontend. O `node_modules` ja' vem do estagio `deps` — nao ha' COPY
+# redundante dele aqui (era uma camada de ~1GB duplicada).
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY packages/ ./packages/
+COPY frontend/ ./frontend/
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=8000
+
+# O dev roda do APP, como o build.
+WORKDIR /app/frontend
 
 EXPOSE 8000
 

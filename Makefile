@@ -118,6 +118,28 @@ logs-all:
 	$(COMPOSE) logs -f
 
 # ---------------------------------------------------------------------------
+# Dependencias
+# ---------------------------------------------------------------------------
+# O install e' UNICO e roda na RAIZ do repositorio (Yarn workspace, desde o G5):
+# resolve o backend, o storefront e o pacote do contrato de uma vez, com UM
+# lockfile. Nao existe mais `yarn install` dentro de `backend/`/`frontend/` —
+# um `yarn` rodado la' sobe para a raiz sozinho (por isso um `yarn.lock`
+# esquecido num app era um bug: ver o `.dockerignore`).
+#
+# `node .yarn/releases/yarn-4.12.0.cjs` em vez de `yarn` porque o repositorio
+# fixa a versao ali' (o `yarnPath` do `.yarnrc.yml`): este alvo funciona mesmo
+# sem o Yarn no PATH e sem Corepack — que e' o caso deste ambiente.
+#
+# `install` e' o MESMO comando da CI (`--immutable`): falha, em vez de mexer no
+# lockfile, quando ele esta' fora de sincronia. Para ADICIONAR/atualizar uma
+# dependencia use `make install-update`, que grava o `yarn.lock` e o commita.
+install:
+	node .yarn/releases/yarn-4.12.0.cjs install --immutable
+
+install-update:
+	node .yarn/releases/yarn-4.12.0.cjs install
+
+# ---------------------------------------------------------------------------
 # Build
 # ---------------------------------------------------------------------------
 # Cada repo tem o seu Dockerfile e cada modo fixa o estagio (`target: runner` em
@@ -246,10 +268,12 @@ doctor:
 # ---------------------------------------------------------------------------
 # Contrato de conteudo: gerar e verificar
 # ---------------------------------------------------------------------------
-# O contrato tem uma fonte so (`backend/src/modules/content/`), mas o
-# storefront e um pacote npm separado e nao consegue importa-la. O artefato
-# `frontend/src/lib/content/contract.generated.ts` e GERADO daquela fonte e
-# versionado: contrato novo e `make gen` + commit do diff.
+# O contrato tem uma fonte so — o pacote `packages/contrato` (`@rv/contrato`),
+# que os tres runtimes importam desde o G5. O que `make gen` escreve e' o que
+# DERIVA dele e nao e' codigo: o seed do tema (um `theme.json` por tema, em
+# `frontend/themes/`) e os tokens do `brand.css`
+# (`frontend/src/styles/tokens.generated.css`). Os dois sao versionados:
+# contrato novo e' `make gen` + commit do diff.
 #
 # `make check` e o que o hook de commit roda. Ele nao precisa da stack de pe
 # (e so Node lendo arquivos), entao serve tambem para o pre-push e a CI.
@@ -341,8 +365,9 @@ build-admin:
 # `../admin/src`: o vizinho declarava o que era teste do painel, e uma limpeza
 # banal nesse `roots` faria a suite sumir sem dizer nada. Agora o CRM tem config
 # proprio (`admin/jest.config.js`) e este alvo chama o runner DELE: o binario
-# continua sendo o do backend (`../backend/node_modules/.bin/jest`) porque o CRM
-# nao tem instalacao propria — o resto medido que a G5 fecha.
+# vem da RAIZ (`../node_modules/.bin/jest`), o mesmo que roda a suite do
+# backend — desde a G5 o install e' unico e o CRM nao tem instalacao propria
+# (quem compila o painel continua sendo o Vite do backend).
 #
 # Sem `--runInBand`/`--forceExit` na linha do CRM: os dois existem na linha do
 # backend por causa do `MetadataStorage` global, que o teste do painel nao toca
@@ -362,8 +387,8 @@ build-admin:
 # MikroORM, entao arquivo em paralelo e' corrida entre arquivos. `--silent`
 # esconde o log de aplicacao para a falha aparecer sozinha no terminal.
 test:
-	@cd backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules ./node_modules/.bin/jest --silent --runInBand --forceExit
-	@cd admin && ../backend/node_modules/.bin/jest -c jest.config.js
+	@cd backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules ../node_modules/.bin/jest --silent --runInBand --forceExit
+	@cd admin && ../node_modules/.bin/jest -c jest.config.js
 	@node scripts/check-panel-tests.mjs
 	@cd frontend && ./node_modules/.bin/vitest run
 	@echo ""
@@ -380,8 +405,9 @@ test:
 # pacote IRMAO do backend (bundle proprio, React 18) e o tsconfig dele e MAIS
 # estrito que o do backend — `strict` + `noUnusedLocals`, que foi justamente o
 # que pegou um import de tipo morto na pagina do conteudo. Os tipos vem do
-# `node_modules` do backend por `paths`/`typeRoots`: o CRM nao tem instalacao
-# propria (quem compila o painel e o Vite do backend). Ver admin/tsconfig.json.
+# `node_modules` da RAIZ — o install e' unico desde a G5 — por `paths`/`typeRoots`:
+# o CRM nao tem instalacao propria (quem compila o painel e o Vite do backend).
+# Ver admin/tsconfig.json.
 #
 # O `paths` do painel carrega tambem o apelido `@conteudo/*` (R2): e por ele que
 # o painel importa TIPO do modulo de conteudo do backend, em vez de subir cinco
@@ -392,8 +418,8 @@ test:
 # `--incremental false` porque e `--noEmit`: sem isso o `tsc` escreveria o
 # `tsconfig.tsbuildinfo` e o cache de build ficaria invalido.
 types:
-	@cd backend && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
-	@cd backend && ./node_modules/.bin/tsc --noEmit -p ../admin/tsconfig.json
-	@cd frontend && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
+	@cd backend && ../node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
+	@cd backend && ../node_modules/.bin/tsc --noEmit -p ../admin/tsconfig.json
+	@cd frontend && ../node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
 	@echo ""
 	@echo "  Tipos conferidos nos dois pacotes (e no painel)."
