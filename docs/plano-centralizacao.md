@@ -188,10 +188,13 @@ asserções restantes comparam o **artefato gerado** (a cópia) com o contrato: 
 `nav`/`footer` do seed contra o fallback da loja, e afins. Elas não têm
 substituto enquanto a cópia existir — e a cópia morre no G5, junto com a
 comparação. Apagar a guarda antes deixaria um buraco **medível** (não
-especulativo) de cobertura. Além disso a CI existe como arquivo, mas nunca
-**rodou** no GitHub (a máquina não tem Docker e o push é outro ambiente): a
-condição que o próprio G4 impunha — "CI verde antes" — ainda não foi cumprida
-de fato.
+especulativo) de cobertura. Além disso a CI existe como arquivo e **roda**: a
+medição de 2026-09-29 (API do GitHub, sem token) conta **13 execuções, nenhuma
+verde** — 12 `failure` + 1 `cancelled`; a última (`#13`, `15a4700838`) falha em
+`guarda de contrato` (passo `make check`) e em `tipos` (passo `make types`), e as
+duas causas estão registradas no R7.1. A condição que o próprio G4 impunha — "CI
+verde antes" — não está cumprida, e o R7.1 deixou qual dívida vence primeiro
+como decisão em aberto.
 
 Duas lacunas que ficaram declaradas, não escondidas:
 
@@ -262,14 +265,16 @@ O que cada um era, e o que virou:
 
 Conferir: `make types`.
 
-## Plano de separação (R0 → R7): três pacotes, um por runtime
+## Plano de separação (R0 → R7.1): três pacotes, um por runtime
 
 > Registrado em 2026-09-29, ao lado do G0→G5 e pelo mesmo motivo: o que não está no repo se
 > perde. A fila **G** elimina a guarda; a fila **R** ataca a razão de ela ter crescido — a
 > fronteira entre *manipular dado* e *apresentar dado* não está no layout do repositório.
 > O CRM era `backend/src/admin`: a extensão do Admin do Medusa — **React 18.3.1**, Vite,
 > servida em `/painel` pelo próprio backend —, ou seja, CRM e não back-end, morando debaixo
-> de `backend/`. A **R7** tirou-o de lá: hoje é o pacote `admin/`.
+> de `backend/`. A **R7** tirou-o de lá: hoje é o pacote `admin/`. A **R7.1** tratou do que a
+> mudança de casa deixou para trás: o bind do DEV preso ao diretório antigo e o fail-open que
+> escondia isso.
 
 ### A regra
 
@@ -288,7 +293,7 @@ faixa no payload) e a gravação virou uma porta só (`POST /admin/content/order
 nasceu dentro do `check-contract-parity.mjs` (a R6.5 a somou ali) e a R7 a herdou na
 `check-boundaries.mjs`, junto com o código que mudou de casa.
 
-### Fechamento de toda fase R (R0 → R7)
+### Fechamento de toda fase R (R0 → R7.1)
 
 Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 
@@ -305,6 +310,9 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 > o numeral da tela usando essa faixa e a porta de ordem com um aviso só). A **R7** não somou
 > nenhuma: ela mudou uma de casa — a fronteira do painel saiu do `check-contract-parity.mjs` para o
 > `check-boundaries.mjs`, que é onde ela virou a razão de existir do arquivo —, e o total ficou 94.
+> A **R7.1** também não somou asserção nenhuma, e de propósito: o que ela somou foi **ambiente** (um
+> alvo do Makefile, o check 6 do `doctor` e uma guarda de **subida**, que não é verificação de
+> contrato). O total medido segue **94**.
 > A **R2** somou **uma** verificação, mas não neste alvo: `scripts/check-panel-tests.mjs` (a suíte
 > que está no disco do CRM é a que o runner dele executa) **precisa do jest instalado**, e o job
 > `guard` da CI roda este alvo sem instalar nada — ela foi para o `make test`, que é onde a suíte
@@ -322,8 +330,10 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 | **R6** ✅ | `api/admin/content/route.ts` quebrou em `modules/content/{validation,resolvers,view}.ts`, e o `nextPosition` duplicado saiu: a rota passou a usar o do `order.ts` (que tem o piso da faixa da vitrine e recebe só a vitrine) | rota **812 → 437 linhas**; `make check` 90 asserções e `make test` **11 suites / 147 testes** verdes (a rota em si não tinha teste — a validação e os resolvedores têm `validation.unit.spec.ts` agora) |
 | **R6.5** ✅ | a ordem da vitrine sai do navegador: `POST /admin/content/order` com `{ ids }`, a renumeração no módulo (`order.ts`: `readOrderIds`, `orderErrors`, `applyOrder`) e a faixa da numeração viajando como **dado** no payload (`order`, para o numeral da lista enquanto a ordem está pendente). O painel deixa de importar valor de `backend/` (eram `nextPosition`, `positionFor` e `renumber`) | uma requisição e **um** aviso à loja com **7** seções mudando de posição (medido no log do frontend: `POST /api/revalidate?tag=content`); a mesma ordem de novo devolve `{"updated":[]}` e nenhum aviso; os 400 por lista incompleta, seção fixa, id inexistente, id repetido e forma inválida; `make check` **94** asserções, `make test` **11 suites / 157 testes** + 20 do vitest, `make types` verde (agora com o `tsc` do painel, que pegou um import morto) |
 | **R7** ✅ | o CRM muda de casa: sai de `backend/src/admin` para o pacote `admin/` — 17 arquivos (9 de código, 2.538 linhas), `tsconfig` próprio, nenhum `node_modules` próprio — servido em `/painel` pelo Vite do backend (`admin.sources` no `medusa-config.ts`). A imagem passa a compilar com o contexto na **raiz do repositório** e o CRM entra em `/app/admin` | `make build-admin` verde (backend + admin: 10,7s + 33,1s); `make check` **94** asserções; `make test` **11 suites / 157 testes** + 3 arquivos / 20 do vitest; `make types` verde nos três; `/painel` 200, a rota vindo de `/painel/@fs/app/admin/src/admin/routes/content/page.tsx` e `make logs-admin` OK. O caminho até aqui (incluindo o build que **falhou** com o CRM em `/admin`) está em "R7 — o que a fase mediu" |
+| **R7.1** ✅ | o bind órfão do DEV e o fail-open que ele escondia: o container criado antes da mudança de casa ficou preso ao *inode* do `admin/` antigo, então `sources` virava `[]` e o admin subia **sem extensão nenhuma**, em silêncio. Ficam três coisas: `make recreate [SERVICE=]` (o comando que remonta o bind), o check 6 do `make doctor` (o CRM está visível dentro do container?) e a guarda que **falha alto** em DEV sem fonte e sem bundle | `make recreate SERVICE=backend` → a rota volta ao módulo virtual do painel (`import … from "/painel/@fs/app/admin/src/admin/routes/content/page.tsx"`, `path: "/content"`) e o arquivo sai de `text/html 752 bytes` (fallback) para `text/javascript 120407 bytes`; `make doctor` verde; a guarda medida nos três casos que importam (`development` + `/app/admin` vazio → `exit=1` com a mensagem; imagem de execução sem fonte **com** bundle → carrega; a mesma imagem **sem** bundle → lança). O detalhe está em "R7.1 — o que a fase mediu" |
 | **R2** ✅ | o vínculo do painel com o módulo de conteúdo ganha **nome**: o alias `@conteudo/*` (`admin/tsconfig.json`) substitui os cinco níveis de `..` nos 5 especificadores de tipo, em 3 arquivos. A guarda de fronteira passa a **ler** os apelidos do tsconfig (antes `@conteudo/…` não tinha `/modules/` nem era relativo — passaria batido); o teste do formulário sai do jest do backend e ganha runner próprio (`admin/jest.config.js`), com `scripts/check-panel-tests.mjs` fechando a perda silenciosa; e as asserções de espelho do painel passam a varrer o pacote inteiro (eram 2 arquivos) | `make check` **94** asserções; `make test` **10 suites / 145 testes** no backend + **1 / 12** no CRM + 3 / 20 do vitest = **11 / 157**, o mesmo total da R7, mais a verificação de suíte (no `make test`, porque precisa de instalação); `make types` verde; o painel compilado na **imagem** (`Frontend build completed successfully`, 27,5s) e o import de valor pelo apelido **reprovado** pelo Rollup. O caminho (e o gate `build-admin` que a fase consertou) está em "R2 — o que a fase mediu" |
-| **R3-lite → R5** | tema como dado e `themes/` fora do Dockerfile (o F3 refeito sobre `develop`) | `make gen` + `make check`; R4/R5 pedem o Docker de pé |
+| **R3-lite** ⏳ | tema como dado, **sem Docker**: contrato, tokens gerados e `themes/*.json` como seed (o F3 refeito sobre `develop`). É a metade da R3 que a R7.1 separou do resto, pelo mesmo critério da R7.1: o que roda na **árvore de trabalho** | `make gen` + `make check` |
+| **R4 → R5** ⏳ | a outra metade: o `themes/` fora do Dockerfile e o que **pede o Docker de pé** | o Docker de pé |
 
 **Por que esta ordem:** R6.5 antes de R7 tira a última importação de valor do painel (a R7 deixa
 de depender da R5); R6 antes de R6.5 porque a rota de ordenação nasce do que já foi extraído; R2
@@ -391,19 +401,80 @@ Sete medições, e três delas derrubaram o que a fase ia fazer:
 | A suíte do painel podia sumir sem aviso? | Em parte, **sim** — e é a razão da fase. O caso extremo o jest pega sozinho (sem nada casando com o `testMatch`: `No tests found`, exit 1, medido); a perda **parcial** (um ajuste que estreita o `testMatch`, um `.unit.spec` renomeado para `.spec`) passava verde. `scripts/check-panel-tests.mjs` compara o disco com o `--listTests` do runner do CRM (0,25s, sem banco) e roda no **`make test`**, logo depois do jest do CRM — não no `make check`: ele precisa de `node_modules`, e o job `guard` da CI roda o `check` sem instalar nada |
 | O `tsc` substitui a asserção "o painel não declara a forma dos tipos"? | **Não**, e a medição mudou o plano da fase (que era converter a asserção em garantia do compilador). Três sondas: no **mesmo** arquivo que importa `FieldKind`, redeclarar a forma dá **TS2440** (o `tsc` pega — mas é o caso que o texto já pegava); num arquivo que não importa, `type FieldKind = { x: string }` compila **verde** (tipo estrutural não enxerga cópia); e essa cópia num **terceiro** arquivo do painel passava pelas **duas** asserções — a frase dizia "o painel" e o texto lia 2 arquivos. Ficou: a asserção mantida, a varredura alargada para o pacote inteiro (`panelSources`) e o porquê escrito nela |
 
-E uma medição de **ambiente** (não do repositório), que muda como a fase mediu o build: aqui o
-container monta `./admin` em `/app/admin` mas **vê o diretório vazio** — `ls -la /app/admin` →
-`total 0`, um arquivo criado no `admin/` do host **não** aparece, enquanto um arquivo criado no
-`backend/src/` do host aparece na hora (medido nos dois sentidos, e igual em container novo).
-Consequência: o `make build-admin` daqui compila um admin **sem o painel** — e passa verde,
-porque o Medusa compila o admin do zero quando não encontra fonte. Por isso as duas linhas de
-build acima saíram do caminho que a **imagem** usa (`docker compose build backend`, cujo
-contexto é enviado pela CLI, não pelo daemon, e `yarn build` dentro da imagem, sem bind
-nenhum). O resto da fase (`make check`, `make types`, `make test`) não depende de container.
+E uma medição de **ambiente** (não do repositório) que a **R7.1** refez e corrigiu: naquela
+sessão o container montava `./admin` em `/app/admin` mas **via o diretório vazio** — `ls -la
+/app/admin` → `total 0`, um arquivo criado no `admin/` do host **não** aparecia, enquanto um
+arquivo criado no `backend/src/` do host aparecia na hora (medido nos dois sentidos). A leitura
+de então foi "propriedade do ambiente"; era **bind órfão**: o container fora criado pelo Compose
+antes da mudança de casa e continuou preso ao *inode* do diretório antigo (a R7.1 mediu os dois
+inodes, e o `recreate`). Ou seja, o `make build-admin` daqui não compilava um admin sem painel
+porque "o Medusa não vê a fonte": não havia fonte **naquele caminho**. As duas linhas de build
+que a doc passou a usar continuam certas — a **imagem** (`docker compose build backend`, cujo
+contexto é enviado pela CLI, não pelo daemon, e `yarn build` dentro da imagem, sem bind nenhum)
+é o caminho que não depende do bind do daemon. O resto da fase (`make check`, `make types`,
+`make test`) não depende de container.
 Para quem for conferir o `/painel` em DEV: **não use o código HTTP** — o mesmo container
 responde `200` com o casco do SPA para qualquer caminho, inclusive um que não existe (medido:
 752 bytes de `text/html` para o arquivo do painel, para o caminho antigo e para um caminho
 inexistente). O teste é o conteúdo (`text/javascript` com os `jsxDEV` do Vite, como a R7
-mediu) ou, antes de acusar o CRM, `docker compose exec backend ls /app/admin`.
+mediu) ou, antes de acusar o CRM, `make doctor` (check 6) e `docker compose exec backend ls
+/app/admin`.
+
+### R7.1 — o bind órfão e o fail-open (o que a fase mediu)
+
+A fase nasceu de um sintoma de tela: o painel abria, os menus nativos apareciam e **"Conteúdo da
+vitrine" não**. A causa não estava no CRM — e o caminho até ela é o que fica.
+
+| Medição | Resultado, e o que ficou |
+|---|---|
+| O CRM está dentro do container? | **Não.** `docker compose exec backend ls /app/admin` → `total 0`, num host onde `admin/src/admin/routes/content/page.tsx` existe |
+| Diretório **vazio** ou diretório **errado**? | **Errado.** Inodes: host `admin/` = `26083381` × container `/app/admin` = `26083369` — dois diretórios distintos; o controle `backend/src` = `28196276` **dos dois lados**. O container fora criado pelo Compose antes da R7 e o bind ficou preso ao inode antigo |
+| `docker compose up -d` resolve? | **Não.** A configuração do serviço não mudou, então o Compose não recria nada — o bind continua o de antes |
+| `restart` resolve? | **Sim**, e é o mecanismo do conserto: a **partida** do container remonta o bind. Medido com um arquivo novo trocando o inode no host — o container só o viu depois do `restart`. Ficou `make recreate [SERVICE=]` (`up -d --force-recreate`), que é a mesma partida, forçada |
+| O que a tela recebia | O módulo virtual do painel era literalmente `export default { routes: [ ] }` — **0 rotas, 537 bytes**. O item da sidebar **é** o `handle` da rota (`label` + `translationNs` do `defineRouteConfig`): sem rota, sem item, sem erro |
+| De onde vinha o silêncio | `medusa-config.ts` montava `sources` com `filter(existsSync)`: lista **vazia é válida** e o Medusa compila o admin do zero, sem extensão nenhuma. Nada no log |
+| Depois do conserto | O módulo virtual volta a trazer `import RouteComponent0 … from "/painel/@fs/app/admin/src/admin/routes/content/page.tsx"` com `path: "/content"`, e o arquivo sai de `200 text/html 752 bytes` (o fallback do SPA) para `200 text/javascript 120407 bytes` |
+
+**O que ficou** — três peças, na mesma fase:
+
+1. **`make recreate [SERVICE=<nome>]`** — `docker compose up -d --force-recreate`, no `.PHONY` e na
+   ajuda. `make -n recreate SERVICE=backend` → `docker compose up -d --force-recreate backend`.
+2. **Check 6 do `make doctor`** — "CRM visivel dentro do backend (`/app/admin/src/admin`)": fora de
+   produção passa se o diretório existe; se não, `bad` com o comando da correção. É o que os checks
+   1–5 não perguntavam: eles olham banco e ambiente, não a **árvore de fontes**.
+3. **A guarda que falha alto** (`backend/medusa-config.ts`) — sem fonte **e** sem painel compilado
+   **e** fora de `production`, o config **lança** com os endereços testados e o comando da correção.
+   Três casos medidos, um por linha da condição:
+
+| Caso | Como foi medido | Resultado |
+|---|---|---|
+| DEV sem fonte | container descartável, `NODE_ENV=development`, diretório **vazio** montado em `/app/admin`, e o `medusa-config.ts` editado por cima | `exit=1` com a mensagem, carregada por `ts-node` (o mesmo carregador do `medusa develop`) |
+| Runner sem fonte, **com** bundle | `docker run … real_valor_backend:local`: `NODE_ENV` **vazio** (a imagem não o fixa), `/app/admin` inexistente, `/app/public/admin/index.html` presente | **não lança** — é a válvula de escape do host que já tem o painel; o Compose de PROD ainda soma `NODE_ENV=production` |
+| Runner sem fonte **e** sem bundle | o mesmo, com `/app/public` movido (como raiz) | **lança** a mesma mensagem — a guarda tem dentes no config **compilado**, não só sob `ts-node` |
+
+| Achado de **artefato** | Detalhe |
+|---|---|
+| A imagem de produção também estava sem o CRM? | **Não** — a leitura que a R7 deixou no plano estava errada. A imagem `:local` de antes (`a58a8d213e84`) tem o rótulo `Conteúdo da vitrine` no `assets/index-Jd2yMxWa.js`: o defeito era do bind do **DEV**, não do artefato. Ela foi reconstruída mesmo assim, por estar defasada em relação à R7 (`086cdbc3557e`, rótulo em `assets/index-FbnzdS_y.js`) |
+
+**Decisão de fila: a R3 quebra em duas.** A R3 era uma fase só ("tema como dado e `themes/` fora do
+Dockerfile", o F3 refeito sobre `develop`). Ela vira **duas**, pelo mesmo critério que separou esta
+fase: **o que roda na árvore de trabalho**. `R3-lite` é o contrato e os tokens gerados, com
+`themes/*.json` como seed, verificável por `make gen` + `make check`, sem imagem nenhuma; o que
+**pede o Docker de pé** (o `COPY` do Dockerfile, o `themes/` fora da imagem, a loja lendo do
+payload) fica em R4/R5.
+
+O que **não** está decidido — e fica escrito para não se perder — é **o que vem antes**: o R3-lite ou
+a **CI**. Estado da CI, medido agora (API do GitHub, sem token):
+
+| O que | Medido |
+|---|---|
+| Execuções | **13, nenhuma verde**: 12 `failure` + 1 `cancelled` (a `#12`, 21s antes da `#13`, cancelada pelo push seguinte) |
+| Última (`#13`, `15a4700838`) | `guarda de contrato` falha no passo `make check`; `tipos` falha no passo `make types`. `registro do schema`, `testes` e `build do storefront` passam |
+| Causa de `guarda de contrato` | o job é `checkout` + `setup-node` + `make check`, **sem instalar** nada — e o `icons.ts` importa **valor** de `@medusajs/icons` |
+| Causa de `tipos` | **não medida.** O job instala `backend` e `frontend` (`yarn install --immutable`) e falha no `make types`, que são três `tsc` (backend, painel e storefront); o log do job devolve **403** — precisa de token. O `make types` **local** é verde (medido nesta sessão), então a falha é do **job**, não da árvore de trabalho: estreitá-la a um dos três `tsc` é o primeiro passo de quem pegar esse caminho |
+
+As duas rotas cabem na regra que o G4 já impunha ("CI verde antes de apagar a guarda") — a diferença
+é **quando a dívida vence**: antes de seguir a fila (CI primeiro) ou antes do G4 (R3-lite primeiro,
+com a CI como dívida declarada).
 
 
