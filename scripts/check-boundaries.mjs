@@ -15,8 +15,9 @@
  * em silêncio porque nada quebra. O que a tela precisa chega pelo payload da API
  * (`order` em `GET /admin/content`, a publicação em `POST /admin/content/order`).
  *
- * A verificação nasceu dentro do `check-contract-parity.mjs` (a R6.5 a somou ali)
- * e a R7 a herdou aqui, junto com o código que mudou de casa.
+ * A verificação nasceu dentro do `check-contract-parity.mjs` (a R6.5 a somou ali),
+ * a R7 a herdou aqui — junto com o código que mudou de casa — e o G4 apagou o
+ * arquivo de origem: ela é, hoje, a razão de existir deste script.
  *
  * A R2 não mudou a regra — mudou a FORMA do caminho: o painel deixou de chegar ao
  * backend subindo cinco níveis de `..` e passou a chegar pelo apelido
@@ -28,7 +29,8 @@
  * Rode com:
  *   node scripts/check-boundaries.mjs
  *
- * Não usa framework de teste de propósito, como o `check-contract-parity.mjs`.
+ * Não usa framework de teste de propósito: ele atravessa dois pacotes lendo
+ * arquivos, e a saída tem de caber no hook de commit (segundos, sem instalar).
  */
 
 import { readdirSync, readFileSync } from "node:fs"

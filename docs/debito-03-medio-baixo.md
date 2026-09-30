@@ -33,25 +33,40 @@ manual (`curl` documentado no próprio arquivo) e o caminho normal é esperar a 
 
 ### 3.2 Zero testes automatizados e zero CI
 
-**Evidência:** não há suíte de testes automatizados nem CI. A rede de segurança atual são duas
-guardas de script, rodadas pelo hook versionado (`.githooks/pre-commit`, ativado uma vez por
-clone com `git config core.hooksPath .githooks`) e pelo alvo `make check`:
+**Status: resolvido em 2026-09-30.** A CI entrou no G1 (`400d137b52`), os testes passaram a rodar
+no G3 (`50f8cee573` no backend, `efaece4907` no storefront) e a guarda de paridade foi apagada no
+G4 — o que ela conferia virou teste.
 
-| Guarda | O que cobre |
+**Evidência (o estado que originou o item):** não havia suíte de testes automatizados nem CI; a
+rede de segurança eram duas guardas de script, rodadas pelo hook versionado
+(`.githooks/pre-commit`, ativado uma vez por clone com `git config core.hooksPath .githooks`) e
+pelo alvo `make check`:
+
+| Guarda (na época) | O que cobria |
 |---|---|
 | `scripts/gen-content.mjs --check` | o artefato do contrato do storefront está em dia com o backend |
 | `scripts/check-contract-parity.mjs` | coerência do contrato (tipos ⇔ campos, defaults ⇔ seed, o que a loja lê) e os espelhos mantidos à mão no admin (chaves de ícone, editores de lista, paleta de prévia) |
 
-**Impacto:** refatorações e novos módulos não têm verificação automática de tipos nem de build;
-uma divergência que escape às guardas só é descoberta em runtime.
+**Como ficou:** a mesma cobertura, em quatro lugares, e nenhum deles é assert de texto sobre
+código-fonte:
+
+| Onde (job da CI) | O que cobre |
+|---|---|
+| `make check` (`guarda de contrato`) | o artefato gerado fora de dia (`gen-content.mjs --check`) e a fronteira do painel (`check-boundaries.mjs`: `admin/` importando **valor** do backend) |
+| `make types` (`tipos`) | o `tsc` dos três projetos — a exaustividade por `kind` do painel é `TS2322`, não asserção |
+| `make test` (`testes`) | **12 suites / 210 testes** no backend, **2 / 19** no CRM e **7 arquivos / 81 testes** no storefront: fixture, rótulo, fiação, o espelho de dado entre os pacotes, o binário por md5 (`assets.unit.spec.ts`) e a ponte do CSS |
+| job `schema` | o registro do `content_schema` conferido contra o contrato, num Postgres efêmero — a checagem de **dado**, que nenhuma linguagem faz |
+
+**Impacto (do estado original):** refatorações e novos módulos não tinham verificação automática de
+tipos nem de build; uma divergência que escapasse às guardas só era descoberta em runtime.
 
 **Ação necessária:**
 
-1. Adicionar CI (GitHub Actions / Azure Pipelines) rodando `make check`, `make types` e o build do
-   frontend. O `tsc` dos dois pacotes já está em **zero erros** (2026-09-27) e ganhou alvo próprio
-   (`make types`) — o que faltava era a guarda, não o conserto.
-2. Cobrir com testes: `service.ts` do módulo `content`, rotas `GET /store/content` e
-   `GET/POST/PATCH/DELETE /admin/content` (incluindo os 400 de validação) e o fluxo de checkout.
+1. ✅ **feito (G1)** — CI no GitHub Actions (`.github/workflows/check.yml`) rodando `make check`,
+   `make types`, `make test`, o registro do schema num Postgres de serviço e o `next build`.
+2. **parcial** — o módulo `content` está coberto por unidade
+   (`backend/src/modules/content/__tests__/`, 12 suites) e o painel pelo runner do CRM; o que
+   segue sem teste é o **fluxo de checkout** do storefront, que é outro módulo.
 
 ---
 

@@ -2,21 +2,24 @@
 # =============================================================================
 # Hook de commit — a verificacao que nao pode depender de disciplina humana.
 # =============================================================================
-# O contrato de conteudo tem uma fonte so (`backend/src/modules/content/`),
-# mas o storefront e um pacote npm separado e compila um ARTEFATO GERADO
-# dela. Editar o backend e esquecer de rodar o gerador passa despercebido ate
-# alguem abrir a loja — entao a trava fica aqui.
+# O contrato de conteudo tem uma fonte so — o pacote `packages/contrato`
+# (`@rv/contrato`), que backend, CRM e storefront importam desde o G5. O que
+# DERIVA dele e' artefato gerado (`frontend/themes/*.json` e o
+# `tokens.generated.css` do `brand.css`): editar o contrato e esquecer de rodar o
+# gerador passa despercebido ate alguem abrir a loja com o tema velho — entao a
+# trava fica aqui.
 #
 # Ativacao (uma vez por clone):
 #     git config core.hooksPath .githooks
 #
-# Roda em menos de um segundo (Node lendo arquivos, sem a stack de pe) e e o
-# mesmo que `make check`. A saida de `--no-verify` e explicita: quem pula, pula
+# Roda em menos de um segundo (Node lendo arquivos, sem a stack de pe) e chama o
+# `make check`, que e' o que a CI roda — uma fonte so'. Ate o G4 este arquivo
+# repetia as linhas do alvo, e era a guarda de paridade que ficava de fora quando
+# as duas listas divergiam. A saida de `--no-verify` e explicita: quem pula, pula
 # sabendo.
 # =============================================================================
 set -e
 
 cd "$(git rev-parse --show-toplevel)"
 
-node scripts/gen-content.mjs --check
-node scripts/check-contract-parity.mjs
+make check

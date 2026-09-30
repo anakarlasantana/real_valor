@@ -187,16 +187,15 @@ real_valor/
 ├── Makefile                      # atalhos; `PROD=1` seleciona o modo
 ├── .dockerignore                 # da RAIZ: os DOIS builds compartilham o contexto (G5)
 ├── .env.example                  # modelo do `.env` da raiz
-├── .nvmrc                        # Node 22 para o dia a dia; a CI usa 24 — a guarda
-│                                 #   importa o `contract.ts` como TypeScript, e o
-│                                 #   type-stripping estável só existe do 22.18+
-├── .github/workflows/           # CI: guarda, tipos, registro do schema e build
+├── .nvmrc                        # Node 22 para o dia a dia; a CI usa 24 — o
+│                                 #   `gen-content.mjs` importa o `contract.ts` como
+│                                 #   TypeScript, e o type-stripping estável só
+│                                 #   existe do 22.18+
+├── .github/workflows/           # CI: contrato, tipos, testes, registro do schema e build
 ├── scripts/
 │   ├── doctor.sh                    # diagnostico do ambiente (le e nao mexe)
 │   ├── gen-content.mjs           # gera o que DERIVA do contrato (G5): o seed do tema e os
 │   │                             #   tokens do `brand.css` — a cópia do storefront morreu
-│   ├── check-contract-parity.mjs # guarda hoje: 114 asserts (o G2 levou de 89 p/ 80;
-│   │                           #   o resto virou `tsc` e teste — ver docs/plano-centralizacao.md)
 │   ├── check-boundaries.mjs      # o CRM (`admin/`) importando VALOR do backend reprova aqui
 │   │                           #   — inclusive pelo apelido `@conteudo/*` (R2)
 │   ├── check-panel-tests.mjs     # a suíte que está no disco do CRM é a que o runner dele roda
@@ -368,11 +367,11 @@ git config core.hooksPath .githooks   # uma vez por clone
 
 | Onde | Comando | O que faz |
 | :--- | :--- | :--- |
-| Commit (hook) + CI | `make check` | os artefatos gerados em dia — o contrato do storefront, os **4 `themes/*/theme.json`** (o seed do tema) e os tokens `--rv-*` do `brand.css`, os dois últimos gerados na R3-lite — mais **114 asserções**: 113 de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ o seed do tema, ⇔ registro do contrato, ⇔ a ordem da vitrine (a faixa vem da superfície, e o painel pula as casas ancoradas), ⇔ a **velocidade da barra de anúncio** (o número que a loja usa é o `min`/`max` do campo declarado, não um literal) e ⇔ as **mensagens do padrão** (sem vírgula — ela é o separador da faixa), ⇔ as **superfícies** do payload (cada uma se descreve, e a união delas é o que a API aceita gravar), ⇔ o **seed do tema linha a linha** e ⇔ a **loja que pede o tema ao payload** em vez do disco: o `fs` saiu, o padrão virou `import` e o `themes/` saiu da imagem) e 1 de fronteira (o painel sem import de **valor** do backend — inclusive pelo apelido `@conteudo/*`). **Não instala nada**: são scripts lendo arquivos com Node puro, e é por isso que o hook de commit roda em segundos |
+| Commit (hook) + CI | `make check` | os artefatos gerados em dia — os **4 `themes/*/theme.json`** (o seed do tema) e os tokens `--rv-*` do `brand.css`, os dois últimos gerados na R3-lite — e **1 asserção de fronteira**: o painel sem import de **valor** do backend, inclusive pelo apelido `@conteudo/*`. Até o G4 havia aqui **114** asserções de paridade por texto (113 do contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ o seed do tema, ⇔ registro do contrato, ⇔ a ordem da vitrine, ⇔ a velocidade da barra de anúncio, ⇔ as superfícies do payload e ⇔ a loja que pede o tema ao payload em vez do disco); elas viraram **teste** quando a guarda foi apagada — a linha seguinte, e o mapa das 114 em `docs/plano-centralizacao.md`. **Não instala nada**: são scripts lendo arquivos com Node puro, e é por isso que o hook de commit roda em segundos |
 | CI | `make types` | `tsc` dos dois pacotes — e o do painel, com as regras dele (**0 erros**) e o alias `@conteudo/*` no `paths`. Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI (job `testes`) | `make test` — jest do `backend/` | **183 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (a renumeração pelas **casas livres** da faixa, a inserção, a forma do corpo de `POST /admin/content/order` e a gravação em uma chamada), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da validação e dos resolvedores do corpo do CRM (campo desconhecido, obrigatório por rota, faixa de número, lista fechada, âncora, `position` e as duas listas de referência) do tema como conteúdo (a fusão do seed, o achatamento campo a campo, a cobertura de `THEME_FIELDS`, o `defaultsFor` da superfície e o `resolveSurface`/`pattern` da validação) e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone). Eram 145 até a R3-lite: três comparações de prévia (hex, família e pilha) saíram quando o tema passou a ser gerado — comparar um artefato com a origem dele só podia dar verde — e a R4 → R5 somou 21 (o `themes.unit.spec.ts` novo e o que ele arrastou em `restore` e `validation`) e o **ordenamento** somou 20 (a `order.unit.spec.ts` reescrita sobre as casas livres da faixa, e o que ele arrastou em `contract`, `defaults` e `restore`) |
-| CI (job `testes`) | `make test` — jest do **CRM** (`admin/jest.config.js`) | **12 testes** do formulário do painel: o que o rascunho da tela guarda — ausente/nulo/vazio como a mesma coisa, número contra texto (`8` e `"8"`), a referência de categoria virando lista de ids no corpo. São os que decidem se a barra de **Salvar** aparece; rodam no runner do CRM, não no jest do backend. Logo depois, `scripts/check-panel-tests.mjs` confere que a suíte que está no **disco** é a que o runner executa (a perda parcial que o "No tests found" não pega) |
-| CI (job `testes`) | `make test` — vitest do `frontend/` | **76 testes** em 7 arquivos: a tolerância da loja ao tipo desconhecido, o `src` das imagens do CMS (`resolveMediaUrl`), o tamanho do trilho de lançamentos (`launchesLimit`), o **tema do payload** (`theme.spec.ts`: campo ausente herda o padrão e a janela de estação vira o ano), a **barra de anúncio** (`ticker.spec.ts`: o que entra na faixa de mensagens, o que é descartado — espaço em branco, item que não é texto — e a velocidade caindo na faixa do contrato), a **disponibilidade do produto** (`product-availability.spec.ts`: a precedência `metadata.tag_status` → tags → estoque, o limiar de últimas unidades e o variant que pode vender) e as **capas** (`hero.spec.ts`: a lista de slides e o descarte do slide incompleto) |
+| CI (job `testes`) | `make test` — jest do `backend/` | **210 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (a renumeração pelas **casas livres** da faixa, a inserção, a forma do corpo de `POST /admin/content/order` e a gravação em uma chamada), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da validação e dos resolvedores do corpo do CRM (campo desconhecido, obrigatório por rota, faixa de número, lista fechada, âncora, `position` e as duas listas de referência) do tema como conteúdo (a fusão do seed, o achatamento campo a campo, a cobertura de `THEME_FIELDS`, o `defaultsFor` da superfície e o `resolveSurface`/`pattern` da validação) e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone). Eram 145 até a R3-lite: três comparações de prévia (hex, família e pilha) saíram quando o tema passou a ser gerado — comparar um artefato com a origem dele só podia dar verde — e a R4 → R5 somou 21 (o `themes.unit.spec.ts` novo e o que ele arrastou em `restore` e `validation`) e o **ordenamento** somou 20 (a `order.unit.spec.ts` reescrita sobre as casas livres da faixa, e o que ele arrastou em `contract`, `defaults` e `restore`). O **G4** somou 27 — a `wiring.unit.spec.ts` nova (a fiação da API e do dado: a rota, o serviço, o seed, as duas portas da ordem, o tema fora do disco e da imagem) e o que ela arrastou nos outros arquivos |
+| CI (job `testes`) | `make test` — jest do **CRM** (`admin/jest.config.js`) | **19 testes** em 2 suítes: **12** do formulário do painel: o que o rascunho da tela guarda — ausente/nulo/vazio como a mesma coisa, número contra texto (`8` e `"8"`), a referência de categoria virando lista de ids no corpo — são os que decidem se a barra de **Salvar** aparece — e **7** do `panel-wiring.unit.spec.ts`, desde o G4: o painel não é segunda fonte, sem espelho local, lendo o `schema`. Rodam no runner do CRM, não no jest do backend. Logo depois, `scripts/check-panel-tests.mjs` confere que a suíte que está no **disco** é a que o runner executa (a perda parcial que o "No tests found" não pega) |
+| CI (job `testes`) | `make test` — vitest do `frontend/` | **81 testes** em 7 arquivos: a tolerância da loja ao tipo desconhecido, o `src` das imagens do CMS (`resolveMediaUrl`), o tamanho do trilho de lançamentos (`launchesLimit`), o **tema do payload** (`theme.spec.ts`: campo ausente herda o padrão e a janela de estação vira o ano), a **barra de anúncio** (`ticker.spec.ts`: o que entra na faixa de mensagens, o que é descartado — espaço em branco, item que não é texto — e a velocidade caindo na faixa do contrato), a **disponibilidade do produto** (`product-availability.spec.ts`: a precedência `metadata.tag_status` → tags → estoque, o limiar de últimas unidades e o variant que pode vender) e as **capas** (`hero.spec.ts`: a lista de slides e o descarte do slide incompleto). O **G4** somou 5: os dois espelhos (o `limit` do trilho e a velocidade da barra) passaram a ser comparados **por valor** contra `@rv/contrato`, em vez de por texto |
 | CI | `make check-schema` | o registro do `content_contract` conferido contra o contrato, num Postgres efêmero |
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |
 
@@ -383,29 +382,26 @@ que transforma o resto desta tabela em obrigatório — antes dela,
 tudo dependia de alguém lembrar; e os testes eram o caso mais claro, porque existiam nos
 `package.json`, passavam, e nenhum job os chamava.
 
-O caminho para **não depender mais** da guarda de paridade está em
-[`docs/plano-centralizacao.md`](docs/plano-centralizacao.md). Ela nasceu com **89**
-asserções, o G2 a levou a **80** e hoje ela imprime **114**: cada fase que mexe no
-contrato pode somar verificação, e somar é mais barato que redesenhar. A R3-lite
-tirou três (a prévia hex/família/pilha, que virou geração) e somou cinco (o seed
-do tema, a cobertura dos tokens gerados, o `brand.css` sem a paleta, o fallback
-de fonte e o `theme.ts` sem lista digitada). A R4 → R5 somou doze: sete da
-superfície de tema no payload (oito entraram, uma saiu) e cinco da loja lendo o
-tema do banco — a asserção que deixou de ser texto procurado no arquivo para ser
-o payload comparado como dado. Depois dela, o **ordenamento** somou três linhas
-**sem somar chamada** (a superfície de tema ganhou faixa e casas ancoradas, e os
-asserts que percorrem as superfícies imprimem uma linha a mais cada) e a **vitrine
-da barra de anúncio e dos chips** somou três chamadas: a faixa da velocidade é a
-do campo declarado no contrato, a velocidade padrão é a do conteúdo padrão e
-nenhuma mensagem do padrão tem vírgula, que é o separador da faixa. O número se
-confere, não se estima:
+A guarda de paridade **morreu no G4**: `scripts/check-contract-parity.mjs` foi
+apagado com **114** asserções, e o mapa delas — a que teste cada uma virou, e o
+que saiu por ser tautológico — está na mensagem do commit e em
+[`docs/plano-centralizacao.md`](docs/plano-centralizacao.md). Ela nasceu com
+**89**, o G2 a levou a **80** e chegou a **114**: cada fase que mexe no contrato
+somava verificação, e somar era mais barato que redesenhar. A ordem foi de
+propósito — primeiro a cobertura nova rodou **verde ao lado** dela (`make check`
+ainda com 114, `make test` com 210/19/81, `make types` nos três); só então o
+arquivo saiu.
 
-```bash
-make check | grep -c '^  ok'   # 114
-```
+O que a substituiu não é um alvo novo: é o que já existia rodando. `make test`
+(job `testes` na CI) roda **12 suites / 210 testes** no backend, **2 / 19** no CRM
+e **7 arquivos / 81 testes** no storefront — e é lá que estão os espelhos que a
+guarda conferia por texto. `make check` (job `guarda de contrato`) ficou com o
+que só o disco responde: o artefato gerado fora de dia
+(`gen-content.mjs --check`) e a fronteira do painel (`check-boundaries.mjs`) — e
+é o que o hook de commit chama, em segundos, sem instalar nada.
 
-O alvo, portanto, não é o número — é o *tipo*: o que o compilador e um teste já
-garantem não precisa de asserção. Sobra o que só a guarda vê (binário, CSS, migração).
+O alvo nunca foi o número — é o *tipo*: o que o compilador e um teste garantem
+não precisa de asserção.
 
 ---
 

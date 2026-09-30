@@ -53,7 +53,7 @@ help:
 	@echo ""
 	@echo "  Contrato de conteudo"
 	@echo "    make gen           - Regera o contrato do storefront (commit o diff)"
-	@echo "    make check         - Falha se o artefato estiver velho, o contrato incoerente ou o CRM importando valor do backend"
+	@echo "    make check         - Falha se o artefato gerado estiver velho ou se o CRM importar valor do backend (a paridade do contrato e' teste: `make test`)"
 	@echo ""
 	@echo "  Testes, tipos e o CRM"
 	@echo "    make test          - Jest do backend e do CRM (admin/), vitest do storefront"
@@ -278,6 +278,14 @@ doctor:
 # `make check` e o que o hook de commit roda. Ele nao precisa da stack de pe
 # (e so Node lendo arquivos), entao serve tambem para o pre-push e a CI.
 #
+# Ate o G4 havia aqui uma terceira linha, `scripts/check-contract-parity.mjs`:
+# 114 assercoes de TEXTO sobre a fiacao do contrato. Elas nao sumiram — viraram
+# teste (`make test`): `contract`/`assets`/`wiring.unit.spec.ts` no backend e
+# `panel-wiring.unit.spec.ts` no CRM, mais os espelhos que a G3 ja' tinha
+# assumido (`launches`/`ticker` no storefront). O que fica neste alvo e' o que
+# so' o disco responde: o artefato gerado fora de dia e a fronteira do painel —
+# o resto tem compilador (`make types`) ou runner (`make test`).
+#
 # A verificacao da SUITE do CRM (`scripts/check-panel-tests.mjs`, R2) nao mora
 # aqui de proposito: ela pergunta ao jest do CRM o que ele vai rodar, e o job
 # `guard` da CI nao instala `node_modules` nenhum — este alvo tem que continuar
@@ -288,10 +296,9 @@ gen:
 
 check:
 	@node scripts/gen-content.mjs --check
-	@node scripts/check-contract-parity.mjs
 	@node scripts/check-boundaries.mjs
 	@echo ""
-	@echo "  Contrato, artefato e fronteira conferidos."
+	@echo "  Artefato e fronteira conferidos."
 
 # ---------------------------------------------------------------------------
 # Build do admin: o gate de quem mexe no CRM

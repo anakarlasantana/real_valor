@@ -9,6 +9,9 @@
  * Nenhum teste aqui precisa de container, banco ou API: o contrato é dado puro,
  * e o conteúdo padrão é a cópia do protótipo.
  */
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+
 import {
   APPEARANCE_GROUPS,
   CONTENT_SURFACES,
@@ -295,5 +298,57 @@ describe("as casas da numeração", () => {
     )
     expect(reservedPositions(THEME_SURFACE)).toEqual([])
   })
+})
+
+describe("ITEM_FIELDS ⇔ o tipo do item", () => {
+  /**
+   * O editor de item é dado do contrato e o **tipo** é a forma que a loja lê:
+   * os dois falam do mesmo item quando os nomes batem, na mesma ordem. Campo
+   * num lado só deixa o lojista sem como preencher o que a loja renderiza (ou o
+   * contrário: um campo que o render nunca lê).
+   *
+   * O tipo não existe em runtime — é apagado na compilação —, então a leitura é
+   * do **texto** do contrato, como a guarda de paridade fazia. O que este teste
+   * ganha: o lado do editor vem do `import` de verdade (`ITEM_FIELDS`) em vez de
+   * uma segunda leitura de texto, e o erro aponta o campo que faltou.
+   */
+  const contractSource = readFileSync(
+    join(__dirname, "../../../../..", "packages/contrato/src/contract.ts"),
+    "utf8"
+  )
+
+  /** Campos `nome: tipo` de um `export type NOME = { ... }`, lido como texto. */
+  const typeFields = (name: string): string[] | null => {
+    const match = new RegExp(`export type ${name} = \\{([\\s\\S]*?)\\n\\}`).exec(
+      contractSource
+    )
+
+    return match
+      ? [...match[1].matchAll(/^\s*([A-Za-z_$][\w$]*)\??\s*:/gm)].map(
+          (field) => field[1]
+        )
+      : null
+  }
+
+  // `list:image` fica fora: os itens do Instagram são inline (não têm tipo
+  // nomeado), e por isso o editor deles não tem um `ItemFieldSpec` próprio.
+  const ITEM_TYPES: Record<string, string> = {
+    "list:hero-slide": "HeroSlide",
+    "list:benefit": "BenefitItem",
+    "list:highlight": "CollectionHighlight",
+    "list:link": "HeaderLink",
+    "list:action": "HeaderAction",
+    "list:column": "FooterColumn",
+    "list:social": "FooterSocial",
+  }
+
+  for (const [kind, typeName] of Object.entries(ITEM_TYPES)) {
+    it(`o editor de "${kind}" tem os campos de "${typeName}"`, () => {
+      const editor = ITEM_FIELDS[kind as FieldKind] ?? []
+
+      expect(typeFields(typeName)).not.toBeNull()
+      expect(editor.map((field) => field.name)).toEqual(typeFields(typeName))
+    })
+  }
 })
 

@@ -92,7 +92,7 @@ export async function GET(
      * dado, e não por import, porque o painel é código de **navegador**:
      * importar a regra do backend levaria código de servidor para o bundle,
      * que é o que a R6.5 desfaz (guardado por
-     * `scripts/check-contract-parity.mjs`). `reserved` são as casas ancoradas
+     * `scripts/check-boundaries.mjs`). `reserved` são as casas ancoradas
      * (`FIXED_SECTION_POSITIONS`): a previsão da tela precisa pulá-las, como a
      * gravação pula — na home, a casa 10 é do rodapé e a sexta seção nasce em 11.
      */

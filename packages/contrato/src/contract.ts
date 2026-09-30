@@ -9,10 +9,11 @@
  * `@rv/contrato` (`packages/contrato/src/`): não há bloco copiado nem espelho
  * digitado à mão — a fronteira passou a ser do compilador. O
  * `scripts/gen-content.mjs` ficou só com o que **deriva** do contrato e não é
- * código (o seed do tema e os tokens do `brand.css`), e o
- * `scripts/check-contract-parity.mjs` (`make check`) continua conferindo o que
- * o compilador não vê: os espelhos de dado do painel, a aparência e o que a
- * loja lê do contrato.
+ * código (o seed do tema e os tokens do `brand.css`), e o que o compilador não
+ * vê — os espelhos de dado do painel, a aparência e o que a loja lê do
+ * contrato — virou **teste** no G4, quando a guarda de texto
+ * (`scripts/check-contract-parity.mjs`) foi apagada: `contract`/`assets`/
+ * `wiring.unit.spec.ts` aqui e `panel-wiring.unit.spec.ts` no CRM.
  *
  * Origem do conteúdo: ./Downloads/real-valor-frontend-prototype
  */
@@ -73,8 +74,8 @@ export type SectionBase = {
  * API admin valida) e o storefront (`frontend/src/lib/util/ticker.ts`), que é a
  * última defesa — o que está gravado no banco pode ser anterior à faixa. É o
  * mesmo arranjo do `limit` do trilho de lançamentos
- * (`frontend/src/lib/util/launches.ts`), e quem confere o espelho é
- * `scripts/check-contract-parity.mjs`.
+ * (`frontend/src/lib/util/launches.ts`), e quem confere os dois espelhos são
+ * `ticker.spec.ts` e `launches.spec.ts`, por valor contra este arquivo.
  *
  * O piso de 8s não é estético: abaixo dele a linha cruza a tela rápido demais
  * para ser lida, e texto que não dá para ler é ruído com movimento. O teto de
@@ -363,8 +364,8 @@ export type NavSection = SectionBase & {
  * É uma lista, e não um `union` solto, porque é ela que o editor do admin
  * oferece no `<select>`: as opções do campo de item viajam em `ITEM_FIELDS`
  * (e daí no `schema` do `GET /admin/content`), então o painel não tem cópia
- * nenhuma. `scripts/check-contract-parity.mjs` confere a lista contra o
- * `source` oferecido pelo editor e contra os ramos de `footer-column/index.tsx`.
+ * nenhuma. Quem confere a lista contra os ramos de `footer-column/index.tsx` é
+ * `assets.unit.spec.ts`: origem oferecida que a loja não desenha reprova.
  */
 export const FOOTER_COLUMN_SOURCES = [
   "links",
@@ -598,8 +599,8 @@ export type ThemeFont = {
  * template de `themeToCSSVariables` e no `--rv-font-*` do `brand.css`), e
  * cada cópia podia envelhecer sozinha. As três saem daqui agora: a loja monta
  * a pilha com `family` + `fallback` (`frontend/src/lib/theme.ts`), o
- * `brand.css` declara o fallback, e `scripts/check-contract-parity.mjs`
- * confere que ele é o mesmo.
+ * `brand.css` declara o fallback, e `assets.unit.spec.ts` confere que ele é o
+ * mesmo.
  */
 function themeFont(family: string, fallback: string): ThemeFont {
   return { family, fallback, stack: `"${family}", ${fallback}` }

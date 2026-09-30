@@ -27,8 +27,8 @@
  * `var(--font-*)` que o `localFont` do Next publica no layout (a família
  * real é hasheada pelo Next), e isso é ligação do storefront, não dado de
  * tema. O que o contrato garante — a **pilha de fallback** de cada papel,
- * `THEME_FONTS[role].fallback` — é conferido por
- * `scripts/check-contract-parity.mjs`.
+ * `THEME_FONTS[role].fallback` — é conferido por `assets.unit.spec.ts`
+ * ("o fallback de cada `--rv-font-*` do brand.css é o do contrato").
  *
  * Accessibility rule: rv-rose on rv-offwhite is ~3.4:1, so rose is
  * only used for fills, borders, icons and large (>=24px) text.

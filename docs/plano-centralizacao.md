@@ -59,7 +59,7 @@ imagem e a loja lendo do payload são a R4/R5.
 | **F0** — Rede e ruído | `make check` + hook de commit, docs enxutas (1 entrada + 4 assuntos), READMEs de template e pastas vazias fora | ✅ feito | `make check`, `docs/DEBITO-TECNICO.md` |
 | **F1** — Fonte única do contrato | gerador emite tipos/defaults/tokens/mapas em cada app; artefato versionado com `--check` | ✅ feito (histórico: o artefato do storefront morreu no G5 — ver "Onde parou") | `scripts/gen-content.mjs`, `frontend/src/lib/content/contract.generated.ts`; guarda 1.042 → **69 asserts** |
 | **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ✅ **feito** | `content_contract` + `schema.ts` + `seed-schema`; a API lê e valida contra o registro; `schemaVersion` no payload; a loja descarta tipo desconhecido. 11 asserts na guarda |
-| **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ✅ **feito** — a etapa 1 ficou congelada em `arquivo/` (não mergeada) e a etapa 2 foi **refeita** sobre o `develop`, na R3-lite e na R4 → R5 | branch `arquivo/f3-tema-como-dado-nao-mergear` (era `f3-tema-como-dado`), commit `fcdc3500ec`: superfície `theme` no contrato + API + CRM. **Não mergear:** o ponto de ramificação é `f4fe7c07` e o `develop` andou **32 commits** desde então; a simulação de merge (`git merge-tree`) conflita em **5 arquivos** — `admin/routes/content/{field-input.tsx,page.tsx}`, `api/admin/content/route.ts`, `modules/content/contract.ts` e `scripts/check-contract-parity.mjs` —, três deles justamente os que a R6/R6.5/R7 reescrevem. A etapa 2 foi **refeita** sobre o `develop` nas fases R3-lite e R4 → R5. **Feito na R3-lite:** o contrato como origem da paleta/fontes, os `theme.json` e os tokens como artefatos gerados (o seed). **Feito na R4 e na R5** (`88aa6ef599` e `439a8a8d5c`): a superfície `theme` na API e no CRM, o seed dela no banco, a loja lendo o payload e o `themes/` fora da imagem. O que a fase mediu está em "R4 → R5 — o que a fase mediu" |
+| **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ✅ **feito** — a etapa 1 ficou congelada em `arquivo/` (não mergeada) e a etapa 2 foi **refeita** sobre o `develop`, na R3-lite e na R4 → R5 | branch `arquivo/f3-tema-como-dado-nao-mergear` (era `f3-tema-como-dado`), commit `fcdc3500ec`: superfície `theme` no contrato + API + CRM. **Não mergear:** o ponto de ramificação é `f4fe7c07` e o `develop` andou **32 commits** desde então; a simulação de merge (`git merge-tree`) conflita em **5 arquivos** — `admin/routes/content/{field-input.tsx,page.tsx}`, `api/admin/content/route.ts`, `modules/content/contract.ts` e `scripts/check-contract-parity.mjs` (apagado no G4) —, três deles justamente os que a R6/R6.5/R7 reescrevem. A etapa 2 foi **refeita** sobre o `develop` nas fases R3-lite e R4 → R5. **Feito na R3-lite:** o contrato como origem da paleta/fontes, os `theme.json` e os tokens como artefatos gerados (o seed). **Feito na R4 e na R5** (`88aa6ef599` e `439a8a8d5c`): a superfície `theme` na API e no CRM, o seed dela no banco, a loja lendo o payload e o `themes/` fora da imagem. O que a fase mediu está em "R4 → R5 — o que a fase mediu" |
 | **F4** — CRM de vendas/entrega | agregações (vendas, status, ticket, rastreio) como módulo + rotas `/admin/*`, sobre o mesmo banco | ⏸️ não iniciado | `order-customer-indexer` + `/store/orders/track` são a base |
 | **F5** — Higiene | Makefile interface única; `packages/` só se útil; CI rodando `make check`; `schemaVersion` | ⏸️ parcial | Makefile é a interface e `schemaVersion` saiu no F2′; **falta** a CI (vira G1) e o `packages/` (vira G5) |
 
@@ -105,10 +105,10 @@ seção descartada — sem o filtro, o `assertNever` do render a transformaria e
 | Schema no banco sem validação ⇒ `PATCH` grava qualquer coisa | validação server-side contra o schema + `schemaVersion`; migração idempotente dos dados históricos |
 | Tipagem dinâmica (perde o `tsc`) | tipos **gerados** do schema + render tolerante: campo desconhecido é ignorado, nunca quebra a página |
 | Cache/ISR não invalida mudança de schema | incluir o schema na tag `content` (hoje a revalidação é por conteúdo) |
-| Unicidade de `position` e "todo tipo tem campos" (hoje garantidas pela guarda) | passam a ser **validação do serviço**, não do script |
+| Unicidade de `position` e "todo tipo tem campos" (na época, garantidas pela guarda) | passam a ser **validação do serviço** e tipagem, não script |
 | Assets em 2 origens (`.woff2` em `:9000` e `:8000`) | origem única + CORS, ou gerador + md5 (única asserção que sobrevive) |
 
-## Próximo na fila: eliminar a guarda (G0 → G5)
+## A guarda foi eliminada (G0 → G5)
 
 > Este é o **próximo plano depois de F3/F4**, registrado aqui porque a pergunta
 > "o que ainda falta" não pode depender de sessão de terminal.
@@ -119,23 +119,30 @@ A tabela de riscos deste documento já dizia o alvo: *"Guarda — só o que a
 linguagem não vê (CSS, binários, migração) — **~6 asserções, não 48**"*. Quando
 este plano foi escrito, `scripts/check-contract-parity.mjs` tinha **89** e
 **1.294 linhas**, com **45** delas num único grupo (`ADMIN (field-input.tsx)`).
-Hoje ele tem **114** e **2.018 linhas**, com **89**
-chamadas `assert(` no arquivo — o G2 trocou o palpite de texto por `tsc`. Quem
-cresceu desde então foi a outra ponta: a fronteira contrato ⇔ loja das fases R,
-que é a que continua sem compilador.
+Ele chegou ao G4 com **114** e **2.018 linhas**, com **89**
+chamadas `assert(` — o G2 trocou o palpite de texto por `tsc`. Quem cresceu
+desde então foi a outra ponta: a fronteira contrato ⇔ loja das fases R, que era
+a que continuava sem compilador — e que o G4 levou para **teste**, não para
+tipagem, porque o que ali se comparava era dado lido de arquivo.
 
 Guarda de paridade por texto não é padrão de e-commerce/CRM — é o que se escreve
-quando a fronteira entre dois pacotes **não é linkada pelo compilador**, e a
-fronteira aqui não é linkada porque o install é por app (lockfile em cada um,
-`node_modules` da raiz quase vazio) apesar de a raiz declarar `workspaces`.
+quando a fronteira entre dois pacotes **não é linkada pelo compilador**. Aqui ela
+não era linkada porque o install era por app (lockfile em cada um, `node_modules`
+da raiz quase vazio) apesar de a raiz declarar `workspaces` — e o G5 desfez isso:
+com `packages/contrato` os três runtimes importam o mesmo módulo, e a guarda foi
+perdendo a razão de existir em pedaços (a tipagem no G2, a fronteira na R7, o
+resto no G4).
 
 O padrão do próprio stack: `@medusajs/types` é um **pacote publicado** que os
 dois apps consomem; o Medusa não tem script de paridade, tem tipos, testes
 (`integration-tests/http/*.spec.ts` — que este repo já tem) e build.
 
-**Destino: `check-contract-parity.mjs` deletado.** O que ele faz vira tipagem,
-teste ou checagem de dado — nenhuma das 89 some sem substituto, e nenhuma das
-~6 que sobrevivem continua sendo assert de regex.
+**Destino: `check-contract-parity.mjs` deletado — cumprido no G4.** O que ele
+fazia virou tipagem, teste ou checagem de dado: nenhuma das 114 ficou órfã — as
+que não viraram teste são `tsc` (o ramo por `kind`), são verificadas pelo gerador
+(o seed e os tokens) ou eram tautológicas desde o G5 (o espelho que sumiu). As
+que sobraram sem substituto de linguagem — binário, CSS, migração — continuam
+sendo conferidas, agora por teste com `fs` e pelo `--check` do gerador.
 
 ### O mapa (as 89, por grupo)
 
@@ -172,11 +179,13 @@ morrem na G5. O meio vai para teste.
 | **G1** | **CI** no GitHub Actions: `make check`, `make types`, testes, `check-schema` (Postgres de serviço), `next build` | baixo — e é o que torna todo o resto verificável |
 | **G2** | **tipagem no painel**: importar os tipos do contrato, renderer exaustivo por `kind`, constantes importadas em vez de lidas por regex | baixo |
 | **G3** | **testes assumem a guarda**: `defaults`, `appearance`, `itemFields`/ícones/labels, CSS e fontes com `fs`, `resolveSchema`/`getContract`, vitest no frontend | médio (deps novas) — ✅ **feito** (37 + 5 testes) |
-| **G4** | **deletar a guarda**: `git rm scripts/check-contract-parity.mjs`; `make check` = `gen --check` + testes; o hook chama o novo `make check`. O mapa vai na mensagem do commit | médio — por isso a CI precisa estar verde antes |
+| **G4** | **deletar a guarda** ✅ **feito (2026-09-30)**: `git rm scripts/check-contract-parity.mjs`; o hook passou a chamar `make check`. **Divergência medida do plano:** o alvo não absorveu os testes — o job `guard` da CI roda **sem** `node_modules`, e o jest não roda ali; `make check` ficou `gen --check` + `check-boundaries` e a paridade virou **`make test`**, que é onde a suíte roda. O mapa das 114 vai na mensagem do commit | médio — por isso a CI precisa estar verde antes |
 | **G5** | **`packages/contrato`**: install unificado (lockfile único), pacote com `contract.ts` + `defaults.ts` + `schema.ts`, os dois apps em `workspace:*`, `transpilePackages` no Next, Medusa com o pacote no build, os dois Dockerfiles ajustados. Sai `contract.generated.ts` — o `gen-content.mjs` **sobreviveu**, reduzido ao que deriva do contrato (ver a nota em "Onde parou") | **alto** — mexe no build dos dois lados |
 
 **Requisito de G4:** CI verde antes. Sem CI rodando, apagar 89 verificações é
-desligar o alarme antes de ligar outro.
+desligar o alarme antes de ligar outro. **Cumprido na ordem:** a parte 1 foi feita
+com a guarda **no lugar** — `make check` imprimindo as 114 e as suítes novas
+passando **ao lado** dela —, e só a parte 2 apagou o arquivo.
 
 ### Onde parou (2026-09-27)
 
@@ -186,7 +195,7 @@ desligar o alarme antes de ligar outro.
 | **G1** CI | ✅ `400d137b52` (4 jobs; o job `schema` foi validado localmente contra um banco **vazio**: `db:migrate` → `seed-schema` ("Era inexistente") → `--check` ("em dia")) |
 | **G2** tipagem no painel | ✅ `98ad1e0fcf` — guarda de **89 → 80**; a exaustividade por `kind` virou `tsc` (provado: injetar `\| "date"` dá `TS2322`); `medusa build` passa e o bundle do admin não leva dado do contrato |
 | **G3** testes | ✅ `50f8cee573` (37 no backend) + `efaece4907` (5 no storefront, com `vitest`) |
-| **G4** apagar a guarda | ⏭️ **destravado pelo G5** — é o próximo da fila |
+| **G4** apagar a guarda | ✅ **feito (2026-09-30)**, em duas partes na branch `g4/apagar-a-guarda`: `2a9f8739f6` (a cobertura que assume as 114, lado a lado com a guarda) e o commit que fecha (o arquivo fora, `make check` = `gen --check` + `check-boundaries`, o hook chamando o alvo, e a CI/os comentários/os docs reescritos). Medido no fim: `make check` com **1** linha `ok` (a fronteira) e nenhuma de contrato, `make test` **210 + 19 + 81**, `make types` verde nos três, `make gen` sem diff |
 | **G5** `packages/contrato` | ✅ **feito (2026-09-30)** — install unificado (um `yarn.lock`, **1418 pacotes**, `node_modules` de **987MB** contra 867MB + 573MB em separado), pacote `@rv/contrato` (`contract`/`defaults`/`schema`) com shims de re-export em `backend/src/modules/content/`, `workspace:*` nos dois apps, `transpilePackages` no Next, `yarn workspaces focus` nos dois Dockerfiles (contexto = a raiz) e `contract.generated.ts` **apagado**. Medido: `make types` verde nos 3 projetos, guarda **114**, jest **183 + 12**, vitest **76** |
 
 **O que o G5 mudou em relação ao que este plano dizia (medido, não especulado).**
@@ -223,14 +232,16 @@ check`) e `tipos` (passo `make types`). O R7.1 mediu as duas causas num clone
 limpo e consertou as duas na árvore: a `#17` (`dd009b9160`) é a **primeira
 execução verde** do repositório — os cinco jobs passam, sem que uma linha do
 workflow mude. A condição que o próprio G4 impunha ("CI verde antes") está
-cumprida. Depois dela a fila andou — a **R3-lite** e a **R4 → R5** saíram (o tema como dado, do contrato ao banco, com o `themes/` fora da imagem) —, e o que resta do G é o **G5** (`packages/contrato`), que é o que destrava o G4. A guarda que o G4 vai apagar tem **114** asserções hoje: o mapa das 89 acima é o recorte de quando ele foi escrito, e cada fase somou o que está na contagem medida.
+cumprida. Depois dela a fila andou — a **R3-lite** e a **R4 → R5** saíram (o tema como dado, do contrato ao banco, com o `themes/` fora da imagem) —, e o **G5** (`packages/contrato`) saiu em seguida: foi ele que destravou o G4, que **fechou em 2026-09-30**. A guarda saiu com **114** asserções: o mapa das 89 acima é o recorte de quando ele foi escrito, e cada fase somou o que está na contagem medida.
 
 Duas lacunas que ficaram declaradas, não escondidas:
 
 - **Teste de render do painel** (precisaria de jsdom + testing-library): as duas
   asserções fracas que o cobriam ("o editor lê `itemFields`", "a listagem lê
-  `typeLabels`") **permanecem** na guarda, porque apagar verificação sem
-  substituto é perder cobertura em silêncio.
+  `typeLabels`") viveram na guarda até o G4 e então viraram teste
+  (`panel-wiring.unit.spec.ts`, no runner do CRM, lendo por `fs`) — a mesma
+  promessa, agora com mensagem de falha própria. O que continua fora é o render de
+  verdade.
 - **`vite` como devDep do storefront**: o `vitest` exige, e o projeto não tinha
   (o Next traz o dele, que não é o mesmo pacote). Instalar é o caminho padrão,
   mas é uma dependência a mais no build de imagem.
@@ -324,7 +335,8 @@ de `backend/`. O painel **não** importa valor nenhum desde a R6.5: eram três (
 `positionFor` e `renumber`, em `page.tsx`), e os três saíram — a regra passou a viajar como dado (a
 faixa no payload) e a gravação virou uma porta só (`POST /admin/content/order`). A verificação
 nasceu dentro do `check-contract-parity.mjs` (a R6.5 a somou ali) e a R7 a herdou na
-`check-boundaries.mjs`, junto com o código que mudou de casa.
+`check-boundaries.mjs`, junto com o código que mudou de casa — o arquivo de origem foi
+apagado no G4, e essa é hoje a razão de existir desta guarda.
 
 ### Fechamento de toda fase R (R0 → R7.1)
 
@@ -341,7 +353,7 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 > que a vitrine de destaque lê ⇔ o formulário, o chip como referência e a tabela do link; a R6.5
 > somou quatro: nenhum import de valor no painel, a faixa da ordem vinda das constantes do módulo,
 > o numeral da tela usando essa faixa e a porta de ordem com um aviso só). A **R7** não somou
-> nenhuma: ela mudou uma de casa — a fronteira do painel saiu do `check-contract-parity.mjs` para o
+> nenhuma: ela mudou uma de casa — a fronteira do painel saiu do `check-contract-parity.mjs` (apagado no G4) para o
 > `check-boundaries.mjs`, que é onde ela virou a razão de existir do arquivo —, e o total ficou 94.
 > A **R7.1** também não somou asserção nenhuma, e de propósito: o que ela somou foi **ambiente** (um
 > alvo do Makefile, o check 6 do `doctor` e uma guarda de **subida**, que não é verificação de
@@ -371,9 +383,13 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 > A **R2** somou **uma** verificação, mas não neste alvo: `scripts/check-panel-tests.mjs` (a suíte
 > que está no disco do CRM é a que o runner dele executa) **precisa do jest instalado**, e o job
 > `guard` da CI roda este alvo sem instalar nada — ela foi para o `make test`, que é onde a suíte
-> roda. Hoje o total é **114**: 113 do contrato + 1 da fronteira.
-> O alvo do plano nunca foi o número: é ficar só com o que a linguagem não vê (binário, CSS,
-> migração).
+> roda. O total **fechou em 114** (113 do contrato + 1 da fronteira), e é o número com que a guarda
+> foi apagada no G4: a contagem acima é o histórico de como ela chegou lá. Desde então o
+> `make check` imprime **uma** linha `ok` (a fronteira do painel) e nenhuma de contrato — quem conta
+> verificação agora conta teste: **210** no backend, **19** no CRM e **81** no storefront. O que ela
+> via de binário e de CSS continua coberto, por teste com `fs` (`assets.unit.spec.ts`).
+> O alvo do plano nunca foi o número: era ficar só com o que a linguagem não vê (binário, CSS,
+> migração) — e é onde o `make check` e os testes com `fs` pararam.
 
 ### A fila, na ordem fixada
 
@@ -527,7 +543,7 @@ da CI na última medição **antes** dos consertos (API do GitHub, sem token):
 |---|---|
 | Execuções | **15, nenhuma verde**: 13 `failure` + 2 `cancelled` (as canceladas — `#12` e `#14` — ficam ~20s para trás quando o push seguinte as substitui) |
 | Última do conserto (`#15`, `e9a1a93e8f`) | `guarda de contrato` falha no passo `make check`; `tipos` falha no passo `make types`. `registro do schema`, `testes` e `build do storefront` **passam** — os mesmos resultados de antes do conserto: a guarda nova não tirou nenhum job do ar, e a válvula de escape vale na CI também (o job `registro do schema` carrega a config e tem a fonte, então ela não dispara lá) |
-| Causa de `guarda de contrato` — **medida** | num clone limpo (`git worktree add --detach`: sem `node_modules` e sem `.medusa`, que é exatamente o que o job é — `checkout` + `setup-node` + `make check`), o `make check` morre com `ERR_MODULE_NOT_FOUND` ao carregar `frontend/src/lib/content/icons.ts` pelo `loadExport` (`check-contract-parity.mjs`). O arquivo importa **valor** de `@medusajs/icons` — é ele quem desenha o ícone —, e o comentário do `loadExport` o listava como "tipos e dados puros": a premissa falsa era a causa, não o job |
+| Causa de `guarda de contrato` — **medida** | num clone limpo (`git worktree add --detach`: sem `node_modules` e sem `.medusa`, que é exatamente o que o job é — `checkout` + `setup-node` + `make check`), o `make check` morre com `ERR_MODULE_NOT_FOUND` ao carregar `frontend/src/lib/content/icons.ts` pelo `loadExport` (`check-contract-parity.mjs`, na época — o arquivo foi apagado no G4, e a travessia de tipos ficou com o `gen-content.mjs`). O arquivo importa **valor** de `@medusajs/icons` — é ele quem desenha o ícone —, e o comentário do `loadExport` o listava como "tipos e dados puros": a premissa falsa era a causa, não o job |
 | Causa de `tipos` — **medida** | no mesmo clone, `make types` reprova no **primeiro** dos três `tsc` (o do backend), com `TS2307` em `backend/src/scripts/seed.ts`: ele importava `../../.medusa/types/query-entry-points`, diretório **gerado pelo `medusa build`** e gitignorado, logo ausente em qualquer clone. `make -k types` mostra os outros dois `tsc` (painel e storefront) **passando**: um erro só explicava o job inteiro. O log do job continua exigindo token — não foi preciso ler |
 | Conserto da guarda | `icons.ts` passou a ser lido como **texto**, a mesma regra que o registro social (`social-icons.tsx`) já seguia: `AVAILABLE_ICON_KEYS` sai das chaves do mapa `ICONS` (que é, por definição, `Object.keys(ICONS)`) e as duas listas saem do `readStringList`. **Sem asserção nova: 94**, como antes. Medido no clone limpo: verde (94 `ok`). E continua mordendo — três testes negativos, feitos no clone: chave tirada da lista → `FAIL` "oferece as mesmas chaves"; chave oferecida sem entrada no mapa → `FAIL` "sem ícone: bolt"; mapa renomeado → `FAIL` com **todas** as chaves "sem ícone", ou seja, não há leitura que passe calada |
 | Conserto dos tipos | o tipo da chave de API passou a ser **local e mínimo** — `type PublishableApiKey = { id: string; token: string }`, só o que o seed lê —, e o `import` do arquivo gerado saiu. A primeira tentativa foi o `ApiKeyDTO` do framework, e ela **verde num estado só**: resolve o clone, mas no host, onde o `.medusa/types` existe e a augmentação tipa o `graph`, `data?.[0]` vira o `ApiKey` do gráfico e a atribuição reprova (`last_used_at` é `Maybe<string \| Date>` lá e `Date \| null` no DTO — `TS2322` medido). O tipo local passa nos **dois**: `make types` com o diretório gerado **presente** e **ausente** → `exit=0` nos dois, os três `tsc` |
