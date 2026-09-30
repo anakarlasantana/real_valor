@@ -1,8 +1,4 @@
-import {
-  ApiKeyDTO,
-  CreateInventoryLevelInput,
-  ExecArgs,
-} from "@medusajs/framework/types";
+import { CreateInventoryLevelInput, ExecArgs } from "@medusajs/framework/types";
 import {
   ContainerRegistrationKeys,
   Modules,
@@ -29,13 +25,21 @@ import {
   updateStoresStep,
   updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows";
-// O tipo da chave de API vem do framework, e NAO de
-// `.medusa/types/query-entry-points`: aquele diretório é GERADO pelo
-// `medusa build` e está no `.gitignore`, então num clone limpo ele não existe —
-// e o `tsc` do backend reprovava com TS2307 bem aqui. Medido: com
-// `.medusa/types` fora do lugar, `make types` acusa só este erro (o painel e o
-// storefront passam), e era essa a causa do job `tipos` da CI nunca fechar.
-// `ApiKeyDTO` é o mesmo dado: `id` e `token`, os dois campos que o seed lê.
+/**
+ * A chave de API que o seed lê: `id` e `token` — os dois campos pedidos no
+ * `graph` e os dois que o código usa (`token` sai impresso no fim).
+ *
+ * O tipo é local e mínimo de propósito, e isso foi medido: cada alternativa
+ * quebra num dos estados. O `ApiKey` de `.medusa/types/query-entry-points` é
+ * GERADO pelo `medusa build` e está no `.gitignore` — num clone limpo o arquivo
+ * não existe e o `tsc` reprovava aqui com TS2307 (era a causa do job `tipos` da
+ * CI). O `ApiKeyDTO` do framework resolve o clone, mas **no host**, onde o
+ * diretório gerado existe e a augmentação tipa o `graph`, a atribuição de
+ * `data?.[0]` reprova: `last_used_at` é `Maybe<string | Date>` no gráfico e
+ * `Date | null` no DTO (TS2322 medido). Só um tipo que declara o que se lê —
+ * dois campos de texto — passa nos dois estados.
+ */
+type PublishableApiKey = { id: string; token: string }
 
 const updateStoreCurrencies = createWorkflow(
   "update-store-currencies",
@@ -392,7 +396,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
 
   // 7. Publishable API Key
   logger.info("[Real Valor] Configurando Publishable API Key...");
-  let publishableApiKey: ApiKeyDTO | null = null;
+  let publishableApiKey: PublishableApiKey | null = null;
   const { data } = await query.graph({
     entity: "api_key",
     // `token` junto: o seed imprime a chave no fim (ver abaixo), e é ela que o
@@ -421,7 +425,7 @@ export default async function seedDemoData({ container }: ExecArgs) {
       },
     });
 
-    publishableApiKey = publishableApiKeyResult as ApiKeyDTO;
+    publishableApiKey = publishableApiKeyResult
   }
 
   // A chave fica presa a **um só** canal de venda. O `add` sozinho nunca desliga
