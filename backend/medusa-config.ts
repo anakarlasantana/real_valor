@@ -5,6 +5,81 @@ import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
+// -----------------------------------------------------------------------------
+// As fontes de extensão do admin: os diretórios que o plugin do Vite varre
+// procurando `routes/`, `widgets/` e `i18n/`. O CRM deixou `src/admin/` na R7 e
+// virou um pacote próprio (`admin/`), irmão de `backend/` — ver
+// docs/plano-centralizacao.md.
+//
+// Duas linhas porque o CRM tem dois endereços, e é o mesmo diretório: no
+// repositório ele é IRMÃO de `backend/`; na imagem ele entra em `/app/admin`,
+// que é a raiz do container. O motivo é medido: a resolução de import do
+// Vite/Rollup parte da árvore do arquivo, então o `node_modules` do backend
+// precisa estar ACIMA do CRM — com o CRM em `/admin`, o `medusa build` morre em
+// `Rollup failed to resolve import "@medusajs/admin-sdk" from
+// "/admin/src/admin/routes/probe/page.tsx"`.
+const panelSourceCandidates = [
+  resolve(__dirname, "../admin/src/admin"),
+  resolve(__dirname, "admin/src/admin"),
+]
+
+// O painel COMPILADO — o que o `medusa build` escreve. Na imagem de execução o
+// `.medusa/server` é achatado na raiz do container, então o bundle fica em
+// `public/admin`; na árvore do repositório ele fica onde o build o deixou. Não
+// entra no build: serve só para o guard abaixo reconhecer o host que não precisa
+// da fonte (ele já tem o painel pronto, e é o `medusa start` que o serve).
+const compiledPanel = [
+  resolve(__dirname, "public/admin/index.html"),
+  resolve(__dirname, ".medusa/server/public/admin/index.html"),
+]
+
+const panelSources = panelSourceCandidates.filter(existsSync)
+
+// FAIL LOUD (R7.1). Sem isto o painel sobe SEM as extensões e sem dizer nada:
+// `sources: []` é uma lista VÁLIDA, então o Medusa monta um admin do zero, o
+// menu "Conteúdo da vitrine" simplesmente não existe e nenhum log acusa. Foi
+// assim que um bind morto de `./admin` passou por "bug do CRM" — a config
+// engolia a fonte ausente no `filter(existsSync)` e seguia em frente.
+//
+// Dispara só quando as TRÊS condições valem juntas: nenhuma fonte, nenhum
+// painel compilado e o processo não declarando `production`. Cada pedaço é
+// medido, não suposto:
+//   - é o `NODE_ENV` que decide QUEM serve o painel: o Vite dev server (que
+//     precisa da fonte) ou o bundle compilado. É a mesma divisão que o
+//     `docker-compose.override.yml` documenta.
+//   - o bundle compilado responde pelos hosts legítimos sem fonte: o runner da
+//     imagem (`COPY /app/.medusa/server ./` → `/app/public/admin`) e um
+//     `docker run` da imagem sem `NODE_ENV` (que é vazio LÁ: o Dockerfile não
+//     fixa o valor de propósito, quem o define é o Compose).
+//   - o checkout da CI tem a fonte (`NODE_ENV=development` no job `schema`).
+if (
+  panelSources.length === 0 &&
+  !compiledPanel.some(existsSync) &&
+  (process.env.NODE_ENV || "development") !== "production"
+) {
+  throw new Error(
+    [
+      "O painel (CRM) não foi encontrado em nenhum dos endereços esperados:",
+      ...panelSourceCandidates.map((dir) => `  - ${dir}`),
+      "",
+      'Sem as fontes o admin sobe SEM as extensões: o menu "Conteúdo da vitrine"',
+      "desaparece e nenhum erro é registrado — `sources: []` é uma lista válida.",
+      "",
+      "Em container, a causa provável é o bind `./admin:/app/admin` preso a um",
+      "diretório órfão: o diretório mudou de inode quando o CRM saiu de",
+      "`backend/src/admin` na R7, e o container velho continua montando o antigo.",
+      "Recrie o container. Medido: `docker compose up -d` sozinho NÃO resolve (o",
+      "Compose não recria um serviço cuja configuração não mudou), enquanto a",
+      "PARTIDA do container remonta o bind — por isso `restart`/`recreate` valem:",
+      "",
+      "  make recreate SERVICE=backend           # ou: docker compose restart backend",
+      "",
+      "Diagnóstico: `make doctor`. Detalhes: README > Troubleshooting 3 e",
+      "docs/plano-centralizacao.md > R7.1.",
+    ].join("\n")
+  )
+}
+
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
@@ -33,31 +108,18 @@ module.exports = defineConfig({
     path: (process.env.MEDUSA_ADMIN_PATH ||
       "/painel") as `/${string}`,
     backendUrl: process.env.MEDUSA_BACKEND_URL || "http://localhost:9000",
-    // As fontes de extensão do admin: os diretórios que o plugin do Vite varre
-    // procurando `routes/`, `widgets/` e `i18n/`. O CRM deixou `src/admin/` na
-    // R7 e virou um pacote próprio (`admin/`), irmão de `backend/` — ver
-    // docs/plano-centralizacao.md.
-    //
-    // Duas linhas porque o CRM tem dois endereços, e é o mesmo diretório: no
-    // repositório ele é IRMÃO de `backend/`; na imagem ele entra em
-    // `/app/admin`, que é a raiz do container. O motivo é medido: a resolução
-    // de import do Vite/Rollup parte da árvore do arquivo, então o
-    // `node_modules` do backend precisa estar ACIMA do CRM — com o CRM em
-    // `/admin`, o `medusa build` morre em
-    // `Rollup failed to resolve import "@medusajs/admin-sdk" from
-    // "/admin/src/admin/routes/probe/page.tsx"`. O `filter` mantém só o
-    // diretório que existe, então a mesma config serve host e container (e na
-    // imagem de execução — que não tem nem um nem outro — a lista fica vazia de
-    // propósito: `medusa start` serve o bundle COMPILADO, não a fonte).
+    // As fontes do painel são derivadas no topo deste arquivo — junto do guard
+    // que falha alto quando não existe nenhuma (R7.1) —, e são o MESMO
+    // diretório em dois endereços: irmão de `backend/` no repositório,
+    // `/app/admin` na imagem. O `filter` mantém só o endereço que existe, então
+    // a mesma config serve host e container (e onde não há nenhum dos dois o
+    // painel vem do bundle compilado, ver `compiledPanel`).
     //
     // O cast: `sources` não está no tipo público de `admin` (`AdminOptions`, de
     // @medusajs/types); quem o declara é `BundlerOptions`
     // (@medusajs/admin-bundler), o tipo que o `adminLoader` monta e entrega ao
     // Vite. Sem ele, `make types` acusa TS2769 — medido.
-    sources: [
-      resolve(__dirname, "../admin/src/admin"),
-      resolve(__dirname, "admin/src/admin"),
-    ].filter(existsSync),
+    sources: panelSources,
   } as NonNullable<ConfigModule["admin"]> & { sources: string[] },
   modules: [
     // Armazenamento dos arquivos que o painel envia: as fotos das seções da

@@ -2,10 +2,12 @@
 # Diagnostico do ambiente local. **Nao muda nada**: so le e diz o que esta
 # errado e o comando que resolve.
 #
-# Existe porque os tres problemas que derrubam `make up` nao dizem na cara do
-# erro: container velho com o nome ocupado, porta ja usada por outra coisa, e
-# publishable key do `.env` diferente da do banco (a Store API responde 400 e a
-# loja inteira cai com 500 — sem nenhuma pista de que a chave e' o problema).
+# Existe porque os problemas que derrubam `make up` nao dizem na cara do erro:
+# container velho com o nome ocupado, porta ja usada por outra coisa, publishable
+# key do `.env` diferente da do banco (a Store API responde 400 e a loja inteira
+# cai com 500 — sem pista de que a chave e' o problema) e o bind do CRM preso a um
+# diretorio orfao (o painel sobe sem o menu "Conteudo da vitrine" e sem erro
+# nenhum; ver o check 6).
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -103,6 +105,31 @@ if [ "$stack_up" -gt 0 ]; then
     fi
   else
     warn "a tabela content_section ainda não existe" "make migrate"
+  fi
+  # 6. O CRM (a extensao do painel) tem que estar VISIVEL dentro do backend. O
+  #    bind `./admin:/app/admin` do override de DEV pode ficar preso a um
+  #    diretorio ORFAO: quando o container nasceu, `admin/` era outra coisa (o
+  #    CRM morava em `backend/src/admin` ate a R7) e o Docker montou o inode
+  #    daquele momento. Depois da mudanca o diretorio do host virou outro, e o
+  #    container velho continuou vendo o antigo, VAZIO (medido: 4 entradas no
+  #    host, `total 0` dentro do container; inode 26083381 x 26083369). O
+  #    `medusa-config.ts` filtra as fontes que existem, entao o painel subia sem
+  #    extensao nenhuma: o menu "Conteudo da vitrine" sumia e nenhum log acusava.
+  #    Desde a R7.1 aquela config FALHA ALTO nesse caso (e' ela que derruba o
+  #    backend em DEV -- este check existe para o diagnostico chegar antes, e
+  #    para dizer que a causa e' do ambiente e nao do CRM).
+  #    Em PROD nao ha fonte a montar: o painel vem do bundle compilado, e quem
+  #    diz isso e' o `NODE_ENV=production` do Compose (o MESMO discriminador do
+  #    guard da config). `restart` tambem remonta o bind (medido), mas quem pega
+  #    imagem e configuracao novas e' o `make recreate`.
+  if [ -n "$(docker compose ps -q backend 2>/dev/null)" ]; then
+    if [ "$(docker compose exec -T backend printenv NODE_ENV 2>/dev/null | tr -d '\r')" = "production" ]; then
+      ok "backend em modo producao: o painel vem do bundle compilado (nao ha fonte a montar)"
+    elif docker compose exec -T backend test -d /app/admin/src/admin 2>/dev/null; then
+      ok "CRM visivel dentro do backend (/app/admin/src/admin)"
+    else
+      bad "o CRM não está visível dentro do backend: o painel sobe sem 'Conteúdo da vitrine'" "docker compose up -d --force-recreate backend   (ou: make recreate SERVICE=backend)"
+    fi
   fi
 else
   warn "stack não está de pé: as checagens de chave e registro foram puladas" "make up"

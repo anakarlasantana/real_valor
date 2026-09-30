@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen test check types build-admin doctor
+.PHONY: help up down restart recreate logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen test check types build-admin doctor
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -33,6 +33,7 @@ help:
 	@echo "    make up            - Sobe a stack completa"
 	@echo "    make down          - Para e remove os containers (preserva os dados)"
 	@echo "    make restart       - Reinicia todos os containers"
+	@echo "    make recreate      - Recria os containers (resolve bind preso; SERVICE=<nome> recria so um)"
 	@echo "    make ps            - Status dos containers da stack"
 	@echo "    make logs          - Logs do backend em tempo real"
 	@echo "    make logs-all      - Logs de todos os servicos"
@@ -77,6 +78,32 @@ down:
 
 restart:
 	$(COMPOSE) restart
+
+# ---------------------------------------------------------------------------
+# Recriar: o caminho garantido para bind mount preso
+# ---------------------------------------------------------------------------
+# O caso medido (R7.1): o diretorio `admin/` mudou de inode quando o CRM saiu de
+# `backend/src/admin`, e o container de DEV ficou montando o inode ANTIGO
+# (vazio) em `/app/admin` — o painel subia sem o menu "Conteudo da vitrine" e
+# nada acusava (host com 4 entradas, container com `total 0`; inode 26083381 x
+# 26083369, e o mesmo mecanismo reproduzido do zero num container descartavel).
+#
+#   `docker compose up -d` sozinho NAO resolve: o Compose nao recria um servico
+#     cuja configuracao nao mudou — foi por isso que o `make up` do dia nao
+#     consertou nada.
+#   `make restart` resolve o BIND (medido: a partida do container remonta o
+#     mount e re-resolve o path de origem), mas nao recria o container.
+#   `make recreate` e' o caminho garantido: recria do zero, entao pega imagem e
+#     configuracao novas alem do mount.
+#
+# Desde a R7.1 a config falha alto nesse estado, e o `make doctor` aponta a causa
+# como sendo do ambiente (e nao um bug do CRM).
+#
+# `SERVICE` e' opcional: `make recreate SERVICE=backend` recria so o backend,
+# que e' o suficiente para o bind do CRM (e mais barato: nao reinicia o
+# storefront). Sem ele, recria a stack inteira.
+recreate:
+	$(COMPOSE) up -d --force-recreate $(SERVICE)
 
 ps:
 	$(COMPOSE) ps
@@ -204,9 +231,11 @@ revalidate:
 # Diagnostico do ambiente local (le e nao mexe)
 # ---------------------------------------------------------------------------
 # Existe porque os problemas que derrubam `make up` nao dizem na cara do erro:
-# container velho com o nome ocupado, porta ja usada por outra coisa e
-# publishable key do `.env` diferente da do banco (esse derruba a LOJA inteira
-# com 500 e nenhuma mensagem aponta a chave).
+# container velho com o nome ocupado, porta ja usada por outra coisa, publishable
+# key do `.env` diferente da do banco (esse derruba a LOJA inteira com 500 e
+# nenhuma mensagem aponta a chave) e o bind do CRM preso a um diretorio orfao (o
+# painel sobe sem o menu "Conteudo da vitrine", sem erro nenhum, e o sintoma
+# parece bug do CRM — ver o check 6 do script).
 doctor:
 	@scripts/doctor.sh
 

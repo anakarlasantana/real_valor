@@ -115,6 +115,7 @@ Tudo passa pelo `Makefile` (que nada mais é que um atalho para `docker compose`
 | `make up` / `make up PROD=1` | Sobe a stack completa em **DEV** / **PROD** (`build` não é implícito). |
 | `make down` | Para e remove os containers (preserva os volumes de dados). |
 | `make restart` | Reinicia todos os containers. |
+| `make recreate [SERVICE=backend]` | **Recria** os containers (`up -d --force-recreate`); com `SERVICE=<nome>`, só um. É o comando que **remonta um bind mount preso** — `make up` sozinho não resolve, porque o Compose não recria um serviço cuja configuração não mudou (ver Troubleshooting 3). |
 | `make ps` | Status dos containers da stack. |
 | `make build` | Reconstrói as imagens do backend e do frontend (offline). |
 | `make logs` / `make logs-all` | Logs do backend / de todos os serviços (follow). |
@@ -136,6 +137,13 @@ make logs-all    # todos
 # Reiniciar somente o backend
 docker compose restart backend          # DEV
 make restart PROD=1                     # PROD (todos)
+
+# Recriar os containers. É o que remonta um bind mount preso no DEV — por
+# exemplo o menu do CRM sumiu do painel (ver Troubleshooting 3): a partida do
+# container re-resolve o caminho. `make up` sozinho NÃO resolve, porque o
+# Compose não recria um serviço cuja configuração não mudou.
+make recreate SERVICE=backend           # só o backend
+make recreate                           # a stack inteira
 
 # Reprocessar migrations manualmente (ex.: após um git pull com novas migrations)
 make migrate
@@ -405,9 +413,11 @@ docker compose up -d --force-recreate --renew-anon-volumes
 
 O `--renew-anon-volumes` (ou `-V`) **é obrigatório aqui**: o volume anônimo `/app/node_modules` é herdado do container anterior, então recriar o container sem renová-lo manteria a árvore de produção (sem `ts-node`) e o erro voltaria idêntico.
 
-Antes de.debugar qualquer sintoma: `make doctor` — ele confere o Docker, container parado com
-nome ocupado, porta do Postgres/Redis, se a publishable key do `.env` é a do banco e se o
-registro do schema está gravado. Sai != 0 e diz o comando que resolve.
+Antes de debugar qualquer sintoma: `make doctor` — ele confere o Docker, container parado com
+nome ocupado, porta do Postgres/Redis, se a publishable key do `.env` é a do banco, se o
+registro do schema está gravado e se o pacote do **CRM está visível dentro do container**
+(`/app/admin/src/admin` — é o bind órfão do Troubleshooting 3). Sai != 0 e diz o comando que
+resolve.
 
 ### 2. Painel: `Ocorreu um erro` / `Error loading dynamically imported module`
 
@@ -443,7 +453,81 @@ curl -s -o /dev/null -w '%{http_code}\n' -m 3 http://localhost:9001/painel/     
 
 **Ainda quebrou?** Um reload forçado (`Ctrl+Shift+R`) resolve o estado da aba — o servidor já está no grafo novo; depois rode `make logs-admin` para confirmar que nenhum módulo caiu no fallback.
 
-### 3. Outros sintomas frequentes
+### 3. Painel abre, mas o menu **"Conteúdo da vitrine"** não aparece
+
+O painel carrega (login, menus nativos) e só o item do CRM não está na sidebar — e o
+`make logs-admin` fica **verde**. Não é bug do CRM: é o bind `./admin:/app/admin` do DEV
+apontando para um **diretório órfão**.
+
+**O que acontece.** O CRM saiu de `backend/src/admin` na R7 e virou o pacote `admin/`. O
+container criado **antes** disso continuou montando o *inode* do diretório daquele momento.
+Medição: no host, `admin/` é o inode `26083381` (com o CRM); dentro do container, `/app/admin`
+era o `26083369` (**vazio**) — enquanto o controle `backend/src` dava o **mesmo** inode dos dois
+lados (`28196276`). O `medusa-config.ts` monta as fontes do painel com `filter(existsSync)`,
+então a lista ficava **vazia** — e lista vazia é válida: o Medusa compila um admin do zero, sem
+extensão nenhuma. Nenhum erro no log.
+
+**Diagnóstico:**
+
+```bash
+make doctor                                          # check 6 é exatamente este
+docker compose exec backend ls /app/admin            # "total 0" = bind órfão
+docker compose exec backend ls /app/admin/src/admin  # erro = o CRM não está lá
+```
+
+No browser o sintoma é pedir um módulo do CRM e receber o casco do SPA. **O código HTTP não
+serve de teste** (é o mesmo caso do item 2): o container responde `200` para qualquer caminho —
+o que distingue é o *conteúdo*:
+
+```bash
+curl -s -o /dev/null -w '%{content_type} %{size_download}\n' \
+  'http://localhost:9000/painel/@fs/app/admin/src/admin/routes/content/page.tsx'
+# quebrado: text/html 752          <- o index.html do fallback
+# certo:    text/javascript 120407
+```
+
+A prova direta é o módulo virtual que o Medusa monta para o painel:
+
+```bash
+curl -s 'http://localhost:9000/painel/@id/__x00__virtual:medusa/routes'
+```
+
+```js
+// certo — a rota existe, e é o `handle` dela que desenha o item na sidebar:
+import RouteComponent0, { config as HandleConfig0 } from "/painel/@fs/app/admin/src/admin/routes/content/page.tsx"
+export default { routes: [ { Component: RouteComponent0, path: "/content",
+  handle: { label: HandleConfig0.label, translationNs: HandleConfig0.translationNs } } ] }
+
+// quebrado — 0 rotas (537 bytes), e era só isso que o painel recebia:
+export default { routes: [ ] }
+```
+
+**Correção:**
+
+```bash
+make recreate SERVICE=backend        # ou: docker compose restart backend
+```
+
+A **partida** do container remonta o bind e re-resolve o caminho. Medido: o `restart` resolve; o
+mesmo `docker compose up -d` sozinho **não**, porque o Compose não recria um serviço cuja
+configuração não mudou — por isso o alvo `make recreate` existe (ele acrescenta o
+`--force-recreate`, que força a partida). Depois disso o `make doctor` volta verde e o item
+aparece na sidebar.
+
+**A partir daqui o defeito não é mais silencioso.** O `backend/medusa-config.ts` **falha na
+subida** quando não encontra o CRM nem pelas fontes nem pelo painel compilado, e o processo não
+se declara `production` — com o comando da correção na mensagem. Medido: `NODE_ENV=development`
++ `/app/admin` vazio → `exit=1` com a mensagem (carregado por `ts-node`, o mesmo caminho do
+`medusa develop`). Em **produção** o mesmo estado não derruba o serviço: ali quem serve o painel
+é o bundle do `medusa build`. É a mesma divisão que o `docker-compose.override.yml` documenta.
+
+**E a imagem de produção?** Medido: a imagem `:local` de antes desta fase (`a58a8d213e84`)
+**tinha** o CRM no bundle — o rótulo `Conteúdo da vitrine` está no `assets/index-Jd2yMxWa.js`. O
+defeito era do bind do **DEV**, não do artefato. Ela foi reconstruída mesmo assim, por estar
+defasada em relação à R7 (`docker compose -f docker-compose.yml build backend` → `086cdbc3557e`,
+com o rótulo em `assets/index-FbnzdS_y.js`).
+
+### 4. Outros sintomas frequentes
 
 | Sintoma | Causa | Correção |
 | :--- | :--- | :--- |
