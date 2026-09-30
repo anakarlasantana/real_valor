@@ -11,19 +11,24 @@
  */
 import {
   APPEARANCE_GROUPS,
+  CONTENT_SURFACES,
+  FIXED_SECTION_POSITIONS,
   FOOTER_COLUMN_SOURCES,
   FONT_ROLES,
   ITEM_FIELDS,
   SECTION_FIELDS,
   SECTION_TYPE_LABELS,
   SECTION_TYPES,
+  SINGLETON_SECTION_TYPES,
   THEME_COLOR_TOKENS,
   THEME_DARK_TOKENS,
+  THEME_SURFACE,
   type FieldKind,
   type FieldSpec,
   type SectionType,
 } from "../contract"
 import { DEFAULT_HOME_SECTIONS } from "../defaults"
+import { bandFor, reservedPositions } from "../order"
 
 const listKindsInSections: FieldKind[] = [
   ...new Set(
@@ -241,3 +246,54 @@ describe("aparência por seção", () => {
     expect(semTraducao).toEqual([])
   })
 })
+
+/**
+ * As **casas** da numeração.
+ *
+ * A posição de uma seção é a casa dela na página, e a faixa de casas é da
+ * superfície (`CONTENT_SURFACES[i].order`). O que este bloco trava é o que dá
+ * sentido a "1 a 10" na home: cada tipo do bloco ancorado tem uma casa, nenhuma
+ * casa serve a dois tipos, e a faixa das seções ordenáveis **não começa** numa
+ * casa ancorada — a renumeração as pula (`order.ts`), e uma faixa que começasse
+ * na casa 1 escreveria em cima da barra de anúncio.
+ */
+describe("as casas da numeração", () => {
+  const houses = Object.values(FIXED_SECTION_POSITIONS)
+
+  it("todo tipo do bloco ancorado declara uma casa", () => {
+    for (const type of SINGLETON_SECTION_TYPES) {
+      expect(typeof FIXED_SECTION_POSITIONS[type]).toBe("number")
+    }
+  })
+
+  it("nenhuma casa serve a dois tipos fixos", () => {
+    expect(new Set(houses).size).toBe(houses.length)
+  })
+
+  it("a faixa da home começa na primeira casa livre depois do bloco do topo", () => {
+    // As casas ancoradas do topo são as menores da numeração (1, 2, 3 e 4), e a
+    // primeira livre é a seguinte a elas: é essa a casa da primeira seção
+    // ordenável, e é o que o padrão (`defaults.ts`) numera como 5.
+    const topo = houses.filter((house) => house < FIXED_SECTION_POSITIONS.footer)
+
+    expect(bandFor("home").first).toBe(Math.max(...topo) + 1)
+  })
+
+  it("nenhuma faixa começa numa casa ancorada", () => {
+    for (const surface of CONTENT_SURFACES) {
+      expect(reservedPositions(surface.id)).not.toContain(surface.order.first)
+    }
+  })
+
+  it("o bloco ancorado é da home: o tema não tem casa reservada", () => {
+    const daHome = new Set(
+      CONTENT_SURFACES.find(({ id }) => id === "home")?.types ?? []
+    )
+
+    expect(SINGLETON_SECTION_TYPES.filter((type) => !daHome.has(type))).toEqual(
+      []
+    )
+    expect(reservedPositions(THEME_SURFACE)).toEqual([])
+  })
+})
+

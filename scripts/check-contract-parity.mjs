@@ -1701,32 +1701,42 @@ console.log("\nCONTRATO COMO DADO (content_contract, o registro do crm)")
 //
 // Primeiro a faixa: o numeral que a tela desenha com a ordem **pendente** é
 // previsão do que o `POST /admin/content/order` vai gravar, e a faixa chega como
-// dado (`order: orderFaixa()`), tirada das constantes do módulo. Número digitado
-// na rota seria uma segunda resposta para "onde a numeração começa" — e a
-// divergência apareceria como numeral que não bate com o que a loja recebe.
+// dado (`order: orderFaixa(surface)`), tirada da **superfície do contrato**
+// (`CONTENT_SURFACES[i].order`) mais as casas ancoradas
+// (`FIXED_SECTION_POSITIONS`). Número digitado na rota seria uma segunda resposta
+// para "onde a numeração começa" — e a divergência apareceria como numeral que
+// não bate com o que a loja recebe. O tema é o caso que a superfície resolve: ele
+// numera de 10 em 10, e a home de 1 em 1.
 //
 // Segundo, que o painel **use** esse dado: um `order` que ninguém lê é payload
 // morto, e a lista pendente voltaria a mostrar o número gravado (o defeito que
-// a fase conserta).
+// a fase conserta). O painel pula as casas ancoradas (`order.reserved`), que é a
+// mesma conta da gravação — sem isso, a sexta seção da home apareceria na tela
+// na casa 10, que é do rodapé, e nasceria gravada em 11.
 const orderModule = readFileSync(ORDER_MODULE, "utf8")
 const orderRoute = readFileSync(ADMIN_ORDER_ROUTE, "utf8")
 
 assert(
-  "a faixa da ordem no payload sai das constantes do módulo (`orderFaixa`)",
-  adminRoute.includes("order: orderFaixa()") &&
+  "a faixa da ordem no payload sai da superfície do contrato (`orderFaixa`)",
+  adminRoute.includes("order: orderFaixa(surface)") &&
     orderModule.includes("export function orderFaixa") &&
-    orderModule.includes("first: FIRST_VITRINE_POSITION") &&
-    orderModule.includes("step: POSITION_STEP"),
-  "em backend/src/api/admin/content/route.ts: `order: orderFaixa()` — a " +
-    "faixa é de modules/content/order.ts"
+    orderModule.includes("...bandFor(surface), reserved: reservedPositions(surface)") &&
+    orderModule.includes("CONTENT_SURFACES") &&
+    orderModule.includes("FIXED_SECTION_POSITIONS") &&
+    contractSource.includes("order: { first: 5, step: 1 }") &&
+    contractSource.includes("order: { first: 10, step: 10 }"),
+  "em backend/src/api/admin/content/route.ts: `order: orderFaixa(surface)` — a " +
+    "faixa é da superfície (contrato), lida por modules/content/order.ts"
 )
 
 assert(
   "a tela numera a ordem pendente com a faixa do payload (não com a regra)",
-  pageSource.includes("order.first + place * order.step") &&
-    pageSource.includes('"/admin/content/order"'),
+  pageSource.includes("numeralFor(place, order)") &&
+    pageSource.includes("order.reserved") &&
+    pageSource.includes('\"/admin/content/order\"'),
   "em admin/src/admin/routes/content/page.tsx: numeral da ordem pendente " +
-    "sai de `order` (payload) e a publicação é o POST /admin/content/order"
+    "sai de `order` (payload, com as casas ancoradas em `order.reserved`) e a " +
+    "publicação é o POST /admin/content/order"
 )
 
 // E a porta é uma só: a renumeração é do módulo (`applyOrder`), a loja é avisada

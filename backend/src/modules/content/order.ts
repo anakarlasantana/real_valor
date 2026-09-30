@@ -6,113 +6,245 @@
  * testável: quais tipos entram na ordem, de onde a numeração começa e o que
  * "próxima posição" quer dizer. A página do CRM só clica.
  *
- * As funções puras (`nextPosition`, `positionAfter`, `positionFor`, `renumber`,
- * `orderErrors`) não sabem de banco: recebem listas e devolvem números. A
- * gravação é **uma só** (`applyOrder`, no fim), e é de propósito que ela more
- * aqui: publicar a ordem é renumeração + escrita + aviso, e separar as duas
- * partes convidaria a uma segunda renumeração em outro lugar — que é
- * exatamente o que a fase R6.5 veio tirar do navegador.
+ * As funções puras (`bandFor`, `reservedPositions`, `nextPosition`,
+ * `positionAfter`, `positionFor`, `renumber`, `orderErrors`) não sabem de banco:
+ * recebem listas e devolvem números. A gravação é **uma só** (`applyOrder`, no
+ * fim), e é de propósito que ela more aqui: publicar a ordem é renumeração +
+ * escrita + aviso, e separar as duas partes convidaria a uma segunda
+ * renumeração em outro lugar — que é exatamente o que a fase R6.5 veio tirar do
+ * navegador.
+ *
+ * ## A posição é uma casa, e cada casa tem dono
+ *
+ * A posição de uma seção é a **casa** dela na página, e a faixa de casas é da
+ * superfície (`CONTENT_SURFACES[i].order`, no contrato). Na home:
+ *
+ *     1  barra de anúncio  ┐
+ *     2  cabeçalho         │ ancoradas (`FIXED_SECTION_POSITIONS`): a seção
+ *     3  capa (hero)       │ fixa mora sempre aqui, e nada a renumera
+ *     4  benefícios        ┘
+ *     5… 9  as seções ordenáveis — de 1 em 1, na ordem da tela
+ *    10  rodapé            ← ancorada: fecha a numeração
+ *
+ * Ou seja: a home inteira cabe em **1 a 10**, e o que o lojista ordena são as
+ * casas livres do meio. A renumeração **pula** as casas ancoradas
+ * (`reservedPositions`), então ela nunca colide com o bloco fixo: hoje as cinco
+ * ordenáveis ficam em 5 a 9, e uma sexta nasceria em 11 — a casa 10 é do
+ * rodapé. O tema, que não tem bloco fixo, numera de 10 em 10, como as estações
+ * do `theme.json`.
  *
  * O que a regra protege é `position` repetida. A loja ordena por essa coluna
  * (`listSections`, com `order: { position: "ASC" }`), então duas seções com o
  * mesmo número têm ordem indefinida — e o lojista não consegue consertar isso
  * digitando, porque as duas dizem o mesmo número. Vale para a seção **fixa**,
- * que tem posição própria e nem sequer é ordenado por ela: se entrar na mesma
- * faixa numerada, a lista passa a ser sorteio a cada carregamento.
+ * que nem sequer é ordenada por ela: se uma ordenável cair na casa de uma fixa,
+ * a lista passa a ser sorteio a cada carregamento.
  *
  * Quem **tem** ordem é a coluna `fixed` da linha: a tela lê a coluna, e o que
- * nasce fixo (o cromo do site, `SINGLETON_SECTION_TYPES` no contrato) é gravado
- * na criação, pelas duas portas que criam seção — `restore.ts`, pelo botão
- * "Restaurar padrão"/seed, e o `POST /admin/content`. A regra é a do contrato e
- * não uma lista escrita aqui, e é a mesma que a rota aplica para só existir um
- * cromo de cada tipo.
+ * nasce fixo (o cromo do site e a abertura da home, `SINGLETON_SECTION_TYPES`
+ * no contrato) é gravado na criação, pelas duas portas que criam seção —
+ * `restore.ts`, pelo botão "Restaurar padrão"/seed, e o `POST /admin/content`.
+ * A regra é a do contrato e não uma lista escrita aqui, e é a mesma que a rota
+ * aplica para só existir um cromo de cada tipo.
  */
+import { CONTENT_SURFACES, FIXED_SECTION_POSITIONS } from "./contract"
 import type ContentModuleService from "./service"
 
 
-/**
- * Onde começa a faixa de posições da vitrine.
- *
- * Abaixo dele mora o **cromo do site** (barra de anúncio, cabeçalho e rodapé),
- * que a loja resolve por `type` — a posição dele não decide nada. Separar as
- * faixas é o que garante que a renumeração da vitrine nunca colida com ele.
- */
-export const FIRST_VITRINE_POSITION = 100
+/** A superfície que responde quando ninguém diz qual: a vitrine. */
+export const DEFAULT_SURFACE = "home"
 
-/** A folga entre posições, a mesma do seed: sobra espaço para inserir no meio. */
+/**
+ * A folga das **listas referenciadas** de uma seção — a curadoria de produtos
+ * (`curation.ts`) e os chips de categoria (`filters.ts`).
+ *
+ * Não é a folga das seções: as casas delas vêm da faixa da superfície
+ * (`bandFor`), que na home é de 1 em 1. Aqui a folga continua 10 porque a
+ * origem é outra — o seed numera as listas de 10 em 10 (a mesma numeração do
+ * `theme.json`), e `FIRST_LIST_POSITION` sai daqui.
+ */
 export const POSITION_STEP = 10
 
 /**
- * A posição da próxima seção da vitrine: depois da última, com a mesma folga do
- * seed.
+ * A faixa de casas de uma superfície, como o **dado** que o CRM recebe.
  *
- * Recebe **só a vitrine** — o cromo não conta. Contá-lo faria a seção nova
- * nascer depois do rodapé, longe de onde ela aparece.
- *
- * O piso é `FIRST_VITRINE_POSITION - POSITION_STEP`, e não o maior número
- * existente: uma base semeada antes desta regra tem a vitrine em 20, 30, 40…, e
- * sem o piso a seção nova nasceria em 80 — dentro da faixa do cromo, que é
- * exatamente a colisão que a faixa existe para evitar. A primeira gravação de
- * ordem normaliza o resto (`renumber`).
+ * `reserved` são as casas ancoradas da superfície (as do bloco fixo, ver
+ * `FIXED_SECTION_POSITIONS`): a numeração das seções ordenáveis as pula. Vai
+ * junto porque o painel precisa prever o mesmo numeral que o servidor vai
+ * gravar — com a home em 1 a 10, a sexta seção da vitrine recebe 11, e não a
+ * casa 10, que é do rodapé.
  */
-export function nextPosition(sections: readonly { position: number }[]): number {
-  return (
-    Math.max(
-      FIRST_VITRINE_POSITION - POSITION_STEP,
-      ...sections.map((section) => section.position)
-    ) + POSITION_STEP
-  )
+export type OrderFaixa = {
+  first: number
+  step: number
+  reserved: readonly number[]
+}
+
+/** A faixa da superfície, como o contrato a declara (a primeira, se não for ela). */
+export function bandFor(surface: string = DEFAULT_SURFACE): {
+  first: number
+  step: number
+} {
+  const spec = CONTENT_SURFACES.find((candidate) => candidate.id === surface)
+
+  return (spec ?? CONTENT_SURFACES[0]).order
 }
 
 /**
- * A posição de uma seção que entra **logo depois** de outra na ordem atual.
+ * As casas ancoradas de uma superfície — as dos **tipos fixos que ela tem**.
  *
- * É o caso da seção nova que o padrão coloca no meio da vitrine — o trilho de
- * lançamentos entra depois do hero. A numeração do padrão (`defaults.ts`) é a do
- * protótipo (hero 20, lançamentos 25, benefícios 30), e ela **só vale** numa
- * base que ainda está nessa numeração. Numa base que já passou pelo "Salvar
- * ordem" do CRM a vitrine foi renumerada de 100 em 100, e copiar 25 dali faria
- * a seção nascer ANTES do hero — no lugar errado da página, e sem nada
- * apontando o motivo.
+ * Sai da lista de tipos da própria superfície (`CONTENT_SURFACES[i].types`), e
+ * não de um `if (surface === "home")`: a superfície de tema não cria seção
+ * nenhuma do bloco fixo, então a faixa dela não tem casa ancorada, e uma
+ * superfície nova no contrato responde sozinha.
+ */
+export function reservedPositions(surface: string = DEFAULT_SURFACE): number[] {
+  const types = new Set(
+    (
+      CONTENT_SURFACES.find((candidate) => candidate.id === surface) ??
+      CONTENT_SURFACES[0]
+    ).types
+  )
+
+  return Object.entries(FIXED_SECTION_POSITIONS)
+    .filter(([type]) => types.has(type))
+    .map(([, position]) => position)
+    .sort((a, b) => a - b)
+}
+
+/**
+ * A casa de número `place` da faixa — a primeira é 0, e as casas ancoradas não
+ * entram na conta.
  *
- * A resposta não é a posição do padrão nem a do vizinho + folga: é a **metade do
- * vão** até a próxima seção na ordem atual. Com a vitrine em 100, 110, 120…, a
- * seção que entra depois do hero (100) recebe 105 — entre o hero e a coleção,
- * que é onde ela deve aparecer — e o próximo "Salvar ordem" a normaliza para a
- * faixa de 10 em 10.
+ * É a única tradução de "casa" para "posição" no módulo: `positionFor` e
+ * `renumber` saem daqui, e é ela que garante que a numeração das seções
+ * ordenáveis nunca caia na casa de uma seção fixa.
+ */
+function placeInBand(
+  band: { first: number; step: number },
+  reserved: readonly number[],
+  place: number
+): number {
+  const taken = new Set(reserved)
+  let position = band.first
+  let free = 0
+
+  while (true) {
+    if (!taken.has(position)) {
+      if (free === place) {
+        return position
+      }
+
+      free += 1
+    }
+
+    position += band.step
+  }
+}
+
+/**
+ * A faixa da numeração de uma superfície, com as casas ancoradas.
  *
- * Sem ninguém depois, a folga padrão basta. E se o vão não couber um inteiro
- * (posições adjacentes, que só o CRM cria à mão — a faixa dele é de 10 em 10),
- * a seção entra depois do vizinho: não há inteiro entre 100 e 101, e a ordem
- * volta ao lugar na próxima gravação de ordem, que renumera a vitrine inteira.
+ * O painel precisa do numeral das seções enquanto a ordem está pendente na tela
+ * (o número gravado não corresponde mais ao que se vê), e a alternativa era ele
+ * importar `positionFor` do backend — código de servidor no bundle do
+ * navegador. Com a faixa viajando como dado, o painel desenha o mesmo número
+ * sem importar valor nenhum daqui: quem **grava** continua sendo esta regra
+ * (`applyOrder`), e o que a tela mostra é a previsão dela.
+ */
+export function orderFaixa(surface: string = DEFAULT_SURFACE): OrderFaixa {
+  return { ...bandFor(surface), reserved: reservedPositions(surface) }
+}
+
+/**
+ * A casa da próxima seção ordenável: a primeira livre **depois da última**.
+ *
+ * Recebe **só as seções ordenáveis** (quem chama filtra `fixed`): a seção fixa
+ * tem casa própria e não é numerada — contá-la faria a seção nova nascer depois
+ * do rodapé, longe de onde ela aparece.
+ *
+ * "Depois da última", e não "no primeiro buraco": um buraco no meio é do lojista
+ * (ele apagou uma seção dali), e a criação promete o **fim** da vitrine. As
+ * casas ancoradas da faixa são puladas, então a sexta seção da home nasce em
+ * 11 — nunca na casa 10, que é do rodapé.
+ *
+ * O piso é o começo da faixa, e não o maior número existente: uma base semeada
+ * antes desta regra tem a vitrine em 20, 30, 40… (ou em 100, 110, 120…), e sem
+ * o piso a seção nova nasceria dentro do bloco ancorado — exatamente a colisão
+ * que a faixa existe para evitar. A primeira gravação de ordem normaliza o
+ * resto (`renumber`).
+ */
+export function nextPosition(
+  sections: readonly { position: number }[],
+  surface: string = DEFAULT_SURFACE
+): number {
+  const band = bandFor(surface)
+  const taken = new Set([
+    ...reservedPositions(surface),
+    ...sections.map((section) => section.position),
+  ])
+  const last = sections.length
+    ? Math.max(...sections.map((section) => section.position))
+    : band.first - band.step
+  let position = Math.max(band.first, last + band.step)
+
+  while (taken.has(position)) {
+    position += band.step
+  }
+
+  return position
+}
+
+/**
+ * A casa de uma seção que entra **logo depois** de outra.
+ *
+ * É o caso da seção do padrão que falta na base e volta pelo "Restaurar
+ * padrão": o trilho de lançamentos entra depois da capa. A regra é a **casa
+ * livre seguinte** da faixa — a que não é de ninguém, nem ancorada nem ocupada
+ * por outra seção: com a home de 1 a 10 e a capa na casa 3, o trilho cai na 5
+ * (a 4 é da faixa de benefícios), se estiver livre.
+ *
+ * Não é "a posição do padrão": a numeração do padrão só vale numa base que
+ * ainda está nela. Copiá-la numa base que já passou pelo "Salvar ordem" faria a
+ * seção nascer no lugar errado da página, sem nada apontando o motivo.
+ *
+ * E o que sobra do vão não interessa: a faixa numera de casa em casa, então a
+ * seção entra na primeira casa livre depois da âncora. Se o trecho estiver
+ * cheio, ela desce para a próxima livre — e o próximo "Salvar ordem" a acomoda
+ * na ordem que o lojista montou na tela, que é quem manda na vitrine.
  */
 export function positionAfter(
   sections: readonly { position: number }[],
-  anchor: number
+  anchor: number,
+  surface: string = DEFAULT_SURFACE
 ): number {
-  const next = sections
-    .map((section) => section.position)
-    .filter((position) => position > anchor)
-    .sort((a, b) => a - b)[0]
+  const band = bandFor(surface)
+  const taken = new Set([
+    ...reservedPositions(surface),
+    ...sections.map((section) => section.position),
+  ])
+  let position = anchor + band.step
 
-  if (next === undefined) {
-    return anchor + POSITION_STEP
+  while (taken.has(position)) {
+    position += band.step
   }
 
-  const half = Math.floor((next - anchor) / 2)
-
-  return half >= 1 ? anchor + half : next + POSITION_STEP
+  return position
 }
 
 /**
- * A posição que a seção na casa `index` recebe quando a ordem é salva.
+ * A casa que a seção em `index` recebe quando a ordem é salva: a `index`-ésima
+ * casa livre da faixa, pulando as ancoradas.
  *
  * É também o numeral que a lista mostra quando há ordem pendente: com a lista já
  * mexida na tela, o número gravado não corresponde mais ao que se vê, e um
  * numeral que discorda da ordem visível é pior do que nenhum.
  */
-export function positionFor(index: number): number {
-  return FIRST_VITRINE_POSITION + index * POSITION_STEP
+export function positionFor(
+  index: number,
+  surface: string = DEFAULT_SURFACE
+): number {
+  return placeInBand(bandFor(surface), reservedPositions(surface), index)
 }
 
 /**
@@ -120,12 +252,12 @@ export function positionFor(index: number): number {
  *
  * São duas hoje, e as duas são a lista de **uma** seção: a curadoria de produtos
  * (`curation.ts`) e os chips de categoria (`filters.ts`). Cada uma tem a própria
- * numeração, então elas não concorrem entre si nem com a vitrine.
+ * numeração, então elas não concorrem entre si nem com as casas das seções.
  *
- * Mesma folga do seed, sem a faixa reservada ao cromo. Poderia começar em
- * qualquer número; começar na folga (10) é o que faz o `\d` da tabela de link
- * mostrar 10, 20, 30 em vez de 100, 110, 120, que é a faixa que a vitrine já usa
- * para dizer "seções".
+ * Poderia começar em qualquer número; começar na folga (10) é o que faz o `\d`
+ * da tabela de link mostrar 10, 20, 30 — a numeração do seed, a mesma das
+ * estações do tema — em vez de 1, 2, 3, que na home são as casas do bloco
+ * ancorado.
  */
 export const FIRST_LIST_POSITION = POSITION_STEP
 
@@ -145,36 +277,26 @@ export function listPositionFor(index: number): number {
 }
 
 /**
- * A numeração da vitrine inteira, na ordem em que ela está na tela.
+ * A numeração das seções ordenáveis de uma superfície, na ordem em que elas
+ * estão na tela.
  *
  * Devolve **só o que muda de posição**: a tela já tem as seções, e gravar as que
  * não se mexeram seria escrever no banco para deixar tudo igual. A ordem do
  * array é a ordem a gravar, e é ela — e não a troca de dois valores — que
- * impede buraco e repetição.
+ * impede buraco e repetição. As casas ancoradas da faixa ficam de fora
+ * (`positionFor` as pula), então a renumeração nunca escreve na casa de uma
+ * seção fixa.
  */
 export function renumber(
-  sections: readonly { id: string; position: number }[]
+  sections: readonly { id: string; position: number }[],
+  surface: string = DEFAULT_SURFACE
 ): { id: string; position: number }[] {
   return sections
-    .map((section, index) => ({ id: section.id, position: positionFor(index) }))
+    .map((section, index) => ({
+      id: section.id,
+      position: positionFor(index, surface),
+    }))
     .filter((planned, index) => planned.position !== sections[index].position)
-}
-
-/**
- * A faixa da numeração, como o **dado** que o CRM recebe no payload.
- *
- * O painel precisa do numeral das seções enquanto a ordem está pendente na tela
- * (o número gravado não corresponde mais ao que se vê), e a alternativa era ele
- * importar `positionFor` do backend — código de servidor no bundle do
- * navegador. Com a faixa viajando como dado, o painel desenha o mesmo número
- * sem importar valor nenhum daqui: quem **grava** continua sendo esta regra
- * (`applyOrder`), e o que a tela mostra é a previsão dela.
- */
-export type OrderFaixa = { first: number; step: number }
-
-/** A faixa, a partir das constantes — quem responde é a regra, não o payload. */
-export function orderFaixa(): OrderFaixa {
-  return { first: FIRST_VITRINE_POSITION, step: POSITION_STEP }
 }
 
 /**
@@ -221,7 +343,7 @@ export function readOrderIds(value: unknown): { ids?: string[]; error?: string }
  * | Confere | Por que |
  * | --- | --- |
  * | existe | o id vem do corpo; um id inventado gravaria posição nenhuma |
- * | não é fixa | o cromo do site é desenhado em todas as rotas: numerá-lo o jogaria na faixa da vitrine |
+ * | não é fixa | a seção fixa mora numa casa ancorada: numerá-la a jogaria na faixa das ordenáveis |
  * | lista inteira | renumera quem veio; quem ficou de fora manteria a posição antiga — e a nova lista pode colidir com ela |
  */
 export function orderErrors(
@@ -242,8 +364,8 @@ export function orderErrors(
 
   if (fixed.length) {
     return [
-      `A ordem traz seção fixa (o cromo do site), que não é numerada: ` +
-        `${fixed.join(", ")}.`,
+      `A ordem traz seção fixa (o cromo do site e a abertura da home), que ` +
+        `mora numa casa ancorada e não é numerada: ${fixed.join(", ")}.`,
     ]
   }
 
@@ -264,7 +386,8 @@ export function orderErrors(
 }
 
 /**
- * Publica a ordem da vitrine: renumera (100, 110, 120…) e grava o que mudou.
+ * Publica a ordem das seções: renumera pelas casas livres da faixa (na home, 5 a
+ * 9) e grava o que mudou.
  *
  * É a **única** porta que grava ordem, e existe para o CRM não fazer isso pelo
  * navegador: antes o painel mandava um `PATCH` por seção — N requisições, N
@@ -279,11 +402,12 @@ export function orderErrors(
  *
  * A lista é a da superfície (`surface`, `home` por padrão) e a leitura é a
  * mesma da tela (`listSections`): o que o CRM mandou tem de bater com o que a
- * loja vê.
+ * loja vê. A faixa é a **dela** (`bandFor`): a home numera de 1 em 1 e pula as
+ * casas ancoradas; o tema, de 10 em 10.
  */
 export async function applyOrder(
   service: ContentModuleService,
-  { surface = "home", ids }: { surface?: string; ids: readonly string[] }
+  { surface = DEFAULT_SURFACE, ids }: { surface?: string; ids: readonly string[] }
 ): Promise<{ updated: { id: string; position: number }[]; error?: string }> {
   const sections = await service.listSections({ surface, onlyEnabled: false })
   const errors = orderErrors(ids, sections)
@@ -302,7 +426,7 @@ export async function applyOrder(
 
     return section ? [{ id: section.id, position: section.position }] : []
   })
-  const updated = renumber(ordered)
+  const updated = renumber(ordered, surface)
 
   if (updated.length) {
     await service.updateContentSections(updated)

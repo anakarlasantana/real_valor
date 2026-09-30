@@ -74,10 +74,12 @@ type Section = {
   enabled: boolean
   position: number
   /**
-   * A seção não tem ordem: é o cromo do site (barra de anúncio, cabeçalho,
-   * rodapé), que a moldura da loja desenha em todas as rotas. Vem da coluna
-   * `fixed` da seção (`models/content-section.ts`), e é o que decide a etiqueta
-   * "Fixo" no lugar do numeral e a existência das setas.
+   * A seção não tem ordem: é o **bloco ancorado** — o cromo do site (barra de
+   * anúncio, cabeçalho e rodapé), que a moldura da loja desenha em todas as
+   * rotas, mais a abertura da home (a capa e a faixa de benefícios), que mora
+   * sempre na mesma casa. Vem da coluna `fixed` da seção
+   * (`models/content-section.ts`), e é o que decide a etiqueta "Fixo" e a
+   * existência das setas.
    */
   fixed: boolean
   [key: string]: unknown
@@ -191,9 +193,11 @@ function railNote(
 /**
  * Os tipos que podem ser criados agora.
  *
- * Fora os **únicos que já existem**: cabeçalho, rodapé e barra de anúncio só
- * aceitam um bloco cada (o layout resolve os três por `find`), e a API recusa o
- * segundo — oferecer o botão seria oferecer um erro. Quem diz quais são é
+ * Fora os **únicos que já existem**: barra de anúncio, cabeçalho, rodapé, capa e
+ * faixa de benefícios só aceitam um bloco cada — os três primeiros e o rodapé
+ * porque o layout os resolve por `find`; a capa e a faixa porque moram numa casa
+ * ancorada (ver `FIXED_SECTION_POSITIONS`). A API recusa o segundo de qualquer
+ * um deles, e oferecer o botão seria oferecer um erro. Quem diz quais são é
  * `schema.singletonTypes`, que sai do mesmo contrato que a rota usa.
  */
 function creatableTypes(
@@ -211,6 +215,36 @@ function creatableTypes(
   return (surface?.types ?? []).filter(
     (type) => !singletons.has(type) || !present.has(type)
   )
+}
+
+/**
+ * O numeral que a seção na casa `place` **vai** receber quando a ordem pendente
+ * for publicada — a mesma conta que o servidor faz (`applyOrder`, em
+ * `modules/content/order.ts`).
+ *
+ * A faixa chega como dado (`order`, no payload) com as casas **ancoradas**
+ * (`reserved`): na home, a casa 10 é do rodapé, e a renumeração a pula — as
+ * cinco seções ordenáveis ficam em 5 a 9 e a sexta nasce em 11. O painel precisa
+ * pular as mesmas casas; se ele só multiplicasse `first + place * step`, o
+ * numeral da tela seria um que a gravação não segue — e um numeral que discorda
+ * da ordem visível é pior do que nenhum.
+ */
+function numeralFor(place: number, order: OrderFaixa): number {
+  const reserved = new Set(order.reserved ?? [])
+  let position = order.first
+  let free = 0
+
+  while (true) {
+    if (!reserved.has(position)) {
+      if (free === place) {
+        return position
+      }
+
+      free += 1
+    }
+
+    position += order.step
+  }
 }
 
 /**
@@ -434,11 +468,11 @@ const ContentPage = () => {
   }, [pendingOrder, vitrine])
 
   /**
-   * A lista como ela aparece na tela: o cromo primeiro, depois a vitrine.
+   * A lista como ela aparece na tela: o bloco fixo primeiro, depois a vitrine.
    *
-   * O cromo vem antes porque a faixa de posição dele é menor (ver
-   * `FIRST_VITRINE_POSITION`) e a ordem dele é fixa — não há o que reordenar. A
-   * vitrine vem na ordem pendente, quando existe.
+   * O bloco fixo vem antes porque as casas dele estão no começo da numeração —
+   * 1, 2, 3 e 4, mais o rodapé em 10 (ver `FIXED_SECTION_POSITIONS`) — e a ordem
+   * dele não há o que reordenar. A vitrine vem na ordem pendente, quando existe.
    */
   const rows = useMemo(() => [...chrome, ...shown], [chrome, shown])
 
@@ -965,24 +999,24 @@ const ContentPage = () => {
         const draft = drafts[section.id] ?? {}
         const specs = schema?.fields[section.type] ?? []
         const isOpen = openId === section.id
-        // Só a vitrine tem ordem: a seção fixa é o cromo, desenhado pela moldura
-        // da loja em todas as rotas, e a posição dele não muda o que aparece
-        // onde. Quem responde é a coluna — não o tipo —, pelo mesmo motivo que a
+        // Só as seções ordenáveis têm ordem: a fixa é o **bloco ancorado** — o
+        // cromo do site, que a moldura desenha em todas as rotas, mais a abertura
+        // da home (a capa e a faixa de benefícios) —, e ela mora sempre na mesma
+        // casa. Quem responde é a coluna — não o tipo —, pelo mesmo motivo que a
         // lista se separa por ela.
         const movable = !section.fixed
         const place = vitrineIndex.get(section.id) ?? 0
-        // O numeral da seção: a ordem gravada — ou a que ela **vai** ter. Com a
+        // O numeral da seção: a casa gravada — ou a que ela **vai** ter. Com a
         // lista já mexida na tela e ainda não publicada, o número no banco não
         // corresponde mais ao que se vê, e um numeral que discorda da ordem
         // visível é pior do que nenhum. A previsão sai da faixa que o servidor
-        // manda como dado (`order`, no payload) e é a mesma numeração que o
-        // "Salvar ordem" vai gravar; quem renumera é o servidor
-        // (`applyOrder`, em `modules/content/order.ts`). Sem a faixa no payload,
-        // fica o numeral gravado.
+        // manda como dado (`order`, no payload), pulando as casas ancoradas
+        // (`numeralFor`), e é a mesma numeração que o "Salvar ordem" vai gravar;
+        // quem renumera é o servidor (`applyOrder`, em
+        // `modules/content/order.ts`). Sem a faixa no payload, fica o numeral
+        // gravado.
         const numeral =
-          orderDirty && order
-            ? order.first + place * order.step
-            : section.position
+          orderDirty && order ? numeralFor(place, order) : section.position
         // Alteração pendente no formulário: é o que faz a barra com o "Salvar"
         // aparecer (ver `form-draft.ts`).
         const dirty = isDirty(draft, section)
@@ -992,13 +1026,20 @@ const ContentPage = () => {
             <div className="flex items-center justify-between gap-x-4 p-4">
               <div className="flex items-center gap-x-3">
                 {movable ? (
-                  // O numeral: a ordem gravada, ou a que a seção vai receber
+                  // O numeral: a casa gravada, ou a que a seção vai receber
                   // quando a pendente for publicada (ver `numeral`, acima).
                   <Badge size="2xsmall">{numeral}</Badge>
                 ) : (
-                  <Badge size="2xsmall" color="grey">
-                    Fixo
-                  </Badge>
+                  // A seção fixa mostra a **casa** dela — 1, 2, 3, 4 e 10 na
+                  // home: é o número que ela ocupa sempre. O "Fixo" ao lado diz
+                  // que nenhuma seta a move; as duas informações juntas são o
+                  // desenho da numeração (ver `FIXED_SECTION_POSITIONS`).
+                  <div className="flex shrink-0 items-center gap-x-2">
+                    <Badge size="2xsmall">{numeral}</Badge>
+                    <Badge size="2xsmall" color="grey">
+                      Fixo
+                    </Badge>
+                  </div>
                 )}
                 <div>
                   <Text weight="plus" size="small">

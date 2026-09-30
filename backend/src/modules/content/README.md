@@ -15,7 +15,7 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 | `validation.ts` | A validação de entrada do corpo: `validateData` (o `data` **e** as referências contra o schema do tipo, com `pattern` para os campos de forma), `isKnownType` e `resolveSurface` (a superfície de cada tipo) |
 | `resolvers.ts` | Os resolvedores do corpo: a âncora (`id`), a `position`, os ids da curadoria e os ids dos chips — cada um responde `{ valor?, error? }` |
 | `view.ts` | A forma de saída da seção (`toSection`), achatada como a da rota pública |
-| `order.ts` | A ordem da vitrine: as regras puras (faixa, folga, `nextPosition`, `positionAfter`, `renumber`) **e** a única gravação que as aplica (`readOrderIds`, `orderErrors`, `applyOrder`) |
+| `order.ts` | A ordem das seções: as regras puras (as casas da faixa — `bandFor`, `reservedPositions` —, `nextPosition`, `positionAfter`, `positionFor`, `renumber`) **e** a única gravação que as aplica (`readOrderIds`, `orderErrors`, `applyOrder`) |
 | `restore.ts` | O "Restaurar padrão"/seed: quais blocos padrão faltam e com que posição cada um nasce — a lista sai da superfície (`defaultsFor`: o protótipo da vitrine ou as estações do tema) |
 | `payload.ts` | O `splitPayload` do corpo: o que é **coluna** × o que é `data` (e as referências `productIds`/`filters`) |
 | `revalidate.ts` | O aviso ao storefront (`notifyStorefront`), que invalida o cache do conteúdo depois de gravar |
@@ -531,17 +531,22 @@ na voz da marca, e a seção está marcada como exceção no próprio arquivo.
 ### Como a seção chega numa base que já existe
 
 `restore.ts` cria só o que falta, e a posição **não** vem crua do padrão. A
-numeração de `defaults.ts` é a do protótipo (`hero` 20, `lancamentos` 25,
-`benefits` 30); depois de uma gravação de ordem no CRM a vitrine está em 100,
-110, 120…, e copiar 25 dali faria o trilho nascer **antes do hero** — o defeito
-que apareceu no primeiro "Restaurar padrão" desta seção.
+numeração de `defaults.ts` é a das **casas** da home (`announcement` 1, `nav` 2,
+`hero` 3, `benefits` 4, `lancamentos` 5…); numa base antiga a vitrine está em
+100, 110, 120…, e copiar 5 dali faria o trilho nascer **antes da capa** — o
+defeito que apareceu no primeiro "Restaurar padrão" desta seção.
 
 A regra (`planRestoredPositions` + `positionAfter`, em `modules/content/order.ts`)
-é: a seção entra **logo depois do vizinho que ela tem no padrão**, na ordem
-atual, na metade do vão (hero em 100, coleção em 110 → trilho em 105). Sem
-vizinho anterior — é a primeira da lista, ou a base está vazia —, vale a posição
-do padrão, que é o caso em que a lista nasce inteira e a numeração do protótipo é
-a ordem certa. O próximo "Salvar ordem" normaliza a faixa de 10 em 10.
+é: a seção entra na **primeira casa livre da faixa depois do vizinho que ela tem
+no padrão** (a casa da capa é a 3; o trilho entra na 5 se ela estiver livre, e
+desce para a próxima livre se o trecho estiver cheio). Sem vizinho anterior — é a
+primeira da lista, ou a base está vazia —, vale a posição do padrão, que é o caso
+em que a lista nasce inteira. E a seção **fixa** (o cromo e a abertura da home)
+não passa por aí: ela volta para a **casa ancorada** dela
+(`FIXED_SECTION_POSITIONS`) — sem isso o rodapé nasceria depois da última seção,
+porque a casa 10 é ancorada e `positionAfter` a pula por definição.
+
+O próximo "Salvar ordem" normaliza a faixa inteira (na home, de 1 em 1).
 
 
 
@@ -590,11 +595,11 @@ existe.
 | Rota | Auth | Para quê |
 | --- | --- | --- |
 | `GET /store/content` | publishable key | Vitrine. Só seções habilitadas. `?surface=`, `?type=`. A curadoria (`productIds`) e os chips (`filters`, com nome e handle lidos ao vivo) vêm nas seções que têm uma |
-| `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + a curadoria de quem tem uma + os chips de quem tem + o catálogo (`categories`, as opções do seletor) + o schema (do registro), `schemaVersion`, `schemaSource` e a faixa da numeração (`order`: `{ first, step }`, o dado com que a tela desenha o numeral da ordem pendente) |
+| `GET /admin/content` | admin | Lista tudo, inclusive ocultas, + a curadoria de quem tem uma + os chips de quem tem + o catálogo (`categories`, as opções do seletor) + o schema (do registro), `schemaVersion`, `schemaSource` e a faixa da numeração (`order`: `{ first, step, reserved }`, o dado com que a tela desenha o numeral da ordem pendente — `reserved` são as casas ancoradas, que a previsão pula) |
 | `POST /admin/content` | admin | Cria. Nasce com o conteúdo padrão do tipo (`DEFAULT_SECTION_DATA`); aceita `id` (a âncora do menu, validada como apelido e livre), `productIds` (curadoria inicial), `filters` (os chips, em ids de categoria) e recusa um segundo bloco de tipo único (`nav`, `footer`, `announcement`). Sem `position`, entra no **fim** (`nextPosition`) |
 | `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio. Coluna × conteúdo é decidido pelo **nome da coluna** (ver `modules/content/payload.ts`). `productIds` e `filters` são as referências: a lista manda, e ausente = não mexe |
 | `DELETE /admin/content?id=` | admin | Remove — desvinculando a curadoria e os chips antes (ver `curation.ts` e `filters.ts`) |
-| `POST /admin/content/order` | admin | Publica a ordem da vitrine: `{ ids }` na ordem da tela. Renumera a partir de `FIRST_VITRINE_POSITION`, de `POSITION_STEP` em `POSITION_STEP` (`order.ts`) e grava **só o que muda**, numa chamada. Recusa lista incompleta, id repetido, id inexistente e seção fixa; avisa a loja uma vez |
+| `POST /admin/content/order` | admin | Publica a ordem das seções: `{ ids }` na ordem da tela (e `surface`, `home` por padrão). Renumera pelas casas livres da faixa da superfície (`bandFor`: na home, de 1 em 1, pulando as casas ancoradas; no tema, de 10 em 10) e grava **só o que muda**, numa chamada. Recusa lista incompleta, id repetido, id inexistente e seção fixa; avisa a loja uma vez |
 | `POST /admin/content/restore` | admin | Recria as seções padrão que faltam. Idempotente (só cria o que não existe) — é o mesmo que `scripts/seed-content.ts` faz |
 
 `GET /store/content` devolve as seções achatadas, prontas para render, mais a
@@ -653,18 +658,21 @@ O que a página faz, além de editar os campos de uma seção:
   renumera é o servidor (`order.ts`) e a loja é avisada **uma vez**. Antes era um `PATCH` por
   seção que mudou de lugar, com a renumeração calculada dentro do painel. O numeral da lista é
   o gravado, ou o que a seção **vai** receber enquanto a ordem está pendente — a faixa dessa
-  numeração chega como dado no payload (`order: { first, step }`), porque o painel não importa
-  valor do backend. As seções **fixas** — o cromo do site, `fixed` na linha
-  (`models/content-section.ts`) — não têm seta: elas vêm no topo da lista com a
-  etiqueta **Fixo** no lugar do numeral, porque a loja as resolve por `type` e
-  movê-las não mudaria nada no site. É o CRM lendo a **coluna**, e não adivinhando
-  o cromo pelo tipo na hora de desenhar: quem criou a seção já gravou a resposta
-  (`restore.ts` e o `POST`, a partir de `SINGLETON_SECTION_TYPES`).
+  numeração chega como dado no payload (`order: { first, step, reserved }`), porque o painel
+  não importa valor do backend, e as casas **ancoradas** (`reserved`) viajam com ela para a
+  previsão pular as mesmas casas que a gravação pula. As seções **fixas** — o cromo do site e
+  a abertura da home (a capa e a faixa de benefícios), `fixed` na linha
+  (`models/content-section.ts`) — não têm seta: elas vêm no topo da lista com a casa delas
+  (1, 2, 3, 4 e 10) e a etiqueta **Fixo**, porque o cromo a loja resolve por `type` e a
+  abertura mora numa casa só. É o CRM lendo a **coluna**, e não adivinhando o fixo pelo tipo
+  na hora de desenhar: quem criou a seção já gravou a resposta (`restore.ts` e o `POST`, a
+  partir de `SINGLETON_SECTION_TYPES`).
 - **Criar** — escolhe o tipo e a âncora (`hero`, `hero-2`…, o `id` que o menu usa
   como `/#hero`, validado como apelido livre). A seção nasce com o conteúdo
   padrão do tipo (`DEFAULT_SECTION_DATA`) e entra no fim da lista; os tipos únicos
-  que já existem (`schema.singletonTypes`: cabeçalho, rodapé e a barra de
-  anúncio) não são oferecidos, porque a loja desenha um de cada. Os tipos
+  que já existem (`schema.singletonTypes`: a barra de anúncio, o cabeçalho, a
+  capa, a faixa de benefícios e o rodapé) não são oferecidos, porque a loja
+  desenha um de cada. Os tipos
   oferecidos são os da **superfície em edição** (`surfaces[i].types`): na aba do
   tema, o único que aparece é `theme` — uma estação nova.
 - **Remover** — com confirmação: não há desfazer.

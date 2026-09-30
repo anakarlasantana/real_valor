@@ -3,7 +3,13 @@
  * API falha, e o que o seed grava. Estes testes travam as propriedades que
  * fazem ele servir para as duas coisas.
  */
-import { SECTION_FIELDS, SECTION_TYPES } from "../contract"
+import {
+  FIXED_SECTION_POSITIONS,
+  SECTION_FIELDS,
+  SECTION_TYPES,
+  SINGLETON_SECTION_TYPES,
+  isSingletonSectionType,
+} from "../contract"
 import { DEFAULT_HOME_SECTIONS } from "../defaults"
 
 describe("DEFAULT_HOME_SECTIONS", () => {
@@ -40,6 +46,52 @@ describe("DEFAULT_HOME_SECTIONS", () => {
     }
 
     expect(faltando).toEqual([])
+  })
+
+  it("a home numera 1 a 10: o bloco ancorado em 1, 2, 3, 4 e 10, e a vitrine em 5 a 9", () => {
+    // É o desenho que o lojista lê no CRM: as fixas nas casas delas
+    // (`FIXED_SECTION_POSITIONS`, no contrato) e as ordenáveis preenchendo as
+    // casas livres do meio, na ordem da página.
+    expect(
+      DEFAULT_HOME_SECTIONS.map(({ type, position }) => [type, position])
+    ).toEqual([
+      ["announcement", 1],
+      ["nav", 2],
+      ["hero", 3],
+      ["benefits", 4],
+      ["launches", 5],
+      ["collections", 6],
+      ["featured", 7],
+      ["editorial", 8],
+      ["instagram", 9],
+      ["footer", 10],
+    ])
+
+    for (const section of DEFAULT_HOME_SECTIONS) {
+      if (isSingletonSectionType(section.type)) {
+        expect([section.type, section.position]).toEqual([
+          section.type,
+          FIXED_SECTION_POSITIONS[section.type],
+        ])
+      }
+    }
+  })
+
+  it("as duas seções fixas da abertura são únicas, como o cromo", () => {
+    // A capa e a faixa de benefícios passaram a ser fixas com as três do cromo:
+    // a lista do contrato é quem responde, e o padrão tem exatamente uma de cada.
+    expect([...SINGLETON_SECTION_TYPES].sort()).toEqual([
+      "announcement",
+      "benefits",
+      "footer",
+      "hero",
+      "nav",
+    ])
+    expect(
+      DEFAULT_HOME_SECTIONS.filter((section) =>
+        isSingletonSectionType(section.type)
+      ).map(({ id }) => id)
+    ).toEqual(["announcement", "nav", "hero", "benefits", "footer"])
   })
 
   it("o cromo tem a forma que a loja espera (nav e footer)", () => {

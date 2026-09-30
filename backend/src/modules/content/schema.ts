@@ -82,8 +82,21 @@ import {
  *      `validateData`/`isKnownType` da rota recusariam a primeira gravação de
  *      uma estação. Sem reescrever o registro (`make seed-schema`) o CRM
  *      continua mostrando a tela antiga, sem a segunda aba.
+ *
+ * v7 — a numeração ganhou **casas**: a home numera de 1 a 10, com o bloco
+ *      ancorado em 1, 2, 3, 4 e 10 (`FIXED_SECTION_POSITIONS`, no contrato) e
+ *      as seções ordenáveis nas casas livres do meio (5 a 9). A capa (`hero`) e
+ *      a faixa de benefícios (`benefits`) passaram a ser **fixas**: entram em
+ *      `singletonTypes` — o CRM não oferece uma segunda capa — e são criadas
+ *      com `fixed` pelas duas portas (`restore.ts` e `POST /admin/content`).
+ *      Cada superfície declara a própria faixa (`surfaces[i].order`), que é
+ *      também o que o CRM recebe como dado (`order`, com as casas ancoradas em
+ *      `reserved`) para prever o numeral da lista. Sem reescrever o registro
+ *      (`make seed-schema`) o CRM continua desenhando a lista antiga — sem os
+ *      dois como fixos, e com uma previsão de numeral que a gravação não segue
+ *      (a casa 10 é do rodapé, e a vitrine a pula).
  */
-export const SCHEMA_VERSION = 6
+export const SCHEMA_VERSION = 7
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.
@@ -145,8 +158,10 @@ export type ContentSchemaPayload = {
    */
   darkTokens: readonly string[]
   /**
-   * Tipos que só podem existir uma vez por superfície (`nav`, `footer` e a
-   * barra de anúncio — ver `SINGLETON_SECTION_TYPES` no contrato).
+   * Tipos que só podem existir uma vez por superfície e que moram numa **casa
+   * ancorada** (`nav`, `footer` e a barra de anúncio, mais a capa e a faixa de
+   * benefícios da home — ver `SINGLETON_SECTION_TYPES` e
+   * `FIXED_SECTION_POSITIONS` no contrato).
    *
    * Vai no payload porque é decisão de **formulário**: o CRM não pode oferecer
    * "Nova seção → Cabeçalho" quando já existe um, já que a API recusaria a

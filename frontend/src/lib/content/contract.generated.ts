@@ -351,11 +351,14 @@ export type HomeSection =
 export const SECTION_TYPES = [
   "announcement",
   "hero",
-  // Segunda seção da home: o trilho de novidades, logo depois do hero (é a
-  // posição 25 do padrão). A ordem deste array é a ordem do seletor de tipo
-  // no CRM e a ordem em que as seções se leem na página.
-  "launches",
+  // A abertura da home vem antes de tudo o que se ordena: a capa (casa 3) e a
+  // faixa de benefícios (casa 4) são fixas, e o trilho de novidades cai na
+  // primeira casa livre da vitrine (5). A ordem deste array é a ordem do
+  // seletor de tipo no CRM e a ordem em que as seções se leem na página — a
+  // mesma das casas ancoradas (`FIXED_SECTION_POSITIONS`) e da faixa da
+  // vitrine (`order.ts`).
   "benefits",
+  "launches",
   "collections",
   "featured",
   "editorial",
@@ -378,20 +381,40 @@ export function isSectionType(value: unknown): value is SectionType {
 }
 
 /**
- * Tipos que só podem existir **uma vez** por superfície.
+ * Tipos que só podem existir **uma vez** por superfície — e que, por isso, têm
+ * **casa ancorada** (`FIXED_SECTION_POSITIONS`): a posição deles não se move.
  *
- * Os três são cromo do site — barra de anúncio, cabeçalho e rodapé — e o
- * layout os resolve por `find` (`announceSections`, `headerSections` e
- * `footerSections`, em `frontend/src/lib/content/home-sections.ts`): o
- * primeiro bloco do tipo é o que aparece na loja.
+ * São dois grupos, e os dois aparecem no CRM com a etiqueta **Fixo** (sem
+ * setas, sem numeral a recalcular):
  *
- * Um segundo bloco seria o pior defeito possível num CMS: o lojista cria, a
- * lista do CRM mostra, a loja **nunca** desenha. Por isso a API recusa a
- * criação (`POST /admin/content`) e o CRM não oferece um tipo que já existe —
- * as duas pontas leem esta lista, então não há duas opiniões sobre o que é
- * único.
+ *   cromo do site     `announcement`, `nav` e `footer` — a moldura que a loja
+ *                     desenha **em todas as rotas** e resolve por `find`
+ *                     (`announceSections`, `headerSections` e `footerSections`,
+ *                     em `frontend/src/lib/content/home-sections.ts`): o
+ *                     primeiro bloco do tipo é o que aparece;
+ *   abertura da home  `hero` e `benefits` — quem os desenha é a vitrine, e não
+ *                     a moldura, mas eles são o **começo da página** e não
+ *                     conteúdo que se reordena: a capa e a faixa de benefícios
+ *                     moram sempre na mesma casa (ver `FIXED_SECTION_POSITIONS`).
+ *
+ * Um segundo bloco de um tipo destes seria o pior defeito possível num CMS: o
+ * lojista cria, a lista do CRM mostra, e a loja **nunca** desenha — o cromo é
+ * resolvido por `find` e a abertura está ancorada numa casa só. Por isso a API
+ * recusa a criação (`POST /admin/content`) e o CRM não oferece um tipo que já
+ * existe — as duas pontas leem esta lista, então não há duas opiniões sobre o
+ * que é único.
+ *
+ * Estar aqui é o que faz a seção nascer **fixa** (`fixed = true`): quem grava a
+ * coluna são as duas portas que criam seção (`restore.ts` e
+ * `POST /admin/content`), as duas perguntando a `isSingletonSectionType`.
  */
-export const SINGLETON_SECTION_TYPES = ["announcement", "nav", "footer"] as const
+export const SINGLETON_SECTION_TYPES = [
+  "announcement",
+  "nav",
+  "hero",
+  "benefits",
+  "footer",
+] as const
 
 export type SingletonSectionType = (typeof SINGLETON_SECTION_TYPES)[number]
 
@@ -583,10 +606,17 @@ export function themeFontField(role: FontRole): string {
 
 export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
   {
+    "id": "announcement",
+    "type": "announcement",
+    "enabled": true,
+    "position": 1,
+    "text": "Frete seguro para todo o Brasil · Até 6x sem juros",
+  },
+  {
     "id": "nav",
     "type": "nav",
     "enabled": true,
-    "position": 5,
+    "position": 2,
     "links": [
       {
         "label": "Início",
@@ -628,17 +658,10 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     ],
   },
   {
-    "id": "announcement",
-    "type": "announcement",
-    "enabled": true,
-    "position": 10,
-    "text": "Frete seguro para todo o Brasil · Até 6x sem juros",
-  },
-  {
     "id": "hero",
     "type": "hero",
     "enabled": true,
-    "position": 20,
+    "position": 3,
     "eyebrow": "Nova coleção",
     "headline": "Você não precisa ser rica para se",
     "headlineEmphasis": "sentir elegante.",
@@ -650,22 +673,10 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     "overlay": 0.72,
   },
   {
-    "id": "lancamentos",
-    "type": "launches",
-    "enabled": true,
-    "position": 25,
-    "eyebrow": "Novidades",
-    "title": "Chegou agora",
-    "subtitle": "As peças que acabaram de entrar na vitrine, na ordem em que chegaram.",
-    "limit": 8,
-    "viewAllLabel": "Ver tudo",
-    "viewAllHref": "/store",
-  },
-  {
     "id": "benefits",
     "type": "benefits",
     "enabled": true,
-    "position": 30,
+    "position": 4,
     "items": [
       {
         "icon": "quality",
@@ -690,10 +701,22 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     ],
   },
   {
+    "id": "lancamentos",
+    "type": "launches",
+    "enabled": true,
+    "position": 5,
+    "eyebrow": "Novidades",
+    "title": "Chegou agora",
+    "subtitle": "As peças que acabaram de entrar na vitrine, na ordem em que chegaram.",
+    "limit": 8,
+    "viewAllLabel": "Ver tudo",
+    "viewAllHref": "/store",
+  },
+  {
     "id": "collections",
     "type": "collections",
     "enabled": true,
-    "position": 40,
+    "position": 6,
     "eyebrow": "Explore",
     "title": "Nossas coleções",
     "subtitle": "Seleções criadas para diferentes momentos, sempre com a assinatura visual da REAL VALOR.",
@@ -728,7 +751,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     "id": "featured",
     "type": "featured",
     "enabled": true,
-    "position": 50,
+    "position": 7,
     "eyebrow": "Shop",
     "title": "Peças em destaque",
     "subtitle": "Uma vitrine editorial com navegação simples, foco no produto e preço sempre visível.",
@@ -738,7 +761,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     "id": "editorial",
     "type": "editorial",
     "enabled": true,
-    "position": 60,
+    "position": 8,
     "script": "Vista o seu valor.",
     "title": "A alfaiataria que valoriza você, não o seu status.",
     "body": "A REAL VALOR acredita que elegância não é privilégio. É um direito. Criamos peças de alfaiataria feminina com estética sofisticada e preço acessível, para que mais mulheres possam se sentir bem vestidas na vida real.",
@@ -752,7 +775,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     "id": "instagram",
     "type": "instagram",
     "enabled": true,
-    "position": 70,
+    "position": 9,
     "handle": "@realvalor",
     "title": "Mais que roupas, é sobre você.",
     "images": [
@@ -778,7 +801,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     "id": "footer",
     "type": "footer",
     "enabled": true,
-    "position": 80,
+    "position": 10,
     "columns": [],
     "social": [
       {

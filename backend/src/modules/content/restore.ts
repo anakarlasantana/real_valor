@@ -28,16 +28,21 @@
  * só (`defaultsFor`).
  *
  * As seções criadas nascem com a **coluna `fixed`** resolvida (ver
- * `models/content-section.ts`): o cromo do site nasce fixo — ele não tem ordem
- * —, e a vitrine nasce solta, numerada. É o padrão que também vale para o
+ * `models/content-section.ts`): o bloco ancorado nasce fixo — o cromo do site e
+ * a abertura da home (a capa e a faixa de benefícios) não têm ordem —, e o resto
+ * nasce solto, numerado. É o padrão que também vale para o
  * `POST /admin/content` — as duas portas que criam seção respondem a mesma
  * pergunta do mesmo jeito.
  */
-import { THEME_SURFACE, isSingletonSectionType } from "./contract"
+import {
+  FIXED_SECTION_POSITIONS,
+  THEME_SURFACE,
+  isSingletonSectionType,
+} from "./contract"
 import type { QueryGraph, RemoteLink } from "./curation"
 import { DEFAULT_HOME_SECTIONS } from "./defaults"
 import { hasChips, writeDefaultChips } from "./filters"
-import { positionAfter } from "./order"
+import { DEFAULT_SURFACE, positionAfter } from "./order"
 import type ContentModuleService from "./service"
 import { THEME_SECTIONS, type ThemeSection } from "./themes"
 
@@ -83,21 +88,27 @@ export function defaultsFor(surface: string): readonly ThemeSection[] {
  * errado em silêncio (a seção nova nascendo antes do hero numa base que já
  * tinha passado pelo "Salvar ordem").
  *
- * A numeração do padrão é a do protótipo — `nav` 5, `announcement` 10, `hero`
- * 20, `lancamentos` 25… — e **só vale** enquanto a base está nessa numeração.
- * Depois de uma gravação de ordem no CRM a vitrine está em 100, 110, 120…, e
- * copiar 25 dali põe a seção no lugar errado da página.
+ * A numeração do padrão é a das **casas** da home — `announcement` 1, `nav` 2,
+ * `hero` 3, `benefits` 4, `lancamentos` 5… —, e ela **só vale** enquanto a base
+ * está nessa numeração. Numa base antiga (vitrine em 100, 110, 120…, ou em 20,
+ * 30, 40… antes disso) copiar 5 dali põe a seção no lugar errado da página.
  *
  * A regra: a seção entra **logo depois** do vizinho que ela tem no padrão, na
- * ordem atual (`positionAfter`, que usa a metade do vão). Sem vizinho anterior
- * — é a primeira da lista, ou a base está vazia —, vale a posição do padrão.
+ * ordem atual (`positionAfter`, que devolve a primeira casa livre da faixa). Sem
+ * vizinho anterior — é a primeira da lista, ou a base está vazia —, vale a
+ * posição do padrão.
  *
  * As posições planejadas contam como vizinhas: restaurar uma base vazia cria a
  * lista inteira de uma vez, e a segunda seção já enxerga a primeira.
  */
 export function planRestoredPositions(
   existing: readonly { id: string; position: number }[],
-  defaults: readonly { id: string; position: number }[] = DEFAULT_HOME_SECTIONS
+  defaults: readonly {
+    id: string
+    position: number
+    type: string
+  }[] = DEFAULT_HOME_SECTIONS,
+  surface: string = DEFAULT_SURFACE
 ): { id: string; position: number }[] {
   const present = new Set(existing.map((section) => section.id))
   const missing = defaults.filter((section) => !present.has(section.id))
@@ -115,8 +126,18 @@ export function planRestoredPositions(
       .reverse()
       .find((candidate) => placed.has(candidate.id))?.id
     const anchor = anchorId === undefined ? undefined : placed.get(anchorId)
+    // A seção ancorada **não** entra "depois do vizinho": ela tem casa própria
+    // (`FIXED_SECTION_POSITIONS`), e é essa casa que a loja lê sempre. Sem esta
+    // linha, restaurar uma base vazia empurrava o rodapé para depois da última
+    // seção — a casa 10 é ancorada, e `positionAfter` a pula por definição.
+    const anchored = isSingletonSectionType(section.type)
+      ? FIXED_SECTION_POSITIONS[section.type]
+      : undefined
     const position =
-      anchor === undefined ? section.position : positionAfter(positions, anchor)
+      anchored ??
+      (anchor === undefined
+        ? section.position
+        : positionAfter(positions, anchor, surface))
 
     placed.set(section.id, position)
     positions.push({ position })
@@ -138,7 +159,7 @@ export async function restoreDefaultSections(
   // repõe as estações. A lista é a mesma máquina para as duas — `position`,
   // `enabled` e o `data` achatado —, e é por isso que ela vem como parâmetro.
   const defaults = defaultsFor(surface)
-  const plan = planRestoredPositions(existing, defaults)
+  const plan = planRestoredPositions(existing, defaults, surface)
   const planned = new Map(plan.map(({ id, position }) => [id, position]))
 
   if (!plan.length) {
@@ -161,11 +182,11 @@ export async function restoreDefaultSections(
         type,
         enabled,
         position: planned.get(id) as number,
-        // A seção do cromo (barra de anúncio, cabeçalho, rodapé) nasce **fixa**:
-        // ela não tem ordem, e é a coluna que a tela lê para mostrar "Fixo" no
-        // lugar do numeral e não oferecer as setas. Quem diz que o tipo é cromo é
-        // o contrato — a mesma regra que a rota do admin aplica para só existir
-        // um de cada tipo.
+        // A seção do bloco ancorado (barra de anúncio, cabeçalho, capa, faixa de
+        // benefícios e rodapé) nasce **fixa**: ela não tem ordem, e é a coluna que
+        // a tela lê para mostrar "Fixo" no lugar das setas. Quem diz que o tipo é
+        // ancorado é o contrato — a mesma regra que a rota do admin aplica para só
+        // existir um de cada tipo.
         fixed: isSingletonSectionType(type),
         data,
       }

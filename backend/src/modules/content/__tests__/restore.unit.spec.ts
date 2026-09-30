@@ -1,16 +1,19 @@
 /**
  * A posição com que o "Restaurar padrão" cria cada seção que falta.
  *
- * O que este teste protege é a base que **já passou pelo CRM**: a numeração do
- * padrão é a do protótipo (`hero` 20, `lancamentos` 25), e a vitrine de uma base
- * reordenada está em 100, 110, 120…. Copiar a posição do padrão ali fazia a
- * seção nova nascer **antes do hero** — o trilho de lançamentos apareceria
- * acima da fotografia de abertura, e nada na tela apontaria o motivo.
+ * O que este teste protege é a base que **já passou pelo CRM**: a numeração de
+ * hoje é por **casas** (1 a 10, com o bloco ancorado em 1, 2, 3, 4 e 10), e uma
+ * base antiga tem a vitrine em 100, 110, 120… (ou em 20, 30, 40…, antes disso).
+ * Copiar a posição do padrão ali fazia a seção nova nascer **antes da capa** — o
+ * trilho de lançamentos apareceria acima da fotografia de abertura, e nada na
+ * tela apontaria o motivo.
  *
  * O caso da base vazia é o outro lado: sem nenhum vizinho, a numeração do
- * padrão é a ordem certa, e ela vale para a lista inteira.
+ * padrão é a ordem certa, e ela vale para a lista inteira — inclusive a casa
+ * ancorada de cada seção fixa (o rodapé em 10, e não depois da última seção).
  */
 import {
+  FIXED_SECTION_POSITIONS,
   SINGLETON_SECTION_TYPES,
   THEME_SURFACE,
   THEME_TYPE,
@@ -32,39 +35,38 @@ const order = (positions: { id: string; position: number }[]) =>
   [...positions].sort((a, b) => a.position - b.position).map(({ id }) => id)
 
 describe("planRestoredPositions", () => {
-  it("numa base renumerada, a seção nova entra logo depois do vizinho do padrão", () => {
-    // A base como o "Salvar ordem" do CRM a deixa (é o estado do ambiente
-    // local): vitrine de 100 em 100, cromo na faixa de baixo. Falta só o
-    // `lancamentos`. Repare que a ordem ATUAL não é a do padrão — a coleção
-    // veio antes da faixa de benefícios, porque quem arruma é o lojista.
+  it("numa base migrada (casas 1 a 10), a seção que falta volta para a casa livre do vizinho", () => {
+    // A base como a migration das casas a deixa — o bloco ancorado em 1, 2, 3, 4
+    // e 10, e a vitrine nas casas livres —, sem o `lancamentos`: o lojista o
+    // apagou, e a casa 5 (a dele no padrão) ficou vazia.
     const existing = [
-      { id: "nav", position: 10 },
-      { id: "announcement", position: 20 },
-      { id: "footer", position: 90 },
-      { id: "hero", position: 100 },
-      { id: "collections", position: 110 },
-      { id: "benefits", position: 120 },
-      { id: "featured", position: 130 },
-      { id: "editorial", position: 140 },
-      { id: "instagram", position: 150 },
+      { id: "announcement", position: 1 },
+      { id: "nav", position: 2 },
+      { id: "hero", position: 3 },
+      { id: "benefits", position: 4 },
+      { id: "collections", position: 6 },
+      { id: "featured", position: 7 },
+      { id: "editorial", position: 8 },
+      { id: "instagram", position: 9 },
+      { id: "footer", position: 10 },
     ]
 
     const plan = planRestoredPositions(existing)
 
-    expect(plan).toEqual([{ id: "lancamentos", position: 105 }])
-    // E, na prática: o trilho entre o hero (100) e as coleções (110) — e não
-    // antes do hero, que é onde a posição 25 do padrão cairia.
+    // O vizinho do `lancamentos` no padrão é a faixa de benefícios (casa 4), e a
+    // primeira casa livre depois dela é a 5 — que é onde o trilho aparece.
+    expect(plan).toEqual([{ id: "lancamentos", position: 5 }])
     expect(order([...existing, ...plan])).toEqual([
-      "nav",
       "announcement",
-      "footer",
+      "nav",
       "hero",
+      "benefits",
       "lancamentos",
       "collections",
-      "benefits",
       "featured",
       "editorial",
       "instagram",
+      "footer",
     ])
   })
 
@@ -85,32 +87,56 @@ describe("planRestoredPositions", () => {
     expect(planRestoredPositions(DEFAULT_HOME_SECTIONS)).toEqual([])
   })
 
-  it("a seção que vem antes de um vizinho ausente entra depois do que existe", () => {
-    // Base com o cromo e mais nada: o hero (vizinho do padrão é a barra de
-    // anúncio) entra depois dela, não na posição 20 do protótipo — que é igual
-    // à da barra e daria ordem indefinida.
+  it("sem a vitrine, cada seção entra na casa livre depois do seu vizinho do padrão", () => {
+    // Base só com o bloco ancorado: a numeração do padrão vale para a lista
+    // inteira, casa por casa — e a do rodapé (10) fica de fora, porque
+    // `positionAfter` pula as casas ancoradas.
     const existing = [
-      { id: "nav", position: 10 },
-      { id: "announcement", position: 20 },
-      { id: "footer", position: 90 },
+      { id: "announcement", position: 1 },
+      { id: "nav", position: 2 },
+      { id: "hero", position: 3 },
+      { id: "benefits", position: 4 },
+      { id: "footer", position: 10 },
     ]
 
     const plan = planRestoredPositions(existing)
     const positions = plan.map(({ position }) => position)
 
     expect(order([...existing, ...plan])).toEqual([
-      "nav",
       "announcement",
+      "nav",
       "hero",
-      "lancamentos",
       "benefits",
+      "lancamentos",
       "collections",
       "featured",
       "editorial",
       "instagram",
       "footer",
     ])
+    // As casas livres do meio, na ordem: nenhuma se repete, e nenhuma cai no
+    // bloco ancorado.
+    expect(positions).toEqual([5, 6, 7, 8, 9])
     expect(new Set(positions).size).toBe(positions.length)
+  })
+
+  it("a seção ancorada que falta volta para a casa dela, e não para depois da última", () => {
+    // A capa (3) e o rodapé (10): é a casa que a loja lê sempre, e não "depois
+    // do vizinho" — sem esta regra o rodapé nasceria em 11, fora da numeração da
+    // home, porque `positionAfter` pula as casas ancoradas.
+    const existing = [
+      { id: "announcement", position: 1 },
+      { id: "nav", position: 2 },
+    ]
+
+    const plan = planRestoredPositions(existing)
+
+    expect(plan.find(({ id }) => id === "hero")?.position).toBe(
+      FIXED_SECTION_POSITIONS.hero
+    )
+    expect(plan.find(({ id }) => id === "footer")?.position).toBe(
+      FIXED_SECTION_POSITIONS.footer
+    )
   })
 })
 
@@ -178,20 +204,31 @@ describe("restoreDefaultSections", () => {
     )
   })
 
-  it("o cromo que já existe não é recriado", async () => {
-    // Numa base em que só falta a vitrine, nada do que nasce é fixo: o cromo já
-    // está lá (e continua sendo o que a coluna dele diz).
+  it("o bloco ancorado que já existe não é recriado", async () => {
+    // Numa base em que o cromo já está lá, o que nasce são as seções da vitrine e
+    // as fixas que faltam — a capa e a faixa de benefícios —, cada uma com a
+    // coluna `fixed` que o contrato manda gravar.
     const existing = [
-      { id: "nav", position: 10 },
-      { id: "announcement", position: 20 },
-      { id: "footer", position: 90 },
+      { id: "announcement", position: 1 },
+      { id: "nav", position: 2 },
+      { id: "footer", position: 10 },
     ]
     const { createContentSections, service } = fakeService(existing)
 
     const result = await restoreDefaultSections(service)
+    const rows = createdRows(createContentSections)
 
     expect(result.kept).toBe(existing.length)
-    expect(createdRows(createContentSections).some((row) => row.fixed)).toBe(false)
+    // O que **já existia** não volta (o `nav`, a barra e o rodapé), e o que
+    // nasce fixo é o que faltava do bloco ancorado: a capa e a faixa de
+    // benefícios — cada uma na casa que `FIXED_SECTION_POSITIONS` declara.
+    expect(rows.filter((row) => row.fixed).map((row) => row.type).sort()).toEqual([
+      "benefits",
+      "hero",
+    ])
+    expect(
+      rows.find((row) => row.type === "hero")?.position
+    ).toBe(FIXED_SECTION_POSITIONS.hero)
   })
 
   it("não grava nada quando todas as seções já existem", async () => {

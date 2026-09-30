@@ -83,7 +83,8 @@ export async function GET(
      */
     categories: await readCategoryCatalog(query),
     /**
-     * A faixa da numeração da vitrine (`{ first, step }`), como **dado**.
+     * A faixa da numeração da superfície (`{ first, step, reserved }`), como
+     * **dado**.
      *
      * O painel mostra o numeral das seções enquanto a ordem está pendente — a
      * lista já mexida na tela, ainda não publicada — e esse numeral é o que a
@@ -91,9 +92,11 @@ export async function GET(
      * dado, e não por import, porque o painel é código de **navegador**:
      * importar a regra do backend levaria código de servidor para o bundle,
      * que é o que a R6.5 desfaz (guardado por
-     * `scripts/check-contract-parity.mjs`).
+     * `scripts/check-contract-parity.mjs`). `reserved` são as casas ancoradas
+     * (`FIXED_SECTION_POSITIONS`): a previsão da tela precisa pulá-las, como a
+     * gravação pula — na home, a casa 10 é do rodapé e a sexta seção nasce em 11.
      */
-    order: orderFaixa(),
+    order: orderFaixa(surface),
     /**
      * Metadados que o widget usa para montar o formulário — lidos do
      * **registro no Postgres** (`service.getContract()`), que é o mesmo lugar de
@@ -160,11 +163,13 @@ export async function POST(
   // quem chega no fim (uma leitura só).
   const sections = await service.listSections({ surface, onlyEnabled: false })
 
-  // Cromo do site (`nav`, `footer`, barra de anúncio) só existe uma vez: o
-  // layout resolve os três por `find`, então uma segunda seção do mesmo tipo
-  // seria uma linha que o CRM lista e a loja **nunca** desenha — parece que
-  // funcionou, e por isso é pior que um erro. Ver
-  // `SINGLETON_SECTION_TYPES` no contrato.
+  // Seção do bloco ancorado (`nav`, `footer`, barra de anúncio, capa e faixa de
+  // benefícios) só existe uma vez: as duas primeiras e o rodapé são resolvidos
+  // por `find` no layout, e a capa e a faixa de benefícios moram numa casa
+  // ancorada — uma segunda seção do mesmo tipo seria uma linha que o CRM lista e
+  // a loja **nunca** desenha, ou um número repetido na vitrine. Parece que
+  // funcionou, e por isso é pior que um erro. Ver `SINGLETON_SECTION_TYPES` e
+  // `FIXED_SECTION_POSITIONS` no contrato.
   if (
     isSingletonSectionType(type) &&
     sections.some((section) => section.type === type)
@@ -173,8 +178,8 @@ export async function POST(
       type: "invalid_data",
       message:
         `Já existe uma seção do tipo "${type}" em "${surface}". ` +
-        `Ele é único — é "${schema.typeLabels[type] ?? type}", que a loja ` +
-        `desenha em todas as rotas: edite a seção existente.`,
+        `Ele é único — é "${schema.typeLabels[type] ?? type}", um bloco fixo da ` +
+        `vitrine: edite a seção existente.`,
     })
     return
   }
@@ -224,12 +229,16 @@ export async function POST(
 
   // A posição vem da **regra do módulo** (`order.ts`), e não de uma cópia
   // local: era o `nextPosition` duplicado aqui — uma segunda resposta para a
-  // mesma pergunta. A regra tem o piso da faixa da vitrine, que é o que impede a
-  // seção nova de nascer no meio do cromo (o `fixed` mora abaixo dela), e ela
-  // recebe **só a vitrine**: o cromo não conta, porque a posição dele não decide
-  // nada (a loja resolve o cromo por `type`).
+  // mesma pergunta. A regra tem o piso da faixa, que é o que impede a seção nova
+  // de nascer dentro do bloco ancorado (as casas 1 a 4 e o rodapé em 10), e ela
+  // recebe **só as ordenáveis**: a seção fixa não conta, porque mora numa casa
+  // própria e a loja a resolve por `type`.
   const position =
-    sentPosition ?? nextPosition(sections.filter((section) => !section.fixed))
+    sentPosition ??
+    nextPosition(
+      sections.filter((section) => !section.fixed),
+      surface
+    )
 
   const errors = validateData(type, data, {
     strict: true,
@@ -253,11 +262,11 @@ export async function POST(
     ...(sectionId ? { id: sectionId } : {}),
     ...columns,
     position,
-    // A seção do cromo nasce **fixa** (sem ordem), como no seed/`Restaurar
-    // padrão`: é a coluna que a tela lê para mostrar "Fixo" no lugar do numeral
-    // e não oferecer as setas. O tipo que responde é o do contrato — a mesma
-    // regra da unicidade logo acima (`SINGLETON_SECTION_TYPES`) —, e o corpo pode
-    // dizer outra coisa: `fixed` é coluna, como `enabled`, e o que veio manda.
+    // A seção do bloco ancorado nasce **fixa** (sem ordem), como no seed/
+    // `Restaurar padrão`: é a coluna que a tela lê para mostrar "Fixo" no lugar
+    // das setas. O tipo que responde é o do contrato — a mesma regra da
+    // unicidade logo acima (`SINGLETON_SECTION_TYPES`) —, e o corpo pode dizer
+    // outra coisa: `fixed` é coluna, como `enabled`, e o que veio manda.
     fixed:
       typeof columns.fixed === "boolean"
         ? columns.fixed

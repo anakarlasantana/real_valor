@@ -30,11 +30,19 @@ import type { HomeSection } from "./contract"
  * convivem sem migração.
  */
 export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
+  {
+    id: "announcement",
+    type: "announcement",
+    enabled: true,
+    position: 1,
+    text: "Frete seguro para todo o Brasil · Até 6x sem juros",
+  },
   /**
    * Cabeçalho. Não é uma seção da home — o layout o renderiza em todas
    * as rotas —, mas é conteúdo como qualquer outro, então mora aqui e
-   * ganha um bloco no seed. `position` 5 só serve para manter a lista
-   * ordenada; ele é ignorado no render da home.
+   * ganha um bloco no seed. A casa dele é **2**, a segunda do bloco ancorado
+   * (`FIXED_SECTION_POSITIONS`, no contrato), e a posição não decide o render
+   * da home: quem desenha o cabeçalho em todas as rotas é o layout.
    *
    * O fallback do storefront (`DEFAULT_HEADER`) é derivado deste bloco pelo
    * gerador — não há segunda cópia.
@@ -43,7 +51,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     id: "nav",
     type: "nav",
     enabled: true,
-    position: 5,
+    position: 2,
     links: [
       { label: "Início", href: "/#hero" },
       { label: "Coleções", href: "/#collections" },
@@ -57,18 +65,16 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
       { icon: "search", label: "Buscar", href: "/search" },
     ],
   },
-  {
-    id: "announcement",
-    type: "announcement",
-    enabled: true,
-    position: 10,
-    text: "Frete seguro para todo o Brasil · Até 6x sem juros",
-  },
+  /**
+   * A capa. É a **abertura da home**: a vitrine a desenha, mas ela não entra na
+   * ordem das setas — junto com a faixa de benefícios, é o começo da página, e
+   * não conteúdo que se reordena (casa 3, ver `FIXED_SECTION_POSITIONS`).
+   */
   {
     id: "hero",
     type: "hero",
     enabled: true,
-    position: 20,
+    position: 3,
     eyebrow: "Nova coleção",
     headline: "Você não precisa ser rica para se",
     headlineEmphasis: "sentir elegante.",
@@ -79,26 +85,15 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     imageAlt: "Alfaiataria feminina Real Valor",
     overlay: 0.72,
   },
-  {
-    id: "lancamentos",
-    type: "launches",
-    enabled: true,
-    position: 25,
-    // Cópia escrita AQUI, e não copiada do protótipo: ele não tem esta seção.
-    // É ponto de partida na voz da marca — o lojista troca tudo no CRM.
-    eyebrow: "Novidades",
-    title: "Chegou agora",
-    subtitle:
-      "As peças que acabaram de entrar na vitrine, na ordem em que chegaram.",
-    limit: 8,
-    viewAllLabel: "Ver tudo",
-    viewAllHref: "/store",
-  },
+  /**
+   * A faixa de benefícios. Fecha a **abertura da home** (casa 4) e nasce fixa,
+   * como a capa: o que o lojista ordena pelas setas começa depois dela.
+   */
   {
     id: "benefits",
     type: "benefits",
     enabled: true,
-    position: 30,
+    position: 4,
     items: [
       {
         icon: "quality",
@@ -123,10 +118,25 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     ],
   },
   {
+    id: "lancamentos",
+    type: "launches",
+    enabled: true,
+    position: 5,
+    // Cópia escrita AQUI, e não copiada do protótipo: ele não tem esta seção.
+    // É ponto de partida na voz da marca — o lojista troca tudo no CRM.
+    eyebrow: "Novidades",
+    title: "Chegou agora",
+    subtitle:
+      "As peças que acabaram de entrar na vitrine, na ordem em que chegaram.",
+    limit: 8,
+    viewAllLabel: "Ver tudo",
+    viewAllHref: "/store",
+  },
+  {
     id: "collections",
     type: "collections",
     enabled: true,
-    position: 40,
+    position: 6,
     eyebrow: "Explore",
     title: "Nossas coleções",
     subtitle:
@@ -162,7 +172,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     id: "featured",
     type: "featured",
     enabled: true,
-    position: 50,
+    position: 7,
     eyebrow: "Shop",
     title: "Peças em destaque",
     subtitle:
@@ -173,7 +183,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     id: "editorial",
     type: "editorial",
     enabled: true,
-    position: 60,
+    position: 8,
     script: "Vista o seu valor.",
     title: "A alfaiataria que valoriza você, não o seu status.",
     body: "A REAL VALOR acredita que elegância não é privilégio. É um direito. Criamos peças de alfaiataria feminina com estética sofisticada e preço acessível, para que mais mulheres possam se sentir bem vestidas na vida real.",
@@ -187,7 +197,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     id: "instagram",
     type: "instagram",
     enabled: true,
-    position: 70,
+    position: 9,
     handle: "@realvalor",
     title: "Mais que roupas, é sobre você.",
     images: [
@@ -205,7 +215,9 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
   },
   /**
    * Rodapé. Como o `nav`, não é uma seção da home: o layout o renderiza
-   * em todas as rotas, então `position` 80 só mantém a lista ordenada.
+   * em todas as rotas. A casa dele é **10** — a última da numeração da home —,
+   * e é ela que fecha a faixa: as seções ordenáveis ocupam as casas livres do
+   * meio (5 a 9) e nunca nascem na 10 (`FIXED_SECTION_POSITIONS`, no contrato).
    *
    * O fallback do storefront (`DEFAULT_FOOTER`) é derivado deste bloco pelo
    * gerador — não há segunda cópia.
@@ -218,7 +230,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     id: "footer",
     type: "footer",
     enabled: true,
-    position: 80,
+    position: 10,
     columns: [],
     social: [
       {

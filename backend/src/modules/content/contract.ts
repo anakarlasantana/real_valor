@@ -366,11 +366,14 @@ export type HomeSection =
 export const SECTION_TYPES = [
   "announcement",
   "hero",
-  // Segunda seção da home: o trilho de novidades, logo depois do hero (é a
-  // posição 25 do padrão). A ordem deste array é a ordem do seletor de tipo
-  // no CRM e a ordem em que as seções se leem na página.
-  "launches",
+  // A abertura da home vem antes de tudo o que se ordena: a capa (casa 3) e a
+  // faixa de benefícios (casa 4) são fixas, e o trilho de novidades cai na
+  // primeira casa livre da vitrine (5). A ordem deste array é a ordem do
+  // seletor de tipo no CRM e a ordem em que as seções se leem na página — a
+  // mesma das casas ancoradas (`FIXED_SECTION_POSITIONS`) e da faixa da
+  // vitrine (`order.ts`).
   "benefits",
+  "launches",
   "collections",
   "featured",
   "editorial",
@@ -393,20 +396,40 @@ export function isSectionType(value: unknown): value is SectionType {
 }
 
 /**
- * Tipos que só podem existir **uma vez** por superfície.
+ * Tipos que só podem existir **uma vez** por superfície — e que, por isso, têm
+ * **casa ancorada** (`FIXED_SECTION_POSITIONS`): a posição deles não se move.
  *
- * Os três são cromo do site — barra de anúncio, cabeçalho e rodapé — e o
- * layout os resolve por `find` (`announceSections`, `headerSections` e
- * `footerSections`, em `frontend/src/lib/content/home-sections.ts`): o
- * primeiro bloco do tipo é o que aparece na loja.
+ * São dois grupos, e os dois aparecem no CRM com a etiqueta **Fixo** (sem
+ * setas, sem numeral a recalcular):
  *
- * Um segundo bloco seria o pior defeito possível num CMS: o lojista cria, a
- * lista do CRM mostra, a loja **nunca** desenha. Por isso a API recusa a
- * criação (`POST /admin/content`) e o CRM não oferece um tipo que já existe —
- * as duas pontas leem esta lista, então não há duas opiniões sobre o que é
- * único.
+ *   cromo do site     `announcement`, `nav` e `footer` — a moldura que a loja
+ *                     desenha **em todas as rotas** e resolve por `find`
+ *                     (`announceSections`, `headerSections` e `footerSections`,
+ *                     em `frontend/src/lib/content/home-sections.ts`): o
+ *                     primeiro bloco do tipo é o que aparece;
+ *   abertura da home  `hero` e `benefits` — quem os desenha é a vitrine, e não
+ *                     a moldura, mas eles são o **começo da página** e não
+ *                     conteúdo que se reordena: a capa e a faixa de benefícios
+ *                     moram sempre na mesma casa (ver `FIXED_SECTION_POSITIONS`).
+ *
+ * Um segundo bloco de um tipo destes seria o pior defeito possível num CMS: o
+ * lojista cria, a lista do CRM mostra, e a loja **nunca** desenha — o cromo é
+ * resolvido por `find` e a abertura está ancorada numa casa só. Por isso a API
+ * recusa a criação (`POST /admin/content`) e o CRM não oferece um tipo que já
+ * existe — as duas pontas leem esta lista, então não há duas opiniões sobre o
+ * que é único.
+ *
+ * Estar aqui é o que faz a seção nascer **fixa** (`fixed = true`): quem grava a
+ * coluna são as duas portas que criam seção (`restore.ts` e
+ * `POST /admin/content`), as duas perguntando a `isSingletonSectionType`.
  */
-export const SINGLETON_SECTION_TYPES = ["announcement", "nav", "footer"] as const
+export const SINGLETON_SECTION_TYPES = [
+  "announcement",
+  "nav",
+  "hero",
+  "benefits",
+  "footer",
+] as const
 
 export type SingletonSectionType = (typeof SINGLETON_SECTION_TYPES)[number]
 
@@ -593,6 +616,39 @@ export function themeFontField(role: FontRole): string {
 // atalhos dos trilhos de aparência, o `SECTION_FIELDS` que o CRM consome e a
 // paleta/fontes de prévia (que o painel recebe pelo `schema` da API).
 // ===========================================================================
+
+/**
+ * A **casa** de cada seção fixa: a posição que ela ocupa sempre.
+ *
+ * Fixa é a seção que não tem ordem — o CRM mostra a etiqueta "Fixo" no lugar
+ * das setas, e a renumeração da vitrine não a toca. Os tipos são os de
+ * `SINGLETON_SECTION_TYPES` (único por superfície é o que garante uma casa só),
+ * e o desenho da home é este:
+ *
+ *     1  barra de anúncio   ┐
+ *     2  cabeçalho          │ o bloco ancorado do TOPO: as casas em que a
+ *     3  capa (hero)        │ página começa, na ordem em que se lê
+ *     4  benefícios         ┘
+ *     5… as seções da vitrine — as únicas que o "Salvar ordem" renumera
+ *    10  rodapé             ← ancorado no fim da numeração
+ *
+ * A faixa de cada superfície (`CONTENT_SURFACES[i].order`) começa na primeira
+ * casa livre depois do bloco do topo e **pula** as casas ancoradas (`order.ts`):
+ * com a home de 1 a 10, as cinco seções ordenáveis ficam em 5 a 9, e a sexta
+ * nasceria em 11 — a casa 10 é do rodapé, e nenhuma seção ordenável a ocupa.
+ *
+ * Mora **abaixo do bloco compartilhado** porque o storefront não precisa dela:
+ * ele ordena por `position` e resolve o cromo por `type`
+ * (`frontend/src/lib/content/home-sections.ts`). Quem lê as casas é o backend —
+ * o padrão (`defaults.ts`), a restauração (`restore.ts`) e a regra da ordem.
+ */
+export const FIXED_SECTION_POSITIONS: Record<SingletonSectionType, number> = {
+  announcement: 1,
+  nav: 2,
+  hero: 3,
+  benefits: 4,
+  footer: 10,
+}
 
 /** Opções de todo campo de cor: o padrão (`""`) na frente dos 6 tokens. */
 const APPEARANCE_COLOR_OPTIONS = ["", ...THEME_COLOR_TOKENS] as const
@@ -1342,17 +1398,19 @@ export const THEME_TYPE_LABEL = "Tema da loja"
  *                  estação se chama pelo que o dono escreveu (`label`:
  *                  "Natal"), que é o que ele reconhece na lista;
  *   `enabledLabel` "visível na loja" quer dizer outra coisa quando o bloco é
- *                  uma estação ("no ar hoje", pela janela de datas);
+ *                  uma estação ("no ar hoje", pela janela de datas) — é o nome
+ *                  do interruptor que liga/desliga a linha;
  *   `types`        o que a superfície **pode criar**. É esta lista que o
  *                  diálogo "Nova seção" oferece: a home oferece os tipos de
  *                  seção e a superfície de tema oferece `theme` (uma estação
  *                  nova). Sem ela o diálogo daquela aba ofereceria "Hero" — um
  *                  bloco que nenhum render da superfície de tema lê;
- *   `enabledLabel` o nome do interruptor de ligar/desligar a linha ("no ar"
- *                  para uma estação, que é escolhida pelo **dia** na loja);
  *   `blockLabel`   como a linha se chama no singular ("seção", "estação"), para
  *                  o botão de criar e as mensagens da tela não dizerem "Nova
- *                  seção" numa aba que só tem estações.
+ *                  seção" numa aba que só tem estações;
+ *   `order`        a faixa da numeração da superfície (começo e passo), que o
+ *                  CRM recebe como dado para prever o numeral das linhas
+ *                  enquanto a ordem está pendente na tela.
  */
 export type ContentSurfaceSpec = {
   id: string
@@ -1362,6 +1420,23 @@ export type ContentSurfaceSpec = {
   blockLabel: string
   hint: string
   types: readonly string[]
+  /**
+   * A faixa da numeração da superfície: em que casa cai a primeira seção
+   * ordenável e de quanto em quanto a renumeração do "Salvar ordem" anda.
+   *
+   * A vitrine numera **de 1 em 1** — a home inteira cabe em 1 a 10: o bloco
+   * ancorado em 1, 2, 3, 4 e 10 (`FIXED_SECTION_POSITIONS`) e as seções
+   * ordenáveis em 5 a 9. O tema numera **de 10 em 10**, como as estações do
+   * `theme.json` (`THEME_SECTIONS`, em `themes.ts`). A faixa de cada superfície
+   * começa depois do bloco ancorado dela — o tema não tem bloco fixo nenhum,
+   * então começa na própria folga (10).
+   *
+   * Viaja para o CRM no payload (`order`, em `GET /admin/content`) porque o
+   * painel precisa **prever** o numeral enquanto a ordem está pendente — e a
+   * previsão tem de ser a mesma conta que o servidor vai gravar (`applyOrder`,
+   * em `order.ts`, que é quem lê esta faixa).
+   */
+  order: { first: number; step: number }
 }
 
 export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
@@ -1374,11 +1449,14 @@ export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
     hint:
       "Estas seções montam a página inicial, na ordem das setas — que só vale " +
       "depois de “Salvar ordem”. As seções marcadas como Fixo (a barra de " +
-      "anúncio, o cabeçalho e o rodapé, que aparecem em todas as páginas) não " +
-      "têm ordem: a loja resolve as três pelo tipo. A aparência entra junto do " +
+      "anúncio, o cabeçalho, a capa e a faixa de benefícios, que abrem a " +
+      "página, mais o rodapé, que a fecha) não têm ordem: elas moram sempre " +
+      "nas mesmas casas — 1, 2, 3, 4 e 10 —, e as seções ordenáveis ocupam as " +
+      "do meio, de 5 a 9. A aparência entra junto do " +
       "campo que ela muda: em branco, a seção segue o tema da loja — inclusive " +
       "quando o tema é sazonal.",
     types: SECTION_TYPES,
+    order: { first: 5, step: 1 },
   },
   {
     id: THEME_SURFACE,
@@ -1392,6 +1470,7 @@ export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
       "estação “default” é a base — cor ou fonte em branco numa estação " +
       "sazonal é herdada dela.",
     types: [THEME_TYPE],
+    order: { first: 10, step: 10 },
   },
 ]
 
