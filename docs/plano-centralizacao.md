@@ -189,12 +189,12 @@ asserções restantes comparam o **artefato gerado** (a cópia) com o contrato: 
 substituto enquanto a cópia existir — e a cópia morre no G5, junto com a
 comparação. Apagar a guarda antes deixaria um buraco **medível** (não
 especulativo) de cobertura. Além disso a CI existe como arquivo e **roda**: a
-medição de 2026-09-29 (API do GitHub, sem token) conta **13 execuções, nenhuma
-verde** — 12 `failure` + 1 `cancelled`; a última (`#13`, `15a4700838`) falha em
-`guarda de contrato` (passo `make check`) e em `tipos` (passo `make types`), e as
-duas causas estão registradas no R7.1. A condição que o próprio G4 impunha — "CI
-verde antes" — não está cumprida, e o R7.1 deixou qual dívida vence primeiro
-como decisão em aberto.
+medição de 2026-09-29 (API do GitHub, sem token) conta **15 execuções, nenhuma
+verde** — 13 `failure` + 2 `cancelled` (as canceladas são substituídas pelo push
+seguinte); falha sempre nos mesmos dois jobs, `guarda de contrato` (passo `make
+check`) e `tipos` (passo `make types`), e as duas causas estão registradas no
+R7.1. A condição que o próprio G4 impunha — "CI verde antes" — não está cumprida,
+e o R7.1 deixou qual dívida vence primeiro como decisão em aberto.
 
 Duas lacunas que ficaram declaradas, não escondidas:
 
@@ -468,8 +468,8 @@ a **CI**. Estado da CI, medido agora (API do GitHub, sem token):
 
 | O que | Medido |
 |---|---|
-| Execuções | **13, nenhuma verde**: 12 `failure` + 1 `cancelled` (a `#12`, 21s antes da `#13`, cancelada pelo push seguinte) |
-| Última (`#13`, `15a4700838`) | `guarda de contrato` falha no passo `make check`; `tipos` falha no passo `make types`. `registro do schema`, `testes` e `build do storefront` passam |
+| Execuções | **15, nenhuma verde**: 13 `failure` + 2 `cancelled` (as canceladas — `#12` e `#14` — ficam ~20s para trás quando o push seguinte as substitui) |
+| Última do conserto (`#15`, `e9a1a93e8f`) | `guarda de contrato` falha no passo `make check`; `tipos` falha no passo `make types`. `registro do schema`, `testes` e `build do storefront` **passam** — os mesmos resultados de antes do conserto: a guarda nova não tirou nenhum job do ar, e a válvula de escape vale na CI também (o job `registro do schema` carrega a config e tem a fonte, então ela não dispara lá) |
 | Causa de `guarda de contrato` | o job é `checkout` + `setup-node` + `make check`, **sem instalar** nada — e o `icons.ts` importa **valor** de `@medusajs/icons` |
 | Causa de `tipos` | **não medida.** O job instala `backend` e `frontend` (`yarn install --immutable`) e falha no `make types`, que são três `tsc` (backend, painel e storefront); o log do job devolve **403** — precisa de token. O `make types` **local** é verde (medido nesta sessão), então a falha é do **job**, não da árvore de trabalho: estreitá-la a um dos três `tsc` é o primeiro passo de quem pegar esse caminho |
 
