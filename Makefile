@@ -325,14 +325,16 @@ build-admin:
 # Ate agora os testes existiam nos `package.json` (`test:unit` no backend,
 # `test` no storefront) e ninguem os chamava: nem o `make`, nem o hook de
 # commit, nem a CI. Teste que nao roda e' documentacao. O que este alvo passa a
-# exigir, em numero, hoje: 11 suites / 163 testes no backend, 1 suite / 12 testes
-# no CRM e 4 arquivos / 29 testes no storefront. O total — 12 suites / 204 testes
+# exigir, em numero, hoje: 11 suites / 183 testes no backend, 1 suite / 12 testes
+# no CRM e 7 arquivos / 76 testes no storefront. O total — 12 suites / 271 testes
 # — sai de 145 no backend: menos os tres que a R3-lite tirou (as comparacoes de
 # previa do tema, que viraram geracao: comparar o artefato com a origem dele so
-# podia dar verde) e mais os 21 que a R4/R5 somou (o tema como conteudo: o
-# `themes.unit.spec.ts` novo, e o que ele arrastou em `restore` e `validation`),
+# podia dar verde), mais os 21 que a R4/R5 somou (o tema como conteudo: o
+# `themes.unit.spec.ts` novo, e o que ele arrastou em `restore` e `validation`) e
+# mais os 20 do ordenamento (a `order.unit.spec.ts` reescrita sobre as casas
+# livres da faixa, e o que ele arrastou em `contract`, `defaults` e `restore`),
 # e a divisao 11 + 1 = 12 e' a medida de que o teste que saiu do `roots` do
-# backend entrou no runner do CRM inteiro (163 + 12 = 175; com o vitest, 204).
+# backend entrou no runner do CRM inteiro (183 + 12 = 195; com o vitest, 271).
 #
 # A linha do CRM e' a mudanca da R2. Ate' entao o teste do painel rodava na
 # PRIMEIRA linha, por um `roots` do `backend/jest.config.js` que apontava para
