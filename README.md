@@ -218,7 +218,7 @@ real_valor/
 └── frontend/                         # Next.js 15 (App Router) — storefront
     ├── Dockerfile                    # deps → builder → runner (standalone, PROD) | deps → dev (DEV)
     ├── next.config.js                # traz o `checkEnvVariables()` (aborta o build sem a chave)
-    ├── themes/                       # temas lidos em RUNTIME por `src/lib/theme.ts`
+    ├── themes/                       # seed do tema, GERADO do contrato (R3-lite)
     └── src/
         ├── app/fonts/                # fontes SELF-HOSTED (`.woff2`) + README do porquê
         ├── app/[countryCode]/        # rotas da loja: `/br`, `/br/store`, produto, carrinho…
@@ -332,9 +332,9 @@ git config core.hooksPath .githooks   # uma vez por clone
 
 | Onde | Comando | O que faz |
 | :--- | :--- | :--- |
-| Commit (hook) + CI | `make check` | artefato do contrato em dia + **94 asserções**: 93 de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ registro do contrato, ⇔ a ordem da vitrine) e 1 de fronteira (o painel sem import de **valor** do backend — inclusive pelo apelido `@conteudo/*`). **Não instala nada**: são scripts lendo arquivos com Node puro, e é por isso que o hook de commit roda em segundos |
+| Commit (hook) + CI | `make check` | os artefatos gerados em dia — o contrato do storefront, os **4 `themes/*/theme.json`** (o seed do tema) e os tokens `--rv-*` do `brand.css`, os dois últimos gerados na R3-lite — mais **96 asserções**: 95 de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ o seed do tema, ⇔ registro do contrato, ⇔ a ordem da vitrine) e 1 de fronteira (o painel sem import de **valor** do backend — inclusive pelo apelido `@conteudo/*`). **Não instala nada**: são scripts lendo arquivos com Node puro, e é por isso que o hook de commit roda em segundos |
 | CI | `make types` | `tsc` dos dois pacotes — e o do painel, com as regras dele (**0 erros**) e o alias `@conteudo/*` no `paths`. Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI (job `testes`) | `make test` — jest do `backend/` | **145 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração, inserção, a forma do corpo de `POST /admin/content/order` e a gravação em uma chamada), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da validação e dos resolvedores do corpo do CRM (campo desconhecido, obrigatório por rota, faixa de número, lista fechada, âncora, `position` e as duas listas de referência) e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| CI (job `testes`) | `make test` — jest do `backend/` | **142 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração, inserção, a forma do corpo de `POST /admin/content/order` e a gravação em uma chamada), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da validação e dos resolvedores do corpo do CRM (campo desconhecido, obrigatório por rota, faixa de número, lista fechada, âncora, `position` e as duas listas de referência) e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone). Eram 145 até a R3-lite: três comparações de prévia (hex, família e pilha) saíram quando o tema passou a ser gerado — comparar um artefato com a origem dele só podia dar verde |
 | CI (job `testes`) | `make test` — jest do **CRM** (`admin/jest.config.js`) | **12 testes** do formulário do painel: o que o rascunho da tela guarda — ausente/nulo/vazio como a mesma coisa, número contra texto (`8` e `"8"`), a referência de categoria virando lista de ids no corpo. São os que decidem se a barra de **Salvar** aparece; rodam no runner do CRM, não no jest do backend. Logo depois, `scripts/check-panel-tests.mjs` confere que a suíte que está no **disco** é a que o runner executa (a perda parcial que o "No tests found" não pega) |
 | CI (job `testes`) | `make test` — vitest do `frontend/` | **20 testes** da tolerância da loja ao tipo desconhecido, do `src` das imagens do CMS (`resolveMediaUrl`) e do tamanho do trilho de lançamentos (`launchesLimit`) |
 | CI | `make check-schema` | o registro do `content_contract` conferido contra o contrato, num Postgres efêmero |
@@ -348,12 +348,15 @@ tudo dependia de alguém lembrar; e os testes eram o caso mais claro, porque exi
 
 O caminho para **não depender mais** da guarda de paridade está em
 [`docs/plano-centralizacao.md`](docs/plano-centralizacao.md). Ela nasceu com **89**
-asserções, o G2 a levou a **80** e hoje ela imprime **94**: cada fase que mexe no
-contrato pode somar verificação, e somar é mais barato que redesenhar. O número se
+asserções, o G2 a levou a **80** e hoje ela imprime **96**: cada fase que mexe no
+contrato pode somar verificação, e somar é mais barato que redesenhar. A R3-lite
+tirou três (a prévia hex/família/pilha, que virou geração) e somou cinco (o seed
+do tema, a cobertura dos tokens gerados, o `brand.css` sem a paleta, o fallback
+de fonte e o `theme.ts` sem lista digitada). O número se
 confere, não se estima:
 
 ```bash
-make check | grep -c '^  ok'   # 94
+make check | grep -c '^  ok'   # 96
 ```
 
 O alvo, portanto, não é o número — é o *tipo*: o que o compilador e um teste já

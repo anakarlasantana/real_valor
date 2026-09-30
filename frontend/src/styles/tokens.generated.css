@@ -1,0 +1,29 @@
+/*
+ * Real Valor — Tokens do tema (GERADO — NÃO EDITE À MÃO)
+ * -----------------------------------------------------------------
+ * A paleta do tema padrão, gerada de `THEME_COLOR_HEXES`
+ * (`backend/src/modules/content/contract.ts`) por `node scripts/gen-content.mjs`
+ * — a mesma origem dos `theme.json` de `frontend/themes/`. Contrato novo é:
+ * editar o contrato, rodar o gerador, commitar o diff. O `make check` e o
+ * hook de commit reprovam este arquivo fora de sincronia.
+ *
+ * Estes tokens são o **fallback** da loja: `themeToCSSVariables`
+ * (`frontend/src/lib/theme.ts`) reescreve os mesmos `--rv-*` inline no
+ * `<html>`, por requisição, com a paleta da estação que estiver no ar — o que
+ * fica aqui é o que a página pinta antes disso.
+ *
+ * O resto do `brand.css` — tokens derivados, semânticos, tipografia, forma,
+ * movimento e as classes `.rv-section-*` — continua lá: é decisão de design,
+ * não dado de tema, e nenhuma estação troca esses valores.
+ */
+
+:root,
+:root[data-theme="default"] {
+  /* --- Paleta principal (do contrato) --- */
+  --rv-rose: #B97872;
+  --rv-offwhite: #F7F1E8;
+  --rv-cacao: #4A3531;
+  --rv-grafite: #303033;
+  --rv-preto: #171717;
+  --rv-dourado: #D4B19A;
+}

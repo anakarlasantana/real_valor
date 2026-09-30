@@ -45,10 +45,12 @@ schema + 1 renderizador** (ou nenhum, se a seção for composta por campos já s
   declarados. Mais elegante, bem mais caro.
 
 **O tema segue o mesmo caminho:** `surface: 'theme'` como dado (bootstrap em
-`themes/*.json`), e a loja resolve do payload com tag de cache em vez de
-`fs.readdirSync(process.cwd()/themes)`. Isso mata de uma vez as asserções de
-paleta/família, o `COPY` extra do `themes/` no Dockerfile e o motivo das 2 cópias de
-`.woff2` (passa a ter uma origem só, com CORS).
+`themes/*.json`, **gerado** desde a R3-lite), e a loja resolve do payload com tag
+de cache em vez de `fs.readdirSync(process.cwd()/themes)`. Isso mata de uma vez as
+asserções de paleta/família, o `COPY` extra do `themes/` no Dockerfile e o motivo
+das 2 cópias de `.woff2` (passa a ter uma origem só, com CORS). A R3-lite fez a
+parte da árvore (contrato, tokens e seed gerados); o `COPY`, o `themes/` fora da
+imagem e a loja lendo do payload são a R4/R5.
 
 ## Fases e o que foi feito
 
@@ -57,7 +59,7 @@ paleta/família, o `COPY` extra do `themes/` no Dockerfile e o motivo das 2 cóp
 | **F0** — Rede e ruído | `make check` + hook de commit, docs enxutas (1 entrada + 4 assuntos), READMEs de template e pastas vazias fora | ✅ feito | `make check`, `docs/DEBITO-TECNICO.md` |
 | **F1** — Fonte única do contrato | gerador emite tipos/defaults/tokens/mapas em cada app; artefato versionado com `--check` | ✅ feito | `scripts/gen-content.mjs`, `frontend/src/lib/content/contract.generated.ts`; guarda 1.042 → **69 asserts** |
 | **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ✅ **feito** | `content_contract` + `schema.ts` + `seed-schema`; a API lê e valida contra o registro; `schemaVersion` no payload; a loja descarta tipo desconhecido. 11 asserts na guarda |
-| **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ⏸️ etapa 1 pronta, **adiada** e congelada em `arquivo/` | branch `arquivo/f3-tema-como-dado-nao-mergear` (era `f3-tema-como-dado`), commit `fcdc3500ec`: superfície `theme` no contrato + API + CRM. **Não mergear:** o ponto de ramificação é `f4fe7c07` e o `develop` andou **32 commits** desde então; a simulação de merge (`git merge-tree`) conflita em **5 arquivos** — `admin/routes/content/{field-input.tsx,page.tsx}`, `api/admin/content/route.ts`, `modules/content/contract.ts` e `scripts/check-contract-parity.mjs` —, três deles justamente os que a R6/R6.5/R7 reescrevem. A etapa 2 é refeita sobre `develop` na R4. **Falta:** seed dos `theme.json` e a loja ler do payload |
+| **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ⏸️ etapa 1 pronta, **adiada** e congelada em `arquivo/`; a **árvore** foi feita na R3-lite | branch `arquivo/f3-tema-como-dado-nao-mergear` (era `f3-tema-como-dado`), commit `fcdc3500ec`: superfície `theme` no contrato + API + CRM. **Não mergear:** o ponto de ramificação é `f4fe7c07` e o `develop` andou **32 commits** desde então; a simulação de merge (`git merge-tree`) conflita em **5 arquivos** — `admin/routes/content/{field-input.tsx,page.tsx}`, `api/admin/content/route.ts`, `modules/content/contract.ts` e `scripts/check-contract-parity.mjs` —, três deles justamente os que a R6/R6.5/R7 reescrevem. A etapa 2 é refeita sobre `develop` na R4. **Feito na R3-lite:** o contrato como origem da paleta/fontes, os `theme.json` e os tokens como artefatos gerados (o seed). **Falta:** a superfície `theme` na API/CRM e o seed dela no banco (R4), e a loja ler do payload (R5) |
 | **F4** — CRM de vendas/entrega | agregações (vendas, status, ticket, rastreio) como módulo + rotas `/admin/*`, sobre o mesmo banco | ⏸️ não iniciado | `order-customer-indexer` + `/store/orders/track` são a base |
 | **F5** — Higiene | Makefile interface única; `packages/` só se útil; CI rodando `make check`; `schemaVersion` | ⏸️ parcial | Makefile é a interface e `schemaVersion` saiu no F2′; **falta** a CI (vira G1) e o `packages/` (vira G5) |
 
@@ -145,8 +147,8 @@ teste ou checagem de dado — nenhuma das 89 some sem substituto, e nenhuma das
 | `ADMIN` — "o editor lê `itemFields`" | 2 | o painel não para de ler o schema | **teste de render** | jsdom + RTL (dep nova) — ou as duas saem e a cobertura fica assumida |
 | `ADMIN` — campos de item = tipo do item | 6 | `ITEM_FIELDS[k]` = chaves de `BenefitItem`… | **teste** (1 spec) | contrato e item estão no mesmo arquivo |
 | `APARÊNCIA` — invariantes do contrato | 8 | trilhos, ordem, opções, tradução | **teste** (1 spec) | dados de um array de contrato: teste é o lugar |
-| `APARÊNCIA` — cobertura CSS | 3 | variável escrita × consumida; classe definida × usada | **checagem que fica** (teste com `fs`) | nada padrão cobre isso; e o alvo é gerar os tokens para não haver o que comparar |
-| `PRÉVIA` — hex/família/pilha | 3 | a prévia bate com o tema | **teste** | após o F3, `theme.json` é seed e o hex vive no contrato |
+| `APARÊNCIA` — cobertura CSS | 3 | variável escrita × consumida; classe definida × usada | **checagem que fica** (teste com `fs`) | nada padrão cobre isso. A **R3-lite** fez a metade que dava: os tokens da paleta passaram a ser **gerados** do contrato, e as três viraram "o `brand.css` não redeclara a paleta", "cada token sai no CSS gerado" e "o `theme.ts` não digita a lista" |
+| `PRÉVIA` — hex/família/pilha | 3 | a prévia bate com o tema | **feito (R3-lite)** | as três **saíram**: com o `theme.json` gerado do contrato, compará-lo com a origem só podia dar verde. O que sobrou foi o que a geração não cobre — o `fallback` de fonte do `brand.css` (1 asserção) |
 | `PRÉVIA` — `@font-face` + **md5 dos `.woff2`** | 2 | a fonte existe e é a mesma | **checagem que fica** (teste com `fs`) | é binário; nenhuma ferramenta padrão faz isso |
 | `PRÉVIA` — schema num lugar / rota lê e não monta | 3 | o schema não volta a ser montado na rota | **tipagem** (payload já é tipado) + **teste** (GET) | a assert de "montado num lugar" é redundante: `ContentSchemaPayload` já é o tipo |
 | `SCHEMA COMO DADO` | 11 | migration só-DDL, histórico do rename, model, `getContract`/`saveContract`, versão, `--check`, flags, `schemaVersion` + filtro | **teste** (2 specs) + **CI** | `check-schema` na CI é a checagem de **dado** |
@@ -305,7 +307,7 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 | **Órfão apagado** | script sem chamador, cache de build antigo, manifesto sem dependência ou arquivo que a fase tornou inútil sai **na mesma fase**, e o que a documentação dizia dele é corrigido junto. Não há `arquivo/` de espera para isso: o Git já é o arquivo. |
 
 > **Contagem da guarda — medida, não estimada:** `make check | grep -c '^  ok'`.
-> Nasceu com 89; o G2 a levou a 80; hoje imprime **94**, porque cada fase que mexe no
+> Nasceu com 89; o G2 a levou a 80; hoje imprime **96**, porque cada fase que mexe no
 > contrato pode somar verificação, e somar é mais barato que redesenhar (a R1 somou três: o
 > que a vitrine de destaque lê ⇔ o formulário, o chip como referência e a tabela do link; a R6.5
 > somou quatro: nenhum import de valor no painel, a faixa da ordem vinda das constantes do módulo,
@@ -315,10 +317,16 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 > A **R7.1** também não somou asserção nenhuma, e de propósito: o que ela somou foi **ambiente** (um
 > alvo do Makefile, o check 6 do `doctor` e uma guarda de **subida**, que não é verificação de
 > contrato). O total medido segue **94**.
+> A **R3-lite** foi a primeira fase a **tirar** asserção, e de propósito: três saíram
+> (as de prévia — hex, família e pilha —, que a geração tornou tautológicas) e cinco
+> entraram no lugar (o seed em disco é o conjunto de temas do contrato, cada token
+> sai no CSS gerado, o `brand.css` não redeclara a paleta nem troca o fallback de
+> fonte, e o `theme.ts` monta as variáveis das listas do contrato em vez de digitá-las).
+> O total foi a **96**.
 > A **R2** somou **uma** verificação, mas não neste alvo: `scripts/check-panel-tests.mjs` (a suíte
 > que está no disco do CRM é a que o runner dele executa) **precisa do jest instalado**, e o job
 > `guard` da CI roda este alvo sem instalar nada — ela foi para o `make test`, que é onde a suíte
-> roda. Aqui o total segue **94**: 93 do contrato + 1 da fronteira.
+> roda. Hoje o total é **96**: 95 do contrato + 1 da fronteira.
 > O alvo do plano nunca foi o número: é ficar só com o que a linguagem não vê (binário, CSS,
 > migração).
 
@@ -334,8 +342,8 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 | **R7** ✅ | o CRM muda de casa: sai de `backend/src/admin` para o pacote `admin/` — 17 arquivos (9 de código, 2.538 linhas), `tsconfig` próprio, nenhum `node_modules` próprio — servido em `/painel` pelo Vite do backend (`admin.sources` no `medusa-config.ts`). A imagem passa a compilar com o contexto na **raiz do repositório** e o CRM entra em `/app/admin` | `make build-admin` verde (backend + admin: 10,7s + 33,1s); `make check` **94** asserções; `make test` **11 suites / 157 testes** + 3 arquivos / 20 do vitest; `make types` verde nos três; `/painel` 200, a rota vindo de `/painel/@fs/app/admin/src/admin/routes/content/page.tsx` e `make logs-admin` OK. O caminho até aqui (incluindo o build que **falhou** com o CRM em `/admin`) está em "R7 — o que a fase mediu" |
 | **R7.1** ✅ | o bind órfão do DEV e o fail-open que ele escondia: o container criado antes da mudança de casa ficou preso ao *inode* do `admin/` antigo, então `sources` virava `[]` e o admin subia **sem extensão nenhuma**, em silêncio. Ficam três coisas: `make recreate [SERVICE=]` (o comando que remonta o bind), o check 6 do `make doctor` (o CRM está visível dentro do container?) e a guarda que **falha alto** em DEV sem fonte e sem bundle | `make recreate SERVICE=backend` → a rota volta ao módulo virtual do painel (`import … from "/painel/@fs/app/admin/src/admin/routes/content/page.tsx"`, `path: "/content"`) e o arquivo sai de `text/html 752 bytes` (fallback) para `text/javascript 120407 bytes`; `make doctor` verde; a guarda medida nos três casos que importam (`development` + `/app/admin` vazio → `exit=1` com a mensagem; imagem de execução sem fonte **com** bundle → carrega; a mesma imagem **sem** bundle → lança). O detalhe está em "R7.1 — o que a fase mediu" |
 | **R2** ✅ | o vínculo do painel com o módulo de conteúdo ganha **nome**: o alias `@conteudo/*` (`admin/tsconfig.json`) substitui os cinco níveis de `..` nos 5 especificadores de tipo, em 3 arquivos. A guarda de fronteira passa a **ler** os apelidos do tsconfig (antes `@conteudo/…` não tinha `/modules/` nem era relativo — passaria batido); o teste do formulário sai do jest do backend e ganha runner próprio (`admin/jest.config.js`), com `scripts/check-panel-tests.mjs` fechando a perda silenciosa; e as asserções de espelho do painel passam a varrer o pacote inteiro (eram 2 arquivos) | `make check` **94** asserções; `make test` **10 suites / 145 testes** no backend + **1 / 12** no CRM + 3 / 20 do vitest = **11 / 157**, o mesmo total da R7, mais a verificação de suíte (no `make test`, porque precisa de instalação); `make types` verde; o painel compilado na **imagem** (`Frontend build completed successfully`, 27,5s) e o import de valor pelo apelido **reprovado** pelo Rollup. O caminho (e o gate `build-admin` que a fase consertou) está em "R2 — o que a fase mediu" |
-| **R3-lite** ⏳ | tema como dado, **sem Docker**: contrato, tokens gerados e `themes/*.json` como seed (o F3 refeito sobre `develop`). É a metade da R3 que a R7.1 separou do resto, pelo mesmo critério da R7.1: o que roda na **árvore de trabalho** | `make gen` + `make check` |
-| **R4 → R5** ⏳ | a outra metade: o `themes/` fora do Dockerfile e o que **pede o Docker de pé** | o Docker de pé |
+| **R3-lite** ✅ | tema como dado, **sem Docker**: a paleta e as fontes ficam no contrato (`THEME_COLOR_HEXES`; `THEME_FONTS` com `fallback` explícito e `stack` derivada), o conteúdo das estações vira `modules/content/themes.ts` (no molde de `defaults.ts`) e o gerador passa a escrever **três** coisas: o artefato do storefront, os 4 `themes/*/theme.json` (**o seed**, byte a byte iguais aos que existiam à mão) e os tokens `--rv-*` de `styles/tokens.generated.css`. Os três asserts de prévia morreram — não há o que comparar | `make gen` + `make check` (verde, **96** asserções), `make types` verde nos três, `make test` **11 suites / 154 testes** + 20 do vitest e `next build` verde com o `@import` novo. O que a fase mediu está em "R3-lite — o que a fase mediu" |
+| **R4 → R5** ⏳ | a outra metade: a superfície `theme` na API e no CRM (o `fcdc3500ec` refeito sobre `develop`) com o seed dela no banco, o `themes/` fora do Dockerfile e a loja lendo do payload — o que **pede o Docker de pé**. O seed já está pronto e gerado (R3-lite) | o Docker de pé |
 
 **Por que esta ordem:** R6.5 antes de R7 tira a última importação de valor do painel (a R7 deixa
 de depender da R5); R6 antes de R6.5 porque a rota de ordenação nasce do que já foi extraído; R2
@@ -496,5 +504,27 @@ clonasse o repositório e rodasse `make check` ou `make types` antes de subir a 
 não declara. E o conserto herda a mesma regra: **medir nos dois estados**. O primeiro tipo escolhido
 para o seed (`ApiKeyDTO`) fechou a CI e deixou `make types` vermelho no host — um estado consertado, o
 outro quebrado. O que passa nos dois é o que declara só o que o código lê.
+
+### R3-lite — o que a fase mediu (tema como dado, sem Docker)
+
+A fase é a metade da R3 que roda **na árvore de trabalho**: nenhuma imagem foi
+construída e nenhum container subiu. O gate é `make gen` + `make check`, como a
+própria fila dizia — e o resto (`make types`, `make test`, `next build`) foi
+rodado por ser o que o repo exige de toda fase, não por ser o gate dela.
+
+| Pergunta | Medido |
+|---|---|
+| Onde estava a paleta, antes? | Em **quatro** lugares, e três eram cópia: `THEME_COLOR_HEXES` (contrato), `themes/default/theme.json` (loja), as seis declarações `--rv-*` do `brand.css` e os seis pares digitados em `themeToCSSVariables`. Três asserções da guarda e três testes do jest existiam só para vigiar as cópias — e a única forma de elas falharem era alguém editar dois arquivos à mão, do mesmo jeito |
+| O que passou a ser a origem? | O contrato. `THEME_COLOR_HEXES` deixou de ser "cópia de leitura" e é a **paleta**; `THEME_FONTS` passou a declarar `family`, `fallback` e a `stack` **derivada** de `themeFont()` (a pilha era escrita à mão em três lugares). O conteúdo das estações — rótulo, janela `MM-DD` e o que cada uma troca — foi para `modules/content/themes.ts`, no molde do `defaults.ts`: era o último dado da loja que só existia como JSON, sem tipo nenhum |
+| O que é gerado agora? | Três coisas pelo mesmo `gen-content.mjs`: o artefato do storefront (como antes), os **4 `themes/*/theme.json`** e `frontend/src/styles/tokens.generated.css`. O `--check` cobre os seis arquivos de uma vez e **nomeia** o que estiver velho (antes ele conhecia um só) |
+| O seed mudou de conteúdo? | **Não** — e isso foi medido antes de aceitar a troca: os quatro `theme.json` saem **byte a byte** iguais aos que estavam versionados (`git diff --stat -- frontend/themes/` vazio depois do `make gen`). A fase trocou a **origem** do dado, não o dado. As estações não trocam fonte nenhuma (`fonts: {}` nos três), então a herança do padrão continua sendo o único caminho exercitado |
+| E o CSS? | O `brand.css` perdeu as seis declarações da paleta e ganhou o comentário do porquê; o `globals.css` importa `styles/tokens.generated.css` **antes** dele. O `next build` local (o mesmo `next build` do job `build do storefront`, sem infra) passou com o `@import` novo, e o css compilado traz `--rv-rose:#B97872` e `--rv-font-display:var(--font-playfair),Georgia,serif` |
+| Por que a tipografia **não** é gerada? | Porque o valor dela não é dado de tema: é `var(--font-*)`, que o `localFont` do Next publica (a família real é hasheada pelo Next), e isso é ligação do storefront. O que é dado de tema é o **fallback** — e esse o contrato declara, com uma asserção conferindo que o `brand.css` não o trocou |
+| A loja mudou de comportamento? | Não, e a diferença é medível: as listas de papéis vêm do artefato (`THEME_COLOR_TOKENS`/`FONT_ROLES`) e a pilha é a família **da estação** + o `fallback` do contrato — os mesmos valores que os seis pares e os três templates produziam. O que muda é que um token novo no contrato passa a chegar à loja sem editar o `theme.ts`, e uma estação que troque de família deixa de cair na fonte antiga |
+| Quantas asserções ficaram? | **96** (eram 94). Saíram três — hex, família e pilha — e entraram cinco: o seed em disco é exatamente o conjunto de temas do contrato (um diretório órfão é um tema que só a loja conhece), cada token do contrato sai no CSS gerado, o `brand.css` não redeclara a paleta, o `fallback` de fonte dele é o do contrato, e o `theme.ts` monta as variáveis das listas do contrato em vez de digitá-las |
+| E os três testes do jest? | Saíram pelo mesmo motivo (comparavam o artefato com a origem dele): `make test` **11 suites / 154 testes** + 3 arquivos / 20 do vitest, medido. O spec de `assets` continua com o que a geração não cobre — o **binário** (md5 dos `.woff2` da prévia) e o CSS digitado à mão |
+| O que **não** entrou, e por quê? | A superfície `theme` na API/CRM (o `THEME_FIELDS`/`CONTENT_SURFACES` do `fcdc3500ec`) e o seed dela no banco: sem Postgres não há como semear nem verificar uma linha de tema, e uma superfície sem consumidor seria dado órfão no contrato. É a R4 — e ela começa com o seed **já pronto** e gerado, que é o que esta fase entrega a mais |
+| Onde ficou a regra desta fase? | No mesmo lugar das outras: o que **é gerado** não se confere por comparação — se confere pelo `--check` do gerador, que é o único que enxerga a origem e o artefato juntos. Comparar um artefato com a origem dele é asserção que não pode falhar, e foi por isso que as três saíram em vez de serem reescritas |
+
 
 

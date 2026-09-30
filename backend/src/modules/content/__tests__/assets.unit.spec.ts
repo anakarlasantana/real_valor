@@ -10,8 +10,15 @@
  * painel não mentir, e o registro de ícones da loja precisa casar com as
  * chaves que o CRM oferece.
  *
- * Ficam neste arquivo justamente porque vão sobreviver à guarda: o alvo, um dia,
- * é **gerar** os tokens e o `@font-face` do contrato (aí não há o que comparar).
+ * A paleta e a família **saíram daqui** na R3-lite: `theme.json` e os tokens do
+ * `brand.css` são gerados do contrato (`scripts/gen-content.mjs`), então
+ * compará-los com o contrato só podia dar verde — o que os protege agora é o
+ * `--check` do gerador, no `make check`. É o alvo que este arquivo já anunciava
+ * ("gerar os tokens … e aí não há o que comparar"), cumprido.
+ *
+ * O que fica é o que a geração não cobre: o **binário** (os `.woff2` da
+ * prévia contra os da loja, por md5) e o CSS que continua digitado à mão
+ * (`.rv-section-*`, as variáveis de aparência).
  */
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
@@ -21,11 +28,7 @@ import {
   ICON_LABELS,
   ITEM_FIELDS,
   SECTION_FIELDS,
-  THEME_COLOR_HEXES,
-  THEME_COLOR_TOKENS,
   THEME_FONTS,
-  THEME_FONTS as FONTS,
-  type FontRole,
 } from "../contract"
 
 // `__dirname` e nao `import.meta.url`: o `tsconfig` do backend compila
@@ -38,13 +41,6 @@ const brandCss = read("frontend", "src", "styles", "brand.css")
 const appearanceSource = read("frontend", "src", "lib", "content", "appearance.ts")
 const iconsSource = read("frontend", "src", "lib", "content", "icons.ts")
 const socialSource = read("frontend", "src", "lib", "content", "social-icons.tsx")
-const themeTs = read("frontend", "src", "lib", "theme.ts")
-const defaultTheme = JSON.parse(
-  read("frontend", "themes", "default", "theme.json")
-) as {
-  colors: Record<string, string>
-  fonts: Record<string, string>
-}
 
 const stringList = (source: string, name: string): string[] =>
   (new RegExp(`export const ${name} = \\[([^\\]]*)\\]`).exec(source)?.[1] ?? "")
@@ -156,43 +152,6 @@ describe("as fontes da prévia do painel", () => {
       expect(existsSync(painel)).toBe(true)
       expect(md5(painel)).toBe(md5(loja))
     }
-  })
-})
-
-describe("o tema que a prévia mostra", () => {
-  it("cada hex da paleta é o que o tema padrão declara", () => {
-    const divergentes = THEME_COLOR_TOKENS.filter(
-      (token) =>
-        (THEME_COLOR_HEXES[token] ?? "").toLowerCase() !==
-        String(defaultTheme.colors?.[token] ?? "").toLowerCase()
-    )
-
-    expect(divergentes).toEqual([])
-  })
-
-  it("cada família é a que o tema padrão declara", () => {
-    const divergentes = (Object.keys(THEME_FONTS) as FontRole[]).filter(
-      (role) => THEME_FONTS[role].family !== defaultTheme.fonts?.[role]
-    )
-
-    expect(divergentes).toEqual([])
-  })
-
-  it("cada pilha é a que o theme.ts escreve para a loja", () => {
-    // A pilha é montada pela **fórmula da loja**, lida do próprio `theme.ts`:
-    // comparar com uma reescrita do que ele diz não provaria nada.
-    const divergentes = (Object.keys(FONTS) as FontRole[]).filter((role) => {
-      const template = new RegExp(
-        `"--rv-font-${role}":\\s*\`"\\$\\{theme\\.fonts\\.${role}\\}([^\`]*)\``
-      ).exec(themeTs)
-
-      return (
-        !template ||
-        `"${THEME_FONTS[role].family}${template[1]}` !== THEME_FONTS[role].stack
-      )
-    })
-
-    expect(divergentes).toEqual([])
   })
 })
 

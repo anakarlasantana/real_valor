@@ -187,9 +187,18 @@ const LAUNCHES_UTIL = join(root, "frontend/src/lib/util/launches.ts")
  */
 const ADMIN_FONTS = join(root, "admin/src/admin/routes/content/fonts")
 const STOREFRONT_FONTS = join(root, "frontend/src/app/fonts")
-/** O tema padrão: de onde saem os hex e as famílias que o admin exibe. */
-const THEME_JSON = join(root, "frontend/themes/default/theme.json")
-/** `themeToCSSVariables`: de onde sai a pilha completa de cada fonte. */
+/**
+ * O seed do tema: um diretório por tema, escrito de `themes.ts` pelo
+ * `gen-content.mjs`. A guarda confere que o **conjunto** em disco é o do
+ * contrato — um diretório órfão aqui é um tema que a loja resolve em runtime
+ * e que o contrato (e o banco, na R4) não conhece.
+ */
+const THEMES_DIR = join(root, "frontend/themes")
+/** As estações e o padrão: a lista de temas do contrato. */
+const THEMES = join(root, "backend/src/modules/content/themes.ts")
+/** Os tokens da paleta, gerados do contrato para o `brand.css`. */
+const TOKENS_CSS = join(root, "frontend/src/styles/tokens.generated.css")
+/** `themeToCSSVariables`: monta os `--rv-*` das listas do contrato. */
 const THEME_TS = join(root, "frontend/src/lib/theme.ts")
 const FOOTER_COLUMN = join(
   root,
@@ -368,19 +377,22 @@ function readMatches(source, pattern, group = 1) {
 console.log("Contrato de conteúdo do storefront\n")
 
 // ---------------------------------------------------------------------------
-// 1. O ARTEFATO GERADO ESTÁ EM DIA
+// 1. OS ARTEFATOS GERADOS ESTÃO EM DIA
 // ---------------------------------------------------------------------------
 // O storefront não tem mais uma cópia digitada do contrato: ele compila
 // `frontend/src/lib/content/contract.generated.ts`, gerado de
-// `contract.ts` + `defaults.ts`. A sincronia é conferida pelo próprio
-// gerador — que compara o arquivo inteiro e diz o comando a rodar —, no
-// lugar das ~300 linhas de comparação campo a campo que existiam aqui.
+// `contract.ts` + `defaults.ts`. E desde a R3-lite o mesmo gerador escreve o
+// **seed do tema** (`frontend/themes/<id>/theme.json`, de `themes.ts` +
+// `THEME_COLOR_HEXES`) e os **tokens** de `frontend/src/styles/tokens.generated.css`.
+// A sincronia dos seis é conferida pelo próprio gerador — que compara arquivo a
+// arquivo e nomeia o que estiver velho —, no lugar das ~300 linhas de comparação
+// campo a campo que existiam aqui.
 const generated = spawnSync("node", [GENERATOR, "--check"], {
   encoding: "utf8",
 })
 
 assert(
-  "o contrato gerado do storefront está em dia",
+  "os artefatos gerados (contrato, seed do tema e tokens) estão em dia",
   generated.status === 0,
   (generated.stderr || generated.stdout).trim()
 )
@@ -1238,65 +1250,96 @@ console.log("\nPRÉVIA DE APARÊNCIA (paleta, fontes e os arquivos do painel)")
 const contractHexes = loadExport(CONTRACT, "THEME_COLOR_HEXES")
 const contractThemeFonts = loadExport(CONTRACT, "THEME_FONTS")
 
-// O hex é cópia de leitura do tema padrão (`themes/default/theme.json`).
-// Um tema de estação troca os valores — a cópia mostra a cor do padrão, e o
-// contrato avisa isso —, mas o **padrão** é o que a bolinha promete, então
-// é contra ele que a cópia é conferida.
-const theme = JSON.parse(readFileSync(THEME_JSON, "utf8"))
-const offThemeColors = contractColors.filter(
-  (token) =>
-    (contractHexes[token] ?? "").toLowerCase() !==
-    String(theme.colors?.[token] ?? "").toLowerCase()
+// A paleta e as famílias **não se conferem mais** contra o `theme.json`: desde
+// a R3-lite o arquivo é gerado de `THEME_COLOR_HEXES`/`THEME_FONTS`, e é o
+// `--check` do gerador (no `make check`) que garante que ele está em dia. A
+// comparação hex a hex que existia aqui só podia dar verde.
+//
+// O que sobra para conferir é o que a geração **não** cobre:
+//
+//   1. o seed em disco é exatamente o conjunto de temas do contrato;
+//   2. cada token da paleta sai no CSS gerado (um laço vazio geraria um
+//      arquivo em dia e nenhum token);
+//   3. o `brand.css` não voltou a declarar a paleta — nem trocou o fallback de
+//      fonte que o contrato declara;
+//   4. o `theme.ts` monta as variáveis das listas do contrato, sem as digitar.
+const themeDefault = loadExport(THEMES, "THEME_DEFAULT")
+const themeSeasons = loadExport(THEMES, "THEME_SEASONS")
+const contractThemeIds = [
+  themeDefault.id,
+  ...themeSeasons.map((theme) => theme.id),
+]
+const seedThemeIds = existsSync(THEMES_DIR)
+  ? readdirSync(THEMES_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+  : []
+const missingSeeds = contractThemeIds.filter((id) => !seedThemeIds.includes(id))
+const orphanSeeds = seedThemeIds.filter((id) => !contractThemeIds.includes(id))
+
+assert(
+  "o seed em `themes/` é exatamente o conjunto de temas do contrato",
+  contractThemeIds.length > 1 &&
+    missingSeeds.length === 0 &&
+    orphanSeeds.length === 0,
+  `faltando: ${missingSeeds.join(", ") || "nenhum"} | ` +
+    `órfão: ${orphanSeeds.join(", ") || "nenhum"}`
+)
+
+const tokensCss = existsSync(TOKENS_CSS) ? readFileSync(TOKENS_CSS, "utf8") : ""
+const missingTokens = contractColors.filter(
+  (token) => !tokensCss.includes(`--rv-${token}:`)
 )
 
 assert(
-  "cada hex da paleta é o que o theme.json do tema padrão declara",
-  offThemeColors.length === 0,
-  `divergente: ${
-    offThemeColors
-      .map(
-        (token) =>
-          `${token}: ${contractHexes[token]} != ${theme.colors?.[token]}`
-      )
-      .join(", ") || "nenhuma"
-  }`
+  "cada token da paleta do contrato é declarado no CSS gerado",
+  contractColors.length > 0 && missingTokens.length === 0,
+  `ausente: ${missingTokens.join(", ") || "nenhum"}`
 )
 
-const offThemeFamilies = contractFonts.filter(
-  (role) => contractThemeFonts[role]?.family !== theme.fonts?.[role]
+// O `brand.css` é o valor com que a página pinta **antes** do tema inline
+// (`themeToCSSVariables` reescreve os mesmos `--rv-*` por requisição). Se ele
+// voltar a declarar a paleta, o valor digitado volta a competir com o gerado
+// e o contrato deixa de mandar na cor da loja.
+const redeclared = contractColors.filter((token) =>
+  brandCss.includes(`--rv-${token}:`)
 )
 
 assert(
-  "cada família é a que o theme.json do tema padrão declara",
-  offThemeFamilies.length === 0,
-  `divergente: ${offThemeFamilies.join(", ") || "nenhuma"}`
+  "o brand.css não declara a paleta (ela é gerada)",
+  redeclared.length === 0,
+  `declarado à mão: ${redeclared.join(", ") || "nenhuma"}`
 )
 
-// A `stack` é a pilha que `themeToCSSVariables` escreve em `--rv-font-*`: a
-// mesma da loja, para a prévia cair no mesmo fallback quando o arquivo da
-// fonte não chega. O texto é lido do próprio `theme.ts` — a comparação é
-// com a fórmula da loja, não com uma reescrita do que ela diz.
-const themeTs = readFileSync(THEME_TS, "utf8")
-const offStacks = contractFonts.filter((role) => {
-  const declared = contractThemeFonts[role]?.stack
-  // `--rv-font-display`: `"${theme.fonts.display}", Georgia, serif`
-  // O grupo é o que vem **depois** do fechamento do `}` — a aspa de fim de
-  // família e o fallback, para a pilha ser remontada a partir da fórmula da
-  // loja e não de uma reescrita dela.
-  const template = new RegExp(
-    `"--rv-font-${role}":\\s*\`"\\$\\{theme\\.fonts\\.${role}\\}([^\`]*)\``
-  ).exec(themeTs)
+// A tipografia do `brand.css` é a única que fica: o valor dela é o
+// `var(--font-*)` que o `localFont` do Next publica no layout (a família real
+// é hasheada pelo Next), e isso é ligação do storefront, não dado de tema. O
+// **fallback** é dado de tema, e tem de ser o do contrato — a loja o escreve
+// em `themeToCSSVariables`, e duas pilhas diferentes fariam a fonte da página
+// mudar conforme a estação resolve ou não.
+const offFontFallbacks = contractFonts.filter((role) => {
+  const line = new RegExp(
+    `--rv-font-${role}:\\s*var\\(--font-[a-z-]+\\),\\s*([^;]+);`
+  ).exec(brandCss)
 
-  return (
-    !template ||
-    `"${contractThemeFonts[role]?.family}${template[1]}` !== declared
-  )
+  return line?.[1].trim() !== contractThemeFonts[role]?.fallback
 })
 
 assert(
-  "cada pilha de fonte é a que o theme.ts escreve para a loja",
-  offStacks.length === 0,
-  `divergente: ${offStacks.join(", ") || "nenhuma"}`
+  "o fallback de cada `--rv-font-*` do brand.css é o que o contrato declara",
+  offFontFallbacks.length === 0,
+  `divergente: ${offFontFallbacks.join(", ") || "nenhum"}`
+)
+
+const themeTs = readFileSync(THEME_TS, "utf8")
+const handwrittenTokens = contractColors.filter((token) =>
+  themeTs.includes(`"--rv-${token}"`)
+)
+
+assert(
+  "o theme.ts monta as variáveis das listas do contrato, sem as digitar",
+  handwrittenTokens.length === 0 && themeTs.includes("THEME_COLOR_TOKENS"),
+  `digitado: ${handwrittenTokens.join(", ") || "nenhum"}`
 )
 
 // O `@font-face` é quem entrega os bytes ao navegador do painel. Conferir a

@@ -5,33 +5,43 @@
  * backend e frontend são pacotes npm separados, com `node_modules`
  * próprios: o storefront não consegue importar o arquivo do backend.
  *
- * Este script copia as duas partes que a vitrine usa em runtime para
- * `frontend/src/lib/content/contract.generated.ts`:
+ * Este script gera o que o storefront consome do contrato:
  *
- *   1. o bloco compartilhado de `contract.ts` (o que está entre os
- *      marcadores "BLOCO COMPARTILHADO"): tipos das seções, listas fechadas
- *      (tipos, paleta, papéis de fonte, trilhos) e as fontes de coluna do
- *      rodapé;
- *   2. o conteúdo padrão de `defaults.ts` — o fallback da vitrine quando a
- *      API de conteúdo falha.
+ *   1. `frontend/src/lib/content/contract.generated.ts` — o bloco compartilhado
+ *      de `contract.ts` (o que está entre os marcadores "BLOCO COMPARTILHADO":
+ *      tipos das seções, listas fechadas — tipos, paleta, papéis de fonte,
+ *      trilhos — e as fontes de coluna do rodapé) mais o conteúdo padrão de
+ *      `defaults.ts`, que é o fallback da vitrine quando a API de conteúdo
+ *      falha;
+ *   2. `frontend/themes/<id>/theme.json` — o **seed** do tema: o padrão e as
+ *      estações de `themes.ts`, um arquivo por tema. É o que a loja lê hoje
+ *      (até a R5 ler o payload) e o que a R4 leva para o banco;
+ *   3. `frontend/src/styles/tokens.generated.css` — os tokens da paleta
+ *      (`--rv-*`), o fallback que o `brand.css` tinha digitado à mão.
  *
- * O artefato é versionado de propósito: a revisão de um contrato novo
- * mostra exatamente o que o storefront passa a receber. O `--check` roda no
- * `make check` e no hook de commit, para o arquivo não envelhecer em
- * silêncio.
+ * Os três são versionados de propósito: a revisão de um contrato novo mostra
+ * exatamente o que o storefront passa a receber. O `--check` roda no
+ * `make check` e no hook de commit, para nenhum deles envelhecer em silêncio.
  *
  * Rode:
- *   node scripts/gen-content.mjs          # regrava o artefato
- *   node scripts/gen-content.mjs --check  # exit 1 se estiver desatualizado
+ *   node scripts/gen-content.mjs          # regrava os artefatos
+ *   node scripts/gen-content.mjs --check  # exit 1 se algum estiver velho
  *
  * Como a guarda de contrato, não usa framework de teste: roda no Node 24,
  * que carrega TypeScript nativamente.
  */
 
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -39,7 +49,13 @@ const root = join(here, "..")
 
 const CONTRACT = join(root, "backend/src/modules/content/contract.ts")
 const DEFAULTS = join(root, "backend/src/modules/content/defaults.ts")
+/** O padrão e as estações — a fonte dos `theme.json`. */
+const THEMES = join(root, "backend/src/modules/content/themes.ts")
 const ARTIFACT = join(root, "frontend/src/lib/content/contract.generated.ts")
+/** Onde os `theme.json` são escritos: um diretório por tema. */
+const THEMES_DIR = join(root, "frontend/themes")
+/** Os tokens da paleta, que o `brand.css` importa. */
+const TOKENS_CSS = join(root, "frontend/src/styles/tokens.generated.css")
 
 /** Marcadores que delimitam o que o storefront recebe (ver `contract.ts`). */
 const BEGIN_MARKER = "INÍCIO DO BLOCO COMPARTILHADO"
@@ -167,11 +183,8 @@ const DEFAULTS_HEADER = `/* ----------------------------------------------------
  * para uma indisponibilidade do CMS não derrubar a home.
  * ------------------------------------------------------------------------- */`
 
-/** Monta o artefato a partir do contrato e do conteúdo padrão. */
-function build() {
-  const contract = readFileSync(CONTRACT, "utf8")
-  const defaults = loadExport(DEFAULTS, "DEFAULT_HOME_SECTIONS")
-
+/** Monta o artefato TS a partir do contrato e do conteúdo padrão. */
+function buildContractArtifact(contract, defaults) {
   return `${HEADER}
 
 ${sharedBlock(contract)}
@@ -201,26 +214,117 @@ export const DEFAULT_FOOTER = defaultSection("footer")
 `
 }
 
-const generated = build()
+/**
+ * O `theme.json` de um tema, no formato que a loja lê (`ThemeFile`).
+ *
+ * `JSON.stringify(…, null, 2)` verbatim, com a chave final e a ordem das
+ * chaves da declaração: o arquivo já era escrito assim, e a comparação byte a
+ * byte é o que prova que a fase trocou só a **origem** do dado — o storefront
+ * não muda de comportamento nenhum.
+ */
+function buildThemeFile(theme) {
+  return `${JSON.stringify(theme, null, 2)}\n`
+}
+
+const TOKENS_HEADER = `/*
+ * Real Valor — Tokens do tema (GERADO — NÃO EDITE À MÃO)
+ * -----------------------------------------------------------------
+ * A paleta do tema padrão, gerada de \`THEME_COLOR_HEXES\`
+ * (\`backend/src/modules/content/contract.ts\`) por \`node scripts/gen-content.mjs\`
+ * — a mesma origem dos \`theme.json\` de \`frontend/themes/\`. Contrato novo é:
+ * editar o contrato, rodar o gerador, commitar o diff. O \`make check\` e o
+ * hook de commit reprovam este arquivo fora de sincronia.
+ *
+ * Estes tokens são o **fallback** da loja: \`themeToCSSVariables\`
+ * (\`frontend/src/lib/theme.ts\`) reescreve os mesmos \`--rv-*\` inline no
+ * \`<html>\`, por requisição, com a paleta da estação que estiver no ar — o que
+ * fica aqui é o que a página pinta antes disso.
+ *
+ * O resto do \`brand.css\` — tokens derivados, semânticos, tipografia, forma,
+ * movimento e as classes \`.rv-section-*\` — continua lá: é decisão de design,
+ * não dado de tema, e nenhuma estação troca esses valores.
+ */`
+
+/** Os tokens da paleta, como o `brand.css` os declarava à mão. */
+function buildTokensCss(tokens, hexes) {
+  const declarations = tokens
+    .map((token) => `  --rv-${token}: ${hexes[token]};`)
+    .join("\n")
+
+  return `${TOKENS_HEADER}
+
+:root,
+:root[data-theme="default"] {
+  /* --- Paleta principal (do contrato) --- */
+${declarations}
+}
+`
+}
+
+/**
+ * Todos os artefatos, com o conteúdo que deveriam ter agora.
+ *
+ * `themes.ts` traz as estações (o que muda) e o *rótulo* do padrão; a paleta e
+ * as famílias do padrão vêm do contrato — `THEME_COLOR_HEXES` e
+ * `THEME_FONTS`, as mesmas que o CRM usa na prévia. A junção das duas metades
+ * acontece aqui, e uma vez só: é o passo que faz do `theme.json` um artefato
+ * gerado, e não uma quarta cópia da paleta.
+ */
+function buildArtifacts() {
+  const contract = readFileSync(CONTRACT, "utf8")
+  const defaults = loadExport(DEFAULTS, "DEFAULT_HOME_SECTIONS")
+  const base = loadExport(THEMES, "THEME_DEFAULT")
+  const seasons = loadExport(THEMES, "THEME_SEASONS")
+  const tokens = loadExport(CONTRACT, "THEME_COLOR_TOKENS")
+  const hexes = loadExport(CONTRACT, "THEME_COLOR_HEXES")
+  const fonts = loadExport(CONTRACT, "THEME_FONTS")
+
+  const themes = [
+    {
+      ...base,
+      colors: hexes,
+      fonts: Object.fromEntries(
+        Object.entries(fonts).map(([role, font]) => [role, font.family])
+      ),
+    },
+    ...seasons,
+  ]
+
+  return [
+    { path: ARTIFACT, content: buildContractArtifact(contract, defaults) },
+    ...themes.map((theme) => ({
+      path: join(THEMES_DIR, theme.id, "theme.json"),
+      content: buildThemeFile(theme),
+    })),
+    { path: TOKENS_CSS, content: buildTokensCss(tokens, hexes) },
+  ]
+}
+
+const artifacts = buildArtifacts()
 
 if (process.argv.includes("--check")) {
-  const current = existsSync(ARTIFACT) ? readFileSync(ARTIFACT, "utf8") : ""
+  const stale = artifacts.filter(
+    ({ path, content }) =>
+      (existsSync(path) ? readFileSync(path, "utf8") : "") !== content
+  )
 
-  if (current === generated) {
-    console.log("Contrato gerado em dia.")
+  if (stale.length === 0) {
+    console.log(`${artifacts.length} artefatos gerados em dia.`)
     process.exit(0)
   }
 
   console.error(
-    "O contrato gerado está desatualizado (ou ausente):\n" +
-      `  ${ARTIFACT}\n` +
-      "Rode: node scripts/gen-content.mjs"
+    "Artefato(s) gerado(s) desatualizado(s) (ou ausente(s)):\n" +
+      stale.map(({ path }) => `  ${relative(root, path)}`).join("\n") +
+      "\nRode: node scripts/gen-content.mjs"
   )
   process.exit(1)
 }
 
-writeFileSync(ARTIFACT, generated)
-console.log(
-  `Gerado frontend/src/lib/content/contract.generated.ts ` +
-    `(${generated.split("\n").length - 1} linhas).`
-)
+for (const { path, content } of artifacts) {
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, content)
+  console.log(
+    `Gerado ${relative(root, path)} (${content.split("\n").length - 1} linhas).`
+  )
+}

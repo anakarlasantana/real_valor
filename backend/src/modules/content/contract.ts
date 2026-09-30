@@ -440,24 +440,26 @@ export const THEME_COLOR_TOKENS = [
 export type ThemeColorToken = (typeof THEME_COLOR_TOKENS)[number]
 
 /**
- * O hex de cada cor da paleta, como o tema padrão o declara
- * (`frontend/themes/default/theme.json` → `colors`).
+ * A paleta do tema padrão — **a origem dos hex**, não mais uma cópia.
  *
- * Serve para o editor do admin desenhar a **bolinha de cor**: o painel é
- * um pacote separado, não lê os `theme.json` (que são do storefront) e sem
- * isto só teria como oferecer a palavra "rose" — que não diz nada a quem
- * está escolhendo uma cor.
+ * Serve a dois consumidores, e os dois precisam dos mesmos valores:
  *
- * É **cópia de leitura, só para a prévia**: o que o lojista grava continua
- * sendo o papel (`"rose"`), nunca o hex, então o tema sazonal segue
- * mandando. Num tema de estação (Black Friday) a bolinha mostra a cor do
- * tema padrão, não a da estação — é prévia de paleta, não amostra do que
- * está no ar, e é por isso que a opção continua trazendo o nome do papel
- * no rótulo.
+ *   1. o editor do admin desenha a **bolinha de cor** (o painel é um pacote
+ *      separado, não lê os `theme.json` do storefront e sem isto só teria como
+ *      oferecer a palavra "rose" — que não diz nada a quem escolhe uma cor);
+ *   2. o gerador (`scripts/gen-content.mjs`) escreve
+ *      `frontend/themes/default/theme.json` daqui e os tokens `--rv-*` no
+ *      `frontend/src/styles/tokens.generated.css`, que é o fallback do
+ *      `brand.css` antes de `themeToCSSVariables` escrever por requisição.
  *
- * `scripts/check-contract-parity.mjs` confere cor por cor contra o
- * `theme.json` e contra o espelho do frontend: uma cópia de prévia que
- * envelhece em silêncio é pior do que não ter prévia.
+ * Era **cópia de leitura** até a R3-lite, conferida cor por cor contra o
+ * `theme.json` por dois arquivos de verificação. Agora o `theme.json` é
+ * *seed* (bootstrap do tema no banco, na R4) e sai daqui: não há o que
+ * comparar.
+ *
+ * O que o lojista grava continua sendo o papel (`"rose"`), nunca o hex, então
+ * o tema sazonal segue mandando: a bolinha do CRM mostra a cor do **tema
+ * padrão**, e é por isso que a opção segue trazendo o nome do papel no rótulo.
  */
 export const THEME_COLOR_HEXES: Record<ThemeColorToken, string> = {
   rose: "#B97872",
@@ -476,14 +478,36 @@ export const FONT_ROLES = ["display", "sans", "script"] as const
 
 export type FontRole = (typeof FONT_ROLES)[number]
 
+export type ThemeFont = {
+  /** A família declarada no `@font-face` da loja e da prévia do painel. */
+  family: string
+  /** O que o navegador usa se o `.woff2` não chegar. */
+  fallback: string
+  /** `family` + `fallback`: a pilha inteira, como o `--rv-font-*` a recebe. */
+  stack: string
+}
+
 /**
- * A família e a pilha completa de cada papel de fonte.
+ * Monta uma fonte a partir da família e do fallback dela.
+ *
+ * A pilha é **derivada** — antes era escrita à mão em três lugares (aqui, no
+ * template de `themeToCSSVariables` e no `--rv-font-*` do `brand.css`), e
+ * cada cópia podia envelhecer sozinha. As três saem daqui agora: a loja monta
+ * a pilha com `family` + `fallback` (`frontend/src/lib/theme.ts`), o
+ * `brand.css` declara o fallback, e `scripts/check-contract-parity.mjs`
+ * confere que ele é o mesmo.
+ */
+function themeFont(family: string, fallback: string): ThemeFont {
+  return { family, fallback, stack: `"${family}", ${fallback}` }
+}
+
+/**
+ * A família, o fallback e a pilha completa de cada papel de fonte.
  *
  * `family` é o nome declarado no `theme.json` (`fonts`) — o mesmo que o
- * `@font-face` da cópia em `admin/src/admin/routes/content/fonts/` usa —,
- * e `stack` é a pilha que `themeToCSSVariables`
- * (`frontend/src/lib/theme.ts`) escreve em `--rv-font-*`, com o mesmo
- * fallback da loja.
+ * `@font-face` da cópia em `admin/src/admin/routes/content/fonts/` usa —, e
+ * `stack` é a pilha que `themeToCSSVariables` (`frontend/src/lib/theme.ts`)
+ * escreve em `--rv-font-*`.
  *
  * Mesma razão de `THEME_COLOR_HEXES`: o `<select>` de fonte do admin
  * desenha cada opção **na própria fonte** — é o que faz "Títulos (Playfair
@@ -491,26 +515,16 @@ export type FontRole = (typeof FONT_ROLES)[number]
  * outras. Sem a família, o painel não tem como pedir essa fonte ao
  * navegador.
  *
- * A guarda de paridade confere `family` contra o `theme.json`, `stack`
- * contra o `theme.ts` e o md5 dos `.woff2` do admin contra os do storefront:
- * uma família sem arquivo vira prévia em Times New Roman, e um arquivo
- * diferente do da loja vira prévia que mente.
+ * A guarda de paridade confere o md5 dos `.woff2` do admin contra os do
+ * storefront — uma família sem arquivo vira prévia em Times New Roman, e um
+ * arquivo diferente do da loja vira prévia que mente. A família em si não se
+ * confere mais contra o `theme.json`: o arquivo é gerado daqui.
  */
-export const THEME_FONTS: Record<FontRole, { family: string; stack: string }> =
-  {
-    display: {
-      family: "Playfair Display",
-      stack: '"Playfair Display", Georgia, serif',
-    },
-    sans: {
-      family: "Montserrat",
-      stack: '"Montserrat", system-ui, sans-serif',
-    },
-    script: {
-      family: "Allura",
-      stack: '"Allura", cursive',
-    },
-  }
+export const THEME_FONTS: Record<FontRole, ThemeFont> = {
+  display: themeFont("Playfair Display", "Georgia, serif"),
+  sans: themeFont("Montserrat", "system-ui, sans-serif"),
+  script: themeFont("Allura", "cursive"),
+}
 
 /**
  * Cores do tema que são fundo escuro.

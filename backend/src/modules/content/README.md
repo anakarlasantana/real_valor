@@ -20,8 +20,9 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 | `payload.ts` | O `splitPayload` do corpo: o que é **coluna** × o que é `data` (e as referências `productIds`/`filters`) |
 | `revalidate.ts` | O aviso ao storefront (`notifyStorefront`), que invalida o cache do conteúdo depois de gravar |
 | `schema.ts` | Montagem do schema (`buildSchema()`), `SCHEMA_VERSION` e `SCHEMA_KEY` |
-| `contract.ts` | O formato do conteúdo — **bootstrap** do schema |
+| `contract.ts` | O formato do conteúdo — **bootstrap** do schema. Carrega também a paleta do tema padrão (`THEME_COLOR_HEXES`) e as fontes (`THEME_FONTS`), que são a **origem** do `theme.json` e dos tokens do `brand.css` desde a R3-lite |
 | `defaults.ts` | Cópia do protótipo, usada pelo seed e como fallback |
+| `themes.ts` | O tema: o padrão (id, rótulo) e as estações (janela `MM-DD` e o que cada uma troca). É o **seed** do tema — o `gen-content.mjs` escreve `frontend/themes/<id>/theme.json` daqui, e é esta lista que a R4 leva para o banco |
 | `migrations/` | Geradas com `medusa db:generate content` — com duas exceções escritas à mão, explicadas abaixo |
 | [`../links/content-section-product.ts`](../links/content-section-product.ts) | O link seção ↔ produto (a curadoria) — fora do módulo porque é assim que o Medusa carrega links (`src/links/`) |
 | [`../links/content-section-category.ts`](../links/content-section-category.ts) | O link seção ↔ categoria do catálogo (os chips da vitrine) — mesma razão, `src/links/` é de onde o Medusa os carrega |
@@ -356,20 +357,23 @@ então precisa das prévias por uma via só:
 
 | Chave | Conteúdo | Para que serve |
 | --- | --- | --- |
-| `palette` | `THEME_COLOR_HEXES` — papel → hex | pintar a bolinha de cor |
-| `fonts` | `THEME_FONTS` — papel → `{ family, stack }` | pedir cada família ao navegador |
+| `palette` | `THEME_COLOR_HEXES` — papel → hex | pintar a bolinha de cor. **É a origem da paleta**: o `themes/default/theme.json` e os tokens `--rv-*` do `brand.css` são gerados dela (R3-lite) |
+| `fonts` | `THEME_FONTS` — papel → `{ family, fallback, stack }` | pedir cada família ao navegador. Idem: a família do tema padrão sai daqui, e o `fallback` é o que a loja escreve na pilha |
 | `darkTokens` | `THEME_DARK_TOKENS` | avisar a regra do fundo escuro na hora da escolha |
 
-As três são **cópia de leitura para desenhar**: o que pode ser gravado continua
-saindo de `options`, campo a campo, e validado no servidor. A bolinha mostra a
-cor do tema **padrão** (num tema de estação a da loja é outra) e a fonte é a
-mesma da loja, com os arquivos `.woff2` copiados para
-`admin/src/admin/routes/content/fonts/` — o navegador do painel não tem
-nenhuma das três. `scripts/check-contract-parity.mjs` confere as pontas todas:
-hex contra o `theme.json`, família e pilha contra o `theme.json`/`theme.ts` e
-md5 dos `.woff2` contra os do storefront. O `schema` inteiro é o formulário do
-painel — inclusive `itemFields` e `typeLabels`, que é o que desenha cada item
-de lista e nomeia cada tipo (ver *Admin*).
+As três são **dado do contrato, não do painel**: o que pode ser gravado continua
+saindo de `options`, campo a campo, e validado no servidor — o `schema` só leva o
+que o painel precisa para **desenhar**. A bolinha mostra a cor do tema **padrão**
+(num tema de estação a da loja é outra) e a fonte é a mesma da loja, com os
+arquivos `.woff2` copiados para `admin/src/admin/routes/content/fonts/` — o
+navegador do painel não tem nenhuma das três. `scripts/check-contract-parity.mjs`
+confere o que a geração não cobre: o md5 dos `.woff2` contra os do storefront, o
+`fallback` de fonte que o `brand.css` declara, o conjunto de temas do seed em
+`frontend/themes/` e o `brand.css` sem a paleta. As comparações de hex e família
+contra o `theme.json` **saíram** na R3-lite: o arquivo é gerado do contrato, e
+comparar um artefato com a origem dele é asserção que não pode falhar. O `schema`
+inteiro é o formulário do painel — inclusive `itemFields` e `typeLabels`, que é o
+que desenha cada item de lista e nomeia cada tipo (ver *Admin*).
 
 **Uma regra que não vem de campo:** escolher um fundo escuro (`preto`, `cacao` —
 `THEME_DARK_TOKENS`) sem escolher a cor do texto faz o storefront escrever

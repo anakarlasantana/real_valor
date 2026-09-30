@@ -3,7 +3,14 @@
  * ---------------------------------------------------------------
  * Source of truth: ./Downloads/identidade_realvalor (brand guide)
  *
- * Palette (as printed on the guide, 6 core colors):
+ * Palette (as printed on the guide, 6 core colors): NÃO está aqui.
+ * Ela é `THEME_COLOR_HEXES` (`backend/src/modules/content/contract.ts`)
+ * — a mesma lista que o CRM usa para a bolinha de cor da prévia —, e o
+ * gerador a escreve em `styles/tokens.generated.css`, que o `globals.css`
+ * importa ANTES deste arquivo. Era a terceira cópia dos mesmos hex
+ * (contrato, `themes/default/theme.json`, aqui) e a única que a guarda
+ * precisava comparar: a R3-lite a gerou, e não há mais o que comparar.
+ *
  *   Rosa Queimado  #B97872  cor assinatura
  *   Off White      #F7F1E8  fundos
  *   Marrom Cacau   #4A3531  apoio
@@ -16,6 +23,13 @@
  *   Montserrat        textos e interface
  *   Allura            assinaturas e frases
  *
+ * As três seguem aqui digitadas de propósito: o valor delas é o
+ * `var(--font-*)` que o `localFont` do Next publica no layout (a família
+ * real é hasheada pelo Next), e isso é ligação do storefront, não dado de
+ * tema. O que o contrato garante — a **pilha de fallback** de cada papel,
+ * `THEME_FONTS[role].fallback` — é conferido por
+ * `scripts/check-contract-parity.mjs`.
+ *
  * Accessibility rule: rv-rose on rv-offwhite is ~3.4:1, so rose is
  * only used for fills, borders, icons and large (>=24px) text.
  * Body copy always uses rv-grafite (~11:1).
@@ -27,15 +41,7 @@
 
 :root,
 :root[data-theme="default"] {
-  /* --- Core palette --- */
-  --rv-rose: #b97872;
-  --rv-offwhite: #f7f1e8;
-  --rv-cacao: #4a3531;
-  --rv-grafite: #303033;
-  --rv-preto: #171717;
-  --rv-dourado: #d4b19a;
-
-  /* --- Derived (not in the guide, computed from the above) --- */
+  /* --- Derived (not in the guide, computed from the palette) --- */
   --rv-rose-strong: #9e5f58; /* hover / active on rose fills */
   --rv-rose-soft: #e3c9c4; /* rose at low emphasis on off-white */
   --rv-surface: #fdfbf8; /* elevated card, slightly lifted off-white */
