@@ -137,9 +137,10 @@ describe("o espelho do contrato", () => {
   })
 
   it("nenhuma mensagem do padrão tem vírgula", () => {
-    // A vírgula é o separador do campo no CRM (`list:text`): uma mensagem do
-    // seed com vírgula vira **duas** no primeiro salvamento da barra — a copy
-    // do padrão se parte sozinha, e o lojista não pediu isso.
+    // A vírgula é o separador da **colagem** no CRM (`list:text`): o campo é uma
+    // caixa por mensagem, e colar uma lista abre várias de uma vez — uma
+    // mensagem do padrão com vírgula se parte em duas quando alguém a cola no
+    // painel, e o lojista não pediu isso.
     const messages = seedFields?.messages
 
     expect(Array.isArray(messages)).toBe(true)

@@ -6,7 +6,7 @@
  * texto (`8` e `"8"` são a mesma ordem digitada) e campo ausente contra campo
  * vazio (o contrato marca `null`/`undefined`/`""` como "segue o tema da loja").
  */
-import { fingerprint, isDirty, wireValue } from "../form-draft"
+import { fingerprint, isDirty, parseTextList, wireValue } from "../form-draft"
 
 describe("fingerprint", () => {
   it("trata ausente, nulo e vazio como a mesma coisa", () => {
@@ -88,12 +88,72 @@ describe("wireValue", () => {
 
   it("todo o resto do formulário vai como está", () => {
     expect(wireValue("text", "Peças em destaque")).toBe("Peças em destaque")
-    expect(wireValue("list:text", ["a", "b"])).toEqual(["a", "b"])
     expect(wireValue("image", "foto.jpg")).toBe("foto.jpg")
   })
 
   it("vazio é vazio: a API lê `[]` como \"esvazia os chips\"", () => {
     expect(wireValue("list:category", [])).toEqual([])
     expect(wireValue("list:category", undefined)).toBeUndefined()
+  })
+})
+
+/**
+ * As caixas do ticker virando a lista que a API grava.
+ *
+ * A tela guarda o texto cru — inclusive a caixa vazia que o lojista acabou de
+ * criar e ainda vai preencher. O que a API recebe é a lista limpa: item em branco
+ * não é mensagem (o storefront os descarta em `tickerMessages`), e gravar
+ * `["", "Frete grátis"]` por causa de uma caixa recém-aberta deixaria o banco
+ * com o rastro de um campo limpo.
+ */
+describe("wireValue das caixas do ticker", () => {
+  it("tira o espaço das pontas e descarta a caixa vazia", () => {
+    expect(wireValue("list:text", [" Frete grátis ", "", "Troca fácil"])).toEqual([
+      "Frete grátis",
+      "Troca fácil",
+    ])
+  })
+
+  it("só caixas vazias viram lista vazia — é o gesto de limpar o ticker", () => {
+    expect(wireValue("list:text", ["", "   "])).toEqual([])
+  })
+
+  it("item que não é texto não vira mensagem", () => {
+    expect(wireValue("list:text", [null, 42, "Frete grátis"])).toEqual([
+      "Frete grátis",
+    ])
+  })
+})
+
+/**
+ * O texto colado virando caixas.
+ *
+ * A vírgula deixou de ser separador de **digitação** (o campo é uma caixa por
+ * mensagem: quem digita uma vírgula fica com ela no texto) e continua sendo de
+ * **colagem** — é o que faz colar uma lista criar várias caixas de uma vez.
+ */
+describe("parseTextList", () => {
+  it("a vírgula abre em várias mensagens", () => {
+    expect(parseTextList("Frete grátis, Troca fácil")).toEqual([
+      "Frete grátis",
+      "Troca fácil",
+    ])
+  })
+
+  it("quebra de linha também — é a lista colada de um arquivo", () => {
+    expect(parseTextList("Frete grátis\nTroca fácil")).toEqual([
+      "Frete grátis",
+      "Troca fácil",
+    ])
+  })
+
+  it("vírgula sobrando não vira mensagem em branco", () => {
+    expect(parseTextList(" Frete grátis , , ")).toEqual(["Frete grátis"])
+  })
+
+  it("texto sem separador é uma mensagem só — a colagem comum", () => {
+    expect(parseTextList("Frete seguro para todo o Brasil")).toEqual([
+      "Frete seguro para todo o Brasil",
+    ])
   })
 })

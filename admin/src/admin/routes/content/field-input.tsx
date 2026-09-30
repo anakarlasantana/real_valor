@@ -29,6 +29,7 @@ import {
   type Fonts,
   type Palette,
 } from "./appearance-controls"
+import { parseTextList } from "./form-draft"
 import { ImageInput } from "./image-input"
 
 /**
@@ -251,6 +252,94 @@ function ObjectListInput({
 }
 
 /**
+ * O editor da lista de textos simples (`list:text`) — as mensagens do ticker.
+ *
+ * **Uma caixa por mensagem**, e não uma caixa com vírgulas. O campo antigo era
+ * um `<Input>` só, remontado a cada tecla (`join(", ")` para exibir, `split(",")`
+ * para gravar): a vírgula que o lojista acabava de digitar sumia na remontagem,
+ * e duas mensagens chegavam à API coladas numa só. Sem duas mensagens o ticker
+ * não rola (`tickerMessages`) — a barra ficava parada, e o campo parecia
+ * funcionar. Com uma caixa por item não há separador para perder, e o gesto é o
+ * dos outros itens do painel (slides, benefícios, links).
+ *
+ * A vírgula continua valendo como gesto de **colagem**: colar um texto com
+ * vírgulas ou quebras de linha abre várias caixas de uma vez (`parseTextList`).
+ * Digitar não separa — quem digita uma vírgula fica com ela no texto, que é o
+ * que se espera de uma caixa de texto.
+ */
+function TextListInput({
+  label,
+  value,
+  onChange,
+  addLabel,
+}: {
+  label: ReactNode
+  value: unknown
+  onChange: (value: unknown) => void
+  addLabel: string
+}) {
+  // O valor vem do banco, onde campo é texto livre: item que não é texto vira
+  // caixa vazia em vez de quebrar o formulário da seção inteira.
+  const items = Array.isArray(value)
+    ? value.map((item) => (typeof item === "string" ? item : ""))
+    : []
+
+  const replace = (index: number, parts: string[]) =>
+    onChange([...items.slice(0, index), ...parts, ...items.slice(index + 1)])
+
+  return (
+    <div className="flex flex-col gap-y-2">
+      {label}
+
+      {items.map((item, index) => (
+        <div key={index} className="flex items-center gap-x-2">
+          <Input
+            value={item}
+            placeholder={`Mensagem ${index + 1}`}
+            onChange={(e) =>
+              onChange(
+                items.map((current, i) => (i === index ? e.target.value : current))
+              )
+            }
+            // A colagem de uma lista abre em várias caixas: é entrada em lote, e
+            // a caixa onde se colou dá lugar às partes. Colar uma parte só é
+            // colagem comum — o campo a recebe como qualquer texto digitado.
+            onPaste={(event) => {
+              const parts = parseTextList(event.clipboardData.getData("text"))
+
+              if (parts.length < 2) {
+                return
+              }
+
+              event.preventDefault()
+              replace(index, parts)
+            }}
+          />
+          <Button
+            variant="transparent"
+            size="small"
+            onClick={() => onChange(items.filter((_, i) => i !== index))}
+          >
+            Remover
+          </Button>
+        </div>
+      ))}
+
+      {/* A caixa nova nasce vazia e é do formulário: o `wireValue` descarta
+          branco no corpo, então deixá-la sem preencher não grava nada. */}
+      <Button
+        variant="secondary"
+        size="small"
+        className="self-start"
+        onClick={() => onChange([...items, ""])}
+      >
+        {addLabel}
+      </Button>
+    </div>
+  )
+}
+
+/**
  * O seletor dos chips de categoria (`list:category`).
  *
  * O valor é a **referência**: uma lista ordenada de `CategoryRef`. Não há campo
@@ -459,26 +548,18 @@ export const FieldInput = ({
     )
   }
 
-  /* ---- listas de texto simples (ex.: filtros) ---- */
+  /* ---- listas de texto simples (as mensagens do ticker) ---- */
   if (spec.kind === "list:text") {
-    const items = Array.isArray(value) ? (value as string[]) : []
-
     return (
-      <div className="flex flex-col gap-y-2">
-        {label}
-        <Input
-          value={items.join(", ")}
-          placeholder="Primeiro, Segundo, Terceiro"
-          onChange={(e) =>
-            onChange(
-              e.target.value
-                .split(",")
-                .map((part) => part.trim())
-                .filter(Boolean)
-            )
-          }
-        />
-      </div>
+      <TextListInput
+        label={label}
+        value={value}
+        onChange={onChange}
+        // "mensagem" e não "item": o único `list:text` do contrato é o ticker da
+        // barra de anúncio (`announcement.messages`), e o botão diz o que ele
+        // cria. Um segundo campo deste `kind` traz o rótulo dele para cá.
+        addLabel="Adicionar mensagem"
+      />
     )
   }
 

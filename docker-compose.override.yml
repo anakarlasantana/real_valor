@@ -131,6 +131,16 @@ services:
       # Config e scripts tambem observados em dev.
       - ./backend/medusa-config.ts:/app/backend/medusa-config.ts:ro
       - ./backend/package.json:/app/backend/package.json:ro
+      # O `tsconfig.json` do backend entra pelo mesmo motivo dos dois acima — e
+      # e' ele que o `medusa build` le: o `make build-admin` compila DENTRO do
+      # container. Sem este mount, o build le o arquivo da IMAGEM, que
+      # envelhece. Medido em 2026-09-30: com o
+      # `rewriteRelativeImportExtensions` ja no repositorio, o gate acusava
+      # `error TS5096 ... Backend build completed with errors` a cada rodada —
+      # o TypeScript do container e o MESMO do host (5.9.3), o que estava velho
+      # era o arquivo (o do container, sem o flag). O frontend monta o
+      # tsconfig dele pelo mesmo motivo (ver o servico `frontend`).
+      - ./backend/tsconfig.json:/app/backend/tsconfig.json:ro
       # Uploads do painel: o MESMO volume de producao, no `static/` relativo ao
       # app (o `upload_dir` do `@medusajs/file-local`). Sem ele, o que o CRM
       # envia some toda vez que o container e' recriado (o `/app` daqui vem da

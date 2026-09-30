@@ -733,6 +733,43 @@ export default async function seedDemoData({ container }: ExecArgs) {
     })
   }
 
+  // O vínculo ao canal de venda é **curado** a cada rodada, e não só criado
+  // junto com a peça. O `sales_channels` acima vale na criação: uma peça que já
+  // existia e perdeu o vínculo depois (o "remover" do painel do Medusa grava
+  // `deleted_at` na linha do vínculo) fica fora da loja — `/store/products` lê
+  // pelo canal, e a peça continua `published` no catálogo, sem nada acusar.
+  // Medido: o vestido midi ficou invisível na vitrine com o vínculo
+  // soft-deleted em 29/09/2026, e o `make seed` saía verde — a peça existia pelo
+  // título, então nem a criação passava por ela.
+  //
+  // O `link.create` **revive** a linha apagada (medido nesta base, Medusa 2.18:
+  // o vínculo reaparece no `query.graph` logo depois da chamada), então o
+  // conserto é o mesmo `linkOnce` dos outros vínculos. A leitura do gráfico já
+  // ignora vínculo apagado — é o que a loja vê —, e `wantedProducts` limita o
+  // conserto às peças do seed: uma peça que alguém criou e deixou fora do canal
+  // de propósito continua fora.
+  const { data: seededProducts } = await query.graph({
+    entity: "product",
+    fields: ["id", "title", "sales_channels.id"],
+  })
+
+  const seededTitles = new Set(wantedProducts.map((product) => product.title))
+  const withoutChannel = (seededProducts ?? []).filter(
+    (product) =>
+      seededTitles.has(product.title) &&
+      !(product.sales_channels ?? []).some(
+        (channel) => channel?.id === onlineSalesChannel[0].id
+      )
+  )
+
+  for (const product of withoutChannel) {
+    await linkOnce({
+      [Modules.PRODUCT]: { product_id: product.id },
+      [Modules.SALES_CHANNEL]: { sales_channel_id: onlineSalesChannel[0].id },
+    })
+    logger.info(`[Real Valor] Vínculo de canal restaurado: ${product.title}`)
+  }
+
   // 10. Atualização de estoque para os novos produtos
   logger.info("[Real Valor] Atualizando níveis de estoque...");
   const { data: inventoryItems } = await query.graph({

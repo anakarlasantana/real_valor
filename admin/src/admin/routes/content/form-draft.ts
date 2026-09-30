@@ -53,6 +53,26 @@ export function isDirty(
 }
 
 /**
+ * Um texto colado virando a lista de mensagens do ticker.
+ *
+ * A vírgula e a quebra de linha são **gesto de colagem**, não separador de
+ * digitação: o campo da barra de anúncio é uma caixa por mensagem desde o
+ * conserto do `list:text`, e colar ("Frete grátis, Troca fácil") abre várias
+ * caixas de uma vez.
+ *
+ * Separador que se consome enquanto se digita era o defeito do campo antigo: a
+ * lista era remontada a cada tecla (`join` para exibir, `split` para gravar), e
+ * a vírgula recém-digitada sumia — as mensagens colavam numa só e o ticker, que
+ * precisa de duas, não rolava.
+ */
+export function parseTextList(value: string): string[] {
+  return value
+    .split(/[,\n]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+}
+
+/**
  * O valor de um campo, como a **API** o recebe.
  *
  * Um campo de referência (`list:category`, os chips de categoria) viaja como a
@@ -65,10 +85,24 @@ export function isDirty(
  * "deve ser uma lista de ids de categoria" — que é a resposta certa, mas por um
  * motivo que o lojista não tem como consertar pela tela.
  *
- * A referência é a única exceção: todo o resto do formulário vai como está (o
- * que a tela mostra é o que a API grava).
+ * A outra conversão é a das caixas do ticker (`list:text`): a tela guarda o
+ * texto cru — inclusive a caixa vazia que o lojista acabou de criar e ainda vai
+ * preencher — e o corpo leva a lista limpa. Item em branco não é mensagem: o
+ * storefront já os descarta (`tickerMessages`), e mandá-los faria a seção
+ * gravar `["", "Frete grátis"]` por causa de uma caixa recém-aberta.
+ *
+ * Fora essas duas, o formulário vai como está: o que a tela mostra é o que a
+ * API grava.
  */
 export function wireValue(kind: FieldKind, value: unknown): unknown {
+  if (kind === "list:text") {
+    return Array.isArray(value)
+      ? (value as unknown[])
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter(Boolean)
+      : value
+  }
+
   if (kind !== "list:category" || !Array.isArray(value)) {
     return value
   }

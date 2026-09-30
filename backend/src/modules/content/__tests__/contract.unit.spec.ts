@@ -83,8 +83,9 @@ describe("SECTION_TYPES ⇔ SECTION_FIELDS", () => {
 
 describe("ITEM_FIELDS (o editor dentro do item)", () => {
   it("todo `list:` usado por uma seção tem editor de item", () => {
-    // `list:text` é a exceção declarada: é um input separado por vírgula, sem
-    // sub-campos, então não tem (e não pode ter) entrada em `ITEM_FIELDS`.
+    // `list:text` é a exceção declarada: é uma caixa de texto por item no
+    // painel, sem sub-campos, então não tem (e não pode ter) entrada em
+    // `ITEM_FIELDS`.
     expect(listKindsInSections.filter((kind) => !ITEM_FIELDS[kind])).toEqual([])
   })
 
@@ -125,9 +126,9 @@ describe("ITEM_FIELDS (o editor dentro do item)", () => {
         )
 
         for (const item of items as unknown[]) {
-          // `list:text` guarda **strings** (os filtros vêm separados por
-          // vírgula no formulário) e, por isso, não tem editor de item. Só os
-          // itens que são objeto têm chaves para conferir.
+          // `list:text` guarda **strings** (uma por caixa no formulário do CRM)
+          // e, por isso, não tem editor de item. Só os itens que são objeto têm
+          // chaves para conferir.
           if (typeof item !== "object" || item === null) {
             expect(ITEM_FIELDS[field.kind]).toBeUndefined()
             continue

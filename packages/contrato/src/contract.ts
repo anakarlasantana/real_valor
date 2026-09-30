@@ -912,11 +912,16 @@ export type FieldKind =
   // O que **não** se grava aqui é o rótulo: `label` e `handle` são lidos da
   // categoria na hora de desenhar (`modules/content/filters.ts`).
   | "list:category"
-  // Lista de textos simples: um input separado por vírgula, sem sub-campos —
-  // e sem entrada em `ITEM_FIELDS` (não há sub-formulário para desenhar). É o
-  // campo das mensagens do ticker da barra de anúncio (`messages`), e a vírgula
-  // é a razão de a ajuda do campo pedir mensagem sem vírgula: o editor quebra o
-  // texto em cada uma delas.
+  // Lista de textos simples: uma caixa por texto, sem sub-campos — e sem
+  // entrada em `ITEM_FIELDS` (não há sub-formulário para desenhar). É o campo
+  // das mensagens do ticker da barra de anúncio (`messages`).
+  //
+  // Era um único input separado por vírgula, e o separador **dentro** do campo
+  // era o defeito: o texto era remontado a cada tecla (`join` para exibir,
+  // `split` para gravar), então a vírgula recém-digitada sumia e as mensagens se
+  // colavam numa só — a barra ficava parada, com `messages` de um item, e nada
+  // acusava. Com uma caixa por mensagem não há separador para perder; a vírgula
+  // continua valendo como gesto de **colagem** (colar uma lista abre várias).
   | "list:text"
   // O slide da capa (`hero.slides`): foto e cópia, o sub-formulário do tipo
   // `HeroSlide` — item de lista como o `list:highlight`, com a mesma forma
@@ -1012,7 +1017,7 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       name: "messages",
       label: "Mensagens do ticker",
       kind: "list:text",
-      help: "Uma mensagem por vírgula — o ticker rola sozinho com duas ou mais e fica parado com uma. O que estiver aqui substitui a mensagem única.",
+      help: "Uma caixa por mensagem — o ticker rola sozinho com duas ou mais e fica parado com uma. O que estiver aqui substitui a mensagem única; colar uma lista separada por vírgulas cria várias caixas de uma vez.",
     },
     // A barra é uma linha só: tem a fonte e a cor do texto e a cor da
     // própria barra. Sem títulos nem detalhes para vestir.
@@ -1370,8 +1375,8 @@ export type ItemFields = Partial<Record<FieldKind, readonly ItemFieldSpec[]>>
 /**
  * Sub-formulário de cada `kind` de lista, na ordem em que o editor o desenha.
  *
- * Só os `kind` de objeto aparecem: `list:text` é um input separado por
- * vírgula, sem sub-campos, e `list:category` é o seletor de categorias do
+ * Só os `kind` de objeto aparecem: `list:text` é uma caixa por texto, sem
+ * sub-campos, e `list:category` é o seletor de categorias do
  * `filters` — os dois sem sub-campos, e por isso os dois de fora. Todo `list:*`
  * de `SECTION_FIELDS` precisa estar aqui — sem editor o campo aparece na tela e
  * não dá para preencher —, e a guarda de paridade cobra os dois sentidos

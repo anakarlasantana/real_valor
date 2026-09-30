@@ -48,7 +48,7 @@ help:
 	@echo "    make shell-backend - Shell dentro do container do backend"
 	@echo "    make shell-frontend- Shell dentro do container do storefront"
 	@echo "    make health        - Checa /health do backend, a home da loja e o admin"
-	@echo "    make logs-admin    - Falha se o Vite do admin nao resolveu modulos ou serviu o index.html no lugar de um modulo (import dinamico quebrado)"
+	@echo "    make logs-admin    - Falha se o Vite do admin nao resolveu modulos, serviu o index.html no lugar de um modulo ou deixou algum modulo do painel com 404 (import dinamico quebrado)"
 	@echo "    make revalidate TAG=products - Invalida o cache do storefront (ISR)"
 	@echo ""
 	@echo "  Contrato de conteudo"
@@ -58,7 +58,7 @@ help:
 	@echo "  Testes, tipos e o CRM"
 	@echo "    make test          - Jest do backend e do CRM (admin/), vitest do storefront"
 	@echo "    make types         - tsc do backend, do storefront e do CRM (pacote admin/)"
-	@echo "    make build-admin   - Compila o admin (Vite) — o gate de quem mexe no CRM"
+	@echo "    make build-admin   - Compila o admin (Vite) — o gate de quem mexe no CRM (cache do Vite isolado: nao toca o dev server)"
 	@echo ""
 	@echo ""
 	@echo "  Modo: use PROD=1 para producao (ex.: make up PROD=1)"
@@ -212,20 +212,38 @@ health:
 	@curl -fo /dev/null -s -w "  HTTP %{http_code}\n" -L http://localhost:9000/painel || echo "  INDISPONIVEL"
 	@echo "  OBS: 200 aqui nao garante o bundle — rode 'make logs-admin' tambem."
 
-# O HTML do admin responde 200 mesmo quando o Vite falha em resolver os modulos
-# de extensao (o painel abre em branco). Este alvo olha o que importa: o log.
+# O HTML do admin responde 200 mesmo quando o Vite nao serve os modulos (o painel
+# abre em branco, ou morre num import dinamico). Este alvo olha DOIS lugares, de
+# confiabilidade bem diferente:
 #
-# Sao DUAS falhas diferentes:
-#   1. "Failed to resolve import" — o Vite diz na cara que nao achou o modulo.
-#   2. Requisicao de modulo logada com 200 — o dev server do admin sobe com
-#      `appType: spa`, entao URL de modulo inexistente NAO da 404: cai no
-#      fallback e recebe o `index.html` (200, text/html), e o browser quebra com
-#      "Error loading dynamically imported module".
-#      O `@medusajs/framework` SILENCIA no log tudo que contenha `@fs`, `@id`,
-#      `@vite`, `@react` ou `node_modules` (NOISY_ENDPOINTS_CHUNKS, em
-#      @medusajs/framework/dist/http/express-loader.js): as requisicoes que
-#      RESOLVEM nao aparecem. Logo, modulo logado com 200 = modulo que NAO
-#      resolveu. E' a unica pista desse erro — e ela parece inofensiva.
+#  1. O LOG do backend (barato, mas cego). Duas falhas aparecem nele:
+#     a. "Failed to resolve import" — o Vite diz na cara que nao achou o modulo.
+#     b. Requisicao de modulo logada com 200 — o `@medusajs/framework` SILENCIA
+#        no log tudo que contenha `@fs`, `@id`, `@vite`, `@react` ou
+#        `node_modules` (NOISY_ENDPOINTS_CHUNKS, em
+#        @medusajs/framework/dist/http/express-loader.js): as requisicoes que
+#        RESOLVEM nao aparecem. Logo, modulo logado com 200 = modulo que NAO
+#        resolveu.
+#
+#     O buraco, medido em 2026-09-30: a aba quebrada pediu
+#     `@fs/app/backend/node_modules/.vite/deps/login-REAKYYFI-OQZ7MJXX.js` (nome
+#     da otimizacao ANTERIOR, ja apagado) e o servidor respondeu 404 — nao o
+#     fallback 200 do `index.html`, logo nem o padrao abaixo pega. E o 404
+#     tambem nao apareceu no log: ZERO linhas dessa falha, contra 53 linhas de
+#     `/painel/`. Ou seja: este alvo dizia "OK" com o painel morto. O log e'
+#     pista, nunca veredito.
+#
+#  2. O GRAFO DE MODULOS (o veredito). `scripts/check-admin-modules.mjs` parte de
+#     `/painel/entry.jsx`, segue os imports que o servidor EMITE e exige
+#     `text/javascript` (404 ou fallback HTML = falha). Nao depende de log
+#     nenhum: ~3s, 300 modulos, 287 chunks do otimizador.
+#
+# A causa tipica da aba presa: re-otimizacao do Vite (`make restart` no backend,
+# ou `make build-admin` mexendo no cache compartilhado) com a aba aberta. O HMR
+# avisa a aba (medido: o WS em `ws://localhost:9001/painel/` responde
+# `{"type":"connected"}`), mas aba com WS caido fica no grafo velho e o proximo
+# import dinamico aponta para um chunk que nao existe mais. Correcao: reload
+# forcado (Ctrl+Shift+R).
 ADMIN_FALLBACK_200 := GET /painel/(@fs|@id|@vite|@react|node_modules).*[(]200[)]
 
 logs-admin:
@@ -237,15 +255,16 @@ logs-admin:
 	elif $(COMPOSE) logs --tail=400 backend 2>&1 | grep -aqE "$(ADMIN_FALLBACK_200)"; then \
 	  echo "FALHA: o browser pediu um modulo do admin e o fallback da SPA respondeu o index.html (200)."; \
 	  echo "       E' um import dinamico quebrado ('Error loading dynamically imported module')."; \
-	  echo "       Causa tipica: HMR do Vite fora de alcance (aba presa no grafo de modulos velho)."; \
+	  echo "       Causa tipica: a aba ficou no grafo do otimizador ANTERIOR (o chunk dela nao existe mais)."; \
 	  echo "Ultimas ocorrencias:"; \
 	  $(COMPOSE) logs --tail=400 backend 2>&1 | grep -aE "$(ADMIN_FALLBACK_200)" | tail -5; \
-	  echo "Correcao: reload forcado no browser (Ctrl+Shift+R). Se voltar, confira o HMR_PORT do"; \
-	  echo "          docker-compose.override.yml e se a porta esta publicada (make health)."; \
+	  echo "Correcao: reload no browser (F5; Ctrl+Shift+R se a aba insistir). O HMR do Vite cura isso sozinho; se"; \
+	  echo "          a aba nao se recuperar, confira o HMR_PORT do docker-compose.override.yml (make health)."; \
 	  exit 1; \
 	else \
-	  echo "OK: nenhuma falha do Vite do admin nos ultimos 400 logs do backend."; \
+	  echo "OK (log): nenhuma falha do Vite do admin nos ultimos 400 logs do backend. O veredito e' o grafo de modulos, abaixo."; \
 	fi
+	@node scripts/check-admin-modules.mjs
 
 revalidate:
 	@test -n "$(TAG)" || { echo "uso: make revalidate TAG=products   (ou TAG=categories/collections)"; exit 1; }
@@ -337,12 +356,30 @@ check:
 # claro, que e' o comportamento desejado.
 ADMIN_BUILD_LOG ?= /tmp/real-valor-build-admin.log
 
+# ⚠️ O `-v /app/backend/node_modules` nao e' enfeite: e' o que impede este alvo de
+# derrubar o painel do dev. O `root` do Vite do admin e' `/app/backend`, logo o
+# `cacheDir` e' `/app/backend/node_modules/.vite` — o MESMO diretorio do dev
+# server, que roda no outro container. Sem o volume, o build apaga e reescreve os
+# chunks do otimizador por baixo do servidor vivo, e a aba aberta passa a pedir um
+# nome da otimizacao ANTERIOR (`deps/login-REAKYYFI-OQZ7MJXX.js`) que ja nao
+# existe: 404 -> "Error loading dynamically imported module". Foi exatamente o que
+# aconteceu em 2026-09-30 (medido: `deps/` com 0 arquivos 20s dentro do build, e o
+# chunk do login trocando de `OQZ7MJXX` para `NUES2SED`).
+# Com o volume anonimo, o cache do build nasce e morre descartavel e o do dev
+# server fica INTOCADO — medido nas duas pontas: 874 chunks e o mtime do
+# `_metadata.json` inalterados em 12 amostras de 10s durante o build, e o
+# `scripts/check-admin-modules.mjs` verde depois dele (300 modulos, exit 0).
+# E' barato: nada em `/app/backend/node_modules` e' lido pelo build (so o `.vite`
+# mora la; as dependencies vem de `/app/node_modules`), entao mascarar o
+# diretorio nao muda resolucao nenhuma.
+
 build-admin:
 	@test -n "$$($(COMPOSE) ps -q postgres)" || { echo "postgres nao esta rodando (rode 'make up')"; exit 1; }
-	@$(COMPOSE) run --rm -T -e NODE_OPTIONS=--max-old-space-size=1536 backend yarn build 2>&1 | tee "$(ADMIN_BUILD_LOG)"
+	@$(COMPOSE) run --rm -T -v /app/backend/node_modules -e NODE_OPTIONS=--max-old-space-size=1536 backend yarn build 2>&1 | tee "$(ADMIN_BUILD_LOG)"
 	@grep -q "Frontend build completed successfully" "$(ADMIN_BUILD_LOG)" || { echo ""; echo "  O painel NAO compilou (procure 'Rollup failed to resolve' ou 'Build failed' no log acima)."; exit 1; }
 	@echo ""
-	@echo "  Admin compilado no container (bundle em .medusa/server/public/admin)."
+	@echo "  Painel compilado num GATE de compilacao: o container do 'run --rm' e' DESCARTADO, entao o bundle nao vai para o dev server."
+	@echo "  Em DEV o /painel e' servido pelo Vite; em PROD o bundle entra na imagem pelo 'yarn build' do Dockerfile. O cache do Vite do build fica num volume descartavel: o dev server do /painel nao foi tocado."
 
 # ---------------------------------------------------------------------------
 # Testes: o jest do backend, o jest do CRM e o vitest do storefront
