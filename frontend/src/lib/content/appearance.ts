@@ -53,8 +53,9 @@ import {
  * num tipo `SectionAppearance` pelo cheque de "tipo fraco" (`Type 'NavSection'
  * has no properties in common`). Como cada valor é validado aqui antes de
  * virar CSS, o tipo não acrescentaria garantia nenhuma: quem garante que
- * os nomes lidos são os do contrato é
- * `scripts/check-contract-parity.mjs`.
+ * os nomes lidos são os do contrato é `assets.unit.spec.ts`, que compara os
+ * dois lados ("a loja lê todos os campos de aparência que o contrato declara",
+ * e nenhum a mais).
  */
 export function appearanceVars(section?: unknown): CSSProperties {
   const source = (section ?? {}) as SectionAppearance

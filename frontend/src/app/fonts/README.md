@@ -56,7 +56,7 @@ também precisa dos arquivos. Como o CRM é um pacote separado (`admin/`, irmão
 `admin/src/admin/routes/content/appearance.css` (ver o `README.md` de lá).
 
 A consequência prática: **trocar um `.woff2` aqui é trocar nos dois lugares**.
-`scripts/check-contract-parity.mjs` confere o md5 das cópias contra estes
+O `assets.unit.spec.ts` (no backend) confere o md5 das cópias contra estes
 arquivos, então a esquecida não passa.
 
 ## Procedência (auditável)

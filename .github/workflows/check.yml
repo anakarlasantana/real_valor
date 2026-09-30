@@ -1,7 +1,7 @@
 # =============================================================================
 # A verificação que não pode depender de disciplina humana.
 # =============================================================================
-# Hoje a guarda e os tipos só rodam se alguém lembrar (`make check` no hook).
+# Hoje o `make check` e os tipos só rodam se alguém lembrar (o hook de commit).
 # Esta workflow é o que fecha o item 3.2 do registro de débito ("adicionar CI")
 # e o que torna exigível tudo o mais que o build de verificação ganhou: tipos,
 # testes, o build do storefront, e o `--check` do registro do schema.
@@ -13,10 +13,13 @@
 #
 # Cinco jobs, porque as dependências não são as mesmas:
 #
-#   guard  — `make check`. NÃO instala nada: os scripts leem arquivos com
-#            Node puro (é por isso que o hook de commit roda em segundos). A
-#            verificação da suíte do CRM não cabe aqui (precisa do jest) — ela
-#            roda no job `testes`, dentro do `make test`.
+#   guard  — `make check`: o artefato gerado em dia (`gen-content.mjs --check`)
+#            e a fronteira do painel (`check-boundaries.mjs`). NÃO instala nada:
+#            os scripts leem arquivos com Node puro (é por isso que o hook de
+#            commit roda em segundos). A paridade do contrato e a verificação da
+#            suíte do CRM não cabem aqui (dependem do jest) — elas rodam no job
+#            `testes`, dentro do `make test`. Até o G4 havia uma terceira
+#            linha aqui: a guarda de paridade (114 asserções de texto).
 #   types  — `make types`: `tsc` dos dois pacotes. Precisa de `yarn install`.
 #   schema — o registro do `content_schema` conferido contra o contrato, num
 #            Postgres efêmero. Verifica **dado**, que é o que nenhuma linguagem
@@ -24,14 +27,17 @@
 #   build  — `next build`, que tem de passar **sem infra** (o build não pode
 #            depender de API no ar; ver o item 3.2 do registro de débito).
 #
-#   testes — `make test`: o jest do backend (11 suites / 183 testes), o jest do
-#            CRM (`admin/jest.config.js`, desde a R2: 1 suite / 12 testes, mais
+#   testes — `make test`: o jest do backend (12 suites / 210 testes), o jest do
+#            CRM (`admin/jest.config.js`, desde a R2: 2 suites / 19 testes, mais
 #            `scripts/check-panel-tests.mjs` conferindo que a suíte no disco do
 #            CRM é a que o runner dele roda) e o vitest do storefront (7 arquivos
-#            / 76 testes). São de unidade: não abrem banco nem precisam da stack —
-#            a mesma propriedade do `guard`. Antes disto os testes existiam nos
-#            `package.json` e ninguém os chamava: nem o `make`, nem o hook de
-#            commit, nem a CI.
+#            / 81 testes). São de unidade: não abrem banco nem precisam da stack —
+#            a mesma propriedade do `guard`. Desde o G4 é aqui que roda a
+#            paridade do contrato que era da guarda de texto: os espelhos do
+#            painel (`panel-wiring.unit.spec.ts`), a fiação da API
+#            (`wiring.unit.spec.ts`) e os do storefront. Antes disto os testes
+#            existiam nos `package.json` e ninguém os chamava: nem o `make`, nem
+#            o hook de commit, nem a CI.
 name: check
 
 on:
@@ -46,9 +52,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # 24 é o Node com type-stripping estável, de que o `loadExport` da guarda
-  # depende (o `contract.ts` é importado como TypeScript). O `engines` do backend
-  # pede >=20, mas 22.18+ é o piso real do que a guarda usa.
+  # 24 é o Node com type-stripping estável, de que o `loadExport`
+  # (`scripts/lib/load-export.mjs`) depende: o `gen-content.mjs` importa o
+  # `contract.ts` do pacote como TypeScript. O `engines` do backend pede >=20,
+  # mas 22.18+ é o piso real do que ele usa.
   NODE_VERSION: "24"
 
 jobs:

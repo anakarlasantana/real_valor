@@ -455,9 +455,11 @@ misturaria duas mudanças visuais na mesma revisão.
 ressalva de que ali o texto claro do card divide o campo com o texto escuro do bloco). Definida a
 variável, ela ganha do `currentColor` e o texto volta a aparecer.
 
-**Guarda relacionada:** `scripts/check-contract-parity.mjs` confere que toda classe `.rv-section-*`
-definida no `brand.css` é usada na loja e vice-versa — foi assim que a família de classes da
-aparência por seção deixou de depender de revisão manual para não virar CSS morto.
+**Teste relacionado:** `backend/src/modules/content/__tests__/assets.unit.spec.ts` confere que toda
+classe `.rv-section-*` definida no `brand.css` é usada na loja e vice-versa — foi assim que a
+família de classes da aparência por seção deixou de depender de revisão manual para não virar CSS
+morto. (A asserção nasceu em `scripts/check-contract-parity.mjs` e virou teste com a mesma promessa
+quando a guarda foi apagada, no G4.)
 
 ---
 

@@ -29,11 +29,11 @@ self-hospeda (`frontend/src/app/fonts/README.md`).
 ## Se a fonte do storefront mudar
 
 Recopie o `.woff2` e o `OFL.txt` correspondentes de
-`frontend/src/app/fonts/<família>/` para cá e rode
-`node scripts/check-contract-parity.mjs`. A guarda compara o md5 dos dois lados
-e confere que cada família declarada em `THEME_FONTS` (`contract.ts`) tem o
-`@font-face` dela no `appearance.css` — que é por onde a prévia carrega o
-arquivo: prévia com arquivo diferente do da loja é prévia que mente. (A comparação
+`frontend/src/app/fonts/<família>/` para cá e rode `make test`. O
+`assets.unit.spec.ts` compara o md5 dos dois lados e confere que cada família
+declarada em `THEME_FONTS` (`contract.ts`) tem o `@font-face` dela no
+`appearance.css` — que é por onde a prévia carrega o arquivo: prévia com arquivo
+diferente do da loja é prévia que mente. (A comparação
 com o `theme.json` do storefront saiu na R3-lite: o arquivo passou a ser **gerado**
 do contrato, e comparar um artefato com a origem dele só podia dar verde. Desde a
 R4 quem oferece as famílias no `<select>` é o `schema` da API — o painel não

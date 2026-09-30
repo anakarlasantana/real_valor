@@ -15,9 +15,9 @@ import { IconProps } from "types/icon"
  * These are drawn here as line art, with `stroke`/`fill` bound to
  * `color` so they inherit the footer's colour and hover state.
  *
- * The keys the admin offers are listed by hand in
- * `admin/src/admin/routes/content/field-input.tsx` (`list:social`) —
- * `scripts/check-contract-parity.mjs` fails when the two lists drift, or
+ * The keys the admin offers come from the contract
+ * (`ITEM_FIELDS["list:social"]`, since the R2/R7 the panel has no list of its
+ * own) — `assets.unit.spec.ts` fails when the two lists drift, or
  * when the keys below do not match this map.
  */
 

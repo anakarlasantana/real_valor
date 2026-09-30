@@ -21,8 +21,9 @@
  * admin (`palette`, `fonts`), não de uma cópia local: o painel é um pacote
  * separado e não lê nem os `theme.json` do storefront nem as fontes dele —
  * a cópia dos `.woff2` em `./fonts/` é do navegador, para o `@font-face` de
- * `./appearance.css`. `scripts/check-contract-parity.mjs` confere as duas
- * pontas (hex contra o `theme.json`, md5 contra o storefront).
+ * `./appearance.css`. `assets.unit.spec.ts` confere a cópia contra o
+ * storefront (md5); a comparação de hex contra o `theme.json` saiu na
+ * R3-lite, quando o arquivo passou a ser **gerado** do contrato.
  */
 import { Button, Label, Select, Text } from "@medusajs/ui"
 import { type ReactNode } from "react"

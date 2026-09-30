@@ -15,10 +15,11 @@
  *      existe para mostrar peça); `limit: 500` mandaria o catálogo inteiro
  *      pela rede para o navegador esconder 490 cards.
  *
- * Os três números são espelho do contrato mantido à mão — o storefront compila
- * o artefato gerado, que **não** leva `SECTION_FIELDS` (ele é só do CRM) —, e
- * quem confere o espelho é `scripts/check-contract-parity.mjs`: faixa
- * divergente reprova o commit.
+ * Os três números são espelho do contrato mantido à mão — o storefront importa
+ * o mesmo pacote (`@rv/contrato`) desde o G5, e a faixa fica declarada aqui de
+ * propósito: é a última defesa contra o que já está gravado no banco —, e quem
+ * confere o espelho é `launches.spec.ts`, comparando valor a valor contra a
+ * faixa de `SECTION_FIELDS`: faixa divergente reprova o commit.
  *
  * Não é `Math.min(Math.max(...))` solto na página de propósito: é a decisão,
  * ela tem caso de borda (`infinito`, `NaN`, `"8"`, `0`) e ela é testável sem

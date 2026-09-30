@@ -166,60 +166,32 @@ moram", acima.
 Como o `type` não é um `enum` no banco, adicionar um tipo novo de seção
 é só código, sem migration.
 
-## O contrato vive em dois lugares
+## O contrato vive em um lugar só
 
-Backend e frontend são pacotes npm separados, com `node_modules`
-separados — não há como importar um do outro sem publicar um pacote
-compartilhado. Então o contrato é espelhado:
+O contrato é o pacote `@rv/contrato` (`packages/contrato/src/`): desde o G5 o
+backend, o CRM e o storefront importam o **mesmo** módulo, com `workspace:*` e um
+`yarn.lock` só na raiz do workspace. Não há espelho — `home-sections.ts` e
+`contract.generated.ts` foram apagados —, e o que ficou em
+`backend/src/modules/content/{contract,defaults,schema}.ts` são shims de
+re-export (`export * from "@rv/contrato"`), para os caminhos históricos
+continuarem valendo.
 
-```
-backend/src/modules/content/contract.ts      <- fonte da verdade
-frontend/src/lib/content/home-sections.ts    <- espelho
-```
+O que a guarda de paridade conferia por texto mora hoje em **teste**: o
+`scripts/check-contract-parity.mjs` foi apagado no G4, com o mapa das **114**
+asserções na mensagem do commit.
 
-Um teste de paridade trava a divergência:
+| Onde | O que confere |
+|---|---|
+| `contract.unit.spec.ts` | `SECTION_TYPES ⇔ SECTION_FIELDS` e os rótulos, cada `ITEM_FIELDS[kind]` contra o tipo que o item tem (`BenefitItem`, `CollectionHighlight`, `HeaderLink`, `HeaderAction`, `FooterColumn`, `FooterSocial`), o `defaults.ts` cobrindo todos os tipos, a ponte da aparência (paleta, papéis de fonte, trilhos, a tradução de cada opção) e o `attachedTo` contra a ordem do array |
+| `assets.unit.spec.ts` | a ponte com o CSS e com os arquivos: cada `--rv-section-*` escrita consumida por um `var()`, cada `.rv-section-*` definida usada na loja (e vice-versa), cada campo `appearance*` lido pelo storefront (e nenhum a mais), o `fallback` de cada `--rv-font-*`, o `@font-face` de cada papel no `appearance.css` e o **md5** dos `.woff2` do painel contra o storefront, as chaves de ícone contra `icons.ts`/`social-icons.tsx` (as redes sociais têm registro próprio) e as origens de coluna oferecidas contra os ramos de `footer-column/index.tsx` |
+| `wiring.unit.spec.ts` | a fiação da API e do dado: o `GET /admin/content` mandando `typeLabels`/`itemFields`/`palette`/`fonts`/`darkTokens`, o seed do tema e o `--check` do registro do schema |
+| `panel-wiring.unit.spec.ts` (CRM) | o painel lendo o `schema` em vez de redeclarar: sem `ITEM_FIELDS`/`ICON_LABELS`/`FieldSpec` local, com ramo para todo `kind` |
 
-```bash
-node scripts/check-contract-parity.mjs
-```
-
-Ele compara `SECTION_TYPES`, cada `SECTION_FIELDS` — campo por campo, inclusive
-`required`, `options`, `optionLabels` e `group` — e valida que
-`defaults.ts` cobre todos os tipos, que o `nav` e o `footer` do seed
-casam com os fallbacks do storefront e que todo `list:*` tem sub-formulário
-em `ITEM_FIELDS` (e que nenhum sub-formulário sobra, sem nenhum campo que o
-alcance). O que o editor do admin **desenha** chega todo pelo `schema` —
-inclusive os campos de dentro do item e os rótulos —, então o admin não
-mantém espelho nenhum: a guarda proíbe os nomes antigos (`ITEM_FIELDS`,
-`ICON_KEYS_BY_KIND`, `ICON_LABELS`, `FOOTER_COLUMN_SOURCES`, `TYPE_LABELS`) e
-cobra que os dois arquivos leiam o que chega. O que de fato **vive em dois
-pacotes** continua sendo conferido de verdade: cada `ITEM_FIELDS[kind]` contra
-o tipo que o storefront lê (`BenefitItem`, `CollectionHighlight`,
-`HeaderLink`, `HeaderAction`, `FooterColumn`, `FooterSocial`), as chaves de
-ícone contra `icons.ts`/`social-icons.tsx` — inclusive as redes sociais, cujo
-registro é próprio —, as origens oferecidas no `<select>` contra
-`FOOTER_COLUMN_SOURCES` e toda origem com ramo em
-`footer-column/index.tsx` — senão o lojista escolhe no admin uma coluna que
-a loja não desenha. **Rode isto depois de qualquer alteração no contrato.**
-
-Desde a aparência por seção ele também confere a ponte com o CSS, que é onde
-um campo novo se perderia em silêncio: as listas de cores e de fontes nos
-dois arquivos, cada campo `appearance*` lido pelo storefront (e nenhum campo
-lido que o contrato não declare), cada variável `--rv-section-*` escrita
-consumida por um `var()` no `brand.css`, e cada classe `.rv-section-*`
-definida sendo usada — e vice-versa (ver *Aparência por seção*).
-
-E o editor, que é o outro lugar onde a aparência se perde: cada trilho tem de
-estar **logo abaixo** do campo que ele veste (o `attachedTo` conferido contra a
-ordem do array), as opções de cor e de fonte têm de ser a paleta e os papéis
-na ordem do contrato, o `FieldSpec` espelhado no admin tem de conhecer o
-`attachedTo`, o `GET /admin/content` tem de mandar `typeLabels`/`itemFields`/
-`palette`/`fonts`/`darkTokens`, e cada família declarada precisa existir como
-`@font-face` em
-`admin/src/admin/routes/content/appearance.css` apontando para um `.woff2`
-com o **mesmo md5** do storefront. As duas últimas são as que nenhuma revisão
-manual pegaria: sem elas a bolinha sai sem cor e a prévia de fonte cai no
-fallback do navegador, e a página continua "funcionando".
+**Rode `make test` depois de qualquer alteração no contrato** — é onde tudo isso
+roda junto, e onde a suíte do CRM entra. O `make check` (o que o hook de commit
+executa) ficou com o que só o disco responde: o artefato gerado fora de dia
+(`gen-content.mjs --check`) e a **fronteira** do painel
+(`check-boundaries.mjs`, que reprova import de **valor** vindo do backend).
 
 ## Regras de layout
 
@@ -372,12 +344,15 @@ saindo de `options`, campo a campo, e validado no servidor — o `schema` só le
 que o painel precisa para **desenhar**. A bolinha mostra a cor do tema **padrão**
 (num tema de estação a da loja é outra) e a fonte é a mesma da loja, com os
 arquivos `.woff2` copiados para `admin/src/admin/routes/content/fonts/` — o
-navegador do painel não tem nenhuma das três. `scripts/check-contract-parity.mjs`
-confere o que a geração não cobre: o md5 dos `.woff2` contra os do storefront, o
-`fallback` de fonte que o `brand.css` declara, o conjunto de temas do seed em
-`frontend/themes/` e o `brand.css` sem a paleta. As comparações de hex e família
-contra o `theme.json` **saíram** na R3-lite: o arquivo é gerado do contrato, e
-comparar um artefato com a origem dele é asserção que não pode falhar. O `schema`
+navegador do painel não tem nenhuma das três. Quem confere o que a geração não
+cobre é o `make test`: o **md5** dos `.woff2` contra os do storefront e o
+`@font-face` de cada papel (`assets.unit.spec.ts`), o `fallback` de fonte que o
+`brand.css` declara (idem) e o conteúdo do seed de tema — uma linha por tema, com
+a paleta e as famílias do contrato (`themes.unit.spec.ts`). O arquivo do seed em
+si é do gerador, e o `make check` o reprova se estiver velho. As comparações de
+hex e família contra o `theme.json` **saíram** na R3-lite: o arquivo é gerado do
+contrato, e comparar um artefato com a origem dele é asserção que não pode
+falhar. O `schema`
 inteiro é o formulário do painel — inclusive `itemFields` e `typeLabels`, que é o
 que desenha cada item de lista e nomeia cada tipo (ver *Admin*).
 

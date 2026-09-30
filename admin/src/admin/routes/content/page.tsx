@@ -26,7 +26,8 @@
  * O formulário respeita a **ordem** do contrato: cada campo de conteúdo sai
  * na posição dele, e cada trilho de aparência (os campos que têm `group`)
  * sai logo abaixo do campo que ele veste — o `attachedTo` do contrato é a
- * âncora declarada disso, conferida por `scripts/check-contract-parity.mjs`.
+ * âncora declarada disso, conferida por `contract.unit.spec.ts` ("todo trilho
+ * fica logo abaixo do campo de conteúdo que ele veste").
  * É a ordem do array, e não um mapa montado aqui, que decide onde a fonte do
  * título aparece na tela: uma escolha de tema só faz sentido junto da
  * coisa que ela muda.
@@ -283,9 +284,9 @@ function freeAnchor(type: string, sections: Section[]): string {
  * seção vai receber". As duas coisas que a tela precisa da regra viajam como
  * **dado** no payload do `GET /admin/content`: a `position` de cada seção e a
  * faixa da numeração (`order`). A gravação é do servidor, por
- * `POST /admin/content/order`. Quem cobra isso é a guarda
- * (`scripts/check-contract-parity.mjs`): um import de valor vindo de
- * `modules/content` no painel quebra o `make check`.
+ * `POST /admin/content/order`. Quem cobra isso é `scripts/check-boundaries.mjs`
+ * (`make check`): um import de valor vindo de `modules/content` no painel
+ * reprova o commit.
  *
  * Quem tem ordem **não** sai daqui: sai da coluna `fixed` da seção, que vem no
  * payload da API. `schema.singletonTypes` continua sendo a lista de tipos únicos

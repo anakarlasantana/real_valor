@@ -25,7 +25,7 @@
  * Fontes do storefront, para a lista de fontes sair na família certa.
  *
  * Cópia dos arquivos self-hosted do storefront (./fonts/README.md): os
- * mesmos bytes, conferidos por md5 em `scripts/check-contract-parity.mjs`.
+ * mesmos bytes, conferidos por md5 em `assets.unit.spec.ts` (backend).
  * As famílias e as faixas de peso são as que `THEME_FONTS` (`contract.ts`)
  * declara e as que `frontend/src/app/layout.tsx` registra na loja — prévia
  * com família diferente da loja é prévia que mente.
