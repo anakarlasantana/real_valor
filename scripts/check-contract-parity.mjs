@@ -1483,10 +1483,22 @@ const diskReads = ["readdirSync", "readFileSync", "from \"fs\"", '"fs"'].filter(
 
 assert(
   "a loja não lê o tema do disco: o `fs` saiu do caminho do request",
-  diskReads.length === 0 &&
-    themeData.includes('surface: "theme"') &&
-    themeData.includes("CONTENT_CACHE_TAG"),
+  diskReads.length === 0,
   `sinal(is) de disco em frontend/src/lib/theme.ts: ${diskReads.join(", ") || "nenhum"}`
+)
+
+// E o outro lado da mesma promessa: se não lê do disco, tem de **pedir** ao
+// payload — a superfície certa (`theme`, não a `home`) e com a tag de cache do
+// conteúdo, que é o que faz uma edição no CRM invalidadar o tema junto.
+const themeRequest = [
+  themeData.includes('surface: "theme"') ? "" : 'a query `surface: "theme"`',
+  themeData.includes("CONTENT_CACHE_TAG") ? "" : "a tag `content`",
+].filter(Boolean)
+
+assert(
+  "a loja pede a superfície de tema ao payload, com a tag do conteúdo",
+  themeRequest.length === 0,
+  `em frontend/src/lib/data/theme.ts, faltando ${themeRequest.join(" e ")}`
 )
 
 // O `default` ainda é importado de propósito — é o fallback embutido, que entra
