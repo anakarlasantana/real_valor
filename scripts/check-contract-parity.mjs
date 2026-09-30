@@ -234,8 +234,15 @@ const STOREFRONT_DIRS = [
  *
  * O `import` acontece num processo Node à parte, que apaga os tipos
  * (type-stripping nativo) e devolve o valor serializado por stdout. Só serve
- * para arquivos sem dependência de runtime — `contract.ts`, `defaults.ts` e
- * `icons.ts` são tipos e dados puros.
+ * para arquivos sem dependência de runtime — `contract.ts` e `defaults.ts` são
+ * tipos e dados puros.
+ *
+ * `icons.ts` NÃO entra nesta lista, apesar de já ter entrado. Ele importa
+ * **valor** de `@medusajs/icons` (é o registro que desenha o ícone), e resolver
+ * um import desses pede o `node_modules` do storefront — que o job `guarda de
+ * contrato` da CI não instala de propósito. Era essa a única causa de aquele
+ * job nunca fechar num clone limpo. Ver a seção dos ícones, que o lê como
+ * texto, e o comentário do `readBlock`.
  */
 function loadExport(file, exportName) {
   const dir = mkdtempSync(join(tmpdir(), "rv-parity-"))
@@ -284,11 +291,13 @@ function assert(label, condition, detail = "") {
 /**
  * Lê o bloco `const NOME = { ... }` de um arquivo texto.
  *
- * Componentes `.tsx` (o registro social, o editor do admin) são lidos como
- * texto: importá-los no Node esbarraria no JSX, que o type-stripping nativo
- * não transforma. Todo o resto que a guarda compara é carregado por
- * `loadExport`, do próprio módulo — inclusive o sub-formulário dos itens, que
- * é dado do contrato.
+ * Componentes `.tsx` (o registro social, o editor do admin) e o registro de
+ * ícones da loja são lidos como texto: os `.tsx` esbarrariam no JSX, que o
+ * type-stripping nativo não transforma, e o `icons.ts` puxaria
+ * `@medusajs/icons` — valor, logo `node_modules`, que a guarda não tem (o job
+ * de CI dela não instala nada). Todo o resto que a guarda compara é carregado
+ * por `loadExport`, do próprio módulo — inclusive o sub-formulário dos itens,
+ * que é dado do contrato.
  */
 function readBlock(source, name) {
   const match = new RegExp(`const ${name}[\\s\\S]*?\\n\\}`).exec(source)
@@ -823,13 +832,27 @@ const socialSource = readFileSync(SOCIAL_ICONS, "utf8")
 const socialKeys = readStringList(socialSource, "SOCIAL_ICON_KEYS")
 const socialMapKeys = readObjectKeys(readBlock(socialSource, "SOCIAL_ICONS"))
 
+// O registro de ícones da loja entra pela mesma regra, e não pelo `loadExport`:
+// `icons.ts` importa **valor** de `@medusajs/icons` (é ele quem desenha), então
+// importá-lo exige o `node_modules` do storefront. Medido num clone limpo
+// (`git worktree add --detach`, sem `node_modules` e sem `.medusa`): `make
+// check` morria aqui com `ERR_MODULE_NOT_FOUND`, e era a única causa do job
+// `guarda de contrato` nunca passar. Ler o texto é o que o registro social logo
+// acima já fazia — e o fato de o arquivo ser lido como texto não afrouxa nada:
+// `AVAILABLE_ICON_KEYS` é `Object.keys(ICONS)` por definição, as duas listas
+// são literais no arquivo, e uma leitura que falhe (mapa renomeado, formatação
+// fora do `readBlock`) cai nos `assert` abaixo, que exigem `Array.isArray` e a
+// chave presente no registro. Não há caminho que passe sem ler.
+const iconsSource = readFileSync(ICONS, "utf8")
+const iconsMapKeys = readObjectKeys(readBlock(iconsSource, "ICONS"))
+
 const iconKeysByKind = {
-  "list:benefit": loadExport(ICONS, "BENEFIT_ICON_KEYS"),
-  "list:action": loadExport(ICONS, "HEADER_ACTION_ICON_KEYS"),
+  "list:benefit": readStringList(iconsSource, "BENEFIT_ICON_KEYS"),
+  "list:action": readStringList(iconsSource, "HEADER_ACTION_ICON_KEYS"),
   "list:social": socialKeys,
 }
 
-const knownIcons = new Set(loadExport(ICONS, "AVAILABLE_ICON_KEYS"))
+const knownIcons = new Set(iconsMapKeys)
 
 for (const [kind, expected] of Object.entries(iconKeysByKind)) {
   const found = iconOptions(kind)
