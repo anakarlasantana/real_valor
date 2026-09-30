@@ -477,7 +477,7 @@ da CI na última medição **antes** dos consertos (API do GitHub, sem token):
 | Causa de `guarda de contrato` — **medida** | num clone limpo (`git worktree add --detach`: sem `node_modules` e sem `.medusa`, que é exatamente o que o job é — `checkout` + `setup-node` + `make check`), o `make check` morre com `ERR_MODULE_NOT_FOUND` ao carregar `frontend/src/lib/content/icons.ts` pelo `loadExport` (`check-contract-parity.mjs`). O arquivo importa **valor** de `@medusajs/icons` — é ele quem desenha o ícone —, e o comentário do `loadExport` o listava como "tipos e dados puros": a premissa falsa era a causa, não o job |
 | Causa de `tipos` — **medida** | no mesmo clone, `make types` reprova no **primeiro** dos três `tsc` (o do backend), com `TS2307` em `backend/src/scripts/seed.ts`: ele importava `../../.medusa/types/query-entry-points`, diretório **gerado pelo `medusa build`** e gitignorado, logo ausente em qualquer clone. `make -k types` mostra os outros dois `tsc` (painel e storefront) **passando**: um erro só explicava o job inteiro. O log do job continua exigindo token — não foi preciso ler |
 | Conserto da guarda | `icons.ts` passou a ser lido como **texto**, a mesma regra que o registro social (`social-icons.tsx`) já seguia: `AVAILABLE_ICON_KEYS` sai das chaves do mapa `ICONS` (que é, por definição, `Object.keys(ICONS)`) e as duas listas saem do `readStringList`. **Sem asserção nova: 94**, como antes. Medido no clone limpo: verde (94 `ok`). E continua mordendo — três testes negativos, feitos no clone: chave tirada da lista → `FAIL` "oferece as mesmas chaves"; chave oferecida sem entrada no mapa → `FAIL` "sem ícone: bolt"; mapa renomeado → `FAIL` com **todas** as chaves "sem ícone", ou seja, não há leitura que passe calada |
-| Conserto dos tipos | o tipo da chave de API passou a vir de `@medusajs/framework/types` — `ApiKeyDTO`, que é `id` + `token`, exatamente os campos que o seed lê — em vez do arquivo gerado. Medido com `.medusa/types` fora do lugar (o estado do clone): `make types` → `exit=0`, os três `tsc` |
+| Conserto dos tipos | o tipo da chave de API passou a ser **local e mínimo** — `type PublishableApiKey = { id: string; token: string }`, só o que o seed lê —, e o `import` do arquivo gerado saiu. A primeira tentativa foi o `ApiKeyDTO` do framework, e ela **verde num estado só**: resolve o clone, mas no host, onde o `.medusa/types` existe e a augmentação tipa o `graph`, `data?.[0]` vira o `ApiKey` do gráfico e a atribuição reprova (`last_used_at` é `Maybe<string \| Date>` lá e `Date \| null` no DTO — `TS2322` medido). O tipo local passa nos **dois**: `make types` com o diretório gerado **presente** e **ausente** → `exit=0` nos dois, os três `tsc` |
 
 | Primeira execução **depois** dos consertos (`#17`, `dd009b9160`) | **verde** — os cinco jobs: `guarda de contrato` (passo `make check`), `tipos` (`make types`), `testes`, `registro do schema` e `build do storefront`. Nenhuma linha de `.github/workflows/check.yml` mudou: o conserto foi todo na **árvore**, e é isso que faz o verde valer |
 
@@ -492,6 +492,8 @@ host e quebravam no clone**. O host tem `node_modules` (instalado) e `.medusa/ty
 `medusa build` da imagem); um clone limpo não tem nenhum dos dois. A CI foi só quem contou: quem
 clonasse o repositório e rodasse `make check` ou `make types` antes de subir a stack batia nos dois.
 É a mesma pergunta que a guarda do DEV fez (R7.1, acima) — o que o **ambiente** tem que a **árvore**
-não declara.
+não declara. E o conserto herda a mesma regra: **medir nos dois estados**. O primeiro tipo escolhido
+para o seed (`ApiKeyDTO`) fechou a CI e deixou `make types` vermelho no host — um estado consertado, o
+outro quebrado. O que passa nos dois é o que declara só o que o código lê.
 
 
