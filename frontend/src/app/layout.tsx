@@ -1,5 +1,6 @@
 import { getBaseURL } from "@lib/util/env"
-import { getActiveTheme, themeToCSSVariables } from "@lib/theme"
+import { getActiveTheme } from "@lib/data/theme"
+import { themeToCSSVariables } from "@lib/theme"
 import { Metadata } from "next"
 import localFont from "next/font/local"
 import "styles/globals.css"
@@ -62,8 +63,13 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout(props: { children: React.ReactNode }) {
-  const theme = getActiveTheme()
+export default async function RootLayout(props: {
+  children: React.ReactNode
+}) {
+  // O tema ativo vem do payload (`GET /store/content?surface=theme`), resolvido
+  // pela data de hoje — e cai no tema padrão embutido se a API falhar. A
+  // leitura é `await` porque é dado de rede (com cache de 60s).
+  const theme = await getActiveTheme()
 
   return (
     <html

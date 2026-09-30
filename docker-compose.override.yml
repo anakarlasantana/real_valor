@@ -163,8 +163,10 @@ services:
       # em dev o servidor e o `next dev`, nao o `server.js` standalone.
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
-      # Temas: lidos em RUNTIME por src/lib/theme.ts (fs.readdirSync). Montar
-      # permite criar/ajustar temas sem reconstruir a imagem.
+      # Temas: em DEV a pasta e montada porque o `next dev` resolve o import do
+      # `themes/default/theme.json` (`src/lib/theme.ts`) a cada compilacao. Em
+      # producao ela nao existe na imagem: o import entra no bundle do build e o
+      # tema da loja vem do payload (R5).
       - ./frontend/themes:/app/themes
       # Arquivos de configuracao do build do Next.
       - ./frontend/next.config.js:/app/next.config.js:ro

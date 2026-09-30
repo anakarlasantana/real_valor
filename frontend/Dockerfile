@@ -109,11 +109,13 @@ COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nextjs /app/public ./public
 
-# CRITICO: `src/lib/theme.ts` faz `fs.readdirSync(path.join(process.cwd(),
-# "themes"))` em RUNTIME. O `standalone` nao inclui essa pasta, e o codigo
-# engole o erro silenciosamente (`try/catch`), fazendo a loja cair no tema
-# default sem avisar. Portanto `themes/` e copiado explicitamente aqui.
-COPY --from=builder --chown=nextjs:nextjs /app/themes ./themes
+# `themes/` NAO e copiado para a imagem: desde a R5 a loja le o tema do payload
+# (`GET /store/content?surface=theme`, em `src/lib/data/theme.ts`). A unica
+# coisa que vem daquela pasta e o `themes/default/theme.json` — o fallback
+# embutido —, e o `src/lib/theme.ts` o **importa**, entao ele entra no bundle do
+# build: nao precisa existir no runtime. Antes a pasta era copiada por causa de
+# um `fs.readdirSync` em request-time, que engolia o erro e fazia a loja cair no
+# tema default sem avisar. Ver docs/plano-centralizacao.md, R5.
 
 # Executa como usuario nao-root
 USER nextjs

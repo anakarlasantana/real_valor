@@ -1,12 +1,9 @@
-import "server-only"
-
-import fs from "fs"
-import path from "path"
-
 import {
   FONT_ROLES,
   THEME_COLOR_TOKENS,
   THEME_FONTS,
+  themeColorField,
+  themeFontField,
   type FontRole,
   type ThemeColorToken,
 } from "@lib/content/home-sections"
@@ -16,23 +13,26 @@ import defaultTheme from "../../themes/default/theme.json"
 /**
  * Seasonal theme system (Fase 5 of the technical doc).
  *
- * The active theme is resolved at request time from the `themes/`
- * directory, so a season can exist without rebuilding the storefront.
+ * As estações chegam pelo **payload** (`GET /store/content?surface=theme`, em
+ * `lib/data/theme.ts`) desde a R5: elas são linhas de `content_section` na
+ * superfície `theme`, editáveis no CRM. Até a R4 este arquivo lia os
+ * `theme.json` de `themes/` em request-time — um `fs` que obrigava o Dockerfile
+ * a copiar a pasta para a imagem e que, quando a cópia faltava, derrubava a loja
+ * no tema padrão **em silêncio** (o `try`/`catch` engolia o erro). Não há mais
+ * pasta para copiar: o que a loja lê é dado do banco, como o resto do conteúdo.
  *
- * Desde a R3-lite o diretório é **gerado**: quem declara as estações é
- * `backend/src/modules/content/themes.ts`, e quem escreve os `theme.json` é
- * `node scripts/gen-content.mjs` (com o `--check` no `make check` e no hook de
- * commit). Largar uma pasta aqui à mão **não** cria uma estação — a guarda
- * reprova o diretório órfão, e de propósito: um tema que só a loja conhece
- * muda a cor da vitrine sem aparecer em lugar nenhum.
+ * O `theme.json` do `default` continua importado aqui de propósito: é o
+ * **fallback embutido** (o JSON entra no bundle do build) para quando a API de
+ * conteúdo falhar, e é dele que toda estação herda o que não declara —
+ * `normalizeTheme`, abaixo. Ele nasce do contrato
+ * (`backend/src/modules/content/themes.ts`, pelo `scripts/gen-content.mjs`).
+ *
+ * Este módulo é **puro**: quem fala com a API é `lib/data/theme.ts`, e o que dá
+ * para testar sem servidor fica aqui (`theme.spec.ts`).
  *
  * Every theme falls back to `default` for any value it does not
  * override, which is the risk mitigation described in the doc:
  * "Default-theme fallback as risk mitigation".
- *
- * (A R4 leva essas estações para o banco como linhas de `content_section` e a
- * R5 faz a loja ler o payload — aí esta leitura de disco sai. Ver
- * `docs/plano-centralizacao.md`.)
  */
 
 /**
@@ -68,47 +68,91 @@ type ThemeFile = {
   fonts?: Partial<ThemeFonts>
 }
 
-const THEMES_DIR = path.join(process.cwd(), "themes")
-
 const DEFAULT_THEME = defaultTheme as ThemeFile
 
 const DEFAULT_THEME_ID = DEFAULT_THEME.id
 
 /**
- * Reads every `themes/<id>/theme.json` and merges it over the default
- * theme. Unreadable or malformed files are skipped rather than thrown
- * so a single bad season can never take the storefront down.
+ * Uma estação do payload virada `Theme`.
+ *
+ * O payload é **plano** — `{ id, enabled, position, type, label, colorRose,
+ * colorDourado, fontDisplay, dateRangeStart, … }` —, porque a linha é uma
+ * `content_section` com o `data` achatado (ver
+ * `backend/src/modules/content/themes.ts`). Os nomes dos campos saem do
+ * contrato (`themeColorField`/`themeFontField`), e não de uma lista digitada
+ * aqui: uma cor nova no contrato chega sozinha.
+ *
+ * Campo ausente é "herda o padrão" — a estação declara só o que troca —, e é o
+ * `normalizeTheme` abaixo que completa o que falta com o tema `default`.
  */
-function loadThemes(): Theme[] {
-  let entries: string[] = []
+export function themeFromRow(row: unknown): Theme | null {
+  const source = (row ?? {}) as Record<string, unknown>
+  const id = typeof source.id === "string" ? source.id : ""
 
-  try {
-    entries = fs.readdirSync(THEMES_DIR, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-  } catch {
-    return [normalizeTheme(DEFAULT_THEME)]
+  if (!id) {
+    return null
   }
 
-  const themes = entries
-    .map((id) => {
-      try {
-        const raw = fs.readFileSync(
-          path.join(THEMES_DIR, id, "theme.json"),
-          "utf8"
+  const colors: Partial<ThemeColors> = {}
+  const fonts: Partial<ThemeFonts> = {}
+
+  for (const token of THEME_COLOR_TOKENS) {
+    const hex = source[themeColorField(token)]
+
+    if (typeof hex === "string" && hex) {
+      colors[token] = hex
+    }
+  }
+
+  for (const role of FONT_ROLES) {
+    const family = source[themeFontField(role)]
+
+    if (typeof family === "string" && family) {
+      fonts[role] = family
+    }
+  }
+
+  const start =
+    typeof source.dateRangeStart === "string" ? source.dateRangeStart : ""
+  const end = typeof source.dateRangeEnd === "string" ? source.dateRangeEnd : ""
+
+  return normalizeTheme({
+    id,
+    label: typeof source.label === "string" ? source.label : id,
+    dateRange: start && end ? { start, end } : null,
+    colors,
+    fonts,
+  })
+}
+
+/**
+ * As estações do payload, prontas para `resolveTheme`.
+ *
+ * A linha que não é um tema é **descartada com log**, como o
+ * `supportedSections` faz com a seção que a loja não conhece: a consulta pede
+ * `surface=theme`, mas o que volta do banco é dado — e uma linha de outra
+ * superfície (ou sem `id`) não pode virar paleta da loja. Sem tema nenhum, o
+ * chamador cai no `default` embutido.
+ */
+export function themesFromRows(rows: unknown): Theme[] {
+  if (!Array.isArray(rows)) {
+    return []
+  }
+
+  return rows
+    .map((row) => {
+      const type = (row as { type?: unknown } | null)?.type
+
+      if (type !== undefined && type !== "theme") {
+        console.error(
+          `Tema com type "${String(type)}" não é um tema; descartado.`
         )
-        return normalizeTheme(JSON.parse(raw) as ThemeFile)
-      } catch {
         return null
       }
+
+      return themeFromRow(row)
     })
     .filter((theme): theme is Theme => theme !== null)
-
-  if (!themes.some((theme) => theme.id === DEFAULT_THEME_ID)) {
-    themes.unshift(normalizeTheme(DEFAULT_THEME))
-  }
-
-  return themes
 }
 
 /** Merges a partial theme file over the default theme's values. */
@@ -143,12 +187,18 @@ function isWithinRange(monthDay: string, range: { start: string; end: string }) 
 /**
  * Resolves the theme active for a given date.
  *
+ * A lista vem do chamador — `lib/data/theme.ts` a monta do payload
+ * (`themesFromRows`) e, quando a API falha, passa o `default` embutido. Assim
+ * esta função continua pura: é a regra da janela, e não o I/O dela.
+ *
  * When several seasonal ranges overlap, the narrowest window wins so a
  * short campaign (Black Friday) beats a broad season (Natal).
  * Always returns a usable theme thanks to the default fallback.
  */
-export function resolveTheme(date: Date = new Date()): Theme {
-  const themes = loadThemes()
+export function resolveTheme(
+  themes: readonly Theme[],
+  date: Date = new Date()
+): Theme {
   const fallback =
     themes.find((theme) => theme.id === DEFAULT_THEME_ID) ??
     normalizeTheme(DEFAULT_THEME)
@@ -209,7 +259,9 @@ export function themeToCSSVariables(theme: Theme): Record<string, string> {
   return vars
 }
 
-/** Convenience helper for server components that need the active theme. */
-export function getActiveTheme(): Theme {
-  return resolveTheme(new Date())
-}
+/**
+ * `getActiveTheme` mora em `lib/data/theme.ts` desde a R5: o tema ativo depende
+ * do payload (`GET /store/content?surface=theme`), e ler dado é trabalho do
+ * módulo de dados — aqui fica a **regra** (a janela mais estreita vence, o
+ * `default` é o fallback), que é o que dá para testar sem servidor.
+ */

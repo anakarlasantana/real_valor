@@ -41,7 +41,7 @@ help:
 	@echo "  Build e dados"
 	@echo "    make build         - Reconstroi as imagens do backend e do frontend"
 	@echo "    make migrate       - Aplica as migracoes do Medusa v2"
-	@echo "    make seed          - Popula catalogo, conteudo da vitrine e o schema do CRM"
+	@echo "    make seed          - Popula catalogo, o conteudo (vitrine e tema) e o schema do CRM"
 	@echo "    make clean-db      - APAGA os volumes do banco e reinicia do zero"
 	@echo ""
 	@echo "  Utilitarios"
@@ -139,9 +139,13 @@ build:
 migrate:
 	$(COMPOSE) exec -u root backend yarn medusa db:migrate
 
-# `seed` = comércio (`seed.ts`) + conteúdo da vitrine (`seed-content.ts`) +
-# registro do schema (`seed-schema.ts`). Os três são idempotentes: rodar de novo
-# numa base já semeada não altera nada.
+# `seed` = comércio (`seed.ts`) + conteúdo (`seed-content.ts`) + registro do
+# schema (`seed-schema.ts`). Os três são idempotentes: rodar de novo numa base
+# já semeada não altera nada.
+#
+# O `seed-content` popula as **duas** superfícies de conteúdo: as seções da
+# vitrine e as estações do tema (a mesma lista que o gerador escreve em
+# `frontend/themes/`, e que a loja lê do payload desde a R5).
 #
 # O conteúdo entra aqui para uma base nova nascer montada sem ninguém precisar
 # abrir o painel — e é a MESMA regra do botão "Restaurar padrão" do CRM

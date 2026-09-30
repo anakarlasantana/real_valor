@@ -24,10 +24,11 @@ jest-coverage
 .env.local
 .env.*.local
 
-# ATENCAO: `themes/` e `public/` NAO sao ignorados de proposito.
-# `src/lib/theme.ts` faz `fs.readdirSync(THEMES_DIR)` em RUNTIME e `public/`
-# contem os assets da marca. Ambos precisam estar na imagem, senao o
-# storefront cai silenciosamente no tema default.
+# ATENCAO: `public/` NAO e ignorado de proposito (os assets da marca sao lidos
+# em runtime pelo servidor standalone). `themes/` tambem fica no contexto, mas
+# por outro motivo: o build importa `themes/default/theme.json` (o fallback
+# embutido do tema, em `src/lib/theme.ts`). Desde a R5 a pasta **nao** vai para
+# a imagem — o tema da loja vem do payload (`GET /store/content?surface=theme`).
 
 # Logs
 *.log

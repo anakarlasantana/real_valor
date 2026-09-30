@@ -195,6 +195,10 @@ const THEMES = join(root, "backend/src/modules/content/themes.ts")
 const TOKENS_CSS = join(root, "frontend/src/styles/tokens.generated.css")
 /** `themeToCSSVariables`: monta os `--rv-*` das listas do contrato. */
 const THEME_TS = join(root, "frontend/src/lib/theme.ts")
+/** O leitor do tema no storefront: o payload, e não os arquivos (R5). */
+const THEME_DATA = join(root, "frontend/src/lib/data/theme.ts")
+const FRONTEND_LAYOUT = join(root, "frontend/src/app/layout.tsx")
+const FRONTEND_DOCKERFILE = join(root, "frontend/Dockerfile")
 const FOOTER_COLUMN = join(
   root,
   "frontend/src/modules/layout/components/footer-column/index.tsx"
@@ -1457,6 +1461,54 @@ assert(
   "o theme.ts monta as variáveis das listas do contrato, sem as digitar",
   handwrittenTokens.length === 0 && themeTs.includes("THEME_COLOR_TOKENS"),
   `digitado: ${handwrittenTokens.join(", ") || "nenhum"}`
+)
+
+// ---------------------------------------------------------------------------
+// O tema vem do PAYLOAD (R5) — e o `themes/` sai da imagem
+// ---------------------------------------------------------------------------
+//
+// A promessa do F3, em duas partes, e as duas são checáveis: "some o `fs` em
+// request-time" (não há leitura de disco no caminho da loja) e "some o `COPY`
+// do Dockerfile" (a pasta não vai mais para a imagem). A leitura do tema passou
+// a ser `lib/data/theme.ts`, como a do conteúdo — com a mesma tag de cache, que
+// é o que faz uma edição no CRM aparecer na loja pelo mesmo aviso.
+
+const themeData = readFileSync(THEME_DATA, "utf8")
+const layout = readFileSync(FRONTEND_LAYOUT, "utf8")
+const dockerfile = readFileSync(FRONTEND_DOCKERFILE, "utf8")
+
+const diskReads = ["readdirSync", "readFileSync", "from \"fs\"", '"fs"'].filter(
+  (signal) => themeTs.includes(signal)
+)
+
+assert(
+  "a loja não lê o tema do disco: o `fs` saiu do caminho do request",
+  diskReads.length === 0 &&
+    themeData.includes('surface: "theme"') &&
+    themeData.includes("CONTENT_CACHE_TAG"),
+  `sinal(is) de disco em frontend/src/lib/theme.ts: ${diskReads.join(", ") || "nenhum"}`
+)
+
+// O `default` ainda é importado de propósito — é o fallback embutido, que entra
+// no bundle do build —, mas isso é um `import`, não uma leitura de pasta.
+assert(
+  "o tema padrão continua embutido como fallback (um `import`, não o disco)",
+  themeTs.includes("../../themes/default/theme.json"),
+  "em frontend/src/lib/theme.ts: o fallback é o JSON gerado do contrato"
+)
+
+assert(
+  "o layout espera o tema, lido do módulo de dados",
+  layout.includes("await getActiveTheme()") &&
+    layout.includes("@lib/data/theme") &&
+    !layout.includes("getActiveTheme, themeToCSSVariables"),
+  "em frontend/src/app/layout.tsx: `await getActiveTheme()` de `@lib/data/theme`"
+)
+
+assert(
+  "o `themes/` não é mais copiado para a imagem do storefront",
+  !dockerfile.includes("COPY --from=builder --chown=nextjs:nextjs /app/themes"),
+  "em frontend/Dockerfile: a pasta ficou só no contexto do build (o JSON é importado)"
 )
 
 // O `@font-face` é quem entrega os bytes ao navegador do painel. Conferir a

@@ -212,13 +212,17 @@ real_valor/
 │       ├── api/store/ api/admin/     # rotas customizadas da Store API e do Admin
 │       ├── jobs/ links/ subscribers/ workflows/
 │       └── scripts/                  # `seed.ts` (admin/região/chaves), `seed-content.ts`
-│                                       #   (conteúdo da home) e `seed-schema.ts`
+│                                       #   (o conteúdo das duas superfícies: a vitrine e o
+│                                       #   tema) e `seed-schema.ts`
 │                                       #   (registro do schema no Postgres)
 │
 └── frontend/                         # Next.js 15 (App Router) — storefront
     ├── Dockerfile                    # deps → builder → runner (standalone, PROD) | deps → dev (DEV)
     ├── next.config.js                # traz o `checkEnvVariables()` (aborta o build sem a chave)
-    ├── themes/                       # seed do tema, GERADO do contrato (R3-lite)
+    ├── themes/                       # seed do tema, GERADO do contrato (R3-lite);
+    │                                   #   desde a R5 a loja lê o tema do payload e a
+    │                                   #   pasta não vai para a imagem (só o JSON do
+    │                                   #   `default`, importado como fallback no build)
     └── src/
         ├── app/fonts/                # fontes SELF-HOSTED (`.woff2`) + README do porquê
         ├── app/[countryCode]/        # rotas da loja: `/br`, `/br/store`, produto, carrinho…
@@ -268,16 +272,19 @@ armadilhas de ambiente Docker —, cada item com evidência e impacto.
 
 ### Conteúdo da vitrine no CRM
 
-O painel (`/painel` → **Conteúdo da vitrine**) edita a loja sem deploy:
+O painel (`/painel` → **Conteúdo da vitrine**) edita a loja sem deploy, em **duas
+superfícies** — a vitrine e o tema —, com o seletor vindo do contrato
+(`CONTENT_SURFACES`, no `schema` da API):
 
 | O que | Como |
 | :--- | :--- |
 | Copy, links, imagens e aparência das seções | os campos vêm do contrato — campo novo no `contract.ts` aparece no formulário (`make gen` + `make seed-schema`) |
+| A paleta e as fontes da loja (**aba "Tema da loja"**) | cada linha é uma estação (`default` + Black Friday, Natal e Verão), com a janela de datas em `MM-DD`, as seis cores em `#RRGGBB` (roda de cores do navegador) e os três papéis de fonte no seletor. Quem escolhe a estação é a **data** — a janela mais estreita vence (a Black Friday ganha do Natal) —, e "Estação no ar" liga/desliga a linha sem apagar a paleta. Campo em branco **herda** o `default`. É dado no banco, como o resto: uma edição aqui aparece na loja pelo mesmo aviso de cache |
 | Ordem | setas na listagem **só na vitrine**; a mudança fica na tela até "Salvar ordem", que manda a lista de ids de uma vez (o servidor renumera de 100 em diante — a faixa abaixo de 100 é do cromo —, grava só o que mudou e avisa a loja **uma vez**). O numeral da seção aparece ao lado do rótulo — o campo "Ordem" saiu do formulário — e, com a ordem ainda não publicada, mostra o número que a seção **vai** receber. As seções marcadas como **Fixo** não têm seta e mostram a etiqueta no lugar do numeral |
-| Criar seção | "Nova seção" escolhe tipo e âncora; a seção nasce com o conteúdo padrão do tipo e entra no fim |
+| Criar seção | "Nova seção" escolhe tipo e âncora; a seção nasce com o conteúdo padrão do tipo e entra no fim. Na aba do tema o mesmo botão cria uma **estação** — os tipos oferecidos são os da superfície em edição |
 | Remover seção | lixeira na linha, com confirmação — não há desfazer |
 | Cabeçalho, rodapé e barra de anúncio | são blocos como os outros, no mesmo lugar, e **únicos**: o segundo não é oferecido. Aparecem marcados como **Fixo** (a coluna `fixed` da seção) e não têm setas nem campo "Ordem" — quem os posiciona é a moldura da loja, em todas as rotas, e a loja os resolve por tipo |
-| Restaurar o padrão | recria as seções que faltam (é o mesmo que `yarn seed-content` faz dentro do `make seed`); não altera o que já existe |
+| Restaurar o padrão | recria o que falta **na superfície em edição** (é o mesmo que `yarn seed-content` faz dentro do `make seed`): as seções do protótipo na vitrine, as estações na aba do tema. Não altera o que já existe |
 | Salvar a edição de uma seção | a barra “Alterações não salvas” aparece no topo do formulário quando algo mudou, com **Salvar** e **Descartar** — sem alteração, não há o que salvar |
 | Fotos | envio pelo botão do campo de imagem; o valor gravado é a **chave** do arquivo |
 
