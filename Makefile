@@ -118,6 +118,28 @@ logs-all:
 	$(COMPOSE) logs -f
 
 # ---------------------------------------------------------------------------
+# Dependencias
+# ---------------------------------------------------------------------------
+# O install e' UNICO e roda na RAIZ do repositorio (Yarn workspace, desde o G5):
+# resolve o backend, o storefront e o pacote do contrato de uma vez, com UM
+# lockfile. Nao existe mais `yarn install` dentro de `backend/`/`frontend/` —
+# um `yarn` rodado la' sobe para a raiz sozinho (por isso um `yarn.lock`
+# esquecido num app era um bug: ver o `.dockerignore`).
+#
+# `node .yarn/releases/yarn-4.12.0.cjs` em vez de `yarn` porque o repositorio
+# fixa a versao ali' (o `yarnPath` do `.yarnrc.yml`): este alvo funciona mesmo
+# sem o Yarn no PATH e sem Corepack — que e' o caso deste ambiente.
+#
+# `install` e' o MESMO comando da CI (`--immutable`): falha, em vez de mexer no
+# lockfile, quando ele esta' fora de sincronia. Para ADICIONAR/atualizar uma
+# dependencia use `make install-update`, que grava o `yarn.lock` e o commita.
+install:
+	node .yarn/releases/yarn-4.12.0.cjs install --immutable
+
+install-update:
+	node .yarn/releases/yarn-4.12.0.cjs install
+
+# ---------------------------------------------------------------------------
 # Build
 # ---------------------------------------------------------------------------
 # Cada repo tem o seu Dockerfile e cada modo fixa o estagio (`target: runner` em
@@ -246,10 +268,12 @@ doctor:
 # ---------------------------------------------------------------------------
 # Contrato de conteudo: gerar e verificar
 # ---------------------------------------------------------------------------
-# O contrato tem uma fonte so (`backend/src/modules/content/`), mas o
-# storefront e um pacote npm separado e nao consegue importa-la. O artefato
-# `frontend/src/lib/content/contract.generated.ts` e GERADO daquela fonte e
-# versionado: contrato novo e `make gen` + commit do diff.
+# O contrato tem uma fonte so — o pacote `packages/contrato` (`@rv/contrato`),
+# que os tres runtimes importam desde o G5. O que `make gen` escreve e' o que
+# DERIVA dele e nao e' codigo: o seed do tema (um `theme.json` por tema, em
+# `frontend/themes/`) e os tokens do `brand.css`
+# (`frontend/src/styles/tokens.generated.css`). Os dois sao versionados:
+# contrato novo e' `make gen` + commit do diff.
 #
 # `make check` e o que o hook de commit roda. Ele nao precisa da stack de pe
 # (e so Node lendo arquivos), entao serve tambem para o pre-push e a CI.

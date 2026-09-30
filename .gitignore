@@ -22,10 +22,12 @@ yarn-error.log*
 # Runtime local do modo host (PIDs e logs de scripts/dev-host.sh)
 .run/
 
-# O artefato gerado do contrato do storefront
-# (`frontend/src/lib/content/contract.generated.ts`) e VERSIONADO de proposito:
-# a revisao mostra exatamente o que o storefront passa a receber, e o
-# `make check` falha quando ele esta velho. Nao adicione aqui.
+# Contrato de conteúdo: NAO ha artefato gerado desde o G5 — ele e o pacote
+# `packages/contrato` (versionado como qualquer fonte). O que o gerador ainda
+# escreve — o seed do tema (`frontend/themes/<id>/theme.json`) e
+# `frontend/src/styles/tokens.generated.css` — e VERSIONADO de proposito: a
+# revisao mostra o que o storefront recebe, e o `make check` falha quando um
+# deles envelhece. Nao adicione aqui.
 
 # Yarn do workspace (a raiz) — G5: o install e' unico e o release e' versionado,
 # como ja' era em cada app. O cache nao: ele tem 145MB e o `.dockerignore`

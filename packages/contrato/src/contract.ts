@@ -5,28 +5,23 @@
  * os tipos das seções, os campos que o CRM edita (`SECTION_FIELDS`) e as
  * listas fechadas do tema (paleta, papéis de fonte, trilhos).
  *
- * O storefront é outro pacote npm, com `node_modules` próprio, e não tem
- * como importar daqui. Em vez de manter uma cópia digitada à mão (o antigo
- * espelho, que precisava de mil linhas de guarda para não divergir), o
- * storefront recebe o **bloco compartilhado** deste arquivo — tudo o que
- * está acima do marcador "Bloco compartilhado" — mais o conteúdo padrão de
- * `./defaults`, gerados por:
- *
- *     node scripts/gen-content.mjs          # regrava o artefato
- *     node scripts/gen-content.mjs --check  # falha se estiver desatualizado
- *
- * O artefato é `frontend/src/lib/content/contract.generated.ts` e NÃO se
- * edita à mão: `scripts/check-contract-parity.mjs` (`make check`) reprova
- * artefato fora de sincronia, e o mesmo comando roda no hook de commit.
+ * Desde o G5 backend, CRM e storefront importam este arquivo pelo pacote
+ * `@rv/contrato` (`packages/contrato/src/`): não há bloco copiado nem espelho
+ * digitado à mão — a fronteira passou a ser do compilador. O
+ * `scripts/gen-content.mjs` ficou só com o que **deriva** do contrato e não é
+ * código (o seed do tema e os tokens do `brand.css`), e o
+ * `scripts/check-contract-parity.mjs` (`make check`) continua conferindo o que
+ * o compilador não vê: os espelhos de dado do painel, a aparência e o que a
+ * loja lê do contrato.
  *
  * Origem do conteúdo: ./Downloads/real-valor-frontend-prototype
  */
 
 // ===========================================================================
-// INÍCIO DO BLOCO COMPARTILHADO — copiado para
-// `frontend/src/lib/content/contract.generated.ts` por `scripts/gen-content.mjs`.
-// Só acrescente aqui o que o storefront precisa em runtime (tipos e listas
-// fechadas). O que é só do backend/admin fica abaixo do fim do bloco.
+// INÍCIO DO BLOCO COMPARTILHADO — tudo o que a loja lê em runtime (tipos das
+// seções, listas fechadas do tema, fontes de coluna do rodapé). O que é só do
+// backend/CRM fica abaixo do fim do bloco. Desde o G5 o storefront importa
+// este arquivo pelo pacote (`@rv/contrato`): não há cópia para manter em dia.
 // ===========================================================================
 
 /**

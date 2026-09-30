@@ -57,7 +57,7 @@ imagem e a loja lendo do payload são a R4/R5.
 | Fase | O que é | Status | Onde |
 |---|---|---|---|
 | **F0** — Rede e ruído | `make check` + hook de commit, docs enxutas (1 entrada + 4 assuntos), READMEs de template e pastas vazias fora | ✅ feito | `make check`, `docs/DEBITO-TECNICO.md` |
-| **F1** — Fonte única do contrato | gerador emite tipos/defaults/tokens/mapas em cada app; artefato versionado com `--check` | ✅ feito | `scripts/gen-content.mjs`, `frontend/src/lib/content/contract.generated.ts`; guarda 1.042 → **69 asserts** |
+| **F1** — Fonte única do contrato | gerador emite tipos/defaults/tokens/mapas em cada app; artefato versionado com `--check` | ✅ feito (histórico: o artefato do storefront morreu no G5 — ver "Onde parou") | `scripts/gen-content.mjs`, `frontend/src/lib/content/contract.generated.ts`; guarda 1.042 → **69 asserts** |
 | **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ✅ **feito** | `content_contract` + `schema.ts` + `seed-schema`; a API lê e valida contra o registro; `schemaVersion` no payload; a loja descarta tipo desconhecido. 11 asserts na guarda |
 | **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ✅ **feito** — a etapa 1 ficou congelada em `arquivo/` (não mergeada) e a etapa 2 foi **refeita** sobre o `develop`, na R3-lite e na R4 → R5 | branch `arquivo/f3-tema-como-dado-nao-mergear` (era `f3-tema-como-dado`), commit `fcdc3500ec`: superfície `theme` no contrato + API + CRM. **Não mergear:** o ponto de ramificação é `f4fe7c07` e o `develop` andou **32 commits** desde então; a simulação de merge (`git merge-tree`) conflita em **5 arquivos** — `admin/routes/content/{field-input.tsx,page.tsx}`, `api/admin/content/route.ts`, `modules/content/contract.ts` e `scripts/check-contract-parity.mjs` —, três deles justamente os que a R6/R6.5/R7 reescrevem. A etapa 2 foi **refeita** sobre o `develop` nas fases R3-lite e R4 → R5. **Feito na R3-lite:** o contrato como origem da paleta/fontes, os `theme.json` e os tokens como artefatos gerados (o seed). **Feito na R4 e na R5** (`88aa6ef599` e `439a8a8d5c`): a superfície `theme` na API e no CRM, o seed dela no banco, a loja lendo o payload e o `themes/` fora da imagem. O que a fase mediu está em "R4 → R5 — o que a fase mediu" |
 | **F4** — CRM de vendas/entrega | agregações (vendas, status, ticket, rastreio) como módulo + rotas `/admin/*`, sobre o mesmo banco | ⏸️ não iniciado | `order-customer-indexer` + `/store/orders/track` são a base |
@@ -141,7 +141,7 @@ teste ou checagem de dado — nenhuma das 89 some sem substituto, e nenhuma das
 
 | Grupo (como está hoje) | Nº | Protege | Destino | Quem faz |
 |---|---|---|---|---|
-| Contrato gerado do storefront | 1 | artefato fresco | **build** | G5: com `packages/contrato` não há cópia — o storefront importa o tipo, e `gen-content.mjs` sai do mundo |
+| Contrato gerado do storefront | 1 | artefato fresco | **build** | G5 feito: com `packages/contrato` não há cópia — a loja importa o mesmo módulo, e o gerador ficou só com o que deriva dele (seed do tema e tokens) |
 | `SECTION_TYPES ⇔ SECTION_FIELDS` | 2 | todo tipo tem campos; sem tipo fora | **tipagem** | `Record<SectionType, …>` já é exaustivo; a assert só existe porque a guarda lê a cópia por JSON |
 | `DEFAULTS_HOME_SECTIONS` | 9 | seed cobre os tipos, posições únicas/ordenadas, obrigatórios preenchidos, cromo igual ao fallback | **teste** (1 spec) + **serviço** | `defaults.spec.ts`; `position` único vira validação do serviço (o que a tabela de riscos já previa) |
 | `ADMIN` — espelhos | 5 | o painel não redeclara `ITEM_FIELDS`/`ICON_LABELS`/… | **tipagem** → na prática **fica asserção** (medido na R2) | G2: `import type` some em build. **R2:** o painel não é "o mesmo pacote" do contrato — é irmão, ligado pelo alias `@conteudo/*` — e o `tsc` **não vê cópia** de forma (`type FieldKind = { x: string }` num arquivo que não importa compila verde; medido). A asserção ficou, e a varredura foi alargada para o pacote inteiro |
@@ -173,7 +173,7 @@ morrem na G5. O meio vai para teste.
 | **G2** | **tipagem no painel**: importar os tipos do contrato, renderer exaustivo por `kind`, constantes importadas em vez de lidas por regex | baixo |
 | **G3** | **testes assumem a guarda**: `defaults`, `appearance`, `itemFields`/ícones/labels, CSS e fontes com `fs`, `resolveSchema`/`getContract`, vitest no frontend | médio (deps novas) — ✅ **feito** (37 + 5 testes) |
 | **G4** | **deletar a guarda**: `git rm scripts/check-contract-parity.mjs`; `make check` = `gen --check` + testes; o hook chama o novo `make check`. O mapa vai na mensagem do commit | médio — por isso a CI precisa estar verde antes |
-| **G5** | **`packages/contrato`**: install unificado (lockfile único), pacote com `contract.ts` + `schema.ts`, os dois apps em `workspace:*`, `transpilePackages` no Next, Medusa com o pacote no build, os dois Dockerfiles ajustados. Sai `gen-content.mjs` e `contract.generated.ts` | **alto** — mexe no build dos dois lados |
+| **G5** | **`packages/contrato`**: install unificado (lockfile único), pacote com `contract.ts` + `defaults.ts` + `schema.ts`, os dois apps em `workspace:*`, `transpilePackages` no Next, Medusa com o pacote no build, os dois Dockerfiles ajustados. Sai `contract.generated.ts` — o `gen-content.mjs` **sobreviveu**, reduzido ao que deriva do contrato (ver a nota em "Onde parou") | **alto** — mexe no build dos dois lados |
 
 **Requisito de G4:** CI verde antes. Sem CI rodando, apagar 89 verificações é
 desligar o alarme antes de ligar outro.
@@ -186,8 +186,29 @@ desligar o alarme antes de ligar outro.
 | **G1** CI | ✅ `400d137b52` (4 jobs; o job `schema` foi validado localmente contra um banco **vazio**: `db:migrate` → `seed-schema` ("Era inexistente") → `--check` ("em dia")) |
 | **G2** tipagem no painel | ✅ `98ad1e0fcf` — guarda de **89 → 80**; a exaustividade por `kind` virou `tsc` (provado: injetar `\| "date"` dá `TS2322`); `medusa build` passa e o bundle do admin não leva dado do contrato |
 | **G3** testes | ✅ `50f8cee573` (37 no backend) + `efaece4907` (5 no storefront, com `vitest`) |
-| **G4** apagar a guarda | ⏸️ **adiada — e a ordem virou** |
-| **G5** `packages/contrato` | ⏸️ não iniciado |
+| **G4** apagar a guarda | ⏭️ **destravado pelo G5** — é o próximo da fila |
+| **G5** `packages/contrato` | ✅ **feito (2026-09-30)** — install unificado (um `yarn.lock`, **1418 pacotes**, `node_modules` de **987MB** contra 867MB + 573MB em separado), pacote `@rv/contrato` (`contract`/`defaults`/`schema`) com shims de re-export em `backend/src/modules/content/`, `workspace:*` nos dois apps, `transpilePackages` no Next, `yarn workspaces focus` nos dois Dockerfiles (contexto = a raiz) e `contract.generated.ts` **apagado**. Medido: `make types` verde nos 3 projetos, guarda **114**, jest **183 + 12**, vitest **76** |
+
+**O que o G5 mudou em relação ao que este plano dizia (medido, não especulado).**
+
+- O **`gen-content.mjs` não saiu**. Ele ficou com o que o contrato **origina** e não é
+  código: o seed do tema (`frontend/themes/<id>/theme.json`) e
+  `frontend/src/styles/tokens.generated.css`. O que morreu foi o fatiador do "bloco
+  compartilhado", que existia só para montar a cópia.
+- O **`themes.ts` não mudou de casa**: desde a R5 a loja lê o tema do **payload**, então o
+  único consumidor dele é o backend. O pacote levou `contract`/`defaults`/`schema`.
+- Os **dois Dockerfiles passaram a ter o mesmo contexto** — a raiz do repositório —, e o
+  `focus --production` migrou do estágio `runner` para o `builder`: é lá que o cache do
+  Yarn está (o `focus` roda **sem rede**), e assim o cache de ~145MB deixa de entrar na
+  imagem final. Efeito medido no `runner`: **139MB**, contra **1,72GB** antes.
+- O `admin/` **continua sem instalação própria** (não é workspace): quem o compila é o
+  Vite do backend, e o `tsconfig` dele aponta para o `node_modules` da raiz.
+- Dois estranhamentos que só apareceram no build de imagem (medidos, não supostos): o
+  ts-node recusa o pacote ESM no `medusa build` e no `medusa develop`
+  (`ERR_REQUIRE_ESM` — resolvido com `TS_NODE_IGNORE` no diretório do pacote, `builder` e
+  `dev`), e o `allowImportingTsExtensions` do backend exigia
+  `rewriteRelativeImportExtensions` para o `tsc` **emitir** (`TS5096`; o `--noEmit` de
+  `make types` não acusava).
 
 **Por que o G4 virou depois do G5 (invertendo o plano).** Aproximadamente 8 das 80
 asserções restantes comparam o **artefato gerado** (a cópia) com o contrato: o
@@ -289,11 +310,15 @@ Conferir: `make types`.
 | Pacote | Runtime | Papel | Fonte de dado |
 |---|---|---|---|
 | `backend/` | Node/Medusa | módulos, schema no banco, `/admin/*` e `/store/*` | **Postgres — dono único** |
-| `admin/` | compilado pelo Vite do **backend** (React **18.3.1** + `@medusajs/ui` vêm de `backend/node_modules`) | CRM (`/painel`) | nenhuma: só chama a API |
+| `admin/` | compilado pelo Vite do **backend** (React **18.3.1** + `@medusajs/ui` vêm do `node_modules` da raiz, instalado uma vez desde o G5) | CRM (`/painel`) | nenhuma: só chama a API |
 | `frontend/` | Next 15 + React **19.0.5** | storefront (SSR/ISR, SEO, checkout) | nenhuma: render + validação |
 
-React 18 × 19 é o que torna a fronteira **física**: o CRM não pode compartilhar `node_modules`
-com o storefront (é por isso que o `packages/` do G5 não resolve o caso do CRM). A guarda é
+React 18 × 19 é o que torna a fronteira **física**, e o install unificado do G5 **não** a
+apagou: o CRM continua compilando contra o React 18 do Medusa e a loja contra o 19, e o
+`node_modules` da raiz guarda as duas árvores — a que diverge desce para o app
+(`frontend/node_modules/react` é o 19.0.5). O `packages/` do G5 não resolvia o caso do CRM
+porque nenhum pacote resolve versão: isso é resolução de dependência, não código
+compartilhado. A guarda é
 `scripts/check-boundaries.mjs`, que falha quando `admin/` importar **valor** (≠ `import type`)
 de `backend/`. O painel **não** importa valor nenhum desde a R6.5: eram três (`nextPosition`,
 `positionFor` e `renumber`, em `page.tsx`), e os três saíram — a regra passou a viajar como dado (a

@@ -19,5 +19,5 @@
  * declaram `@rv/contrato` como dependência de workspace e importam o mesmo
  * arquivo — a fronteira contrato ⇔ loja passou a ser do compilador.
  */
-export * from "./contract"
-export * from "./defaults"
+export * from "./contract.ts"
+export * from "./defaults.ts"

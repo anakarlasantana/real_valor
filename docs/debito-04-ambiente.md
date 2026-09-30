@@ -48,10 +48,13 @@ Uma imagem `runner` que copie só `.medusa/server` + manifestos falha ao iniciar
 Usage Error: Couldn't find the node_modules state file - running an install might help
 ```
 
-porque `docker-entrypoint.sh` invoca `yarn medusa db:migrate`. O `backend/Dockerfile` copia o
-`node_modules` do estágio `builder` e remove as devDependencies com
-`yarn workspaces focus --production --all` (usar o próprio Yarn preserva o `install-state.gz`;
-apagar pastas à mão corromperia o estado).
+porque `docker-entrypoint.sh` invoca `yarn medusa db:migrate`. Por isso o
+`backend/Dockerfile` copia o `node_modules` do estágio `builder` — que desde o G5 já sai
+**enxugado** de lá, por `yarn workspaces focus --production real-valor-backend` rodado no
+`builder` e não no `runner`: é no builder que o cache do Yarn está (o `focus` roda **sem
+rede**), e o `runner` copia a árvore pronta mais apenas o `.yarn/releases` — o cache de
+~145MB deixa de entrar na imagem final. Usar o próprio Yarn preserva o estado do install
+(`node_modules/.yarn-state.yml`); apagar pastas à mão corromperia o estado.
 
 ### 6.3 O build do storefront exigia o backend no ar — **RESOLVIDO em 2026-09-26**
 

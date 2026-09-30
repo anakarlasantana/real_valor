@@ -1,11 +1,11 @@
 /**
  * Conteúdo da vitrine — a fachada que o storefront importa.
  * -----------------------------------------------------------------
- * Tipos das seções, listas fechadas do tema e conteúdo padrão vêm de
- * `./contract.generated`, gerado de `backend/src/modules/content/` por
- * `node scripts/gen-content.mjs`. Não edite o artefato: mude o contrato no
- * backend e rode o gerador (`make gen`), que o `make check` e o hook de
- * commit reprovam artefato velho.
+ * Tipos das seções, listas fechadas do tema e conteúdo padrão vêm do
+ * **pacote do contrato** (`@rv/contrato`, `packages/contrato/src/`), o mesmo
+ * que o backend e o CRM importam. Até o G5 esta linha apontava para
+ * `./contract.generated`, uma cópia escrita por `node scripts/gen-content.mjs`;
+ * a cópia morreu e a fronteira contrato ⇔ loja passou a ser do compilador.
  *
  * Aqui mora só o que é decisão da vitrine: os quatro seletores com que o
  * layout separa o cromo (anúncio, cabeçalho, rodapé) do conteúdo da home,
@@ -22,9 +22,9 @@ import {
   type FooterSection,
   type HomeSection,
   type NavSection,
-} from "./contract.generated"
+} from "@rv/contrato"
 
-export * from "./contract.generated"
+export * from "@rv/contrato"
 
 /** Sections sorted by position and with disabled ones removed. */
 export function visibleSections(sections: HomeSection[]): HomeSection[] {

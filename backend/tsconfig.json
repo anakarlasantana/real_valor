@@ -17,6 +17,18 @@
      * do pacote e' a que o loader do Node resolve em disco.
      */
     "allowImportingTsExtensions": true,
+    /*
+     * `rewriteRelativeImportExtensions` e o par de cima, e sem ele o `medusa
+     * build` NAO passa (medido: `TS5096 — Option 'allowImportingTsExtensions'
+     * can only be used when either 'noEmit' or 'emitDeclarationOnly' is set`,
+     * no `yarn build` do estagio `builder`, que emite de verdade). O `tsc`
+     * sozinho com `--noEmit` (`make types`) nao acusava, porque o emit e' que
+     * proibe import com extensao `.ts` — sem reescrever, o JS emitido apontaria
+     * para um arquivo que nao existe. Com o flag (TypeScript 5.7+; aqui 5.9.3),
+     * o emit reescreve `./contract.ts` -> `./contract.js`, que e' o que o
+     * pacote compilado precisa.
+     */
+    "rewriteRelativeImportExtensions": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "skipLibCheck": true,

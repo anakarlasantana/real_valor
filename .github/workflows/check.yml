@@ -6,6 +6,11 @@
 # e o que torna exigível tudo o mais que o build de verificação ganhou: tipos,
 # testes, o build do storefront, e o `--check` do registro do schema.
 #
+# O install e' UNICO (workspace, G5): os jobs que precisam de dependencias
+# rodam `yarn install --immutable` na RAIZ do repositorio e cacheiam um so'
+# `yarn.lock` — o pacote do contrato (`packages/contrato`) entra junto, em vez
+# de ser copiado de um app para o outro.
+#
 # Cinco jobs, porque as dependências não são as mesmas:
 #
 #   guard  — `make check`. NÃO instala nada: os scripts leem arquivos com
@@ -66,14 +71,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
-          cache-dependency-path: |
-            backend/yarn.lock
-            frontend/yarn.lock
+          # UM lockfile: o install e' unico, na raiz do workspace (G5).
+          cache-dependency-path: yarn.lock
       - name: instalar dependências
         run: |
           corepack enable
-          (cd backend && yarn install --immutable)
-          (cd frontend && yarn install --immutable)
+          yarn install --immutable
       - run: make types
 
   testes:
@@ -85,14 +88,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
-          cache-dependency-path: |
-            backend/yarn.lock
-            frontend/yarn.lock
+          # UM lockfile: o install e' unico, na raiz do workspace (G5).
+          cache-dependency-path: yarn.lock
       - name: instalar dependências
         run: |
           corepack enable
-          (cd backend && yarn install --immutable)
-          (cd frontend && yarn install --immutable)
+          yarn install --immutable
       - run: make test
 
   schema:
@@ -126,11 +127,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
-          cache-dependency-path: backend/yarn.lock
+          cache-dependency-path: yarn.lock
       - name: instalar dependências
         run: |
           corepack enable
-          cd backend && yarn install --immutable
+          yarn install --immutable
       - name: migrations
         run: cd backend && yarn medusa db:migrate
       # Ora o registro a partir do contrato e confere. O `--check` sozinho acusaria
@@ -157,9 +158,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
-          cache-dependency-path: frontend/yarn.lock
+          cache-dependency-path: yarn.lock
       - name: instalar dependências
         run: |
           corepack enable
-          cd frontend && yarn install --immutable
+          yarn install --immutable
       - run: cd frontend && yarn build

@@ -150,9 +150,11 @@ services:
       # 1 = roda `medusa db:migrate` na subida do container.
       RUN_MIGRATIONS: "${RUN_MIGRATIONS:-1}"
       MEDUSA_BACKEND_URL: ${MEDUSA_BACKEND_URL:-http://localhost:9000}
-      # Caminho (URL) do painel admin. NAO use "/app": colide com o WORKDIR
-      # deste container e, em DEV, quebra a resolucao dos modulos de extensao
-      # do admin (ver `admin.path` em backend/medusa-config.ts e o README).
+      # Caminho (URL) do painel admin. O default do Medusa e' "/app"; aqui ele
+      # continua "/painel" — mas desde o G5 o motivo mudou: o WORKDIR do
+      # container passou a ser `/app/backend` (a raiz do workspace e' `/app`),
+      # entao a colisao que existia com "/app" deixou de existir. O valor segue
+      # explicito porque e' UI publica e nao vale a pena depender do default.
       MEDUSA_ADMIN_PATH: ${MEDUSA_ADMIN_PATH:-/painel}
       # Aviso ao storefront depois de gravar conteúdo: o backend chama
       # `POST /api/revalidate?tag=content` com o MESMO segredo que o frontend
@@ -166,7 +168,11 @@ services:
       # o CRM envia fica no volume, e nao na camada de escrita do container —
       # que e' descartada na proxima recriacao. O storefront publica a MESMA
       # pasta em `/uploads/...` (rewrite em frontend/next.config.js).
-      - real_valor_uploads:/app/static
+      #
+      # `/app/backend/static` (e nao `/app/static`): o `upload_dir` do provider
+      # e' o `static` RELATIVO ao diretorio do app, e desde o G5 o app vive em
+      # `/app/backend` — o `WORKDIR` da imagem.
+      - real_valor_uploads:/app/backend/static
     ports:
       - "9000:9000"
     logging:
@@ -188,8 +194,12 @@ services:
   # ---------------------------------------------------------------------------
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      # A RAIZ do repositorio, como no backend (desde o G5): o build precisa do
+      # pacote do contrato (`packages/contrato`, importado como `@rv/contrato`)
+      # e da raiz do workspace (`package.json` + `yarn.lock`), que e' o UNICO
+      # install do repositorio. O `.dockerignore` que vale e' o da raiz.
+      context: .
+      dockerfile: frontend/Dockerfile
       target: runner
       # ⚠️ NEXT_PUBLIC_* e INLINADO no bundle durante o build. Alterar qualquer
       # uma exige `docker compose build frontend` de novo — defini-la so no
@@ -246,8 +256,8 @@ volumes:
     name: real_valor_redisdata
   # Fotos e imagens enviadas pelo painel. Volume NOMEADO (e nao um diretorio do
   # projeto) porque e' dado de cliente: nao pertence ao Git e nao tem por que
-  # aparecer no build context. O Dockerfile cria `/app/static` com dono `medusa`
-  # para o volume nascer gravavel.
+  # aparecer no build context. O Dockerfile cria `/app/backend/static` com dono
+  # `medusa` para o volume nascer gravavel.
   real_valor_uploads:
     name: real_valor_uploads
 

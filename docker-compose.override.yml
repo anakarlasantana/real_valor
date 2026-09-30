@@ -113,21 +113,29 @@ services:
     ports:
       - "9001:9001"
     volumes:
-      # Codigo do host -> container (habilita o hot reload).
-      - ./backend/src:/app/src
-      # O CRM, pacote IRMAO do backend desde a R7: o mesmo caminho da imagem
-      # (`COPY admin/ /app/admin`), que e de onde o `admin.sources` do
-      # medusa-config.ts le a fonte do painel. Dentro de `/app` de proposito: a
-      # resolucao de import do Vite/Rollup parte da arvore do arquivo e precisa
-      # do `node_modules` do backend ACIMA dela.
+      # Codigo do host -> container (habilita o hot reload). Os caminhos sao os
+      # da imagem desde o G5: a raiz do workspace e' `/app` e o backend vive em
+      # `/app/backend` — a mesma arvore do repositorio.
+      - ./backend/src:/app/backend/src
+      # O CRM, pacote IRMAO do backend: o mesmo caminho da imagem
+      # (`/app/admin`), que e' de onde o `admin.sources` do medusa-config.ts le a
+      # fonte do painel. Dentro de `/app` de proposito: a resolucao de import do
+      # Vite/Rollup parte da arvore do arquivo e precisa do `node_modules`
+      # ACIMA dela.
       - ./admin:/app/admin
+      # O CONTRATO, editado ao vivo: o backend o resolve pelo symlink de
+      # workspace (`node_modules/@rv/contrato -> ../../packages/contrato`), entao
+      # mexer em `packages/contrato/src/*.ts` recarrega o app sem reinstalar
+      # nada — que e' o ponto do pacote no G5.
+      - ./packages:/app/packages
       # Config e scripts tambem observados em dev.
-      - ./backend/medusa-config.ts:/app/medusa-config.ts:ro
-      - ./backend/package.json:/app/package.json:ro
-      # Uploads do painel: o MESMO volume de producao. Sem ele, o que o CRM
+      - ./backend/medusa-config.ts:/app/backend/medusa-config.ts:ro
+      - ./backend/package.json:/app/backend/package.json:ro
+      # Uploads do painel: o MESMO volume de producao, no `static/` relativo ao
+      # app (o `upload_dir` do `@medusajs/file-local`). Sem ele, o que o CRM
       # envia some toda vez que o container e' recriado (o `/app` daqui vem da
       # imagem, nao de um bind mount do host — ver os mounts acima).
-      - real_valor_uploads:/app/static
+      - real_valor_uploads:/app/backend/static
       # Volume ANONIMO: declarado por ULTIMO de proposito, para ter precedencia
       # sobre os bind mounts acima e preservar o node_modules da imagem.
       - /app/node_modules
@@ -143,8 +151,10 @@ services:
   # ---------------------------------------------------------------------------
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      # A raiz do repositorio, como a base (o storefront precisa do pacote do
+      # contrato e da raiz do workspace).
+      context: .
+      dockerfile: frontend/Dockerfile
       # `dev` copia o codigo-fonte e mantem as devDependencies + o Yarn 4 do
       # projeto. O estagio `runner` (standalone) e enxuto de proposito e nao
       # tem o que o `next dev` precisa: usa-lo em dev foi o bug corrigido aqui.
@@ -160,20 +170,22 @@ services:
       MEDUSA_BACKEND_URL: ${MEDUSA_INTERNAL_BACKEND_URL:-http://backend:9000}
     volumes:
       # Codigo do host -> container. Isso SUBSTITUI o codigo copiado na imagem;
-      # em dev o servidor e o `next dev`, nao o `server.js` standalone.
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
+      # em dev o servidor e' o `next dev`, nao o `server.js` standalone.
+      - ./frontend/src:/app/frontend/src
+      - ./frontend/public:/app/frontend/public
+      # O CONTRATO, editado ao vivo — o mesmo pacote do backend (G5).
+      - ./packages:/app/packages
       # Temas: em DEV a pasta e montada porque o `next dev` resolve o import do
       # `themes/default/theme.json` (`src/lib/theme.ts`) a cada compilacao. Em
       # producao ela nao existe na imagem: o import entra no bundle do build e o
       # tema da loja vem do payload (R5).
-      - ./frontend/themes:/app/themes
+      - ./frontend/themes:/app/frontend/themes
       # Arquivos de configuracao do build do Next.
-      - ./frontend/next.config.js:/app/next.config.js:ro
-      - ./frontend/postcss.config.js:/app/postcss.config.js:ro
-      - ./frontend/tailwind.config.js:/app/tailwind.config.js:ro
-      - ./frontend/tsconfig.json:/app/tsconfig.json:ro
-      - ./frontend/package.json:/app/package.json:ro
+      - ./frontend/next.config.js:/app/frontend/next.config.js:ro
+      - ./frontend/postcss.config.js:/app/frontend/postcss.config.js:ro
+      - ./frontend/tailwind.config.js:/app/frontend/tailwind.config.js:ro
+      - ./frontend/tsconfig.json:/app/frontend/tsconfig.json:ro
+      - ./frontend/package.json:/app/frontend/package.json:ro
       # Volume ANONIMO (por ultimo): preserva o node_modules da imagem e evita
       # conflito de binarios entre host e container.
       - /app/node_modules

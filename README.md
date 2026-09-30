@@ -176,9 +176,16 @@ make revalidate TAG=products
 
 ```
 real_valor/
+├── package.json                  # raiz do WORKSPACE (G5): os dois apps + `packages/*`
+├── yarn.lock                     # o ÚNICO lockfile; `make install` instala daqui
+├── .yarnrc.yml + .yarn/          # Yarn 4.12.0 (`releases/` versionado, cache não)
+├── packages/contrato/            # `@rv/contrato`: o contrato de conteúdo como PACOTE
+│                                 #   (`contract`/`defaults`/`schema`) — os três
+│                                 #   runtimes importam o MESMO arquivo desde o G5
 ├── docker-compose.yml            # base ÚNICA: serviços, redes, volumes, portas
 ├── docker-compose.override.yml   # overlay de DEV (bind mounts + `target: dev`)
 ├── Makefile                      # atalhos; `PROD=1` seleciona o modo
+├── .dockerignore                 # da RAIZ: os DOIS builds compartilham o contexto (G5)
 ├── .env.example                  # modelo do `.env` da raiz
 ├── .nvmrc                        # Node 22 para o dia a dia; a CI usa 24 — a guarda
 │                                 #   importa o `contract.ts` como TypeScript, e o
@@ -186,7 +193,8 @@ real_valor/
 ├── .github/workflows/           # CI: guarda, tipos, registro do schema e build
 ├── scripts/
 │   ├── doctor.sh                    # diagnostico do ambiente (le e nao mexe)
-│   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
+│   ├── gen-content.mjs           # gera o que DERIVA do contrato (G5): o seed do tema e os
+│   │                             #   tokens do `brand.css` — a cópia do storefront morreu
 │   ├── check-contract-parity.mjs # guarda hoje: 114 asserts (o G2 levou de 89 p/ 80;
 │   │                           #   o resto virou `tsc` e teste — ver docs/plano-centralizacao.md)
 │   ├── check-boundaries.mjs      # o CRM (`admin/`) importando VALOR do backend reprova aqui
@@ -228,34 +236,50 @@ real_valor/
         ├── app/[countryCode]/        # rotas da loja: `/br`, `/br/store`, produto, carrinho…
         ├── app/api/revalidate/       # `POST /api/revalidate` (purge de ISR por tag)
         ├── modules/                  # componentes por domínio (products, cart, checkout…)
-        ├── lib/                      # dados, contexto, tema, contrato de conteúdo (gerado)
+        ├── lib/                      # dados, contexto, tema e `@rv/contrato` (o pacote)
         └── middleware.ts             # resolve o `countryCode` da URL
 ```
 
-A raiz **não é um pacote**: não há `package.json` nem `node_modules` nela. Os únicos
-manifestos são `backend/package.json` e `frontend/package.json` (cada um com o seu
-`yarn.lock`), e o único ponto de entrada de comandos é o `Makefile` — os dois pacotes
-têm `node_modules` separados de propósito, porque as duas pilhas trazem React de maior
-(18.3.1 no painel do Medusa, 19 na loja).
+A raiz do repositório **é um pacote desde o G5**: `package.json` (com `workspaces` =
+`packages/*`, `backend/` e `frontend/`), **um** `yarn.lock` e **um** `node_modules` — o
+install é único. Não existe mais `yarn install` dentro de `backend/`/`frontend/`: um
+`yarn` rodado lá sobe para a raiz sozinho (e um `yarn.lock` esquecido num app faria o Yarn
+tratá-lo como projeto próprio — o `.dockerignore` da raiz também o barra). Antes do G5
+eram duas instalações, **867MB + 573MB**; a unificada mede **987MB**, porque o Yarn
+deduplica: o `node_modules` de cada app, quando existe, guarda só o que **diverge** — é
+assim que o React 19.0.5 da loja convive com o 18.3.1 do Medusa no mesmo disco.
 
 São **três pacotes, um por runtime** desde a R7: `admin/` é o CRM (`/painel`), com
 `tsconfig` próprio e nenhuma fonte de dado — só chama a API. E é o único dos três **sem
 `package.json` e sem `node_modules`**, de propósito: quem compila o painel é o Vite do
 backend (que é quem tem React 18.3.1 e `@medusajs/ui` instalados), e o pacote do CRM
-declara isso em `admin/tsconfig.json` (`paths` e `typeRoots` apontando para
-`backend/node_modules`). Um `node_modules` próprio aqui seria uma segunda instalação de
+declara isso em `admin/tsconfig.json` (`paths` e `typeRoots` apontando para o
+`node_modules` da raiz). Um `node_modules` próprio aqui seria uma segunda instalação de
 React no mesmo bundle — o plano (`docs/plano-centralizacao.md`) diz por quê.
+
+O quarto diretório de código **não é um app**: `packages/contrato/` é o contrato de
+conteúdo como pacote (`@rv/contrato`) — o que o G5 criou. O backend, o CRM e o storefront
+importam o **mesmo arquivo**, e a fronteira contrato ⇔ loja passou a ser do compilador, no
+lugar de uma cópia gerada que precisava de guarda para não envelhecer.
 
 A R2 deu **nome** às duas coisas que o CRM pega emprestado. O vínculo com o módulo de
 conteúdo é o alias `@conteudo/*` (`admin/tsconfig.json`) — só `import type` atravessa, e a
 guarda de fronteira reprova valor que venha por ele; o dado continua vindo do payload da
 API. E o teste do painel roda no **runner do CRM** (`admin/jest.config.js`, chamado pelo
 `make test`), não mais num `roots` do `jest.config.js` do backend: o vizinho deixou de
-saber que `admin/` existe. O que sobra do empréstimo é o **binário** (`../backend/node_modules/.bin/jest`)
-e o transformador — é o resto que a instalação unificada (G5) fecha, e é medido, não
-esquecido.
+saber que `admin/` existe. O que sobra do empréstimo é o **binário** do jest, que desde o
+G5 vem do `node_modules` da raiz (`../node_modules/.bin/jest`) — o `admin/` continua sem
+instalação própria, e o runner dele não depende de nenhum dos dois apps.
 
-Os dois repos seguem o **mesmo padrão de Dockerfile**: `deps` (instala tudo, uma vez) → `builder` (compila) → `runner` (só o artefato). O estágio final de cada Dockerfile é o de **produção**, e é justamente por isso que o modo nunca pode depender do estágio default: a base fixa `target: runner` e o override fixa `target: dev`. A diferença é o contexto: o do storefront é `./frontend`; o do backend é a **raiz do repositório** (`context: .`), porque a imagem leva também o CRM — que não é uma pasta qualquer dentro dele, é outro pacote (`COPY admin/ /app/admin` no `backend/Dockerfile`).
+Os dois repos seguem o **mesmo padrão de Dockerfile**: `deps` (instala, com `yarn
+workspaces focus`) → `builder` (compila) → `runner` (só o artefato) | `deps` → `dev`. O
+estágio final de cada Dockerfile é o de **produção**, e é justamente por isso que o modo
+nunca pode depender do estágio default: a base fixa `target: runner` e o override fixa
+`target: dev`. Desde o G5 os dois builds têm o **mesmo contexto** — a raiz do repositório
+(`context: .`) —, porque cada imagem precisa da raiz do workspace: o backend leva o CRM
+junto (`admin/`, `COPY admin/ /app/admin`) e o storefront leva o pacote do contrato
+(`packages/contrato`). O `frontend/.dockerignore` morreu com o contexto antigo: um
+`.dockerignore` de subdiretório é ignorado quando o contexto é a raiz.
 
 ### Documentação
 
@@ -300,17 +324,22 @@ próprio container. Trocar por S3 é trocar o `providers` do módulo `file` em
 frontend. Sem essas duas variáveis o aviso é pulado e nada quebra: a loja se atualiza sozinha
 dentro da janela de 60s do cache.
 
-### Contrato de conteúdo: uma fonte, um artefato
+### Contrato de conteúdo: uma fonte, um pacote
 
 O contrato (tipos das seções, listas do tema e conteúdo padrão) existe **só** em
-`backend/src/modules/content/`. O storefront é um pacote npm separado e recebe uma cópia
-**gerada** — `frontend/src/lib/content/contract.generated.ts` —, versionada de propósito: a
-revisão mostra o que o storefront passa a receber.
+`packages/contrato/`, o pacote `@rv/contrato` do workspace. Backend, CRM e storefront
+importam o mesmo arquivo — `export * from "@rv/contrato"` —, então não há cópia para
+envelhecer nem paridade para conferir: a fronteira é do compilador. Até o G5 o storefront
+recebia uma cópia gerada (`frontend/src/lib/content/contract.generated.ts`), versionada e
+conferida por guarda; ela morreu junto com o gerador que a escrevia.
 
 ```bash
-make gen     # regera o artefato (commit o diff junto com a mudança no backend)
-make check   # falha se o artefato estiver velho ou o contrato incoerente
+make gen     # regera o que DERIVA do contrato: o seed do tema e os tokens do brand.css
+make check   # falha se um desses artefatos estiver velho ou o contrato incoerente
 ```
+
+O gerador continua existindo para o que o contrato **origina** e não é código: um
+`theme.json` por tema (`frontend/themes/`) e `frontend/src/styles/tokens.generated.css`.
 
 O **contrato do CRM** (os formulários: tipos, rótulos, campos, opções) é um **registro no
 Postgres** — a tabela `content_contract` —, não uma leitura do código: o `contract.ts` é o
@@ -348,8 +377,9 @@ git config core.hooksPath .githooks   # uma vez por clone
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |
 
 A CI é [`.github/workflows/check.yml`](.github/workflows/check.yml), com um job por
-dependência (o `guard` não instala nada, o `testes` só precisa de `node_modules`, o `schema`
-sobe um Postgres). Ela é o que transforma o resto desta tabela em obrigatório — antes dela,
+dependência (o `guard` não instala nada; os demais rodam **um** `yarn install --immutable`
+na raiz do workspace e cacheiam **um** `yarn.lock`; o `schema` sobe um Postgres). Ela é o
+que transforma o resto desta tabela em obrigatório — antes dela,
 tudo dependia de alguém lembrar; e os testes eram o caso mais claro, porque existiam nos
 `package.json`, passavam, e nenhum job os chamava.
 
@@ -430,6 +460,24 @@ docker compose up -d --force-recreate --renew-anon-volumes
 ```
 
 O `--renew-anon-volumes` (ou `-V`) **é obrigatório aqui**: o volume anônimo `/app/node_modules` é herdado do container anterior, então recriar o container sem renová-lo manteria a árvore de produção (sem `ts-node`) e o erro voltaria idêntico.
+
+**Variante medida no corte do G5 (2026-09-30) — `command not found: next` no storefront.**
+No install unificado o `node_modules` deixou de ser um por app e passou a ser **um só**, na
+raiz do workspace (a imagem monta `/app` = raiz, `/app/frontend` = app). Um container
+recriado **sem** `-V` continua montando o volume anônimo **pré-G5** em `/app/node_modules`:
+a árvore antiga fica no lugar da nova e o `next dev` não acha o binário.
+
+```
+real_valor_frontend  | command not found: next
+real_valor_frontend  | command not found: next   (... em loop de restart)
+```
+
+A correção é a mesma de sempre — e vale para os **dois** serviços:
+
+```bash
+make build
+docker compose up -d --force-recreate --renew-anon-volumes
+```
 
 Antes de debugar qualquer sintoma: `make doctor` — ele confere o Docker, container parado com
 nome ocupado, porta do Postgres/Redis, se a publishable key do `.env` é a do banco, se o

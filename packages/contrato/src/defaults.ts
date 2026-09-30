@@ -18,9 +18,9 @@ import { ANNOUNCEMENT_SPEED_DEFAULT, type HomeSection } from "./contract.ts"
  *   3. O frontend usa como fallback se a API de conteúdo falhar, para
  *      que a vitrine nunca caia por causa do CMS.
  *
- * Nos três casos este arquivo é a única cópia: o fallback do storefront é
- * este mesmo dado, gerado para `contract.generated.ts` por
- * `scripts/gen-content.mjs`.
+ * Nos três casos este arquivo é a única cópia: desde o G5 o storefront importa
+ * este módulo pelo pacote (`@rv/contrato`) como o backend — o artefato gerado
+ * (`contract.generated.ts`) morreu com a cópia.
  *
  * Imagem aponta para `/brand/*.jpg` (servida pelo Next, em
  * `frontend/public/brand`) enquanto for a foto do protótipo. Depois do primeiro
@@ -303,3 +303,30 @@ export const DEFAULT_SECTION_DATA: Record<string, Record<string, unknown>> =
       ]
     )
   )
+/**
+ * A primeira seção de um tipo no conteúdo padrão — o cromo (`nav`/`footer`).
+ *
+ * Morava no artefato gerado do storefront, que sintetizava os dois blocos a
+ * partir de `DEFAULT_HOME_SECTIONS`. Com o contrato como pacote o dado voltou
+ * para junto da lista que o origina: quem importa `@rv/contrato` recebe os três
+ * (`DEFAULT_HOME_SECTIONS`, `DEFAULT_HEADER`, `DEFAULT_FOOTER`) e não há mais
+ * como o mesmo bloco existir em dois formatos.
+ */
+function defaultSection<T extends HomeSection["type"]>(
+  type: T
+): Extract<HomeSection, { type: T }> {
+  const found = DEFAULT_HOME_SECTIONS.find((section) => section.type === type)
+
+  if (!found) {
+    throw new Error(`Conteúdo padrão sem bloco "${type}".`)
+  }
+
+  return found as Extract<HomeSection, { type: T }>
+}
+
+/** Cabeçalho padrão (bloco `nav`) — o layout o usa em todas as rotas. */
+export const DEFAULT_HEADER = defaultSection("nav")
+
+/** Rodapé padrão (bloco `footer`) — idem. */
+export const DEFAULT_FOOTER = defaultSection("footer")
+

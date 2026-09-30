@@ -1,20 +1,20 @@
 /**
  * Guarda do contrato de conteúdo.
  * -----------------------------------------------------------------
- * O contrato tem uma fonte só — `backend/src/modules/content/`:
+ * O contrato tem uma fonte só — `packages/contrato/src/`, o pacote
+ * `@rv/contrato`:
  *
  *   contract.ts   tipos das seções, listas fechadas do tema e o que o
  *                 CRM/admin desenha (`SECTION_FIELDS`, paleta de prévia,
  *                 validação)
  *   defaults.ts   o conteúdo padrão da home (também é o seed)
  *
- * O storefront não guarda cópia: ele compila
- * `frontend/src/lib/content/contract.generated.ts`, que
- * `scripts/gen-content.mjs` escreve a partir daqueles dois arquivos. O
- * artefato é versionado, e este script falha (exit 1) quando ele está
- * desatualizado — contrato novo é editar o backend e rodar o gerador.
+ * Backend, CRM e storefront importam esse módulo: não há cópia gerada, e a
+ * fronteira contrato ⇔ loja é do compilador. O `scripts/gen-content.mjs` ficou
+ * com o que **deriva** do contrato e não é código — o seed do tema e os tokens
+ * do `brand.css` —, e a primeira verificação daqui é que eles estão em dia.
  *
- * O resto do que se confere aqui são as pontas que não passam pelo gerador:
+ * O resto do que se confere aqui são as pontas que o compilador não vê:
  *
  *   - coerência da própria fonte (todo tipo tem campos, os defaults cobrem
  *     todos os tipos, todo campo obrigatório está preenchido no seed, e
@@ -55,10 +55,8 @@ const root = join(here, "..")
 
 const CONTRACT = join(root, "packages/contrato/src/contract.ts")
 const DEFAULTS = join(root, "packages/contrato/src/defaults.ts")
-/** O gerador que produz o artefato do storefront (ver `scripts/gen-content.mjs`). */
+/** O gerador do seed do tema e dos tokens (ver `scripts/gen-content.mjs`). */
 const GENERATOR = join(root, "scripts/gen-content.mjs")
-/** O artefato que o storefront compila — versionado, gerado. */
-const GENERATED = join(root, "frontend/src/lib/content/contract.generated.ts")
 const ICONS = join(root, "frontend/src/lib/content/icons.ts")
 const SOCIAL_ICONS = join(root, "frontend/src/lib/content/social-icons.tsx")
 const APPEARANCE = join(root, "frontend/src/lib/content/appearance.ts")
@@ -165,8 +163,8 @@ const STOREFRONT_SUPPORTED_SECTIONS = join(
  * O render é o outro lado do `SECTION_FIELDS.launches` — campo que ele lê e o
  * contrato não declara fica sem editor no CRM (e o PATCH apaga o valor no
  * primeiro "Salvar"). A util guarda a faixa do `limit` como espelho à mão,
- * porque o artefato gerado do storefront não leva `SECTION_FIELDS` (ele é só
- * do CRM): três números que precisam bater com o contrato.
+ * porque `SECTION_FIELDS` é só do CRM (a loja importa o mesmo pacote, mas não
+ * lê esse mapa): três números que precisam bater com o contrato.
  */
 const LAUNCHES_RAIL = join(
   root,
@@ -350,20 +348,19 @@ console.log("Contrato de conteúdo do storefront\n")
 // ---------------------------------------------------------------------------
 // 1. OS ARTEFATOS GERADOS ESTÃO EM DIA
 // ---------------------------------------------------------------------------
-// O storefront não tem mais uma cópia digitada do contrato: ele compila
-// `frontend/src/lib/content/contract.generated.ts`, gerado de
-// `contract.ts` + `defaults.ts`. E desde a R3-lite o mesmo gerador escreve o
-// **seed do tema** (`frontend/themes/<id>/theme.json`, de `themes.ts` +
-// `THEME_COLOR_HEXES`) e os **tokens** de `frontend/src/styles/tokens.generated.css`.
-// A sincronia dos seis é conferida pelo próprio gerador — que compara arquivo a
-// arquivo e nomeia o que estiver velho —, no lugar das ~300 linhas de comparação
-// campo a campo que existiam aqui.
+// O contrato é um pacote (G5): o storefront importa `@rv/contrato`, como o
+// backend, e não existe mais cópia gerada do bloco compartilhado. O gerador
+// ficou com o que **deriva** do contrato — o **seed do tema**
+// (`frontend/themes/<id>/theme.json`, de `themes.ts` + `THEME_COLOR_HEXES`) e
+// os **tokens** de `frontend/src/styles/tokens.generated.css` — e a sincronia
+// dos dois é conferida pelo próprio gerador, que compara arquivo a arquivo e
+// nomeia o que estiver velho.
 const generated = spawnSync("node", [GENERATOR, "--check"], {
   encoding: "utf8",
 })
 
 assert(
-  "os artefatos gerados (contrato, seed do tema e tokens) estão em dia",
+  "os artefatos gerados (seed do tema e tokens) estão em dia",
   generated.status === 0,
   (generated.stderr || generated.stdout).trim()
 )
@@ -371,8 +368,8 @@ assert(
 const sourceTypes = loadExport(CONTRACT, "SECTION_TYPES")
 const sourceFields = loadExport(CONTRACT, "SECTION_FIELDS")
 const contractSources = loadExport(CONTRACT, "FOOTER_COLUMN_SOURCES")
-const fallbackHeader = loadExport(GENERATED, "DEFAULT_HEADER")
-const fallbackFooter = loadExport(GENERATED, "DEFAULT_FOOTER")
+const fallbackHeader = loadExport(DEFAULTS, "DEFAULT_HEADER")
+const fallbackFooter = loadExport(DEFAULTS, "DEFAULT_FOOTER")
 
 console.log("\nSECTION_TYPES ⇔ SECTION_FIELDS")
 
@@ -1038,7 +1035,7 @@ console.log("\nAPARÊNCIA POR SEÇÃO (contrato ⇔ loja)")
 
 // As opções válidas (paleta, papéis de fonte, trilhos) existem num lugar só:
 // o contrato. O `<select>` do admin as recebe prontas no `schema` da API e o
-// storefront as recebe pelo artefato gerado, então não há duas listas para
+// storefront as recebe importando o mesmo módulo, então não há duas listas para
 // comparar — o que se confere aqui é que elas não estão vazias (o CRM ficaria
 // sem cor e sem trilho para escolher) e que combinam entre si.
 const contractColors = loadExport(CONTRACT, "THEME_COLOR_TOKENS")
@@ -2001,11 +1998,11 @@ assert(
 if (failures.length) {
   console.log(`\n${failures.length} verificação(ões) falharam.`)
   console.log(
-    "O contrato é um só: backend/src/modules/content/{contract,defaults}.ts."
+    "O contrato é um só: packages/contrato/src/{contract,defaults}.ts."
   )
   console.log(
-    "Se a falha for o artefato do storefront, rode o gerador: " +
-      "node scripts/gen-content.mjs"
+    "Se a falha for nos artefatos gerados (seed do tema, tokens), " +
+      "rode o gerador: node scripts/gen-content.mjs"
   )
   console.log(
     "Já as chaves de ícone e os campos de cada lista vivem no contrato " +
