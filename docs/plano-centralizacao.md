@@ -193,9 +193,10 @@ medição de 2026-09-29 (API do GitHub, sem token) contava **15 execuções, nen
 verde** — 13 `failure` + 2 `cancelled` (as canceladas são substituídas pelo push
 seguinte); falhava sempre nos mesmos dois jobs, `guarda de contrato` (passo `make
 check`) e `tipos` (passo `make types`). O R7.1 mediu as duas causas num clone
-limpo e consertou as duas na árvore: a dívida "CI vermelha" foi paga **antes** de
-seguir a fila, e a execução seguinte é a que mede se a condição que o próprio G4
-impunha ("CI verde antes") está cumprida.
+limpo e consertou as duas na árvore: a `#17` (`dd009b9160`) é a **primeira
+execução verde** do repositório — os cinco jobs passam, sem que uma linha do
+workflow mude. A condição que o próprio G4 impunha ("CI verde antes") está
+cumprida, e a fila segue do R3-lite.
 
 Duas lacunas que ficaram declaradas, não escondidas:
 
@@ -478,11 +479,13 @@ da CI na última medição **antes** dos consertos (API do GitHub, sem token):
 | Conserto da guarda | `icons.ts` passou a ser lido como **texto**, a mesma regra que o registro social (`social-icons.tsx`) já seguia: `AVAILABLE_ICON_KEYS` sai das chaves do mapa `ICONS` (que é, por definição, `Object.keys(ICONS)`) e as duas listas saem do `readStringList`. **Sem asserção nova: 94**, como antes. Medido no clone limpo: verde (94 `ok`). E continua mordendo — três testes negativos, feitos no clone: chave tirada da lista → `FAIL` "oferece as mesmas chaves"; chave oferecida sem entrada no mapa → `FAIL` "sem ícone: bolt"; mapa renomeado → `FAIL` com **todas** as chaves "sem ícone", ou seja, não há leitura que passe calada |
 | Conserto dos tipos | o tipo da chave de API passou a vir de `@medusajs/framework/types` — `ApiKeyDTO`, que é `id` + `token`, exatamente os campos que o seed lê — em vez do arquivo gerado. Medido com `.medusa/types` fora do lugar (o estado do clone): `make types` → `exit=0`, os três `tsc` |
 
+| Primeira execução **depois** dos consertos (`#17`, `dd009b9160`) | **verde** — os cinco jobs: `guarda de contrato` (passo `make check`), `tipos` (`make types`), `testes`, `registro do schema` e `build do storefront`. Nenhuma linha de `.github/workflows/check.yml` mudou: o conserto foi todo na **árvore**, e é isso que faz o verde valer |
+
 As duas rotas cabiam na regra que o G4 já impunha ("CI verde antes de apagar a guarda") — a diferença
 era **quando a dívida vence**: antes de seguir a fila (CI primeiro) ou antes do G4 (R3-lite primeiro,
-com a CI como dívida declarada). Medida, a dívida venceu primeiro: a execução que segue estes dois
-consertos é a que diz se a CI está verde, e é ela que destrava o G4. O R3-lite continua sendo o
-próximo da fila — agora depois de uma CI que passa.
+com a CI como dívida declarada). Medida, a dívida venceu primeiro — e venceu barato: dois arquivos, e
+a `#17` fecha verde. O G4 está destravado (a condição que ele mesmo impunha está cumprida) e o
+R3-lite é o próximo da fila.
 
 **O que os dois defeitos têm em comum** — e fica como regra para o que vem: os dois **passavam no
 host e quebravam no clone**. O host tem `node_modules` (instalado) e `.medusa/types` (gerado pelo
