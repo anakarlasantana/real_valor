@@ -61,7 +61,7 @@ imagem e a loja lendo do payload são a R4/R5.
 | **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ✅ **feito** | `content_contract` + `schema.ts` + `seed-schema`; a API lê e valida contra o registro; `schemaVersion` no payload; a loja descarta tipo desconhecido. 11 asserts na guarda |
 | **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ✅ **feito** — a etapa 1 ficou congelada em `arquivo/` (não mergeada) e a etapa 2 foi **refeita** sobre o `develop`, na R3-lite e na R4 → R5 | branch `arquivo/f3-tema-como-dado-nao-mergear` (era `f3-tema-como-dado`), commit `fcdc3500ec`: superfície `theme` no contrato + API + CRM. **Não mergear:** o ponto de ramificação é `f4fe7c07` e o `develop` andou **32 commits** desde então; a simulação de merge (`git merge-tree`) conflita em **5 arquivos** — `admin/routes/content/{field-input.tsx,page.tsx}`, `api/admin/content/route.ts`, `modules/content/contract.ts` e `scripts/check-contract-parity.mjs` (apagado no G4) —, três deles justamente os que a R6/R6.5/R7 reescrevem. A etapa 2 foi **refeita** sobre o `develop` nas fases R3-lite e R4 → R5. **Feito na R3-lite:** o contrato como origem da paleta/fontes, os `theme.json` e os tokens como artefatos gerados (o seed). **Feito na R4 e na R5** (`88aa6ef599` e `439a8a8d5c`): a superfície `theme` na API e no CRM, o seed dela no banco, a loja lendo o payload e o `themes/` fora da imagem. O que a fase mediu está em "R4 → R5 — o que a fase mediu" |
 | **F4** — CRM de vendas/entrega | agregações (vendas, status, ticket, rastreio) como módulo + rotas `/admin/*`, sobre o mesmo banco | ⏸️ não iniciado | `order-customer-indexer` + `/store/orders/track` são a base |
-| **F5** — Higiene | Makefile interface única; `packages/` só se útil; CI rodando `make check`; `schemaVersion` | ⏸️ parcial | Makefile é a interface e `schemaVersion` saiu no F2′; **falta** a CI (vira G1) e o `packages/` (vira G5) |
+| **F5** — Higiene | Makefile interface única; `packages/` só se útil; CI rodando `make check`; `schemaVersion` | ✅ **feito** (o que faltava virou fase e fechou) | Makefile é a interface e `schemaVersion` saiu no F2′; a **CI** entrou no G1 (`400d137b52`) e o `packages/` no G5 — as duas fechadas em 2026-09-30 |
 
 **O que o F2 virou, em duas etapas.** A primeira entregou a **ponte** (o CRM lê o schema pela
 API, sem espelho no painel). A segunda — o "F2′" — entregou o **registro**, que é o que
@@ -197,6 +197,18 @@ passando **ao lado** dela —, e só a parte 2 apagou o arquivo.
 | **G3** testes | ✅ `50f8cee573` (37 no backend) + `efaece4907` (5 no storefront, com `vitest`) |
 | **G4** apagar a guarda | ✅ **feito (2026-09-30)**, em duas partes na branch `g4/apagar-a-guarda`: `2a9f8739f6` (a cobertura que assume as 114, lado a lado com a guarda) e o commit que fecha (o arquivo fora, `make check` = `gen --check` + `check-boundaries`, o hook chamando o alvo, e a CI/os comentários/os docs reescritos). Medido no fim: `make check` com **1** linha `ok` (a fronteira) e nenhuma de contrato, `make test` **210 + 19 + 81**, `make types` verde nos três, `make gen` sem diff |
 | **G5** `packages/contrato` | ✅ **feito (2026-09-30)** — install unificado (um `yarn.lock`, **1418 pacotes**, `node_modules` de **987MB** contra 867MB + 573MB em separado), pacote `@rv/contrato` (`contract`/`defaults`/`schema`) com shims de re-export em `backend/src/modules/content/`, `workspace:*` nos dois apps, `transpilePackages` no Next, `yarn workspaces focus` nos dois Dockerfiles (contexto = a raiz) e `contract.generated.ts` **apagado**. Medido: `make types` verde nos 3 projetos, guarda **114**, jest **183 + 12**, vitest **76** |
+
+**Integração no `develop` (2026-09-30).** As duas fases entraram por merge commit
+(`--no-ff`), para a fronteira de cada uma ficar na história e cada uma poder ser
+revertida **sozinha** (`git revert -m 1`): `95ee9e8d34` (G5) e `0ad20088cd` (G4).
+A árvore do `develop` saiu **idêntica** ao topo do `g4/apagar-a-guarda` (`git diff`
+vazio) — o merge não teve conflito nem resolução manual. Os alvos foram remedidos
+**nela**, não só nas branches: `make gen` sem diff, `make check` com **1** linha
+`ok` (a fronteira), `make types` verde nos três e `make test` **210 + 19 + 81**.
+As branches `g5/packages-contrato` e `g4/apagar-a-guarda` **ficam**: são o registro
+de cada fase e o ponto de revert. Com as duas dentro, a **centralização está
+completa** (F0 a F3, F5, G1 a G5 e a série R); o que segue sem começar é o **F4**,
+que nunca teve branch nem código.
 
 **O que o G5 mudou em relação ao que este plano dizia (medido, não especulado).**
 
