@@ -59,7 +59,7 @@ imagem e a loja lendo do payload são a R4/R5.
 | **F0** — Rede e ruído | `make check` + hook de commit, docs enxutas (1 entrada + 4 assuntos), READMEs de template e pastas vazias fora | ✅ feito | `make check`, `docs/DEBITO-TECNICO.md` |
 | **F1** — Fonte única do contrato | gerador emite tipos/defaults/tokens/mapas em cada app; artefato versionado com `--check` | ✅ feito | `scripts/gen-content.mjs`, `frontend/src/lib/content/contract.generated.ts`; guarda 1.042 → **69 asserts** |
 | **F2** — Schema como dado | registro de schema no banco; `GET /admin/content` devolve; CRM desenha o form; `PATCH` valida contra o schema; loja ignora o que não conhece | ✅ **feito** | `content_contract` + `schema.ts` + `seed-schema`; a API lê e valida contra o registro; `schemaVersion` no payload; a loja descarta tipo desconhecido. 11 asserts na guarda |
-| **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ⏸️ etapa 1 pronta, **adiada** e congelada em `arquivo/`; a **árvore** foi feita na R3-lite | branch `arquivo/f3-tema-como-dado-nao-mergear` (era `f3-tema-como-dado`), commit `fcdc3500ec`: superfície `theme` no contrato + API + CRM. **Não mergear:** o ponto de ramificação é `f4fe7c07` e o `develop` andou **32 commits** desde então; a simulação de merge (`git merge-tree`) conflita em **5 arquivos** — `admin/routes/content/{field-input.tsx,page.tsx}`, `api/admin/content/route.ts`, `modules/content/contract.ts` e `scripts/check-contract-parity.mjs` —, três deles justamente os que a R6/R6.5/R7 reescrevem. A etapa 2 é refeita sobre `develop` na R4. **Feito na R3-lite:** o contrato como origem da paleta/fontes, os `theme.json` e os tokens como artefatos gerados (o seed). **Feito na R4 e na R5** (`88aa6ef599` e `439a8a8d5c`): a superfície `theme` na API e no CRM, o seed dela no banco, a loja lendo o payload e o `themes/` fora da imagem. O que a fase mediu está em "R4 → R5 — o que a fase mediu" |
+| **F3** — Tema como dado | dono troca paleta/fontes/estação pelo CRM; `themes/*.json` vira seed; some o `fs` em request-time e o `COPY` do Dockerfile | ✅ **feito** — a etapa 1 ficou congelada em `arquivo/` (não mergeada) e a etapa 2 foi **refeita** sobre o `develop`, na R3-lite e na R4 → R5 | branch `arquivo/f3-tema-como-dado-nao-mergear` (era `f3-tema-como-dado`), commit `fcdc3500ec`: superfície `theme` no contrato + API + CRM. **Não mergear:** o ponto de ramificação é `f4fe7c07` e o `develop` andou **32 commits** desde então; a simulação de merge (`git merge-tree`) conflita em **5 arquivos** — `admin/routes/content/{field-input.tsx,page.tsx}`, `api/admin/content/route.ts`, `modules/content/contract.ts` e `scripts/check-contract-parity.mjs` —, três deles justamente os que a R6/R6.5/R7 reescrevem. A etapa 2 foi **refeita** sobre o `develop` nas fases R3-lite e R4 → R5. **Feito na R3-lite:** o contrato como origem da paleta/fontes, os `theme.json` e os tokens como artefatos gerados (o seed). **Feito na R4 e na R5** (`88aa6ef599` e `439a8a8d5c`): a superfície `theme` na API e no CRM, o seed dela no banco, a loja lendo o payload e o `themes/` fora da imagem. O que a fase mediu está em "R4 → R5 — o que a fase mediu" |
 | **F4** — CRM de vendas/entrega | agregações (vendas, status, ticket, rastreio) como módulo + rotas `/admin/*`, sobre o mesmo banco | ⏸️ não iniciado | `order-customer-indexer` + `/store/orders/track` são a base |
 | **F5** — Higiene | Makefile interface única; `packages/` só se útil; CI rodando `make check`; `schemaVersion` | ⏸️ parcial | Makefile é a interface e `schemaVersion` saiu no F2′; **falta** a CI (vira G1) e o `packages/` (vira G5) |
 
@@ -116,9 +116,13 @@ seção descartada — sem o filtro, o `assertNever` do render a transformaria e
 ### Por que
 
 A tabela de riscos deste documento já dizia o alvo: *"Guarda — só o que a
-linguagem não vê (CSS, binários, migração) — **~6 asserções, não 48**"*. Hoje
-`scripts/check-contract-parity.mjs` tem **89** e **1.294 linhas**, e a
-concentração é enviesada: **45 num único grupo** (`ADMIN (field-input.tsx)`).
+linguagem não vê (CSS, binários, migração) — **~6 asserções, não 48**"*. Quando
+este plano foi escrito, `scripts/check-contract-parity.mjs` tinha **89** e
+**1.294 linhas**, com **45** delas num único grupo (`ADMIN (field-input.tsx)`).
+Hoje ele tem **108** e **1.948 linhas**, e o grupo do painel tem **18** das **86**
+chamadas `assert(` do arquivo — o G2 trocou o palpite de texto por `tsc`. Quem
+cresceu desde então foi a outra ponta: a fronteira contrato ⇔ loja das fases R,
+que é a que continua sem compilador.
 
 Guarda de paridade por texto não é padrão de e-commerce/CRM — é o que se escreve
 quando a fronteira entre dois pacotes **não é linkada pelo compilador**, e a
@@ -198,7 +202,7 @@ check`) e `tipos` (passo `make types`). O R7.1 mediu as duas causas num clone
 limpo e consertou as duas na árvore: a `#17` (`dd009b9160`) é a **primeira
 execução verde** do repositório — os cinco jobs passam, sem que uma linha do
 workflow mude. A condição que o próprio G4 impunha ("CI verde antes") está
-cumprida, e a fila segue do R3-lite.
+cumprida. Depois dela a fila andou — a **R3-lite** e a **R4 → R5** saíram (o tema como dado, do contrato ao banco, com o `themes/` fora da imagem) —, e o que resta do G é o **G5** (`packages/contrato`), que é o que destrava o G4.
 
 Duas lacunas que ficaram declaradas, não escondidas:
 
@@ -307,7 +311,7 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 | **Órfão apagado** | script sem chamador, cache de build antigo, manifesto sem dependência ou arquivo que a fase tornou inútil sai **na mesma fase**, e o que a documentação dizia dele é corrigido junto. Não há `arquivo/` de espera para isso: o Git já é o arquivo. |
 
 > **Contagem da guarda — medida, não estimada:** `make check | grep -c '^  ok'`.
-> Nasceu com 89; o G2 a levou a 80; hoje imprime **96**, porque cada fase que mexe no
+> Nasceu com 89; o G2 a levou a 80; hoje imprime **108**, porque cada fase que mexe no
 > contrato pode somar verificação, e somar é mais barato que redesenhar (a R1 somou três: o
 > que a vitrine de destaque lê ⇔ o formulário, o chip como referência e a tabela do link; a R6.5
 > somou quatro: nenhum import de valor no painel, a faixa da ordem vinda das constantes do módulo,
@@ -336,7 +340,7 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 > A **R2** somou **uma** verificação, mas não neste alvo: `scripts/check-panel-tests.mjs` (a suíte
 > que está no disco do CRM é a que o runner dele executa) **precisa do jest instalado**, e o job
 > `guard` da CI roda este alvo sem instalar nada — ela foi para o `make test`, que é onde a suíte
-> roda. Hoje o total é **96**: 95 do contrato + 1 da fronteira.
+> roda. Hoje o total é **108**: 107 do contrato + 1 da fronteira.
 > O alvo do plano nunca foi o número: é ficar só com o que a linguagem não vê (binário, CSS,
 > migração).
 
@@ -356,7 +360,7 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 | **R4 → R5** ✅ | a outra metade do F3, **com o Docker de pé**: a superfície `theme` na API e no CRM, o seed dela no banco, o `themes/` fora do Dockerfile e a loja lendo o payload. O `fcdc3500ec` **não** foi mergeado (a simulação de merge conflitava em 5 arquivos): a etapa 2 foi **refeita** sobre o `develop`, com o que a R6/R6.5/R7 mudaram no caminho — o schema do CRM virou registro no banco, a validação lê `fields` do payload e a tela é dirigida pelo `schema` | `make check` **108** asserções, `make types` verde nos três, `make test` **163 + 12 + 29**, seed idempotente e conferido no banco (4 linhas em `surface='theme'`, schema **v6**) e a loja lendo do payload **nos dois estados**: em DEV, com o banco alterado (`colorRose` → `#123456`) o HTML traz `--rv-rose:#123456` enquanto o arquivo em disco continua `#B97872`, e com a janela da Black Friday alargada no banco, `data-theme="black-friday"`; em PROD (imagem `--target runner`, sem `/app/themes` e com `B97872` no bundle), o mesmo teste mostra `#654321` — valor que só existe no banco. As alterações foram desfeitas. O detalhe está em "R4 → R5 — o que a fase mediu" |
 
 **Por que esta ordem:** R6.5 antes de R7 tira a última importação de valor do painel (a R7 deixa
-de depender da R5); R6 antes de R6.5 porque a rota de ordenação nasce do que já foi extraído; R2
+de depender da R6.5); R6 antes de R6.5 porque a rota de ordenação nasce do que já foi extraído; R2
 depois de R7 porque só então o CRM tem `tsconfig` e tipo próprios.
 
 ### R1 — o que a fase mediu

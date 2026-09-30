@@ -55,16 +55,19 @@ uma divergência que escape às guardas só é descoberta em runtime.
 
 ---
 
-### 3.3 CMS cobre apenas a superfície `home`
+### 3.3 CMS não cobre a superfície institucional
 
-**Status: rodapé resolvido em 2026-09-26; resta a superfície institucional.**
+**Status: rodapé resolvido em 2026-09-26; o tema entrou no CMS em 2026-09-30 (R4 → R5); resta a superfície institucional.**
 
-**Evidência:** o módulo `content` está populado apenas com `surface: "home"` (9 blocos: as 7
-seções do protótipo + o `nav` do cabeçalho + o `footer` do rodapé). Cabeçalho e rodapé viajam
-nessa mesma superfície, mas **não** são seções da home: quem os renderiza é o layout
+**Evidência:** o módulo `content` está populado com a superfície `home` (9 blocos: as 7 seções
+do protótipo + o `nav` do cabeçalho + o `footer` do rodapé) e, desde a R4 → R5, com a
+superfície `theme` (4 linhas: o tema `default` + as 3 estações). Cabeçalho e rodapé viajam nessa
+mesma superfície, mas **não** são seções da home: quem os renderiza é o layout
 (`(main)/layout.tsx` → `headerSections()`/`footerSections()`), em todas as rotas, e o render da
-home ignora os dois tipos (`case "nav"`/`case "footer": return null`). O tema da loja é
-*file-based* (`themes/*/theme.json`), fora do CMS.
+home ignora os dois tipos (`case "nav"`/`case "footer": return null`). O tema da loja **deixou
+de ser** *file-based*: a paleta e as estações são conteúdo no banco (`surface = 'theme'`), e os
+`themes/*/theme.json` ficaram como o **seed** gerado do contrato — e como o fallback que o build
+embute.
 
 **Impacto:** textos institucionais (Sobre, Contato, trocas) continuam exigindo deploy para
 alterar. O rodapé já não: as colunas (de catálogo — categorias ou coleções — ou com links
@@ -72,7 +75,8 @@ digitados) e as redes sociais são campos do bloco `footer` em **Conteúdo da vi
 coluna padrão no código, com paridade travada pelo script contra o fallback do storefront.
 
 **Ação necessária:** estender `surface` para `institutional` (a modelagem já suporta; é trabalho
-de conteúdo + render), sem migrar o tema para o CMS nesta rodada.
+de conteúdo + render). O tema **já** foi migrado para o CMS na R4 → R5 desta rodada; o que sobrou
+neste item é só a superfície institucional.
 
 ---
 

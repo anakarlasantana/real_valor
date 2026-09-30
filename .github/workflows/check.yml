@@ -19,11 +19,11 @@
 #   build  — `next build`, que tem de passar **sem infra** (o build não pode
 #            depender de API no ar; ver o item 3.2 do registro de débito).
 #
-#   testes — `make test`: o jest do backend (10 suites / 145 testes), o jest do
+#   testes — `make test`: o jest do backend (11 suites / 163 testes), o jest do
 #            CRM (`admin/jest.config.js`, desde a R2: 1 suite / 12 testes, mais
 #            `scripts/check-panel-tests.mjs` conferindo que a suíte no disco do
-#            CRM é a que o runner dele roda) e o vitest do storefront (3 arquivos
-#            / 20 testes). São de unidade: não abrem banco nem precisam da stack —
+#            CRM é a que o runner dele roda) e o vitest do storefront (4 arquivos
+#            / 29 testes). São de unidade: não abrem banco nem precisam da stack —
 #            a mesma propriedade do `guard`. Antes disto os testes existiam nos
 #            `package.json` e ninguém os chamava: nem o `make`, nem o hook de
 #            commit, nem a CI.

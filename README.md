@@ -187,7 +187,7 @@ real_valor/
 ├── scripts/
 │   ├── doctor.sh                    # diagnostico do ambiente (le e nao mexe)
 │   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
-│   ├── check-contract-parity.mjs # guarda hoje: 93 asserts (o G2 levou de 89 p/ 80;
+│   ├── check-contract-parity.mjs # guarda hoje: 108 asserts (o G2 levou de 89 p/ 80;
 │   │                           #   o resto virou `tsc` e teste — ver docs/plano-centralizacao.md)
 │   ├── check-boundaries.mjs      # o CRM (`admin/`) importando VALOR do backend reprova aqui
 │   │                           #   — inclusive pelo apelido `@conteudo/*` (R2)
@@ -339,11 +339,11 @@ git config core.hooksPath .githooks   # uma vez por clone
 
 | Onde | Comando | O que faz |
 | :--- | :--- | :--- |
-| Commit (hook) + CI | `make check` | os artefatos gerados em dia — o contrato do storefront, os **4 `themes/*/theme.json`** (o seed do tema) e os tokens `--rv-*` do `brand.css`, os dois últimos gerados na R3-lite — mais **96 asserções**: 95 de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ o seed do tema, ⇔ registro do contrato, ⇔ a ordem da vitrine) e 1 de fronteira (o painel sem import de **valor** do backend — inclusive pelo apelido `@conteudo/*`). **Não instala nada**: são scripts lendo arquivos com Node puro, e é por isso que o hook de commit roda em segundos |
+| Commit (hook) + CI | `make check` | os artefatos gerados em dia — o contrato do storefront, os **4 `themes/*/theme.json`** (o seed do tema) e os tokens `--rv-*` do `brand.css`, os dois últimos gerados na R3-lite — mais **108 asserções**: 107 de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ o seed do tema, ⇔ registro do contrato, ⇔ a ordem da vitrine, ⇔ as **superfícies** do payload (cada uma se descreve, e a união delas é o que a API aceita gravar), ⇔ o **seed do tema linha a linha** e ⇔ a **loja que pede o tema ao payload** em vez do disco: o `fs` saiu, o padrão virou `import` e o `themes/` saiu da imagem) e 1 de fronteira (o painel sem import de **valor** do backend — inclusive pelo apelido `@conteudo/*`). **Não instala nada**: são scripts lendo arquivos com Node puro, e é por isso que o hook de commit roda em segundos |
 | CI | `make types` | `tsc` dos dois pacotes — e o do painel, com as regras dele (**0 erros**) e o alias `@conteudo/*` no `paths`. Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI (job `testes`) | `make test` — jest do `backend/` | **142 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração, inserção, a forma do corpo de `POST /admin/content/order` e a gravação em uma chamada), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da validação e dos resolvedores do corpo do CRM (campo desconhecido, obrigatório por rota, faixa de número, lista fechada, âncora, `position` e as duas listas de referência) e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone). Eram 145 até a R3-lite: três comparações de prévia (hex, família e pilha) saíram quando o tema passou a ser gerado — comparar um artefato com a origem dele só podia dar verde |
+| CI (job `testes`) | `make test` — jest do `backend/` | **163 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração, inserção, a forma do corpo de `POST /admin/content/order` e a gravação em uma chamada), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da validação e dos resolvedores do corpo do CRM (campo desconhecido, obrigatório por rota, faixa de número, lista fechada, âncora, `position` e as duas listas de referência) do tema como conteúdo (a fusão do seed, o achatamento campo a campo, a cobertura de `THEME_FIELDS`, o `defaultsFor` da superfície e o `resolveSurface`/`pattern` da validação) e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone). Eram 145 até a R3-lite: três comparações de prévia (hex, família e pilha) saíram quando o tema passou a ser gerado — comparar um artefato com a origem dele só podia dar verde — e a R4 → R5 somou 21 (o `themes.unit.spec.ts` novo e o que ele arrastou em `restore` e `validation`) |
 | CI (job `testes`) | `make test` — jest do **CRM** (`admin/jest.config.js`) | **12 testes** do formulário do painel: o que o rascunho da tela guarda — ausente/nulo/vazio como a mesma coisa, número contra texto (`8` e `"8"`), a referência de categoria virando lista de ids no corpo. São os que decidem se a barra de **Salvar** aparece; rodam no runner do CRM, não no jest do backend. Logo depois, `scripts/check-panel-tests.mjs` confere que a suíte que está no **disco** é a que o runner executa (a perda parcial que o "No tests found" não pega) |
-| CI (job `testes`) | `make test` — vitest do `frontend/` | **20 testes** da tolerância da loja ao tipo desconhecido, do `src` das imagens do CMS (`resolveMediaUrl`) e do tamanho do trilho de lançamentos (`launchesLimit`) |
+| CI (job `testes`) | `make test` — vitest do `frontend/` | **29 testes** em 4 arquivos: a tolerância da loja ao tipo desconhecido, o `src` das imagens do CMS (`resolveMediaUrl`), o tamanho do trilho de lançamentos (`launchesLimit`) e o **tema do payload** (`theme.spec.ts`: campo ausente herda o padrão e a janela de estação vira o ano) |
 | CI | `make check-schema` | o registro do `content_contract` conferido contra o contrato, num Postgres efêmero |
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |
 
@@ -355,15 +355,18 @@ tudo dependia de alguém lembrar; e os testes eram o caso mais claro, porque exi
 
 O caminho para **não depender mais** da guarda de paridade está em
 [`docs/plano-centralizacao.md`](docs/plano-centralizacao.md). Ela nasceu com **89**
-asserções, o G2 a levou a **80** e hoje ela imprime **96**: cada fase que mexe no
+asserções, o G2 a levou a **80** e hoje ela imprime **108**: cada fase que mexe no
 contrato pode somar verificação, e somar é mais barato que redesenhar. A R3-lite
 tirou três (a prévia hex/família/pilha, que virou geração) e somou cinco (o seed
 do tema, a cobertura dos tokens gerados, o `brand.css` sem a paleta, o fallback
-de fonte e o `theme.ts` sem lista digitada). O número se
+de fonte e o `theme.ts` sem lista digitada). A R4 → R5 somou doze: sete da
+superfície de tema no payload (oito entraram, uma saiu) e cinco da loja lendo o
+tema do banco — a asserção que deixou de ser texto procurado no arquivo para ser
+o payload comparado como dado. O número se
 confere, não se estima:
 
 ```bash
-make check | grep -c '^  ok'   # 96
+make check | grep -c '^  ok'   # 108
 ```
 
 O alvo, portanto, não é o número — é o *tipo*: o que o compilador e um teste já
