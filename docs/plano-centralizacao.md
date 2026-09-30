@@ -189,12 +189,13 @@ asserções restantes comparam o **artefato gerado** (a cópia) com o contrato: 
 substituto enquanto a cópia existir — e a cópia morre no G5, junto com a
 comparação. Apagar a guarda antes deixaria um buraco **medível** (não
 especulativo) de cobertura. Além disso a CI existe como arquivo e **roda**: a
-medição de 2026-09-29 (API do GitHub, sem token) conta **15 execuções, nenhuma
+medição de 2026-09-29 (API do GitHub, sem token) contava **15 execuções, nenhuma
 verde** — 13 `failure` + 2 `cancelled` (as canceladas são substituídas pelo push
-seguinte); falha sempre nos mesmos dois jobs, `guarda de contrato` (passo `make
-check`) e `tipos` (passo `make types`), e as duas causas estão registradas no
-R7.1. A condição que o próprio G4 impunha — "CI verde antes" — não está cumprida,
-e o R7.1 deixou qual dívida vence primeiro como decisão em aberto.
+seguinte); falhava sempre nos mesmos dois jobs, `guarda de contrato` (passo `make
+check`) e `tipos` (passo `make types`). O R7.1 mediu as duas causas num clone
+limpo e consertou as duas na árvore: a dívida "CI vermelha" foi paga **antes** de
+seguir a fila, e a execução seguinte é a que mede se a condição que o próprio G4
+impunha ("CI verde antes") está cumprida.
 
 Duas lacunas que ficaram declaradas, não escondidas:
 
@@ -463,18 +464,31 @@ fase: **o que roda na árvore de trabalho**. `R3-lite` é o contrato e os tokens
 **pede o Docker de pé** (o `COPY` do Dockerfile, o `themes/` fora da imagem, a loja lendo do
 payload) fica em R4/R5.
 
-O que **não** está decidido — e fica escrito para não se perder — é **o que vem antes**: o R3-lite ou
-a **CI**. Estado da CI, medido agora (API do GitHub, sem token):
+O que **não** estava decidido — e ficou escrito para não se perder — era **o que vem antes**: o
+R3-lite ou a **CI**. Ficou **a CI primeiro**, e a razão é o tamanho da dívida depois de medida: ela
+eram dois arquivos (o `icons.ts` lido como texto, um `import` de tipo), não uma investigação. Estado
+da CI na última medição **antes** dos consertos (API do GitHub, sem token):
 
 | O que | Medido |
 |---|---|
 | Execuções | **15, nenhuma verde**: 13 `failure` + 2 `cancelled` (as canceladas — `#12` e `#14` — ficam ~20s para trás quando o push seguinte as substitui) |
 | Última do conserto (`#15`, `e9a1a93e8f`) | `guarda de contrato` falha no passo `make check`; `tipos` falha no passo `make types`. `registro do schema`, `testes` e `build do storefront` **passam** — os mesmos resultados de antes do conserto: a guarda nova não tirou nenhum job do ar, e a válvula de escape vale na CI também (o job `registro do schema` carrega a config e tem a fonte, então ela não dispara lá) |
-| Causa de `guarda de contrato` | o job é `checkout` + `setup-node` + `make check`, **sem instalar** nada — e o `icons.ts` importa **valor** de `@medusajs/icons` |
-| Causa de `tipos` | **não medida.** O job instala `backend` e `frontend` (`yarn install --immutable`) e falha no `make types`, que são três `tsc` (backend, painel e storefront); o log do job devolve **403** — precisa de token. O `make types` **local** é verde (medido nesta sessão), então a falha é do **job**, não da árvore de trabalho: estreitá-la a um dos três `tsc` é o primeiro passo de quem pegar esse caminho |
+| Causa de `guarda de contrato` — **medida** | num clone limpo (`git worktree add --detach`: sem `node_modules` e sem `.medusa`, que é exatamente o que o job é — `checkout` + `setup-node` + `make check`), o `make check` morre com `ERR_MODULE_NOT_FOUND` ao carregar `frontend/src/lib/content/icons.ts` pelo `loadExport` (`check-contract-parity.mjs`). O arquivo importa **valor** de `@medusajs/icons` — é ele quem desenha o ícone —, e o comentário do `loadExport` o listava como "tipos e dados puros": a premissa falsa era a causa, não o job |
+| Causa de `tipos` — **medida** | no mesmo clone, `make types` reprova no **primeiro** dos três `tsc` (o do backend), com `TS2307` em `backend/src/scripts/seed.ts`: ele importava `../../.medusa/types/query-entry-points`, diretório **gerado pelo `medusa build`** e gitignorado, logo ausente em qualquer clone. `make -k types` mostra os outros dois `tsc` (painel e storefront) **passando**: um erro só explicava o job inteiro. O log do job continua exigindo token — não foi preciso ler |
+| Conserto da guarda | `icons.ts` passou a ser lido como **texto**, a mesma regra que o registro social (`social-icons.tsx`) já seguia: `AVAILABLE_ICON_KEYS` sai das chaves do mapa `ICONS` (que é, por definição, `Object.keys(ICONS)`) e as duas listas saem do `readStringList`. **Sem asserção nova: 94**, como antes. Medido no clone limpo: verde (94 `ok`). E continua mordendo — três testes negativos, feitos no clone: chave tirada da lista → `FAIL` "oferece as mesmas chaves"; chave oferecida sem entrada no mapa → `FAIL` "sem ícone: bolt"; mapa renomeado → `FAIL` com **todas** as chaves "sem ícone", ou seja, não há leitura que passe calada |
+| Conserto dos tipos | o tipo da chave de API passou a vir de `@medusajs/framework/types` — `ApiKeyDTO`, que é `id` + `token`, exatamente os campos que o seed lê — em vez do arquivo gerado. Medido com `.medusa/types` fora do lugar (o estado do clone): `make types` → `exit=0`, os três `tsc` |
 
-As duas rotas cabem na regra que o G4 já impunha ("CI verde antes de apagar a guarda") — a diferença
-é **quando a dívida vence**: antes de seguir a fila (CI primeiro) ou antes do G4 (R3-lite primeiro,
-com a CI como dívida declarada).
+As duas rotas cabiam na regra que o G4 já impunha ("CI verde antes de apagar a guarda") — a diferença
+era **quando a dívida vence**: antes de seguir a fila (CI primeiro) ou antes do G4 (R3-lite primeiro,
+com a CI como dívida declarada). Medida, a dívida venceu primeiro: a execução que segue estes dois
+consertos é a que diz se a CI está verde, e é ela que destrava o G4. O R3-lite continua sendo o
+próximo da fila — agora depois de uma CI que passa.
+
+**O que os dois defeitos têm em comum** — e fica como regra para o que vem: os dois **passavam no
+host e quebravam no clone**. O host tem `node_modules` (instalado) e `.medusa/types` (gerado pelo
+`medusa build` da imagem); um clone limpo não tem nenhum dos dois. A CI foi só quem contou: quem
+clonasse o repositório e rodasse `make check` ou `make types` antes de subir a stack batia nos dois.
+É a mesma pergunta que a guarda do DEV fez (R7.1, acima) — o que o **ambiente** tem que a **árvore**
+não declara.
 
 
