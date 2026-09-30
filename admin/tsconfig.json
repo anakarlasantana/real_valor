@@ -51,7 +51,11 @@
        *
        * `import type` é apagado pelo `tsc`/swc antes do bundle, então o Vite do
        * backend (que compila o painel por `admin.sources`) não precisa resolver
-       * este alias — medido: `make build-admin` fecha verde com ele.
+       * este alias — medido compilando o painel na **imagem**
+       * (`Frontend build completed successfully`, 27,5s, com o CSS da prévia no
+       * bundle), e medido ao contrário também: um import de VALOR por este
+       * apelido o Rollup reprova
+       * (`Rollup failed to resolve import "@conteudo/contract"`).
        *
        * É também o encaixe da G5: o dia do pacote `packages/contrato` é a troca
        * desta linha, não uma caça a cinco níveis em três arquivos. */
