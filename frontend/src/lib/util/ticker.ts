@@ -18,9 +18,11 @@
  *      faixa existir, `data` editado à mão) e lixo (`NaN` de campo vazio).
  *
  * Os três números e a regra das mensagens são espelho do contrato mantido à mão
- * — o storefront compila o artefato gerado, que **não** leva `SECTION_FIELDS`
- * (ele é só do CRM) —, e quem confere o espelho é
- * `scripts/check-contract-parity.mjs`: faixa divergente reprova o commit.
+ * de propósito: este é código de **cliente**, e importar `SECTION_FIELDS` aqui
+ * levaria o contrato inteiro para o bundle do navegador por causa de três
+ * números. Quem confere o espelho é `ticker.spec.ts` (o último `describe`):
+ * faixa divergente reprova `make test` — era o que
+ * `scripts/check-contract-parity.mjs` fazia por texto antes do G4.
  */
 
 /** Piso da faixa: abaixo disto a linha cruza rápido demais para ser lida. */

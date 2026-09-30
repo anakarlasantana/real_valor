@@ -12,13 +12,17 @@
  *   - e um valor ausente **não** pode virar "sem limite": `listProducts` sem
  *     `limit` aplica um padrão próprio (12), que é um número escondido no SDK.
  *
- * A faixa é espelho do contrato (`SECTION_FIELDS.launches`), e o espelho é
- * conferido por `scripts/check-contract-parity.mjs` — aqui se testa o
- * comportamento da função, não o número.
+ * Os três números são espelho do contrato (`SECTION_FIELDS.launches` e o
+ * conteúdo padrão), e o espelho é conferido **aqui**: o último `describe`
+ * compara a faixa e o padrão com o dado do contrato, em vez de digitá-los duas
+ * vezes. Era o que `scripts/check-contract-parity.mjs` fazia por texto; desde o
+ * G4 o espelho mora com quem usa os números.
  */
 // Import explícito, e não `globals: true`: o `tsc` deste pacote roda e os
 // globais `describe`/`it`/`expect` dariam erro de tipo (ver `media.spec.ts`).
 import { describe, expect, it } from "vitest"
+
+import { DEFAULT_HOME_SECTIONS, SECTION_FIELDS } from "@rv/contrato"
 
 import {
   LAUNCHES_LIMIT_FALLBACK,
@@ -64,5 +68,34 @@ describe("launchesLimit", () => {
 
   it("fração é contagem de cards: arredonda para baixo", () => {
     expect(launchesLimit(6.9)).toBe(6)
+  })
+})
+
+describe("o espelho do contrato", () => {
+  // O campo `limit` é o que o CRM desenha (com a faixa) e a API valida; o
+  // conteúdo padrão é o número que a seção tem antes de o lojista mexer. A
+  // comparação é com **esses** valores — se a faixa do contrato mudar, este
+  // teste tem de reprovar junto, senão a loja desenharia 2 enquanto o CRM
+  // deixaria digitar 6.
+  const limitField = SECTION_FIELDS.launches.find(
+    (field) => field.name === "limit"
+  )
+  const seed = DEFAULT_HOME_SECTIONS.find(
+    (section) => section.type === "launches"
+  )
+  const seedLimit = (seed as unknown as Record<string, unknown> | undefined)
+    ?.limit
+
+  it("a faixa da função é a do campo declarado no contrato", () => {
+    expect(limitField).toBeDefined()
+    expect([LAUNCHES_LIMIT_MIN, LAUNCHES_LIMIT_MAX]).toEqual([
+      limitField?.min,
+      limitField?.max,
+    ])
+  })
+
+  it("o padrão da função é o `limit` do conteúdo padrão", () => {
+    expect(typeof seedLimit).toBe("number")
+    expect(LAUNCHES_LIMIT_FALLBACK).toBe(seedLimit)
   })
 })

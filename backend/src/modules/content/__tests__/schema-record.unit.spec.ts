@@ -12,6 +12,20 @@ import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 
 import {
+  CONTENT_SURFACES,
+  CONTENT_TYPES,
+  ITEM_FIELDS,
+  SECTION_FIELDS,
+  SECTION_TYPE_LABELS,
+  SINGLETON_SECTION_TYPES,
+  THEME_COLOR_HEXES,
+  THEME_DARK_TOKENS,
+  THEME_FIELDS,
+  THEME_FONTS,
+  THEME_TYPE,
+  THEME_TYPE_LABEL,
+} from "../contract"
+import {
   SCHEMA_KEY,
   SCHEMA_VERSION,
   buildSchema,
@@ -130,5 +144,39 @@ describe("a tabela do contrato", () => {
     expect(model).toContain("model.text().primaryKey()")
     expect(model).toContain("version: model.number()")
     expect(model).toContain("data: model.json()")
+  })
+})
+
+describe("o schema servido (o payload do CRM)", () => {
+  /**
+   * O payload do `GET /admin/content` é **o contrato**, chave por chave: é ele
+   * que o painel desenha e que a validação usa. Se uma chave deixar de sair, a
+   * tela perde a cor (paleta), o sub-formulário do item (`itemFields`), o nome
+   * do tipo (`typeLabels`) ou o seletor de superfície — e nada falha: a tela
+   * continua "funcionando" com menos.
+   *
+   * A comparação é de **dado** — `buildSchema()` chamado contra as constantes do
+   * contrato —, e não de texto: eram oito strings procuradas no arquivo, que
+   * provavam que alguém tinha escrito o nome em algum lugar, e não que a chave
+   * **servida** fosse aquela lista.
+   */
+  it("é o contrato: tipos, campos (com o tema), rótulos, itens, paleta, fontes, cores escuras, tipos únicos e superfícies", () => {
+    const schema = buildSchema()
+
+    expect(schema.types).toEqual(CONTENT_TYPES)
+    expect(schema.fields).toEqual({
+      ...SECTION_FIELDS,
+      [THEME_TYPE]: THEME_FIELDS,
+    })
+    expect(schema.typeLabels).toEqual({
+      ...SECTION_TYPE_LABELS,
+      [THEME_TYPE]: THEME_TYPE_LABEL,
+    })
+    expect(schema.itemFields).toEqual(ITEM_FIELDS)
+    expect(schema.palette).toEqual(THEME_COLOR_HEXES)
+    expect(schema.fonts).toEqual(THEME_FONTS)
+    expect(schema.darkTokens).toEqual(THEME_DARK_TOKENS)
+    expect(schema.singletonTypes).toEqual(SINGLETON_SECTION_TYPES)
+    expect(schema.surfaces).toEqual(CONTENT_SURFACES)
   })
 })

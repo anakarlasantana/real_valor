@@ -25,6 +25,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { dirname, join } from "node:path"
 
 import {
+  FOOTER_COLUMN_SOURCES,
+  FONT_ROLES,
   ICON_LABELS,
   ITEM_FIELDS,
   SECTION_FIELDS,
@@ -107,6 +109,23 @@ describe("CSS da aparência", () => {
     expect(defined.filter((name) => !used.includes(name))).toEqual([])
     // Erro de digitação: uma classe usada que não existe em lugar nenhum.
     expect(used.filter((name) => !defined.includes(name))).toEqual([])
+  })
+
+  it("o fallback de cada `--rv-font-*` do brand.css é o do contrato", () => {
+    // A **família** do `brand.css` é o `var(--font-*)` que o `localFont` do Next
+    // publica no layout (o Next hasheia o nome real), e isso é ligação do
+    // storefront. O **fallback** é dado de tema: a loja o reescreve por
+    // requisição em `themeToCSSVariables`, e duas pilhas diferentes fariam a
+    // fonte da página mudar conforme a estação resolve ou não.
+    const divergentes = FONT_ROLES.filter((role) => {
+      const line = new RegExp(
+        `--rv-font-${role}:\\s*var\\(--font-[a-z-]+\\),\\s*([^;]+);`
+      ).exec(brandCss)
+
+      return line?.[1].trim() !== THEME_FONTS[role]?.fallback
+    })
+
+    expect(divergentes).toEqual([])
   })
 })
 
@@ -246,5 +265,33 @@ describe("os campos de aparência, dos dois lados", () => {
     const fantasma = [...new Set(lidos)].filter((name) => !declarados.has(name))
 
     expect(fantasma).toEqual([])
+  })
+})
+
+describe("os ramos do rodapé", () => {
+  it("toda origem de coluna oferecida tem ramo no desenho", () => {
+    // `source` decide se a coluna sai do catálogo ou dos links digitados, e a
+    // lista é fechada no contrato (é dela que sai o `<select>` do CRM): uma
+    // origem oferecida sem ramo no componente desenha a coluna **vazia** na
+    // loja — o lojista escolhe "Categorias" e não aparece nada, sem erro nenhum.
+    const footerColumn = read(
+      "frontend",
+      "src",
+      "modules",
+      "layout",
+      "components",
+      "footer-column",
+      "index.tsx"
+    )
+    // `links` é o caso base (o componente desenha os itens digitados), e não um
+    // ramo com marca própria no arquivo.
+    const semRamo = FOOTER_COLUMN_SOURCES.filter(
+      (source) =>
+        source !== "links" &&
+        !footerColumn.includes(`column.source === "${source}"`)
+    )
+
+    expect(FOOTER_COLUMN_SOURCES.length).toBeGreaterThan(0)
+    expect(semRamo).toEqual([])
   })
 })

@@ -11,12 +11,17 @@
  *   - a velocidade fora da faixa: 0 roda a linha como um borrão, e um valor
  *     ausente animando "sem limite" é o mesmo borrão por outro caminho.
  *
- * A faixa é espelho do contrato (`SECTION_FIELDS.announcement`), conferido por
- * `scripts/check-contract-parity.mjs` — aqui se testa o comportamento.
+ * A faixa e o padrão são espelho do contrato (`SECTION_FIELDS.announcement` e o
+ * `speedSeconds` do conteúdo padrão), e o espelho é conferido **aqui**: o
+ * último `describe` compara os três números com o dado do contrato e a regra da
+ * vírgula com a copy do seed. Aqui se testa o comportamento, e o espelho mora
+ * neste arquivo desde o G4 (era `scripts/check-contract-parity.mjs`).
  */
 // Import explícito, e não `globals: true`: o `tsc` deste pacote roda e os
 // globais `describe`/`it`/`expect` dariam erro de tipo (ver `launches.spec.ts`).
 import { describe, expect, it } from "vitest"
+
+import { DEFAULT_HOME_SECTIONS, SECTION_FIELDS } from "@rv/contrato"
 
 import {
   ANNOUNCEMENT_SPEED_DEFAULT,
@@ -102,5 +107,44 @@ describe("tickerSeconds", () => {
 
   it("texto que não é número cai no padrão", () => {
     expect(tickerSeconds("meio minuto")).toBe(ANNOUNCEMENT_SPEED_DEFAULT)
+  })
+})
+
+describe("o espelho do contrato", () => {
+  // A faixa que a função aplica é a do campo que o CRM desenha e a API valida;
+  // o padrão é o `speedSeconds` da seção no conteúdo padrão. Divergência aqui é
+  // o erro que só aparece em produção — o lojista escolhe 30s na tela e a loja
+  // anima em 24s.
+  const speedField = SECTION_FIELDS.announcement.find(
+    (field) => field.name === "speedSeconds"
+  )
+  const seed = DEFAULT_HOME_SECTIONS.find(
+    (section) => section.type === "announcement"
+  )
+  const seedFields = seed as unknown as Record<string, unknown> | undefined
+
+  it("a faixa da função é a do campo declarado no contrato", () => {
+    expect(speedField).toBeDefined()
+    expect([ANNOUNCEMENT_SPEED_MIN, ANNOUNCEMENT_SPEED_MAX]).toEqual([
+      speedField?.min,
+      speedField?.max,
+    ])
+  })
+
+  it("a velocidade padrão é a do conteúdo padrão", () => {
+    expect(typeof seedFields?.speedSeconds).toBe("number")
+    expect(ANNOUNCEMENT_SPEED_DEFAULT).toBe(seedFields?.speedSeconds)
+  })
+
+  it("nenhuma mensagem do padrão tem vírgula", () => {
+    // A vírgula é o separador do campo no CRM (`list:text`): uma mensagem do
+    // seed com vírgula vira **duas** no primeiro salvamento da barra — a copy
+    // do padrão se parte sozinha, e o lojista não pediu isso.
+    const messages = seedFields?.messages
+
+    expect(Array.isArray(messages)).toBe(true)
+    expect(
+      (messages as string[]).filter((message) => message.includes(","))
+    ).toEqual([])
   })
 })
