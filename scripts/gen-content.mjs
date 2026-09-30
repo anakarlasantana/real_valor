@@ -42,8 +42,15 @@ import { loadExport } from "./lib/load-export.mjs"
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, "..")
 
-const CONTRACT = join(root, "backend/src/modules/content/contract.ts")
-const DEFAULTS = join(root, "backend/src/modules/content/defaults.ts")
+/**
+ * O contrato é um pacote desde o G5: `packages/contrato/src/`. O que este
+ * gerador ainda escreve é o que **depende** dele e não é código — o seed do
+ * tema (um `theme.json` por tema, em `frontend/themes/`) e os tokens que o
+ * `brand.css` importa. O artefato do storefront (`contract.generated.ts`)
+ * morreu com a cópia: a loja importa `@rv/contrato`, como o backend.
+ */
+const CONTRACT = join(root, "packages/contrato/src/contract.ts")
+const DEFAULTS = join(root, "packages/contrato/src/defaults.ts")
 /** O padrão e as estações — a fonte dos `theme.json`. */
 const THEMES = join(root, "backend/src/modules/content/themes.ts")
 const ARTIFACT = join(root, "frontend/src/lib/content/contract.generated.ts")

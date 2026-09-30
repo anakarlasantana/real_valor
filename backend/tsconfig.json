@@ -2,8 +2,21 @@
   "compilerOptions": {
     "target": "ES2021",
     "esModuleInterop": true,
-    "module": "Node16",
-    "moduleResolution": "Node16",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    /*
+     * `NodeNext` (era `Node16`) e o `allowImportingTsExtensions` sao do G5.
+     *
+     * O contrato virou o pacote `packages/contrato`, que e' ESM (`"type":
+     * "module"` no package.json dele — e' o que faz o Node carregar o `.ts`
+     * direto, com type stripping, na guarda e no gerador). Com `Node16` o
+     * `tsc` recusava o shim (`src/modules/content/contract.ts`) com TS1479
+     * ("CommonJS importando ESM") e o pacote com TS2835 (import relativo sem
+     * extensao). `NodeNext` e' o modo que conhece o `require(esm)` do Node 22
+     * — o mesmo que o runtime faz —, e a extensao `.ts` nos imports internos
+     * do pacote e' a que o loader do Node resolve em disco.
+     */
+    "allowImportingTsExtensions": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "skipLibCheck": true,

@@ -341,8 +341,9 @@ build-admin:
 # `../admin/src`: o vizinho declarava o que era teste do painel, e uma limpeza
 # banal nesse `roots` faria a suite sumir sem dizer nada. Agora o CRM tem config
 # proprio (`admin/jest.config.js`) e este alvo chama o runner DELE: o binario
-# continua sendo o do backend (`../backend/node_modules/.bin/jest`) porque o CRM
-# nao tem instalacao propria — o resto medido que a G5 fecha.
+# vem da RAIZ (`../node_modules/.bin/jest`), o mesmo que roda a suite do
+# backend — desde a G5 o install e' unico e o CRM nao tem instalacao propria
+# (quem compila o painel continua sendo o Vite do backend).
 #
 # Sem `--runInBand`/`--forceExit` na linha do CRM: os dois existem na linha do
 # backend por causa do `MetadataStorage` global, que o teste do painel nao toca
@@ -362,8 +363,8 @@ build-admin:
 # MikroORM, entao arquivo em paralelo e' corrida entre arquivos. `--silent`
 # esconde o log de aplicacao para a falha aparecer sozinha no terminal.
 test:
-	@cd backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules ./node_modules/.bin/jest --silent --runInBand --forceExit
-	@cd admin && ../backend/node_modules/.bin/jest -c jest.config.js
+	@cd backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules ../node_modules/.bin/jest --silent --runInBand --forceExit
+	@cd admin && ../node_modules/.bin/jest -c jest.config.js
 	@node scripts/check-panel-tests.mjs
 	@cd frontend && ./node_modules/.bin/vitest run
 	@echo ""
@@ -380,8 +381,9 @@ test:
 # pacote IRMAO do backend (bundle proprio, React 18) e o tsconfig dele e MAIS
 # estrito que o do backend — `strict` + `noUnusedLocals`, que foi justamente o
 # que pegou um import de tipo morto na pagina do conteudo. Os tipos vem do
-# `node_modules` do backend por `paths`/`typeRoots`: o CRM nao tem instalacao
-# propria (quem compila o painel e o Vite do backend). Ver admin/tsconfig.json.
+# `node_modules` da RAIZ — o install e' unico desde a G5 — por `paths`/`typeRoots`:
+# o CRM nao tem instalacao propria (quem compila o painel e o Vite do backend).
+# Ver admin/tsconfig.json.
 #
 # O `paths` do painel carrega tambem o apelido `@conteudo/*` (R2): e por ele que
 # o painel importa TIPO do modulo de conteudo do backend, em vez de subir cinco
@@ -392,8 +394,8 @@ test:
 # `--incremental false` porque e `--noEmit`: sem isso o `tsc` escreveria o
 # `tsconfig.tsbuildinfo` e o cache de build ficaria invalido.
 types:
-	@cd backend && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
-	@cd backend && ./node_modules/.bin/tsc --noEmit -p ../admin/tsconfig.json
-	@cd frontend && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
+	@cd backend && ../node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
+	@cd backend && ../node_modules/.bin/tsc --noEmit -p ../admin/tsconfig.json
+	@cd frontend && ../node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
 	@echo ""
 	@echo "  Tipos conferidos nos dois pacotes (e no painel)."

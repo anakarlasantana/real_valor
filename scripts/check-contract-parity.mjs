@@ -53,8 +53,8 @@ import { callExport, loadExport } from "./lib/load-export.mjs"
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, "..")
 
-const CONTRACT = join(root, "backend/src/modules/content/contract.ts")
-const DEFAULTS = join(root, "backend/src/modules/content/defaults.ts")
+const CONTRACT = join(root, "packages/contrato/src/contract.ts")
+const DEFAULTS = join(root, "packages/contrato/src/defaults.ts")
 /** O gerador que produz o artefato do storefront (ver `scripts/gen-content.mjs`). */
 const GENERATOR = join(root, "scripts/gen-content.mjs")
 /** O artefato que o storefront compila — versionado, gerado. */
@@ -128,7 +128,7 @@ const ORDER_MODULE = join(root, "backend/src/modules/content/order.ts")
  * monta o payload e de la que o `seed-schema` tira a linha do banco. As
  * chaves sao conferidas aqui, e nao na rota, porque a montagem saiu dela.
  */
-const CONTENT_SCHEMA = join(root, "backend/src/modules/content/schema.ts")
+const CONTENT_SCHEMA = join(root, "packages/contrato/src/schema.ts")
 const CONTENT_SERVICE = join(root, "backend/src/modules/content/service.ts")
 const CONTENT_CONTRACT_MODEL = join(
   root,

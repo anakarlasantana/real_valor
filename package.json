@@ -1,0 +1,15 @@
+{
+  "name": "real-valor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Real Valor — monorepo do serviço (backend Medusa + CRM) e do storefront (Next), com o contrato de conteúdo em `packages/contrato`",
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "packageManager": "yarn@4.12.0"
+}

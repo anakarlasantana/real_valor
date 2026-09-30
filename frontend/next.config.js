@@ -31,6 +31,11 @@ const nextConfig = {
   // completo). O `frontend/Dockerfile` depende desta saida.
   output: "standalone",
   reactStrictMode: true,
+  // O contrato é um pacote do workspace e chega como TypeScript
+  // (`packages/contrato/src/*.ts`): sem isto o Next trataria o que está em
+  // `node_modules` como código pronto e não o compilaria. Desde o G5 não há
+  // mais cópia gerada — os dois apps importam `@rv/contrato`.
+  transpilePackages: ["@rv/contrato"],
   logging: {
     fetches: {
       fullUrl: true,
