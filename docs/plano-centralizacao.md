@@ -480,6 +480,7 @@ da CI na última medição **antes** dos consertos (API do GitHub, sem token):
 | Conserto dos tipos | o tipo da chave de API passou a ser **local e mínimo** — `type PublishableApiKey = { id: string; token: string }`, só o que o seed lê —, e o `import` do arquivo gerado saiu. A primeira tentativa foi o `ApiKeyDTO` do framework, e ela **verde num estado só**: resolve o clone, mas no host, onde o `.medusa/types` existe e a augmentação tipa o `graph`, `data?.[0]` vira o `ApiKey` do gráfico e a atribuição reprova (`last_used_at` é `Maybe<string \| Date>` lá e `Date \| null` no DTO — `TS2322` medido). O tipo local passa nos **dois**: `make types` com o diretório gerado **presente** e **ausente** → `exit=0` nos dois, os três `tsc` |
 
 | Primeira execução **depois** dos consertos (`#17`, `dd009b9160`) | **verde** — os cinco jobs: `guarda de contrato` (passo `make check`), `tipos` (`make types`), `testes`, `registro do schema` e `build do storefront`. Nenhuma linha de `.github/workflows/check.yml` mudou: o conserto foi todo na **árvore**, e é isso que faz o verde valer |
+| As duas seguintes (`#18`, `dd8c72bbe2` e `#19`, `ecb4346650`) | **verdes** também. A `#18` é só documento (o registro desta medição); a `#19` é a **árvore final**, com o tipo local do seed — o conserto que passa com o `.medusa/types` presente **e** ausente |
 
 As duas rotas cabiam na regra que o G4 já impunha ("CI verde antes de apagar a guarda") — a diferença
 era **quando a dívida vence**: antes de seguir a fila (CI primeiro) ou antes do G4 (R3-lite primeiro,
