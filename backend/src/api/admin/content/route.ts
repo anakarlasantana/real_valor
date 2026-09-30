@@ -29,6 +29,7 @@ import { notifyStorefront } from "../../../modules/content/revalidate"
 import type ContentModuleService from "../../../modules/content/service"
 import {
   isKnownType,
+  resolveSurface,
   validateData,
 } from "../../../modules/content/validation"
 import { toSection } from "../../../modules/content/view"
@@ -131,8 +132,6 @@ export async function POST(
 
   const body = (req.body ?? {}) as Record<string, unknown>
   const type = body.type
-  /** A superfície onde a seção nasce (`home`, o padrão do modelo). */
-  const surface = typeof body.surface === "string" ? body.surface : "home"
 
   const { schema } = await service.getContract()
 
@@ -141,6 +140,19 @@ export async function POST(
       type: "invalid_data",
       message: `Campo "type" deve ser um de: ${schema.types.join(", ")}.`,
     })
+    return
+  }
+
+  // A superfície da linha nova: `home` (o padrão do modelo, de sempre) ou
+  // `theme`, quando o tipo é o bloco de tema — quem decide é o contrato, não o
+  // corpo. Ver `resolveSurface`, em `modules/content/validation.ts`.
+  const { surface = "home", error: surfaceError } = resolveSurface(
+    body.surface,
+    type
+  )
+
+  if (surfaceError) {
+    res.status(400).json({ type: "invalid_data", message: surfaceError })
     return
   }
 
@@ -328,6 +340,22 @@ export async function PATCH(
   const { columns, data, curation, references } = splitPayload(
     (req.body ?? {}) as Record<string, unknown>
   )
+
+  // A superfície não se move pela tela: o bloco de tema mora em `theme` e uma
+  // seção não pode ir para lá (`resolveSurface`). A coluna só entra na gravação
+  // quando há o que gravar — um PATCH que mexeu num texto não a reescreve.
+  const { surface, error: surfaceError } = resolveSurface(columns.surface, type)
+
+  if (surfaceError) {
+    res.status(400).json({ type: "invalid_data", message: surfaceError })
+    return
+  }
+
+  if (surface) {
+    columns.surface = surface
+  } else {
+    delete columns.surface
+  }
 
   const { ids: productIds, error: curationError } = await resolveProductIds(
     curation,

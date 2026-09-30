@@ -42,18 +42,13 @@
 
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import {
-  existsSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs"
-import { tmpdir } from "node:os"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
+import { isDeepStrictEqual } from "node:util"
 import { dirname } from "node:path"
+
+import { callExport, loadExport } from "./lib/load-export.mjs"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, "..")
@@ -239,52 +234,19 @@ const STOREFRONT_DIRS = [
 ]
 
 /**
- * Carrega um módulo TS e devolve o valor de um export.
+ * O carregador de módulo TS vive em `scripts/lib/load-export.mjs` desde a R4:
+ * o gerador precisou dele pelo mesmo motivo (comparar **dado**, não texto) e o
+ * hook de resolução do `./contract` sem extensão não podia existir em duas
+ * cópias.
  *
- * O `import` acontece num processo Node à parte, que apaga os tipos
- * (type-stripping nativo) e devolve o valor serializado por stdout. Só serve
- * para arquivos sem dependência de runtime — `contract.ts` e `defaults.ts` são
- * tipos e dados puros.
- *
- * `icons.ts` NÃO entra nesta lista, apesar de já ter entrado. Ele importa
- * **valor** de `@medusajs/icons` (é o registro que desenha o ícone), e resolver
- * um import desses pede o `node_modules` do storefront — que o job `guarda de
- * contrato` da CI não instala de propósito. Era essa a única causa de aquele
- * job nunca fechar num clone limpo. Ver a seção dos ícones, que o lê como
- * texto, e o comentário do `readBlock`.
+ * A ressalva continua valendo: ele só serve para arquivo sem dependência de
+ * runtime. `icons.ts` é o contra-exemplo — importa **valor** de
+ * `@medusajs/icons` (é o registro que desenha o ícone), e resolver esse import
+ * pede o `node_modules` do storefront, que o job `guarda de contrato` da CI não
+ * instala de propósito. Era essa a única causa de aquele job nunca fechar num
+ * clone limpo. Ver a seção dos ícones, que o lê como texto, e o comentário do
+ * `readBlock`.
  */
-function loadExport(file, exportName) {
-  const dir = mkdtempSync(join(tmpdir(), "rv-parity-"))
-  const entry = join(dir, "entry.mjs")
-
-  const body = `
-    const mod = await import(${JSON.stringify(`file://${file}`)});
-    const value = mod[${JSON.stringify(exportName)}];
-    if (value === undefined) {
-      console.error("__MISSING__:" + ${JSON.stringify(exportName)});
-      process.exit(3);
-    }
-    process.stdout.write(JSON.stringify(value));
-  `
-
-  writeFileSync(entry, body)
-  const result = spawnSync("node", [entry], { encoding: "utf8" })
-  rmSync(dir, { recursive: true, force: true })
-
-  if (result.status === 3) {
-    throw new Error(
-      `${file} não exporta "${exportName}". ` +
-        `Erro de compilação:\n${result.stderr}`
-    )
-  }
-  if (result.status !== 0) {
-    throw new Error(
-      `Falha ao importar ${file}:\n${result.stderr || result.stdout}`
-    )
-  }
-
-  return JSON.parse(result.stdout)
-}
 
 const failures = []
 
@@ -1286,7 +1248,162 @@ assert(
     `órfão: ${orphanSeeds.join(", ") || "nenhum"}`
 )
 
+// ---------------------------------------------------------------------------
+// SUPERFÍCIE DE TEMA (R4) — o tema como conteúdo do CRM
+// ---------------------------------------------------------------------------
+//
+// O tema deixou de ser só um seed em disco: é conteúdo, gravado na mesma
+// `content_section` das seções, sobre a coluna `surface` que já existia. O que
+// esta seção confere é o que **atravessa pacotes** — o contrato contra o payload
+// que a API serve, e o seed contra as linhas que o banco vai receber. As regras
+// puras (cobertura de `THEME_FIELDS`, o achatamento campo a campo, `defaultsFor`)
+// têm teste próprio no backend, onde o runner tem `node_modules`.
+
+const themeType = loadExport(CONTRACT, "THEME_TYPE")
+const themeTypeLabel = loadExport(CONTRACT, "THEME_TYPE_LABEL")
+const themeSurface = loadExport(CONTRACT, "THEME_SURFACE")
+const contractSurfaces = loadExport(CONTRACT, "CONTENT_SURFACES")
+const contentTypes = loadExport(CONTRACT, "CONTENT_TYPES")
+const themeFields = loadExport(CONTRACT, "THEME_FIELDS")
+const themeFiles = loadExport(THEMES, "THEME_FILES")
+const themeRows = loadExport(THEMES, "THEME_SECTIONS")
+
+const surfaceProblems = contractSurfaces.flatMap((surface) => {
+  const blanks = ["id", "label", "enabledLabel", "blockLabel", "hint"].filter(
+    (key) => typeof surface[key] !== "string" || !surface[key]
+  )
+  const types = Array.isArray(surface.types) && surface.types.length
+
+  return [
+    ...blanks.map((key) => `${surface.id ?? "?"}: ${key} vazio`),
+    ...(types ? [] : [`${surface.id ?? "?"}: sem tipos criáveis`]),
+    ...("titleField" in surface
+      ? []
+      : [`${surface.id ?? "?"}: sem \`titleField\` declarado`]),
+  ]
+})
+
+assert(
+  "cada superfície se descreve (rótulo, título, aviso e tipos criáveis)",
+  contractSurfaces.length > 1 && surfaceProblems.length === 0,
+  surfaceProblems.join(" | ") || "nenhum"
+)
+
+// A união do que as superfícies criam **é** a lista de tipos que a API aceita
+// gravar (`CONTENT_TYPES`), e as duas são lidas por caminhos diferentes: o
+// diálogo "Nova seção" lê a superfície, o `validateData` lê a lista. Uma
+// superfície que declare um tipo fora dela vira um botão que responde 400; um
+// tipo na lista que nenhuma superfície oferece vira dado que ninguém cria pela
+// tela.
+const surfaceTypes = [...new Set(contractSurfaces.flatMap((s) => s.types))]
+const unionOff = [
+  ...contentTypes.filter((type) => !surfaceTypes.includes(type)),
+  ...surfaceTypes.filter((type) => !contentTypes.includes(type)),
+]
+
+assert(
+  "a união das superfícies é `CONTENT_TYPES` (o que a API aceita gravar)",
+  contentTypes.includes(themeType) && unionOff.length === 0,
+  `fora da união: ${unionOff.join(", ") || "nenhum"}`
+)
+
+// A superfície de tema é a única que dá nome ao bloco pelo rótulo do dono
+// ("Natal") — a home se chama pelo tipo, porque o `type` é o identificador do
+// render —, e a única que cria estações. A home não pode oferecer `theme`: um
+// bloco de tema na vitrine seria um tipo que nenhum render da home desenha.
+const themeSurfaceSpec = contractSurfaces.find((s) => s.id === themeSurface)
+const homeSurfaceSpec = contractSurfaces.find((s) => s.id === "home")
+
+assert(
+  "a superfície de tema se declara (título pelo rótulo, e só ela cria estações)",
+  themeSurfaceSpec?.titleField === "label" &&
+    themeSurfaceSpec.types.length === 1 &&
+    themeSurfaceSpec.types[0] === themeType &&
+    Boolean(themeTypeLabel) &&
+    homeSurfaceSpec?.titleField === null &&
+    !homeSurfaceSpec.types.includes(themeType),
+  `superfície: ${JSON.stringify(themeSurfaceSpec?.types) ?? "ausente"}`
+)
+
 const tokensCss = existsSync(TOKENS_CSS) ? readFileSync(TOKENS_CSS, "utf8") : ""
+
+// A linha que o seed grava fala a **mesma língua** dos campos que o CRM edita:
+// todo campo de `data` da estação existe em `THEME_FIELDS`. É a checagem que
+// pega a cor nova no contrato sem campo no editor — a linha sairia com uma
+// chave que o `validateData` recusaria num PATCH, e que o CRM não desenharia
+// para corrigir.
+//
+// O **mapeamento** campo a campo (`rose` → `colorRose`, com o valor de cada um)
+// vive no teste do backend (`themes.unit.spec.ts`), com as mesmas funções que o
+// seed usa. Aqui fica a comparação que não precisa de runner: a chave existe no
+// editor, os valores da linha são os do `theme.json` e a contagem bate — e é a
+// contagem que pega a ausência silenciosa.
+const themeFieldNames = new Set(themeFields.map((field) => field.name))
+const rowByTheme = new Map(themeRows.map((row) => [row.id, row]))
+const seedRowProblems = []
+
+for (const theme of themeFiles) {
+  const row = rowByTheme.get(theme.id)
+
+  if (!row) {
+    seedRowProblems.push(`${theme.id}: sem linha de seed`)
+    continue
+  }
+
+  if (row.type !== themeType) {
+    seedRowProblems.push(`${theme.id}: type fora do contrato`)
+  }
+
+  const colors = Object.values(theme.colors ?? {})
+  const fonts = Object.values(theme.fonts ?? {})
+  const dates = theme.dateRange
+    ? [theme.dateRange.start, theme.dateRange.end]
+    : []
+  const unknown = Object.keys(row).filter(
+    (key) =>
+      !["id", "type", "enabled", "position"].includes(key) &&
+      !themeFieldNames.has(key)
+  )
+
+  if (unknown.length) {
+    seedRowProblems.push(`${theme.id}: campo sem editor (${unknown.join(", ")})`)
+  }
+
+  const missing = [...colors, ...fonts, ...dates].filter(
+    (value) => !Object.values(row).includes(value)
+  )
+
+  if (missing.length) {
+    seedRowProblems.push(
+      `${theme.id}: valor do seed fora da linha (${missing.join(", ")})`
+    )
+  }
+
+  const expected = 1 + dates.length + colors.length + fonts.length
+  const present = Object.keys(row).length - 4
+
+  if (present !== expected) {
+    seedRowProblems.push(
+      `${theme.id}: ${present} campo(s) na linha, ${expected} no tema`
+    )
+  }
+}
+
+assert(
+  "a linha do seed é o tema (`THEME_SECTIONS` ⇔ `theme.json`), campo a campo",
+  themeRows.length > 1 && seedRowProblems.length === 0,
+  seedRowProblems.join(" | ") || "nenhum"
+)
+
+assert(
+  "as estações do seed têm os ids do contrato e posições crescentes",
+  themeRows.map((row) => row.id).join(",") ===
+    themeFiles.map((theme) => theme.id).join(",") &&
+    themeRows.every(
+      (row, index) => row.position === (index + 1) * 10 && row.enabled === true
+    ),
+  themeRows.map((row) => `${row.id}@${row.position}`).join(", ")
+)
 const missingTokens = contractColors.filter(
   (token) => !tokensCss.includes(`--rv-${token}:`)
 )
@@ -1417,24 +1534,65 @@ assert(
 // jargão e o editor de lista fica sem sub-formulário.
 const adminRoute = readFileSync(ADMIN_CONTENT_ROUTE, "utf8")
 const contentSchema = readFileSync(CONTENT_SCHEMA, "utf8")
-/** As chaves do schema, conferidas no arquivo que as monta (e não na rota). */
-const schemaKeys = [
-  "types: SECTION_TYPES",
-  "typeLabels: SECTION_TYPE_LABELS",
-  "fields: SECTION_FIELDS",
-  "itemFields: ITEM_FIELDS",
-  "palette: THEME_COLOR_HEXES",
-  "fonts: THEME_FONTS",
-  "darkTokens: THEME_DARK_TOKENS",
-  "singletonTypes: SINGLETON_SECTION_TYPES",
-]
-const offSchema = schemaKeys.filter((key) => !contentSchema.includes(key))
+
+/**
+ * O payload do CRM é **o contrato**, chave por chave.
+ *
+ * A comparação é de dado: `buildSchema()` é chamado e o que ele devolve é
+ * comparado com as constantes do contrato (o `scripts/lib/load-export.mjs`
+ * passou a saber chamar função na R4 — JSON não serializa uma). Antes eram oito
+ * strings procuradas no texto do arquivo, que provavam que alguém tinha escrito
+ * aquele nome em algum lugar, e não que a chave **servida** fosse aquela lista.
+ */
+const builtSchema = callExport(CONTENT_SCHEMA, "buildSchema")
+const expectedSchema = {
+  types: contentTypes,
+  typeLabels: {
+    ...loadExport(CONTRACT, "SECTION_TYPE_LABELS"),
+    [themeType]: themeTypeLabel,
+  },
+  // Os campos de todo tipo **editável**: as seções e o bloco de tema.
+  fields: { ...loadExport(CONTRACT, "SECTION_FIELDS"), [themeType]: themeFields },
+  itemFields: loadExport(CONTRACT, "ITEM_FIELDS"),
+  palette: contractHexes,
+  fonts: contractThemeFonts,
+  darkTokens: contractDark,
+  singletonTypes: loadExport(CONTRACT, "SINGLETON_SECTION_TYPES"),
+  surfaces: contractSurfaces,
+}
+const offSchema = Object.entries(expectedSchema)
+  .filter(([key, value]) => !isDeepStrictEqual(builtSchema[key], value))
+  .map(([key]) => key)
 
 assert(
-  "o schema do CRM é montado num lugar só, com tipos, campos, rótulos, " +
-    "campos de item, paleta, fontes, cores escuras e tipos únicos",
+  "o payload do CRM é o contrato: tipos, campos (com o tema), rótulos, itens, " +
+    "paleta, fontes, cores escuras, tipos únicos e superfícies",
   offSchema.length === 0,
-  `faltando no schema: ${offSchema.join(", ") || "nenhum"}`
+  `divergente em: ${offSchema.join(", ") || "nenhum"}`
+)
+
+// A mesma tela edita as duas superfícies. O seletor sai do **schema**
+// (`CONTENT_SURFACES` viaja no payload), e não de uma constante no React: uma
+// superfície nova no contrato aparece na tela sem edição no painel — a mesma
+// promessa que a bolinha de cor e o sub-formulário dos itens já fazem.
+const adminPage = readFileSync(ADMIN_PAGE, "utf8")
+
+assert(
+  "o CRM monta o seletor de superfície e o diálogo a partir do schema",
+  adminPage.includes("schema?.surfaces") &&
+    adminPage.includes("currentSurface") &&
+    adminPage.includes("?surface="),
+  "em admin/src/admin/routes/content/page.tsx: leia `schema.surfaces`"
+)
+
+// E a rota amarra a superfície ao tipo nas **duas** portas que gravam: o POST
+// (o bloco nasce na superfície dele, mesmo que o corpo diga outra) e o PATCH
+// (nenhuma edição move um bloco para a superfície de tema). A regra é uma
+// função só, em `validation.ts`, com teste próprio.
+assert(
+  "a rota do admin amarra a superfície ao tipo no POST e no PATCH",
+  (adminRoute.match(/resolveSurface\(/g) ?? []).length >= 2,
+  "em backend/src/api/admin/content/route.ts: use `resolveSurface` nas duas portas"
 )
 
 // E a rota tem que **consumir** esse lugar, senão o schema volta a ser montado
@@ -1455,13 +1613,20 @@ assert(
 // a ser o único lugar que decide o formulário — que é o defeito que este
 // trabalho tirou do caminho.
 //
-// O teste é o **import** e a montagem inline (as chaves do schema), e não a
+// O teste é o **import** e a montagem inline (as chaves do payload), e não a
 // menção a `buildSchema()`: citar a função num comentário é legítimo e útil,
 // e uma guarda que reprova comentário obriga o próximo a apagar a explicação.
+const mountedSchemaKeys = [
+  "typeLabels:",
+  "itemFields:",
+  "singletonTypes:",
+  "surfaces:",
+]
+
 assert(
   "a rota do admin não monta o schema (isso é do `schema.ts`/bootstrap)",
   !/import\s*\{[^}]*\bbuildSchema\b/.test(adminRoute) &&
-    !schemaKeys.some((key) => adminRoute.includes(key)),
+    !mountedSchemaKeys.some((key) => adminRoute.includes(key)),
   "em backend/src/api/admin/content/route.ts: use `service.getContract()` — " +
     "a montagem do schema é do `schema.ts`"
 )

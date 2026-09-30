@@ -1,4 +1,14 @@
-import type { FontRole, ThemeColorToken } from "./contract"
+import {
+  FONT_ROLES,
+  THEME_COLOR_HEXES,
+  THEME_FONTS,
+  THEME_SURFACE,
+  THEME_TYPE,
+  themeColorField,
+  themeFontField,
+  type FontRole,
+  type ThemeColorToken,
+} from "./contract"
 
 /**
  * O tema da loja — o padrão e as estações.
@@ -14,23 +24,28 @@ import type { FontRole, ThemeColorToken } from "./contract"
  * ou fonte ausente é **herdada** do padrão, pelo `normalizeTheme` de
  * `frontend/src/lib/theme.ts`.
  *
- * O import do contrato é **de tipo** (`import type`): o gerador carrega este
- * módulo num processo Node que resolve ESM, onde um import sem extensão
- * (`./contract`) não resolveria. Tipo é apagado no carregamento — o valor
- * nunca é buscado —, e quem junta as duas metades (a paleta do contrato e as
- * estações daqui) é o gerador, no único lugar em que as duas se encontram.
+ * O import do contrato é **de valor** desde a R4. Até a R3-lite era só de tipo,
+ * porque o gerador carrega este módulo num processo Node que resolve ESM e um
+ * import sem extensão (`./contract`) não resolvia — medido: `ERR_MODULE_NOT_FOUND`.
+ * O sintoma era o do Node, não do contrato: desde o 22 ele apaga os tipos
+ * nativamente, e só faltava a resolução do especificador. O carregador do
+ * gerador (`scripts/lib/load-export.mjs`) passou a registrar um hook de
+ * resolução de 10 linhas, e agora a paleta do contrato e as estações daqui se
+ * encontram **aqui**, no único lugar em que as duas existem: o gerador e o seed
+ * do banco consomem o mesmo objeto (`THEME_FILES`), e não há merge paralelo
+ * para divergir.
  *
  * Usado por três caminhos, como `DEFAULT_HOME_SECTIONS` em `./defaults`:
  *
- *   1. `scripts/gen-content.mjs` escreve `frontend/themes/<id>/theme.json` —
- *      o **seed** que a loja lê hoje (até a R5 ler o payload) e que a R4 vai
- *      levar para o banco como uma linha de `content_section` na superfície
- *      `theme`. O arquivo é gerado, e não digitado: o `--check` do gerador
- *      roda no `make check` e no hook de commit, então o seed não envelhece
- *      em silêncio;
- *   2. a R4 (`seed` do tema na linha do banco) — a mesma lista, já tipada;
- *   3. o fallback do storefront quando a API de conteúdo falhar: `theme.ts`
- *      cai no `themes/default/theme.json`, que sai daqui.
+ *   1. `scripts/gen-content.mjs` escreve `frontend/themes/<id>/theme.json` daqui
+ *      — o **seed** que o gerador versiona. O arquivo é gerado, e não digitado:
+ *      o `--check` do gerador roda no `make check` e no hook de commit, então o
+ *      seed não envelhece em silêncio;
+ *   2. `THEME_SECTIONS` (abaixo) — as linhas de `content_section` da superfície
+ *      `theme`, semeadas pelo `make seed` e pelo "Restaurar padrão" da aba do
+ *      tema no CRM (R4). É a mesma lista, já achatada no formato do `data`;
+ *   3. o fallback do storefront quando a API de conteúdo falhar: `theme.ts` cai
+ *      no `themes/default/theme.json`, que sai daqui.
  *
  * A janela de data é `MM-DD`, sem ano: ela é **anual** de propósito (o Verão
  * vira o ano), e quem decide o que fazer quando `start > end` é o
@@ -118,4 +133,90 @@ export const THEME_SEASONS: readonly ThemeFile[] = [
     fonts: {},
   },
 ]
+
+/**
+ * O tema padrão **completo**: id, rótulo, janela (nenhuma) e a paleta/fontes
+ * do contrato, já fundidas.
+ *
+ * É o único `ThemeFile` com tudo preenchido — as estações declaram só o que
+ * trocam e o resto é herdado deste. Até a R4 esta junção era feita pelo
+ * gerador (o contrato tinha a paleta, este arquivo tinha as estações, e o
+ * único lugar em que as duas se encontravam era o `gen-content.mjs`); agora ela
+ * mora no módulo dono das duas metades, e serve às duas portas: o gerador
+ * escreve os `theme.json` daqui e o seed grava as linhas do banco daqui.
+ */
+export const THEME_FILES: readonly ThemeFile[] = [
+  {
+    ...THEME_DEFAULT,
+    colors: THEME_COLOR_HEXES,
+    fonts: Object.fromEntries(
+      FONT_ROLES.map((role) => [role, THEME_FONTS[role].family])
+    ),
+  },
+  ...THEME_SEASONS,
+]
+
+/**
+ * O `data` de uma linha de estação: o `ThemeFile` **achatado** — um campo por
+ * cor e por papel de fonte, com os nomes que o contrato publica
+ * (`themeColorField`/`themeFontField`).
+ *
+ * Chave de valor vazio **não se escreve**: em branco significa "herda o tema
+ * padrão", e gravar `""` seria dizer à loja que a estação tem uma cor que não é
+ * cor nenhuma. É o mesmo contrato do `theme.json` (o Natal troca três cores) e
+ * o motivo de a leitura da loja mesclar o que vem sobre o padrão.
+ */
+function themeData(theme: ThemeFile): Record<string, unknown> {
+  const data: Record<string, unknown> = { label: theme.label }
+
+  if (theme.dateRange) {
+    data.dateRangeStart = theme.dateRange.start
+    data.dateRangeEnd = theme.dateRange.end
+  }
+
+  for (const [token, hex] of Object.entries(theme.colors)) {
+    if (hex) {
+      data[themeColorField(token as ThemeColorToken)] = hex
+    }
+  }
+
+  for (const [role, family] of Object.entries(theme.fonts)) {
+    if (family) {
+      data[themeFontField(role as FontRole)] = family
+    }
+  }
+
+  return data
+}
+
+/** Uma linha do conteúdo padrão: colunas de controle e o `data` achatado. */
+export type ThemeSection = {
+  id: string
+  type: string
+  enabled: boolean
+  position: number
+  [key: string]: unknown
+}
+
+/**
+ * As estações como **conteúdo padrão da superfície `theme`** — o que o
+ * `make seed` cria e o que o botão "Restaurar padrão" da aba do tema repõe.
+ *
+ * Tem a mesma forma de `DEFAULT_HOME_SECTIONS` (`./defaults`): `id`, `type`,
+ * `enabled`, `position` e o resto achatado no nível raiz. É essa forma que
+ * `restoreDefaultSections` consome, então as duas superfícies passam pela mesma
+ * máquina — a única diferença entre elas é a lista.
+ *
+ * `position` é a ordem da lista (10, 20, 30…), como no padrão da vitrine: o
+ * padrão é a numeração inicial, e quem manda depois é a coluna do banco.
+ */
+export const THEME_SECTIONS: readonly ThemeSection[] = THEME_FILES.map(
+  (theme, index) => ({
+    id: theme.id,
+    type: THEME_TYPE,
+    enabled: true,
+    position: (index + 1) * 10,
+    ...themeData(theme),
+  })
+)
 

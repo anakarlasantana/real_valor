@@ -57,7 +57,11 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 // aqui já foi defeito uma vez (a numeração da ordem), e a guarda
 // `scripts/check-boundaries.mjs` falha se voltar — inclusive por este alias.
 // Ver docs/plano-centralizacao.md, R2.
-import type { AppearanceGroup, CategoryRef } from "@conteudo/contract"
+import type {
+  AppearanceGroup,
+  CategoryRef,
+  ContentSurfaceSpec,
+} from "@conteudo/contract"
 import type { OrderFaixa } from "@conteudo/order"
 import type { ContentSchemaPayload } from "@conteudo/schema"
 import { AppearanceRail } from "./appearance-controls"
@@ -192,11 +196,19 @@ function railNote(
  * segundo — oferecer o botão seria oferecer um erro. Quem diz quais são é
  * `schema.singletonTypes`, que sai do mesmo contrato que a rota usa.
  */
-function creatableTypes(schema: Schema, sections: Section[]): string[] {
+function creatableTypes(
+  schema: Schema,
+  sections: Section[],
+  surface?: ContentSurfaceSpec
+): string[] {
   const singletons = new Set(schema.singletonTypes ?? [])
   const present = new Set(sections.map((section) => section.type))
 
-  return (schema.types ?? []).filter(
+  // A lista sai da **superfície** — o que ela pode criar —, e não de
+  // `schema.types`: a aba da vitrine oferece seções e a do tema oferece a
+  // estação. Sem isto o diálogo da aba do tema ofereceria "Hero", um bloco que
+  // nenhum render daquela superfície lê.
+  return (surface?.types ?? []).filter(
     (type) => !singletons.has(type) || !present.has(type)
   )
 }
@@ -247,6 +259,15 @@ function freeAnchor(type: string, sections: Section[]): string {
  */
 
 const ContentPage = () => {
+  /**
+   * A superfície em edição: a vitrine (`home`) ou o tema (`theme`).
+   *
+   * A tela é a mesma — o que muda é o conteúdo que a API devolve e o que o
+   * contrato diz sobre ele. A lista de superfícies vem do **schema**
+   * (`schema.surfaces`), e não de uma constante aqui: uma superfície nova no
+   * contrato aparece na tela sem edição em React.
+   */
+  const [surface, setSurface] = useState("home")
   const [sections, setSections] = useState<Section[]>([])
   const [schema, setSchema] = useState<Schema | null>(null)
   /**
@@ -298,7 +319,13 @@ const ContentPage = () => {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/admin/content", { credentials: "include" })
+      // `surface` é query da rota: a mesma tela edita as seções da vitrine e as
+      // estações do tema, e o `schema` que volta é o da superfície pedida (o
+      // tema traz `fields.theme` em vez dos campos de uma seção).
+      const res = await fetch(
+        `/admin/content?surface=${encodeURIComponent(surface)}`,
+        { credentials: "include" }
+      )
       const json = await res.json()
 
       if (!res.ok) {
@@ -341,7 +368,7 @@ const ContentPage = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [surface])
 
   useEffect(() => {
     load()
@@ -426,10 +453,33 @@ const ContentPage = () => {
     [shown]
   )
 
+  /** A superfície em edição, como o contrato a descreve (rótulos, tipos, aviso). */
+  const currentSurface = schema?.surfaces?.find((spec) => spec.id === surface)
+
+  /**
+   * Troca de superfície: a lista, o schema e os formulários são outros.
+   *
+   * A ordem pendente e o formulário aberto são da lista que estava na tela —
+   * levá-los para a outra aba seria pendurar uma reordenação da vitrine numa
+   * lista de estações. O `load` refaz o resto: `surface` é dependência dele.
+   */
+  const switchSurface = (id: string) => {
+    if (id === surface) {
+      return
+    }
+
+    setSurface(id)
+    setPendingOrder(null)
+    setOpenId(null)
+    setCreating(false)
+    setNewType("")
+    setNewId("")
+  }
+
   /** Os tipos oferecidos no "Nova seção", já sem os únicos que já existem. */
   const types = useMemo(
-    () => (schema ? creatableTypes(schema, sections) : []),
-    [schema, sections]
+    () => (schema ? creatableTypes(schema, sections, currentSurface) : []),
+    [schema, sections, currentSurface]
   )
 
   // O tipo inicial e a âncora sugerida só fazem sentido depois que o schema
@@ -440,11 +490,11 @@ const ContentPage = () => {
       return
     }
 
-    const first = creatableTypes(schema, sections)[0] ?? ""
+    const first = creatableTypes(schema, sections, currentSurface)[0] ?? ""
 
     setNewType(first)
     setNewId(first ? freeAnchor(first, sections) : "")
-  }, [schema, sections, newType])
+  }, [schema, sections, newType, currentSurface])
 
   const pickType = (type: string) => {
     setNewType(type)
@@ -466,6 +516,11 @@ const ContentPage = () => {
         credentials: "include",
         body: JSON.stringify({
           type: newType,
+          // A superfície da aba: quem **decide** é a API (o bloco de tema mora
+          // em `theme`, sempre), mas mandar o que a tela está mostrando deixa a
+          // intenção explícita — e é o que uma superfície futura precisa para
+          // criar conteúdo dela.
+          surface,
           // Sem âncora, quem gera é o banco — e aí o link do menu (`/#…`) não
           // tem como apontar para a seção. Por isso o campo vem sugerido.
           ...(newId.trim() ? { id: newId.trim() } : {}),
@@ -508,7 +563,7 @@ const ContentPage = () => {
   const restore = async () => {
     if (
       !window.confirm(
-        "Criar as seções padrão que estiverem faltando? As que já existem não são alteradas."
+        `Criar o que estiver faltando do padrão de "${currentSurface?.label ?? surface}"? O que já existe não é alterado.`
       )
     ) {
       return
@@ -517,10 +572,10 @@ const ContentPage = () => {
     setWorking("restore")
 
     try {
-      const res = await fetch("/admin/content/restore", {
-        method: "POST",
-        credentials: "include",
-      })
+      const res = await fetch(
+        `/admin/content/restore?surface=${encodeURIComponent(surface)}`,
+        { method: "POST", credentials: "include" }
+      )
       const json = await res.json().catch(() => ({}))
 
       if (!res.ok) {
@@ -532,8 +587,8 @@ const ContentPage = () => {
 
       toast.success(
         created.length
-          ? `Seções criadas: ${created.join(", ")}.`
-          : "Nada a restaurar: as seções padrão já existem."
+          ? `Criadas: ${created.join(", ")}.`
+          : `Nada a restaurar em "${currentSurface?.label ?? surface}": o padrão já está no lugar.`
       )
       await load()
     } catch (error) {
@@ -755,27 +810,39 @@ const ContentPage = () => {
 
   return (
     <Container className="flex flex-col gap-y-4">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-x-4">
         <div>
-          <Heading level="h1">Conteúdo da vitrine</Heading>
+          <Heading level="h1">
+            {currentSurface?.label ?? "Conteúdo da vitrine"}
+          </Heading>
           <Text size="small" className="text-ui-fg-subtle">
-            Estas seções montam a página inicial. A ordem é a das setas e só vale
-            depois de “Salvar ordem”. As seções marcadas como Fixo — a barra de
-            anúncio, o cabeçalho e o rodapé, que aparecem em todas as páginas da
-            loja — não têm ordem: a loja resolve as três pelo tipo, e movê-las na
-            lista não moveria nada no site. Ao editar uma seção, a barra
-            “Alterações não salvas” aparece com o botão Salvar. A aparência entra
-            junto do campo que ela muda: em branco, a seção segue o tema da loja —
-            inclusive quando o tema é sazonal.
+            {currentSurface?.hint ?? ""}
           </Text>
         </div>
         <div className="flex shrink-0 items-center gap-x-2">
+          {/* Uma superfície por botão, na ordem de `CONTENT_SURFACES` (que
+              chega no `schema`): a tela é a mesma e o que muda é o conteúdo —
+              as seções da vitrine ou as estações do tema. Com uma superfície
+              só, o seletor não aparece. */}
+          {(schema?.surfaces ?? []).map((spec) => (
+            <Button
+              key={spec.id}
+              size="small"
+              variant={spec.id === surface ? "primary" : "secondary"}
+              onClick={() => switchSurface(spec.id)}
+            >
+              {spec.label}
+            </Button>
+          ))}
+
           <Button
             size="small"
             variant={creating ? "secondary" : "primary"}
             onClick={() => setCreating((open) => !open)}
           >
-            {creating ? "Fechar" : "Nova seção"}
+            {creating
+              ? "Fechar"
+              : `Nova ${currentSurface?.blockLabel ?? "seção"}`}
           </Button>
           <Button
             variant="secondary"
@@ -829,12 +896,14 @@ const ContentPage = () => {
       {creating && (
         <Container className="flex flex-col gap-y-4">
           <div>
-            <Heading level="h2">Nova seção</Heading>
+            <Heading level="h2">
+              {`Nova ${currentSurface?.blockLabel ?? "seção"}`}
+            </Heading>
             <Text size="small" className="text-ui-fg-subtle">
-              A seção nasce com o conteúdo padrão do tipo e entra no fim da
-              lista: crie, edite e salve. Os tipos únicos que já existem
-              (cabeçalho, rodapé e a barra de anúncio) não aparecem aqui porque
-              a loja só desenha um de cada.
+              A {currentSurface?.blockLabel ?? "seção"} nasce com o conteúdo
+              padrão do tipo e entra no fim da lista: crie, edite e salve. Os
+              tipos únicos que já existem (cabeçalho, rodapé e a barra de
+              anúncio) não aparecem aqui porque a loja só desenha um de cada.
             </Text>
           </div>
 
@@ -886,7 +955,7 @@ const ContentPage = () => {
               disabled={!newType}
               onClick={create}
             >
-              <Plus /> Criar seção
+              <Plus /> Criar {currentSurface?.blockLabel ?? "seção"}
             </Button>
           </div>
         </Container>
@@ -933,7 +1002,18 @@ const ContentPage = () => {
                 )}
                 <div>
                   <Text weight="plus" size="small">
-                    {schema?.typeLabels?.[section.type] ?? section.type}
+                    {/* A superfície diz como o bloco se chama: a estação usa o
+                        rótulo que o dono escreveu (`titleField` — "Natal"), a
+                        seção usa o nome do tipo, porque o `type` é o
+                        identificador do render. `titleField: null` é o caso das
+                        seções. */}
+                    {String(
+                      (currentSurface?.titleField
+                        ? draft[currentSurface.titleField]
+                        : "") ||
+                        schema?.typeLabels?.[section.type] ||
+                        section.type
+                    )}
                   </Text>
                   <Text size="xsmall" className="text-ui-fg-subtle">
                     {/* `#id` é a âncora que o menu usa: um Destino
@@ -948,11 +1028,17 @@ const ContentPage = () => {
                   working === section.id ? "opacity-50" : ""
                 }`}
               >
+                {/* O que "ligada" significa muda com a superfície: numa seção é
+                    "aparece na loja"; numa estação é "pode entrar no ar hoje",
+                    porque quem escolhe é a janela de datas. Quem diz é o
+                    contrato (`enabledLabel`). */}
                 <Badge
                   size="2xsmall"
                   color={section.enabled ? "green" : "grey"}
                 >
-                  {section.enabled ? "Visível" : "Oculta"}
+                  {section.enabled
+                    ? (currentSurface?.enabledLabel ?? "Visível")
+                    : "Oculta"}
                 </Badge>
 
                 {/* Ordem por setas, e não por um número digitado: posições
@@ -1085,7 +1171,7 @@ const ContentPage = () => {
                     }
                   />
                   <Label size="small" weight="plus">
-                    Visível na loja
+                    {currentSurface?.enabledLabel ?? "Visível na loja"}
                   </Label>
                 </div>
               </div>

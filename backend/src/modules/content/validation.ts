@@ -21,13 +21,16 @@
  *   com a faixa que precisa;
  * - **lista fechada** — `select`, `color` e `font` são a mesma coisa para a
  *   validação (`CHOICE_KINDS`): quem garante que não viram texto livre é a
- *   comparação com `options`.
+ *   comparação com `options`;
+ * - **formato** — campo com `pattern` (`hex` da paleta da estação, `MM-DD` da
+ *   janela de datas): a regex vem do CAMPO, como a faixa do número, e o que não
+ *   casar é recusado aqui. É a forma do valor que o `kind` não descreve.
  *
  * O schema vem do **registro no banco** (`service.getContract()`), e é a rota
  * quem o passa: é o registro que diz o que o CRM pode gravar, e o `contract.ts`
  * só entra por baixo, quando o registro não existe.
  */
-import type { FieldKind } from "./contract"
+import { THEME_SURFACE, THEME_TYPE, type FieldKind } from "./contract"
 import type { ContentSchemaPayload } from "./schema"
 
 /**
@@ -160,6 +163,22 @@ export function validateData(
       errors.push(`Campo "${spec.name}" deve ser um de: ${options.join(", ")}.`)
     }
 
+    // O campo de texto com forma (`hex` da paleta da estação, `MM-DD` da janela
+    // de datas) é o que o `kind` sozinho não descreve. Sem esta checagem um
+    // `#B9787` (cinco dígitos) seria gravado e chegaria ao storefront como
+    // variável CSS inválida — o `var()` não cai no fallback quando a variável
+    // existe e não resolve, então a cor sumiria sem erro nenhum.
+    if (
+      spec.pattern &&
+      typeof value === "string" &&
+      !new RegExp(spec.pattern).test(value)
+    ) {
+      errors.push(
+        `Campo "${spec.name}" deve estar no formato esperado ` +
+          `(${spec.pattern}).`
+      )
+    }
+
     if (spec.kind.startsWith("list:") && !Array.isArray(value)) {
       errors.push(`Campo "${spec.name}" deve ser uma lista.`)
     }
@@ -173,6 +192,9 @@ export function validateData(
  * Sai do **registro** (`schema.types`), não de `isSectionType`: um tipo novo
  * gravado no schema passa a ser gravável sem tocar em código — que é o ponto de
  * o schema ser dado. O contrato segue sendo o bootstrap do registro.
+ *
+ * Desde a v6 a lista inclui `theme`: o tema é conteúdo como uma seção, e sem
+ * ele aqui a primeira gravação de uma estação seria recusada.
  */
 export function isKnownType(
   type: unknown,
@@ -182,5 +204,43 @@ export function isKnownType(
     typeof type === "string" &&
     (schema.types as readonly string[]).includes(type)
   )
+}
+
+/**
+ * Amarra a `surface` ao `type` do bloco, no lugar do lojista.
+ *
+ * Cada superfície tem um só tipo de conteúdo: a `home` guarda seções, a
+ * `theme` guarda a paleta. Um `hero` na `theme` não seria lido por ninguém (a
+ * loja lê aquela superfície esperando estação) e um `theme` na `home` chegaria
+ * ao render da vitrine como tipo desconhecido — então a API recusa a
+ * combinação em vez de gravar dado que some na tela. O bloco de tema, por sua
+ * vez, nasce na superfície dele mesmo que o corpo não a mencione: quem manda é
+ * a API, não o cliente.
+ *
+ * Pura de propósito, e fora da rota: são **duas** portas que gravam superfície
+ * (`POST` e `PATCH`) e o teste da regra não precisa de request nem container.
+ *
+ * @returns `{ surface }` quando há o que gravar (ausente em `PATCH` que não
+ *          tocou na coluna), `{ error }` quando a combinação é inválida.
+ */
+export function resolveSurface(
+  sent: unknown,
+  type: string
+): { surface?: string; error?: string } {
+  if (type === THEME_TYPE) {
+    return { surface: THEME_SURFACE }
+  }
+
+  const surface = typeof sent === "string" && sent ? sent : undefined
+
+  if (surface === THEME_SURFACE) {
+    return {
+      error:
+        `A superfície "${THEME_SURFACE}" só aceita blocos de type ` +
+        `"${THEME_TYPE}".`,
+    }
+  }
+
+  return surface ? { surface } : {}
 }
 

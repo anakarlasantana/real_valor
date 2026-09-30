@@ -20,9 +20,12 @@
  * pela metade seria uma vitrine que o lojista não pediu: "Peças em destaque"
  * sem nenhum chip mostra o catálogo inteiro.
  *
- * A fonte é `DEFAULT_HOME_SECTIONS` (`defaults.ts`), a mesma do fallback da
- * vitrine: uma terceira lista de conteúdo padrão seria mais um lugar para
- * divergir.
+ * A fonte é **a lista da superfície**: `DEFAULT_HOME_SECTIONS`
+ * (`defaults.ts`) para a vitrine — a mesma do fallback da loja —, e
+ * `THEME_SECTIONS` (`themes.ts`) para o tema, que é o mesmo dado que o gerador
+ * escreve nos `theme.json`. Uma terceira lista de conteúdo padrão seria mais um
+ * lugar para divergir, e é por isso que a escolha entre as duas é uma função
+ * só (`defaultsFor`).
  *
  * As seções criadas nascem com a **coluna `fixed`** resolvida (ver
  * `models/content-section.ts`): o cromo do site nasce fixo — ele não tem ordem
@@ -30,12 +33,13 @@
  * `POST /admin/content` — as duas portas que criam seção respondem a mesma
  * pergunta do mesmo jeito.
  */
-import { isSingletonSectionType } from "./contract"
+import { THEME_SURFACE, isSingletonSectionType } from "./contract"
 import type { QueryGraph, RemoteLink } from "./curation"
 import { DEFAULT_HOME_SECTIONS } from "./defaults"
 import { hasChips, writeDefaultChips } from "./filters"
 import { positionAfter } from "./order"
 import type ContentModuleService from "./service"
+import { THEME_SECTIONS, type ThemeSection } from "./themes"
 
 export type RestoreResult = {
   /** Os `id` das seções criadas, na ordem do padrão. */
@@ -52,6 +56,24 @@ export type RestoreResult = {
    * seria uma vitrine com o catálogo inteiro, e ninguém saberia por quê.
    */
   chips: string[]
+}
+
+/**
+ * As seções padrão de uma superfície — a **única** coisa que muda entre elas.
+ *
+ * A vitrine repõe `DEFAULT_HOME_SECTIONS` (`./defaults`) e o tema repõe
+ * `THEME_SECTIONS` (`./themes`); o resto do caminho é o mesmo: quais faltam,
+ * onde entram e o que fazer com as que já existem. Sem esta escolha, o botão
+ * "Restaurar padrão" aberto na aba do tema criaria `nav`, `hero` e o rodapé
+ * **dentro** da superfície `theme` — blocos que nenhum render daquela
+ * superfície lê, e que apareceriam como lixo na lista de estações.
+ *
+ * Uma superfície desconhecida cai no padrão da vitrine: é o que a rota admin
+ * já faz com `?surface=` (o default do modelo é `home`), então um typo numa
+ * chamada à mão repõe a vitrine em vez de não fazer nada em silêncio.
+ */
+export function defaultsFor(surface: string): readonly ThemeSection[] {
+  return surface === THEME_SURFACE ? THEME_SECTIONS : DEFAULT_HOME_SECTIONS
 }
 
 /**
@@ -112,7 +134,11 @@ export async function restoreDefaultSections(
   }: { surface?: string; link?: RemoteLink; query?: QueryGraph } = {}
 ): Promise<RestoreResult> {
   const existing = await service.listSections({ surface, onlyEnabled: false })
-  const plan = planRestoredPositions(existing)
+  // As seções padrão **da superfície**: a vitrine repõe o protótipo e o tema
+  // repõe as estações. A lista é a mesma máquina para as duas — `position`,
+  // `enabled` e o `data` achatado —, e é por isso que ela vem como parâmetro.
+  const defaults = defaultsFor(surface)
+  const plan = planRestoredPositions(existing, defaults)
   const planned = new Map(plan.map(({ id, position }) => [id, position]))
 
   if (!plan.length) {
@@ -123,9 +149,7 @@ export async function restoreDefaultSections(
   // O resto é o `data` do tipo — inclusive o `title`, quando o tipo o tem
   // (`editorial`, `collections`…): ele é conteúdo, e não há coluna para ele
   // desde que `content_section.title` saiu.
-  const missing = DEFAULT_HOME_SECTIONS.filter((section) =>
-    planned.has(section.id)
-  )
+  const missing = defaults.filter((section) => planned.has(section.id))
 
   await service.createContentSections(
     missing.map((section) => {

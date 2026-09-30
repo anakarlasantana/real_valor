@@ -14,17 +14,21 @@
  * gravado está vazio). Ver `service.ts`.
  */
 import {
+  CONTENT_SURFACES,
+  CONTENT_TYPES,
   ITEM_FIELDS,
   SECTION_FIELDS,
   SECTION_TYPE_LABELS,
-  SECTION_TYPES,
   SINGLETON_SECTION_TYPES,
   THEME_COLOR_HEXES,
   THEME_DARK_TOKENS,
+  THEME_FIELDS,
   THEME_FONTS,
+  THEME_TYPE,
+  THEME_TYPE_LABEL,
+  type ContentSurfaceSpec,
   type FieldSpec,
   type ItemFieldSpec,
-  type SectionType,
 } from "./contract"
 
 /**
@@ -67,8 +71,19 @@ import {
  *      outro: sem reescrever o registro (`make seed-schema`) o CRM continua
  *      desenhando a caixa de texto antiga, e os chips gravados como rótulo
  *      ficam sem leitura — o `--check` do seed-schema acusa o registro velho.
+ * v6 — a **superfície de tema**: o tema passa a ser conteúdo editável no CRM,
+ *      sobre a coluna `surface` que já existia (sem migração). O formulário
+ *      ganha `fields.theme` (paleta em `hex` e fontes em `select`, derivados de
+ *      `THEME_COLOR_TOKENS`/`FONT_ROLES`), `typeLabels.theme` e `surfaces` — a
+ *      descrição de cada superfície (rótulo, título, aviso e o que ela pode
+ *      criar), que é o que faz a mesma tela editar as seções e as estações sem
+ *      um `if` em React. `types` passa a listar os tipos de **conteúdo** (as
+ *      seções e o bloco de tema), e não só os de seção: sem `theme` ali o
+ *      `validateData`/`isKnownType` da rota recusariam a primeira gravação de
+ *      uma estação. Sem reescrever o registro (`make seed-schema`) o CRM
+ *      continua mostrando a tela antiga, sem a segunda aba.
  */
-export const SCHEMA_VERSION = 5
+export const SCHEMA_VERSION = 6
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.
@@ -87,11 +102,25 @@ export const SCHEMA_KEY = "content"
  * (o que pode ser gravado continua vindo de `options`, campo a campo).
  */
 export type ContentSchemaPayload = {
-  /** Tipos de seção que existem. */
-  types: readonly SectionType[]
+  /**
+   * Os tipos de **conteúdo** que o CRM edita: as seções e o bloco de tema
+   * (`CONTENT_TYPES`, do contrato).
+   *
+   * O nome continua `types` porque é o que o registro no Postgres guarda desde
+   * a v1 e a chave é lida por duas pontas (a rota, para validar o `type` do
+   * corpo; o `resolveSchema`, para saber que o registro não está vazio). O que
+   * mudou foi o conteúdo: desde a v6 o tema é conteúdo como uma seção, e um
+   * `theme` fora desta lista seria recusado na primeira gravação de estação.
+   */
+  types: readonly string[]
   /** Tipo → nome que o lojista lê (`editorial` se chama "Sobre"). */
   typeLabels: Record<string, string>
-  /** Tipo → campos de `data`, na ordem em que o editor os mostra. */
+  /**
+   * Tipo → campos de `data`, na ordem em que o editor os mostra.
+   *
+   * Inclui o bloco de tema (`fields.theme` = `THEME_FIELDS`): a validação e o
+   * editor leem daqui — é o registro que diz o que pode ser gravado.
+   */
   fields: Record<string, readonly FieldSpec[]>
   /** `kind` de lista → campos de dentro do item. */
   itemFields: Partial<Record<string, readonly ItemFieldSpec[]>>
@@ -125,6 +154,17 @@ export type ContentSchemaPayload = {
    * por `find` de qualquer jeito.
    */
   singletonTypes: readonly string[]
+  /**
+   * As superfícies que o CRM edita — o conteúdo da vitrine e o tema —, com o
+   * rótulo, o título e o aviso de cada uma (`CONTENT_SURFACES`, no contrato).
+   *
+   * Vão no `schema` pelo mesmo motivo dos campos: o painel é outro pacote e
+   * desenha o que o registro diz. É esta lista que monta o seletor de
+   * superfície e o diálogo "Nova seção" de cada aba — a home cria seções, a
+   * superfície de tema cria estações —, sem um `if` no meio do React.
+   * O storefront ignora esta chave: ele lê UMA superfície por requisição.
+   */
+  surfaces: readonly ContentSurfaceSpec[]
 }
 
 /**
@@ -184,8 +224,16 @@ export function resolveSchema(row: SchemaRow): StoredSchema {
  */
 export function buildSchema(): ContentSchemaPayload {
   return {
-    types: SECTION_TYPES,
-    fields: SECTION_FIELDS,
+    types: CONTENT_TYPES,
+    /**
+     * Os campos de cada tipo **editável** — as seções e o bloco de tema.
+     *
+     * O tema entra por aqui, e não numa chave própria (`themeFields`), porque a
+     * validação e o editor são os mesmos: `validateData` procura os campos do
+     * tipo do corpo nesta tabela, e `page.tsx` desenha o que ela diz. Duas
+     * chaves seriam dois caminhos para a mesma coisa.
+     */
+    fields: { ...SECTION_FIELDS, [THEME_TYPE]: THEME_FIELDS },
     /**
      * Nome de cada tipo para a listagem. Vem daqui como os campos: o `type` é
      * o identificador que o storefront casa no `switch`, e o rótulo é o que o
@@ -193,7 +241,7 @@ export function buildSchema(): ContentSchemaPayload {
      * no menu. Sem o rótulo no payload o admin teria que manter a tabela (e um
      * tipo novo apareceria como jargão até alguém lembrar de mexer no painel).
      */
-    typeLabels: SECTION_TYPE_LABELS,
+    typeLabels: { ...SECTION_TYPE_LABELS, [THEME_TYPE]: THEME_TYPE_LABEL },
     /**
      * Sub-formulário de cada item de lista, por `kind`. É o mesmo motivo dos
      * campos: os itens (`benefit.title`, `column.source`…) são objetos e o
@@ -211,5 +259,12 @@ export function buildSchema(): ContentSchemaPayload {
      * precisa da lista, e ela não pode divergir da regra que a rota aplica.
      */
     singletonTypes: SINGLETON_SECTION_TYPES,
+    /**
+     * As superfícies que a tela edita: a vitrine e o tema. Sai do contrato pelo
+     * mesmo motivo dos campos — o painel monta o seletor de superfície e o
+     * diálogo de criação a partir daqui, então uma superfície nova (ou um tipo
+     * novo numa superfície) aparece na tela sem edição em React.
+     */
+    surfaces: CONTENT_SURFACES,
   }
 }

@@ -12,17 +12,17 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 | `service.ts` | `listSections()`, `getContract()`, `saveContract()` |
 | `curation.ts` | A curadoria de produtos: leitura, escrita e as regras puras |
 | `filters.ts` | Os chips de categoria (a vitrine de destaque): a segunda referência — leitura, escrita, regras puras e a conversão das bases anteriores à R1 |
-| `validation.ts` | A validação de entrada do corpo: `validateData` (o `data` **e** as referências contra o schema do tipo) e `isKnownType` |
+| `validation.ts` | A validação de entrada do corpo: `validateData` (o `data` **e** as referências contra o schema do tipo, com `pattern` para os campos de forma), `isKnownType` e `resolveSurface` (a superfície de cada tipo) |
 | `resolvers.ts` | Os resolvedores do corpo: a âncora (`id`), a `position`, os ids da curadoria e os ids dos chips — cada um responde `{ valor?, error? }` |
 | `view.ts` | A forma de saída da seção (`toSection`), achatada como a da rota pública |
 | `order.ts` | A ordem da vitrine: as regras puras (faixa, folga, `nextPosition`, `positionAfter`, `renumber`) **e** a única gravação que as aplica (`readOrderIds`, `orderErrors`, `applyOrder`) |
-| `restore.ts` | O "Restaurar padrão"/seed: quais seções padrão faltam e com que posição cada uma nasce |
+| `restore.ts` | O "Restaurar padrão"/seed: quais blocos padrão faltam e com que posição cada um nasce — a lista sai da superfície (`defaultsFor`: o protótipo da vitrine ou as estações do tema) |
 | `payload.ts` | O `splitPayload` do corpo: o que é **coluna** × o que é `data` (e as referências `productIds`/`filters`) |
 | `revalidate.ts` | O aviso ao storefront (`notifyStorefront`), que invalida o cache do conteúdo depois de gravar |
 | `schema.ts` | Montagem do schema (`buildSchema()`), `SCHEMA_VERSION` e `SCHEMA_KEY` |
-| `contract.ts` | O formato do conteúdo — **bootstrap** do schema. Carrega também a paleta do tema padrão (`THEME_COLOR_HEXES`) e as fontes (`THEME_FONTS`), que são a **origem** do `theme.json` e dos tokens do `brand.css` desde a R3-lite |
+| `contract.ts` | O formato do conteúdo — **bootstrap** do schema. Carrega também a paleta do tema padrão (`THEME_COLOR_HEXES`) e as fontes (`THEME_FONTS`), que são a **origem** do `theme.json` e dos tokens do `brand.css` desde a R3-lite; e as **superfícies** (`CONTENT_SURFACES`), os **tipos editáveis** (`CONTENT_TYPES`) e os campos do tema (`THEME_FIELDS`), que são o tema como dado (R4) |
 | `defaults.ts` | Cópia do protótipo, usada pelo seed e como fallback |
-| `themes.ts` | O tema: o padrão (id, rótulo) e as estações (janela `MM-DD` e o que cada uma troca). É o **seed** do tema — o `gen-content.mjs` escreve `frontend/themes/<id>/theme.json` daqui, e é esta lista que a R4 leva para o banco |
+| `themes.ts` | O tema: o padrão (id, rótulo) e as estações (janela `MM-DD` e o que cada uma troca), fundidos com a paleta/fontes do contrato em `THEME_FILES`. É a **mesma lista** que vira `frontend/themes/<id>/theme.json` (pelo `gen-content.mjs`) e linha de `content_section` (`THEME_SECTIONS`, seed do banco na R4) |
 | `migrations/` | Geradas com `medusa db:generate content` — com duas exceções escritas à mão, explicadas abaixo |
 | [`../links/content-section-product.ts`](../links/content-section-product.ts) | O link seção ↔ produto (a curadoria) — fora do módulo porque é assim que o Medusa carrega links (`src/links/`) |
 | [`../links/content-section-category.ts`](../links/content-section-category.ts) | O link seção ↔ categoria do catálogo (os chips da vitrine) — mesma razão, `src/links/` é de onde o Medusa os carrega |
@@ -47,6 +47,11 @@ Três tabelas, e a regra que decide em qual delas cada coisa entra:
 | `title`, `headline`, `imageUrl`, listas de itens… | **`data`** (JSONB) | o que é **cópia**: veio do formulário e é desenhado como veio |
 | a lista de produtos de uma seção | **`content_section_product`** (link) | o que é **referência**: aponta para outra linha, e a ordem é `position` na própria tabela |
 | a lista de categorias dos chips | **`content_section_category`** (link) | idem — e o **rótulo** do chip também não se grava: é o nome da categoria, lido ao vivo |
+
+A mesma tabela vale para o **tema** (R4): a estação é uma `content_section` com
+`surface = "theme"`, `type = "theme"` e a paleta no `data`. O que muda entre as
+duas superfícies é só o que o `data` carrega — onde ele mora é o mesmo lugar
+(ver *O tema como conteúdo*).
 
 O que **não** entra em `data` é a última linha da tabela: um `id` de produto dentro
 do JSON é uma string igual às outras — apagar o produto deixaria a vitrine
@@ -360,6 +365,7 @@ então precisa das prévias por uma via só:
 | `palette` | `THEME_COLOR_HEXES` — papel → hex | pintar a bolinha de cor. **É a origem da paleta**: o `themes/default/theme.json` e os tokens `--rv-*` do `brand.css` são gerados dela (R3-lite) |
 | `fonts` | `THEME_FONTS` — papel → `{ family, fallback, stack }` | pedir cada família ao navegador. Idem: a família do tema padrão sai daqui, e o `fallback` é o que a loja escreve na pilha |
 | `darkTokens` | `THEME_DARK_TOKENS` | avisar a regra do fundo escuro na hora da escolha |
+| `surfaces` | `CONTENT_SURFACES` — id, rótulo, título, aviso e os tipos criáveis de cada superfície | montar o seletor de vitrine/tema e o diálogo de criação. `fields.theme` e `typeLabels.theme` vêm junto: a mesma tela edita as estações (R4) |
 
 As três são **dado do contrato, não do painel**: o que pode ser gravado continua
 saindo de `options`, campo a campo, e validado no servidor — o `schema` só leva o
@@ -392,6 +398,57 @@ No admin, *↺ Padrão do tema* grava a opção vazia em todos os campos **daque
 trilho** — restaurar não apaga o campo, grava a escolha que não sobrescreve
 nada. É um botão por trilho, e não um só para a seção: voltar a fonte dos
 títulos ao padrão não tem por que desfazer a cor de fundo escolhida.
+
+## O tema como conteúdo (R4)
+
+O tema da loja é **conteúdo**, como as seções: uma linha de `content_section` na
+superfície `theme` (`surface = "theme"`, `type = "theme"`), com a paleta e as
+fontes no `data`. Sem migração — a coluna `surface` já existia.
+
+| O que | Onde | Regra |
+| --- | --- | --- |
+| `surface = "theme"`, `type = "theme"`, `enabled`, `position` | colunas | `enabled = false` tira a estação do ar sem apagar a paleta dela |
+| `label` | `data` | o nome que o lojista lê ("Natal"); a loja não mostra |
+| `dateRangeStart` / `dateRangeEnd` | `data` | a janela **anual** em `MM-DD`, sem ano (`12-27` → `03-20` vira o ano); `pattern` cobra o formato |
+| `colorRose`, `colorOffwhite`, … | `data` | um campo por cor (`themeColorField`), em `#RRGGBB` |
+| `fontDisplay`, `fontSans`, `fontScript` | `data` | um campo por papel (`themeFontField`), com as três famílias que a loja **carrega** |
+
+**Campo em branco é herdar o padrão.** A estação declara só o que troca (o Natal
+troca três cores) e o que falta é o `default`, que grava a paleta e as famílias
+do contrato. É a mesma regra do `theme.json` de antes, e é por isso que o seed do
+tema não repete os seis hex em cada estação.
+
+**A origem é uma só.** `themes.ts` funde as estações com `THEME_COLOR_HEXES` e
+`THEME_FONTS` em `THEME_FILES`, e é dela que saem os dois artefatos: os
+`frontend/themes/<id>/theme.json` (que o `gen-content.mjs` escreve) e
+`THEME_SECTIONS` (as linhas que o seed e o "Restaurar padrão" gravam). Antes a
+fusão vivia no gerador e o banco teria a segunda — agora é a mesma função, e o
+teste confere o achatamento campo a campo (`themes.unit.spec.ts`).
+
+**Quem escolhe a estação é o dia**, não o lojista: o storefront compara `MM-DD`
+com a data de hoje e a **janela mais estreita** vence (Black Friday ganha do
+Natal). `enabled = false` é o outro jeito de tirar uma estação do ar.
+
+**A API aceita o tema como tipo**, com dois cuidados:
+
+- `resolveSurface` (em `validation.ts`) amarra `surface` ao `type`: o bloco de
+  tema mora em `theme` mesmo que o corpo diga outra coisa, e uma seção na
+  superfície de tema responde 400 — os dois casos seriam linhas que nenhum render
+  lê, e a segunda sumiria da tela sem erro;
+- `CONTENT_TYPES` (as seções + `theme`) é a lista que o `isKnownType` confere: é
+  a união do que as superfícies criam, e a guarda compara as duas pontas.
+
+No CRM é a **mesma tela**: o seletor de superfície e o diálogo de criação saem de
+`schema.surfaces` (`CONTENT_SURFACES` no payload), o título da linha sai do
+`titleField` da superfície (a estação se chama "Natal", a seção se chama "Sobre",
+porque ali o `type` é o identificador do render) e o campo `hex` é uma roda de
+cores com o texto ao lado — o valor é o hex, e não o papel como no `color`.
+
+**Onde a loja lê isso:** desde a R5, do **payload** (`GET /store/content?surface=theme`),
+e não mais dos `theme.json` do disco. Os arquivos continuam existindo como o
+seed versionado do tema (é o que a revisão de um contrato novo mostra), e o
+`theme.json` do `default` segue sendo o fallback embutido da loja se a API
+falhar.
 
 ## Rodapé (`footer`)
 
@@ -607,10 +664,19 @@ O que a página faz, além de editar os campos de uma seção:
   como `/#hero`, validado como apelido livre). A seção nasce com o conteúdo
   padrão do tipo (`DEFAULT_SECTION_DATA`) e entra no fim da lista; os tipos únicos
   que já existem (`schema.singletonTypes`: cabeçalho, rodapé e a barra de
-  anúncio) não são oferecidos, porque a loja desenha um de cada.
+  anúncio) não são oferecidos, porque a loja desenha um de cada. Os tipos
+  oferecidos são os da **superfície em edição** (`surfaces[i].types`): na aba do
+  tema, o único que aparece é `theme` — uma estação nova.
 - **Remover** — com confirmação: não há desfazer.
-- **Restaurar padrão** — recria as seções que faltam, pela mesma função que o
-  `seed-content.ts` chama (`modules/content/restore.ts`).
+- **Restaurar padrão** — recria o que falta na superfície em edição, pela mesma
+  função que o `seed-content.ts` chama (`modules/content/restore.ts`): as seções
+  do protótipo na vitrine, as estações na aba do tema (`defaultsFor`).
+
+A aba **Tema da loja** é a mesma tela com outro conteúdo: cada linha é uma
+estação, o título é o `label` que o dono escreveu, o interruptor diz "Estação no
+ar" (porque quem escolhe entre as estações é a data, na loja) e as cores são
+editadas em `hex` — a roda de cores do navegador com o texto ao lado. Ver *O tema
+como conteúdo*.
 
 Depois de qualquer escrita, o backend avisa o storefront para invalidar o cache
 (`modules/content/revalidate.ts`), e a loja reflete a edição na hora. Sem
@@ -619,9 +685,11 @@ espera a janela de 60s do ISR.
 
 O formulário não repete nada do contrato em React: `schema.fields` traz os
 campos de cada seção, `schema.itemFields` o sub-formulário de cada item de
-lista (os mesmos `ITEM_FIELDS` do contrato, por `kind`) e `schema.typeLabels`
-o nome de cada tipo na listagem. Adicionar um campo — de seção ou de dentro de
-um item — é uma linha no contrato.
+lista (os mesmos `ITEM_FIELDS` do contrato, por `kind`), `schema.typeLabels` o
+nome de cada tipo na listagem e `schema.surfaces` as **superfícies** que a tela
+edita (vitrine e tema), com o rótulo, o aviso, o que cada uma pode criar e qual
+campo dá nome ao bloco. Adicionar um campo — de seção ou de dentro de um item —
+é uma linha no contrato, como acrescentar uma superfície.
 
 O admin é um pacote npm separado e **não importa** `contract.ts`: o `schema` é
 a única via, e por isso ele carrega até a tradução de cada escolha
@@ -642,7 +710,8 @@ mesma pergunta que o servidor respondia ao gravar. A tela recebe o dado —
 
 ## Operação
 
-Semear a cópia do protótipo (idempotente; o `make seed` já chama):
+Semear a cópia do protótipo (idempotente; o `make seed` já chama) — semeia as
+**duas** superfícies: as seções da vitrine e as estações do tema (`theme`):
 
 ```bash
 cd backend

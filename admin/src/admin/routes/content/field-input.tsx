@@ -73,6 +73,12 @@ type HandledKind =
   | "image"
   | "color"
   | "font"
+  // Cor **literal** (`#RRGGBB`): a paleta da estação. Não confundir com o
+  // `color` acima — ali o valor é o **papel** ("dourado") e o tema resolve o
+  // hex; aqui o valor **é** o hex, e por isso o editor é uma roda de cores com
+  // o texto ao lado (o `pattern` do contrato cobra o formato, e um campo em
+  // branco significa "herda o tema padrão").
+  | "hex"
   | "list:text"
   // Referência ao catálogo: a lista de ids de categoria que vira chip na
   // vitrine. Tem ramo próprio (`CategoryChipsInput`) porque o valor não é texto
@@ -368,6 +374,25 @@ function CategoryChipsInput({
   )
 }
 
+/**
+ * Rótulo de uma opção de `<select>`, com a tradução que veio do contrato
+ * (`optionLabels`, como nos itens de lista): sem ela o seletor mostra a chave
+ * crua — que é o que o lojista veria ao escolher a fonte da estação
+ * (`Playfair Display` sem saber que é a dos títulos).
+ *
+ * A opção vazia não tem chave para prefixar: ela significa "herda o padrão do
+ * tema", então sai só com o rótulo.
+ */
+function optionLabel(spec: FieldSpec, option: string): string {
+  const translation = spec.optionLabels?.[option]
+
+  if (!translation) {
+    return option
+  }
+
+  return option === "" ? translation : `${option} — ${translation}`
+}
+
 type FieldInputProps = {
   spec: FieldSpec
   value: unknown
@@ -532,10 +557,51 @@ export const FieldInput = ({
         >
           {(spec.options ?? []).map((option) => (
             <option key={option} value={option}>
-              {option}
+              {optionLabel(spec, option)}
             </option>
           ))}
         </select>
+      </div>
+    )
+  }
+
+  /* ---- cor literal (`hex`): a paleta da estação ---- */
+  if (spec.kind === "hex") {
+    const current = String(value ?? "")
+
+    return (
+      <div className="flex flex-col gap-y-2">
+        {label}
+        <div className="flex items-center gap-x-2">
+          {/*
+            A roda de cores é a do navegador: o valor dela é `#rrggbb`, o mesmo
+            formato que o `pattern` do contrato cobra, e o texto ao lado é o que
+            se lê e se cola. Vazio (herda o tema padrão) não tem cor para
+            mostrar e o campo nativo não aceita "" — daí o branco como ponto de
+            partida do seletor, sem gravar nada até alguém mexer nele.
+          */}
+          <input
+            type="color"
+            aria-label={spec.label}
+            className="h-8 w-12 shrink-0 cursor-pointer rounded-md border border-ui-border-base bg-ui-bg-field"
+            value={current || "#ffffff"}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+          />
+          <Input
+            value={current}
+            placeholder="#B97872"
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {current ? (
+            <Button
+              variant="transparent"
+              size="small"
+              onClick={() => onChange("")}
+            >
+              Herdar
+            </Button>
+          ) : null}
+        </div>
       </div>
     )
   }

@@ -20,7 +20,7 @@
  * - a **âncora** (`id`) é validada como apelido e precisa estar livre: ela é o
  *   `id` da linha e o fragmento que o menu usa.
  */
-import { SECTION_FIELDS } from "../contract"
+import { SECTION_FIELDS, THEME_FIELDS, THEME_SURFACE, THEME_TYPE } from "../contract"
 import type { QueryGraph } from "../curation"
 import {
   readPosition,
@@ -29,7 +29,7 @@ import {
   resolveSectionId,
 } from "../resolvers"
 import type ContentModuleService from "../service"
-import { isKnownType, validateData } from "../validation"
+import { isKnownType, resolveSurface, validateData } from "../validation"
 import { toSection } from "../view"
 
 /** Um `query` de mentira que responde por entidade, como o do container. */
@@ -280,6 +280,90 @@ describe("resolveSectionId", () => {
     expect((await resolveSectionId("hero", fakeService(["hero"]))).error).toBe(
       'Já existe uma seção com o id "hero".'
     )
+  })
+})
+
+/**
+ * A superfície de cada bloco.
+ *
+ * A `surface` é a coluna que separa a vitrine do tema, e quem a decide é a API
+ * — não o corpo. Um `theme` gravado em `home` chegaria ao render da vitrine como
+ * tipo desconhecido (a loja descarta e loga) e a estação sumiria; um `hero`
+ * gravado em `theme` seria uma linha que nenhum render daquela superfície lê. Os
+ * dois casos são lixo silencioso, e é por isso que a regra está aqui, com teste
+ * próprio, em vez de espalhada em `if` na rota.
+ */
+describe("resolveSurface", () => {
+  it("o bloco de tema nasce na superfície `theme`, mesmo sem o corpo dizer", () => {
+    expect(resolveSurface(undefined, THEME_TYPE)).toEqual({
+      surface: THEME_SURFACE,
+    })
+    // Nem se o corpo insistir em outra superfície: quem manda é o contrato.
+    expect(resolveSurface("home", THEME_TYPE)).toEqual({
+      surface: THEME_SURFACE,
+    })
+  })
+
+  it("seção na superfície de tema é recusada, com as duas no aviso", () => {
+    const { error } = resolveSurface(THEME_SURFACE, "hero")
+
+    expect(error).toContain(THEME_SURFACE)
+    expect(error).toContain(THEME_TYPE)
+  })
+
+  it("a superfície da seção é a que veio no corpo; ausente é 'não mexe'", () => {
+    expect(resolveSurface("home", "hero")).toEqual({ surface: "home" })
+    // Vazio não é superfície: o PATCH de um texto não reescreve a coluna (e o
+    // POST cai no `home`, que é o default do modelo).
+    expect(resolveSurface("", "hero")).toEqual({})
+    expect(resolveSurface(undefined, "hero")).toEqual({})
+  })
+})
+
+/**
+ * O formato do campo (`pattern`).
+ *
+ * É o que o `kind` sozinho não descreve: um `hex` de cinco dígitos seria aceito
+ * como texto, gravado, e chegaria à loja como variável CSS inválida — o `var()`
+ * não cai no fallback quando a variável existe e não resolve, então a cor
+ * sumiria sem erro nenhum. O mesmo para a janela da estação, que o storefront
+ * compara com o dia de hoje como `MM-DD`.
+ */
+describe("o formato do campo (`pattern`)", () => {
+  /** O `fields` como a API o recebe: o registro, já com o tema (v6). */
+  const theme = { strict: false, fields: { theme: THEME_FIELDS } }
+
+  it("recusa cor fora de `#RRGGBB`, com o nome do campo", () => {
+    expect(
+      validateData("theme", { colorRose: "#B97872" }, theme)
+    ).toEqual([])
+    expect(validateData("theme", { colorRose: "#B9787" }, theme)[0]).toContain(
+      "colorRose"
+    )
+    expect(validateData("theme", { colorRose: "rose" }, theme)[0]).toContain(
+      "colorRose"
+    )
+  })
+
+  it("recusa janela fora de `MM-DD`", () => {
+    expect(
+      validateData("theme", { dateRangeStart: "11-20" }, theme)
+    ).toEqual([])
+    expect(
+      validateData("theme", { dateRangeStart: "13-01" }, theme)[0]
+    ).toContain("dateRangeStart")
+  })
+
+  it("em branco não é erro: é 'herda o tema padrão'", () => {
+    expect(
+      validateData("theme", { colorRose: "", dateRangeStart: "" }, theme)
+    ).toEqual([])
+  })
+
+  it("no POST, a estação precisa de nome (é o que a lista mostra)", () => {
+    expect(
+      validateData("theme", {}, { strict: true, fields: theme.fields })
+    ).toEqual(['Campo obrigatório ausente: "label".'])
   })
 })
 

@@ -10,11 +10,22 @@
  * O caso da base vazia é o outro lado: sem nenhum vizinho, a numeração do
  * padrão é a ordem certa, e ela vale para a lista inteira.
  */
-import { SINGLETON_SECTION_TYPES, isSingletonSectionType } from "../contract"
+import {
+  SINGLETON_SECTION_TYPES,
+  THEME_SURFACE,
+  THEME_TYPE,
+  isSingletonSectionType,
+  themeColorField,
+} from "../contract"
 import type { QueryGraph, RemoteLink } from "../curation"
 import { DEFAULT_HOME_SECTIONS } from "../defaults"
-import { planRestoredPositions, restoreDefaultSections } from "../restore"
+import {
+  defaultsFor,
+  planRestoredPositions,
+  restoreDefaultSections,
+} from "../restore"
 import type ContentModuleService from "../service"
+import { THEME_FILES } from "../themes"
 
 /** A ordem em que as seções aparecem, dado o plano. */
 const order = (positions: { id: string; position: number }[]) =>
@@ -232,6 +243,79 @@ describe("restoreDefaultSections", () => {
     // que o `defaultFilterIds` resolveu a partir dos handles do padrão.
     expect(result.chips).toEqual(["featured"])
     expect(calls).toEqual(["create:1"])
+  })
+
+  /**
+   * A outra superfície, pela mesma máquina.
+   *
+   * A superfície de tema repõe **estações**, não seções: `surface` e `type` são
+   * os do contrato e o `data` é o achatamento do tema (rótulo, janela e as
+   * cores que ele troca). Se a escolha da lista padrão voltasse a ser única, o
+   * botão "Restaurar padrão" da aba do tema criaria `nav`, `hero` e o rodapé
+   * dentro de `surface = "theme"` — blocos que nenhum render daquela superfície
+   * lê, e que apareceriam como lixo na tela de estações.
+   */
+  it("na superfície de tema, o que nasce são as estações (e não as seções)", async () => {
+    const { createContentSections, service } = fakeService()
+
+    const result = await restoreDefaultSections(service, {
+      surface: THEME_SURFACE,
+    })
+    const rows = createdRows(createContentSections)
+
+    expect(result.created).toEqual(THEME_FILES.map(({ id }) => id))
+    expect(rows.every((row) => row.surface === THEME_SURFACE)).toBe(true)
+    expect(rows.every((row) => row.type === THEME_TYPE)).toBe(true)
+    // Estação não é cromo: ela tem ordem na lista (as setas do CRM), e a coluna
+    // não pode dizer o contrário.
+    expect(rows.some((row) => row.fixed)).toBe(false)
+
+    const natal = rows.find((row) => row.id === "natal")
+
+    expect(natal?.data.label).toBe("Natal")
+    expect(natal?.data.dateRangeStart).toBe("11-15")
+    expect(natal?.data[themeColorField("rose")]).toBe("#8E3B3B")
+    // O que a estação não troca não é gravado: em branco é herdar o padrão.
+    expect(natal?.data[themeColorField("cacao")]).toBeUndefined()
+  })
+})
+
+/**
+ * De qual superfície vem a lista padrão.
+ *
+ * É a única coisa que muda entre restaurar a vitrine e restaurar o tema, e é
+ * uma decisão que não se vê quando está errada: as duas listas têm a forma de
+ * `content_section` (id, type, enabled, position e o `data` achatado), então
+ * usar a da vitrine na superfície de tema **funciona** — e grava `hero`, `nav` e
+ * `footer` numa superfície que só desenha estações.
+ */
+describe("defaultsFor", () => {
+  it("a superfície de tema repõe as estações; a vitrine repõe o protótipo", () => {
+    expect(defaultsFor(THEME_SURFACE).map(({ id }) => id)).toEqual(
+      THEME_FILES.map(({ id }) => id)
+    )
+    expect(defaultsFor("home").map(({ id }) => id)).toEqual(
+      DEFAULT_HOME_SECTIONS.map(({ id }) => id)
+    )
+  })
+
+  it("numa superfície de tema vazia, o plano sai na ordem do seed", () => {
+    const plan = planRestoredPositions([], defaultsFor(THEME_SURFACE))
+
+    expect(order(plan)).toEqual(THEME_FILES.map(({ id }) => id))
+    expect(plan.length).toBe(THEME_FILES.length)
+  })
+
+  it("a estação que já existe não é recriada", () => {
+    const existing = [{ id: "default", position: 10 }]
+    const plan = planRestoredPositions(existing, defaultsFor(THEME_SURFACE))
+
+    expect(plan.map(({ id }) => id)).toEqual(
+      THEME_FILES.filter(({ id }) => id !== "default").map(({ id }) => id)
+    )
+    expect(order([...existing, ...plan])).toEqual(
+      THEME_FILES.map(({ id }) => id)
+    )
   })
 })
 

@@ -569,6 +569,25 @@ export const APPEARANCE_GROUPS = [
 
 export type AppearanceGroup = (typeof APPEARANCE_GROUPS)[number]
 
+/**
+ * Nome do campo de `data` que carrega cada cor do tema (`rose` → `colorRose`).
+ *
+ * O payload é plano — um bloco é `{ id, enabled, position, type, …data }` —,
+ * então a paleta editável no CRM não vira um objeto aninhado em `data`: cada
+ * cor é um campo, como qualquer outro. O nome sai daqui para o editor e a
+ * loja não terem duas convenções de leitura: quem grava é o CRM (via
+ * `THEME_FIELDS`) e quem lê é o storefront (`frontend/src/lib/theme.ts`),
+ * pacotes diferentes que só concordam pelo artefato gerado.
+ */
+export function themeColorField(token: ThemeColorToken): string {
+  return `color${token[0].toUpperCase()}${token.slice(1)}`
+}
+
+/** Nome do campo de `data` que carrega cada papel de fonte (`sans` → `fontSans`). */
+export function themeFontField(role: FontRole): string {
+  return `font${role[0].toUpperCase()}${role.slice(1)}`
+}
+
 // ===========================================================================
 // FIM DO BLOCO COMPARTILHADO. Daqui para baixo é só backend/admin: os
 // atalhos dos trilhos de aparência, o `SECTION_FIELDS` que o CRM consome e a
@@ -743,6 +762,11 @@ export type FieldKind =
   // `validateData` da rota admin reprova o que estiver fora de `options`.
   | "color"
   | "font"
+  // Cor **literal** (`#RRGGBB`): a paleta de uma estação, editada no CRM. É o
+  // único campo em que o valor gravado é o hex, e não o papel (`THEME_COLOR_TOKENS`)
+  // — a estação define cores novas, então não há lista fechada onde escolhê-las.
+  // O formato quem cobra é o `pattern` do campo (a rota admin reprova o resto).
+  | "hex"
   // Lista de **referências** a categorias (ids), com a ordem da lista: é o campo
   // dos chips da vitrine. Não é lista de objetos — não há sub-formulário —, e
   // por isso o editor é um seletor próprio (`field-input.tsx`) e `ITEM_FIELDS`
@@ -773,6 +797,17 @@ export type FieldSpec = {
   required?: boolean
   /** Apenas para `select`. */
   options?: readonly string[]
+  /**
+   * Formato esperado do valor, como **fonte de regex** (`HEX_COLOR_PATTERN`,
+   * `MONTH_DAY_PATTERN`): o `validateData` da rota admin reprova o que não
+   * casar, e o editor mostra o aviso no campo.
+   *
+   * Existe porque há campo de texto cuja forma o `kind` sozinho não descreve:
+   * sem isto um `#B9787` (cinco dígitos) seria gravado e chegaria à loja como
+   * variável CSS inválida — o `var()` não cai no fallback quando a variável
+   * existe e não resolve, então a cor sumiria sem erro nenhum.
+   */
+  pattern?: string
   /**
    * Tradução de cada opção, para o `<select>` do admin não ser só
    * jargão (`"dourado"` → `"Dourado Rosé"`). A chave é a opção; a
@@ -1260,4 +1295,230 @@ export const ITEM_FIELDS: ItemFields = {
     { name: "href", label: "Destino" },
   ],
 }
+
+// ===========================================================================
+// A superfície de tema — o tema como dado, ao lado das seções.
+// ---------------------------------------------------------------------------
+// Mora no fim do arquivo porque é a segunda forma de conteúdo: ela usa os
+// campos (`FieldSpec`), os rótulos e as listas fechadas declarados acima, e
+// vir depois deles evita que quem lê o contrato de cima para baixo encontre
+// uma regra antes do dado que ela descreve.
+// ===========================================================================
+
+/**
+ * A superfície que guarda o tema: a coluna `surface` da linha de estação.
+ *
+ * Um tema **é uma linha de `content_section`** como uma seção — mesma tabela,
+ * mesmas colunas (`surface`, `type`, `enabled`, `position`) e mesmo `data`
+ * JSON —, e é isso que faz o editor do CRM servir para os dois sem um segundo
+ * formulário. O que muda é o que o `data` carrega: uma seção é uma peça da
+ * vitrine, uma estação é a paleta e as fontes da loja inteira.
+ *
+ * Sem migração: a coluna já existia, com o valor padrão `home`.
+ *
+ * A estação continua sendo escolhida pelas **datas**, não à mão: o storefront
+ * compara `MM-DD` com o dia de hoje e a janela mais estreita vence (Black
+ * Friday ganha do Natal). `enabled = false` tira a estação do ar sem apagar a
+ * paleta dela.
+ */
+export const THEME_SURFACE = "theme"
+
+/** O `type` de todo bloco da superfície de tema. */
+export const THEME_TYPE = "theme"
+
+/** Como o tema aparece na tela do CRM. */
+export const THEME_TYPE_LABEL = "Tema da loja"
+
+/**
+ * Como uma superfície se descreve para o CRM.
+ *
+ * Tudo é **dado**, e não um `if (surface === "theme")` no painel: uma
+ * superfície nova no contrato aparece na tela — com rótulo, título e aviso —
+ * sem tocar em React.
+ *
+ *   `titleField`   o campo que dá nome ao bloco na listagem. A home se chama
+ *                  pelo **tipo** ("Sobre", "Coleções" — o `type` é o
+ *                  identificador do render) e por isso declara `null`; uma
+ *                  estação se chama pelo que o dono escreveu (`label`:
+ *                  "Natal"), que é o que ele reconhece na lista;
+ *   `enabledLabel` "visível na loja" quer dizer outra coisa quando o bloco é
+ *                  uma estação ("no ar hoje", pela janela de datas);
+ *   `types`        o que a superfície **pode criar**. É esta lista que o
+ *                  diálogo "Nova seção" oferece: a home oferece os tipos de
+ *                  seção e a superfície de tema oferece `theme` (uma estação
+ *                  nova). Sem ela o diálogo daquela aba ofereceria "Hero" — um
+ *                  bloco que nenhum render da superfície de tema lê;
+ *   `enabledLabel` o nome do interruptor de ligar/desligar a linha ("no ar"
+ *                  para uma estação, que é escolhida pelo **dia** na loja);
+ *   `blockLabel`   como a linha se chama no singular ("seção", "estação"), para
+ *                  o botão de criar e as mensagens da tela não dizerem "Nova
+ *                  seção" numa aba que só tem estações.
+ */
+export type ContentSurfaceSpec = {
+  id: string
+  label: string
+  titleField: string | null
+  enabledLabel: string
+  blockLabel: string
+  hint: string
+  types: readonly string[]
+}
+
+export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
+  {
+    id: "home",
+    label: "Conteúdo da vitrine",
+    titleField: null,
+    enabledLabel: "Visível na loja",
+    blockLabel: "seção",
+    hint:
+      "Estas seções montam a página inicial, na ordem das setas — que só vale " +
+      "depois de “Salvar ordem”. As seções marcadas como Fixo (a barra de " +
+      "anúncio, o cabeçalho e o rodapé, que aparecem em todas as páginas) não " +
+      "têm ordem: a loja resolve as três pelo tipo. A aparência entra junto do " +
+      "campo que ela muda: em branco, a seção segue o tema da loja — inclusive " +
+      "quando o tema é sazonal.",
+    types: SECTION_TYPES,
+  },
+  {
+    id: THEME_SURFACE,
+    label: THEME_TYPE_LABEL,
+    titleField: "label",
+    enabledLabel: "Estação no ar",
+    blockLabel: "estação",
+    hint:
+      "Cada linha é uma estação, e a loja escolhe sozinha pelo dia de hoje: a " +
+      "janela de datas mais estreita vence (Black Friday ganha do Natal). A " +
+      "estação “default” é a base — cor ou fonte em branco numa estação " +
+      "sazonal é herdada dela.",
+    types: [THEME_TYPE],
+  },
+]
+
+/**
+ * Todo `type` de conteúdo que o CRM edita: as seções **e** o bloco de tema.
+ *
+ * É a união do que as superfícies podem criar (`CONTENT_SURFACES[i].types`), e
+ * existe como constante porque a rota admin valida o `type` do corpo contra o
+ * registro — sem `theme` aqui, a primeira gravação de uma estação seria
+ * recusada com "deve ser um de: announcement, hero, …".
+ *
+ * A união das superfícies e esta lista são conferidas uma contra a outra pela
+ * guarda de paridade: uma superfície nova que declare um tipo que ninguém
+ * aceita (ou o contrário) reprova o `make check` em vez de virar um botão que
+ * responde 400 na tela do lojista.
+ */
+export const CONTENT_TYPES: readonly string[] = [...SECTION_TYPES, THEME_TYPE]
+
+/**
+ * As famílias que a loja de fato carrega — **derivadas** de `THEME_FONTS`.
+ *
+ * São as três self-hosted (`frontend/src/app/fonts`, `localFont` no layout):
+ * o `<select>` do CRM não pode oferecer outra, porque trocar a fonte dos
+ * títulos por "Arial" não faria o navegador da cliente baixar Arial nenhuma —
+ * `themeToCSSVariables` escreveria `"Arial", Georgia, serif` e a promessa da
+ * tela ("a loja fica nesta fonte") seria falsa.
+ *
+ * A lista sai do contrato em vez de ser digitada aqui: a família já está em
+ * `THEME_FONTS[role].family`, e uma segunda cópia dos três nomes poderia
+ * envelhecer sozinha — o `<select>` ofereceria uma fonte que ninguém carrega.
+ */
+export const THEME_FONT_FAMILIES: readonly string[] = FONT_ROLES.map(
+  (role) => THEME_FONTS[role].family
+)
+
+/** O papel de cada família, para a opção do `<select>` não ser só o nome. */
+const FONT_ROLE_DESCRIPTIONS: Record<FontRole, string> = {
+  display: "títulos, serifada",
+  sans: "textos e interface",
+  script: "manuscrita",
+}
+
+/** Tradução de cada família (e da opção vazia) para o `<select>` do tema. */
+export const THEME_FONT_FAMILY_LABELS: Record<string, string> = {
+  "": "Padrão do tema da loja",
+  ...Object.fromEntries(
+    FONT_ROLES.map((role) => [
+      THEME_FONTS[role].family,
+      FONT_ROLE_DESCRIPTIONS[role],
+    ])
+  ),
+}
+
+/** Opções do `<select>` de fonte do tema: o "herda" na frente das famílias. */
+export const THEME_FONT_OPTIONS: readonly string[] = [
+  "",
+  ...THEME_FONT_FAMILIES,
+]
+
+/** Rótulo do campo de cada papel de fonte no editor do tema. */
+export const THEME_FONT_ROLE_LABELS: Record<FontRole, string> = {
+  display: "Fonte dos títulos",
+  sans: "Fonte dos textos",
+  script: "Fonte manuscrita",
+}
+
+/** `#RRGGBB` — o formato que o storefront consegue usar como variável CSS. */
+export const HEX_COLOR_PATTERN = "^#[0-9a-fA-F]{6}$"
+
+/**
+ * `MM-DD`, o formato que o storefront compara com a data de hoje.
+ *
+ * Sem o ano de propósito: a janela é anual (o Verão vira o ano), e quem
+ * resolve o tema é que decide o que fazer quando `start > end`.
+ */
+export const MONTH_DAY_PATTERN = "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+
+/**
+ * Campos de `data` de um bloco de tema, na ordem em que o CRM os mostra.
+ *
+ * Mesma máquina dos campos de seção: a rota admin valida contra a lista do
+ * **schema gravado** e o editor desenha o que ela diz — nem a paleta nem as
+ * datas têm uma tela própria no painel. Toda cor sai de `THEME_COLOR_TOKENS`
+ * e todo papel de `FONT_ROLES`, pelos helpers de nome, para acrescentar uma
+ * cor no contrato não deixar o editor (nem a loja) para trás.
+ *
+ * Nada além do `label` é obrigatório: uma estação declara só o que muda e o
+ * resto é **herdado** do tema padrão — era assim no `theme.json` (o Natal
+ * troca três cores) e continua sendo aqui. Campo em branco significa "segue o
+ * padrão", não "apague".
+ */
+export const THEME_FIELDS: readonly FieldSpec[] = [
+  {
+    name: "label",
+    label: "Nome da estação",
+    kind: "text",
+    required: true,
+    help: "Como a estação aparece para você aqui no CRM. A loja não mostra.",
+  },
+  {
+    name: "dateRangeStart",
+    label: "Começa em (MM-DD)",
+    kind: "text",
+    pattern: MONTH_DAY_PATTERN,
+    help: "Mês e dia, sem ano: 11-20 para 20 de novembro.",
+  },
+  {
+    name: "dateRangeEnd",
+    label: "Termina em (MM-DD)",
+    kind: "text",
+    pattern: MONTH_DAY_PATTERN,
+    help: "Pode terminar no ano seguinte (o Verão vai de 12-27 a 03-20).",
+  },
+  ...THEME_COLOR_TOKENS.map((token) => ({
+    name: themeColorField(token),
+    label: APPEARANCE_COLOR_LABELS[token] ?? token,
+    kind: "hex" as const,
+    pattern: HEX_COLOR_PATTERN,
+    help: "Em branco, herda a cor do tema padrão.",
+  })),
+  ...FONT_ROLES.map((role) => ({
+    name: themeFontField(role),
+    label: THEME_FONT_ROLE_LABELS[role],
+    kind: "select" as const,
+    options: THEME_FONT_OPTIONS,
+    optionLabels: THEME_FONT_FAMILY_LABELS,
+    help: "Em branco, herda a fonte do tema padrão.",
+  })),
+]
 

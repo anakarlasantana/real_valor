@@ -14,8 +14,10 @@
  *      `defaults.ts`, que é o fallback da vitrine quando a API de conteúdo
  *      falha;
  *   2. `frontend/themes/<id>/theme.json` — o **seed** do tema: o padrão e as
- *      estações de `themes.ts`, um arquivo por tema. É o que a loja lê hoje
- *      (até a R5 ler o payload) e o que a R4 leva para o banco;
+ *      estações de `themes.ts` (`THEME_FILES`), um arquivo por tema. É o
+ *      bootstrap do tema no banco — a R4 semeia a mesma lista em
+ *      `content_section` (`THEME_SECTIONS`) e, desde a R5, é de lá que a loja
+ *      lê;
  *   3. `frontend/src/styles/tokens.generated.css` — os tokens da paleta
  *      (`--rv-*`), o fallback que o `brand.css` tinha digitado à mão.
  *
@@ -31,18 +33,11 @@
  * que carrega TypeScript nativamente.
  */
 
-import { spawnSync } from "node:child_process"
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs"
-import { tmpdir } from "node:os"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
+
+import { loadExport } from "./lib/load-export.mjs"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, "..")
@@ -62,42 +57,6 @@ const BEGIN_MARKER = "INÍCIO DO BLOCO COMPARTILHADO"
 const END_MARKER = "FIM DO BLOCO COMPARTILHADO"
 /** A linha de régua (`// =====…`) que envolve cada marcador. */
 const RULER = /^\/\/ ={5,}$/
-
-/**
- * Carrega um módulo TS e devolve o valor de um export.
- *
- * O `import` acontece num processo Node à parte — o type-stripping nativo
- * apaga os tipos e o valor volta serializado por stdout. `defaults.ts` só
- * importa o contrato como tipo, então o import é apagado junto e o ciclo de
- * resolução do módulo do Medusa não é tocado.
- */
-function loadExport(file, exportName) {
-  const dir = mkdtempSync(join(tmpdir(), "rv-gen-"))
-  const entry = join(dir, "entry.mjs")
-
-  const body = `
-    const mod = await import(${JSON.stringify(`file://${file}`)});
-    const value = mod[${JSON.stringify(exportName)}];
-    if (value === undefined) {
-      console.error("__MISSING__:" + ${JSON.stringify(exportName)});
-      process.exit(3);
-    }
-    process.stdout.write(JSON.stringify(value));
-  `
-
-  writeFileSync(entry, body)
-  const result = spawnSync("node", [entry], { encoding: "utf8" })
-  rmSync(dir, { recursive: true, force: true })
-
-  if (result.status !== 0) {
-    throw new Error(
-      `Falha ao importar ${exportName} de ${file}:\n` +
-        `${result.stderr || result.stdout}`
-    )
-  }
-
-  return JSON.parse(result.stdout)
-}
 
 /**
  * Fatia o bloco compartilhado do contrato: o que fica entre a régua que
@@ -264,31 +223,19 @@ ${declarations}
 /**
  * Todos os artefatos, com o conteúdo que deveriam ter agora.
  *
- * `themes.ts` traz as estações (o que muda) e o *rótulo* do padrão; a paleta e
- * as famílias do padrão vêm do contrato — `THEME_COLOR_HEXES` e
- * `THEME_FONTS`, as mesmas que o CRM usa na prévia. A junção das duas metades
- * acontece aqui, e uma vez só: é o passo que faz do `theme.json` um artefato
- * gerado, e não uma quarta cópia da paleta.
+ * O tema vem pronto de `themes.ts` (`THEME_FILES`): a fusão entre as estações e
+ * a paleta/fontes do contrato acontece **lá**, no módulo dono das duas metades,
+ * e não aqui. É o mesmo objeto que o seed do banco grava (`THEME_SECTIONS`,
+ * R4), então o `theme.json` e a linha de `content_section` não podem divergir
+ * por esquecimento. Este script só serializa o que recebe — é o que faz do
+ * `theme.json` um artefato gerado em vez de uma quarta cópia da paleta.
  */
 function buildArtifacts() {
   const contract = readFileSync(CONTRACT, "utf8")
   const defaults = loadExport(DEFAULTS, "DEFAULT_HOME_SECTIONS")
-  const base = loadExport(THEMES, "THEME_DEFAULT")
-  const seasons = loadExport(THEMES, "THEME_SEASONS")
+  const themes = loadExport(THEMES, "THEME_FILES")
   const tokens = loadExport(CONTRACT, "THEME_COLOR_TOKENS")
   const hexes = loadExport(CONTRACT, "THEME_COLOR_HEXES")
-  const fonts = loadExport(CONTRACT, "THEME_FONTS")
-
-  const themes = [
-    {
-      ...base,
-      colors: hexes,
-      fonts: Object.fromEntries(
-        Object.entries(fonts).map(([role, font]) => [role, font.family])
-      ),
-    },
-    ...seasons,
-  ]
 
   return [
     { path: ARTIFACT, content: buildContractArtifact(contract, defaults) },

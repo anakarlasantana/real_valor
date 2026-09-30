@@ -554,6 +554,25 @@ export const APPEARANCE_GROUPS = [
 
 export type AppearanceGroup = (typeof APPEARANCE_GROUPS)[number]
 
+/**
+ * Nome do campo de `data` que carrega cada cor do tema (`rose` → `colorRose`).
+ *
+ * O payload é plano — um bloco é `{ id, enabled, position, type, …data }` —,
+ * então a paleta editável no CRM não vira um objeto aninhado em `data`: cada
+ * cor é um campo, como qualquer outro. O nome sai daqui para o editor e a
+ * loja não terem duas convenções de leitura: quem grava é o CRM (via
+ * `THEME_FIELDS`) e quem lê é o storefront (`frontend/src/lib/theme.ts`),
+ * pacotes diferentes que só concordam pelo artefato gerado.
+ */
+export function themeColorField(token: ThemeColorToken): string {
+  return `color${token[0].toUpperCase()}${token.slice(1)}`
+}
+
+/** Nome do campo de `data` que carrega cada papel de fonte (`sans` → `fontSans`). */
+export function themeFontField(role: FontRole): string {
+  return `font${role[0].toUpperCase()}${role.slice(1)}`
+}
+
 /* ---------------------------------------------------------------------------
  * CONTEÚDO PADRÃO
  *
