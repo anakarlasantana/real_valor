@@ -181,17 +181,23 @@ real_valor/
 │   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
 │   ├── check-contract-parity.mjs # guarda hoje: 94 asserts (o G2 levou de 89 p/ 80;
 │   │                           #   o resto virou `tsc` e teste — ver docs/plano-centralizacao.md)
+│   ├── check-boundaries.mjs      # o CRM (`admin/`) importando VALOR do backend reprova aqui
 │   └── vendor-fonts.mjs          # (re)baixa e valida os `.woff2` self-hosted
+│
+├── admin/                            # CRM servido em `/painel` — pacote PRÓPRIO desde a R7
+│   ├── tsconfig.json                 # `strict` + `noUnusedLocals` (mais estrito que o do backend)
+│   └── src/admin/                    # a extensão do Admin do Medusa, compilada pelo Vite do backend
+│       ├── i18n/                     # pt-BR do painel
+│       └── routes/content/           # a página do CMS, os campos, o CSS e as fontes da prévia
 │
 ├── backend/                          # Medusa v2 — Store API + Admin
 │   ├── Dockerfile                    # deps → builder → runner (PROD) | deps → dev (DEV)
 │   ├── docker-entrypoint.sh          # espera o Postgres, migrations, cria admin, exec do CMD
-│   ├── medusa-config.ts              # módulos, CORS, Redis, database
+│   ├── medusa-config.ts              # módulos, CORS, Redis, database e as fontes do admin
 │   ├── integration-tests/            # specs HTTP (health, store)
 │   └── src/
 │       ├── modules/content/          # módulo local `content` (conteúdo editorial da marca)
 │       ├── api/store/ api/admin/     # rotas customizadas da Store API e do Admin
-│       ├── admin/                    # extensões do painel (rotas + i18n pt-BR)
 │       ├── jobs/ links/ subscribers/ workflows/
 │       └── scripts/                  # `seed.ts` (admin/região/chaves), `seed-content.ts`
 │                                       #   (conteúdo da home) e `seed-schema.ts`
@@ -216,7 +222,15 @@ manifestos são `backend/package.json` e `frontend/package.json` (cada um com o 
 têm `node_modules` separados de propósito, porque as duas pilhas trazem React de maior
 (18.3.1 no painel do Medusa, 19 na loja).
 
-Os dois repos seguem o **mesmo padrão de Dockerfile**: `deps` (instala tudo, uma vez) → `builder` (compila) → `runner` (só o artefato). O estágio final de cada Dockerfile é o de **produção**, e é justamente por isso que o modo nunca pode depender do estágio default: a base fixa `target: runner` e o override fixa `target: dev`.
+São **três pacotes, um por runtime** desde a R7: `admin/` é o CRM (`/painel`), com
+`tsconfig` próprio e nenhuma fonte de dado — só chama a API. E é o único dos três **sem
+`package.json` e sem `node_modules`**, de propósito: quem compila o painel é o Vite do
+backend (que é quem tem React 18.3.1 e `@medusajs/ui` instalados), e o pacote do CRM
+declara isso em `admin/tsconfig.json` (`paths` e `typeRoots` apontando para
+`backend/node_modules`). Um `node_modules` próprio aqui seria uma segunda instalação de
+React no mesmo bundle — o plano (`docs/plano-centralizacao.md`) diz por quê.
+
+Os dois repos seguem o **mesmo padrão de Dockerfile**: `deps` (instala tudo, uma vez) → `builder` (compila) → `runner` (só o artefato). O estágio final de cada Dockerfile é o de **produção**, e é justamente por isso que o modo nunca pode depender do estágio default: a base fixa `target: runner` e o override fixa `target: dev`. A diferença é o contexto: o do storefront é `./frontend`; o do backend é a **raiz do repositório** (`context: .`), porque a imagem leva também o CRM — que não é uma pasta qualquer dentro dele, é outro pacote (`COPY admin/ /app/admin` no `backend/Dockerfile`).
 
 ### Documentação
 
@@ -464,14 +478,14 @@ make up && make migrate && make seed
 
 O caminho do admin **não pode** ser `/app`, o default do Medusa. O `WORKDIR` do
 container do backend também é `/app` (`backend/Dockerfile`) e, em **DEV**, o
-plugin do admin emite imports com caminho absoluto (`/app/src/admin/...`).
+plugin do admin emite imports com caminho absoluto (`/app/admin/src/admin/...`).
 Como o `base` do Vite é o próprio `admin.path`, o Vite aplica
-`stripBase("/app/src/admin/i18n/index.ts", "/app")` → `/src/admin/i18n/index.ts`,
-procura esse caminho no disco (que não existe — não há `/src` na raiz do
-container) e falha:
+`stripBase("/app/admin/src/admin/i18n/index.ts", "/app")` →
+`/admin/src/admin/i18n/index.ts`, procura esse caminho no disco (que não existe
+— o CRM está em `/app/admin`, não na raiz do container) e falha:
 
 ```
-[vite] Internal server error: Failed to resolve import "/src/admin/i18n/index.ts" from "virtual:medusa/i18n"
+[vite] Internal server error: Failed to resolve import "/admin/src/admin/i18n/index.ts" from "virtual:medusa/i18n"
 ```
 
 Sintoma: `GET /app` responde `200` (o HTML é servido), mas o bundle não carrega e

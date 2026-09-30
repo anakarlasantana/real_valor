@@ -43,6 +43,10 @@ import { ImageInput } from "./image-input"
  * importação, um campo novo no contrato é erro de compilação aqui, e não um
  * item que some da tela em silêncio — que é o defeito que a guarda de paridade
  * procurava com texto.
+ *
+ * O `import type` sobe cinco níveis porque, desde a R7, o CRM é um pacote
+ * IRMÃO de `backend/` (o contrato continua morando lá — ver
+ * docs/plano-centralizacao.md; a tipagem própria do CRM é a fase R2).
  */
 import type {
   CategoryRef,
@@ -50,7 +54,7 @@ import type {
   FieldSpec,
   ItemFieldSpec,
   ItemFields,
-} from "../../../modules/content/contract"
+} from "../../../../../backend/src/modules/content/contract"
 
 export type { FieldKind, FieldSpec, ItemFieldSpec, ItemFields }
 

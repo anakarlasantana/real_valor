@@ -16,7 +16,7 @@ import { IconProps } from "types/icon"
  * `color` so they inherit the footer's colour and hover state.
  *
  * The keys the admin offers are listed by hand in
- * `backend/src/admin/routes/content/field-input.tsx` (`list:social`) —
+ * `admin/src/admin/routes/content/field-input.tsx` (`list:social`) —
  * `scripts/check-contract-parity.mjs` fails when the two lists drift, or
  * when the keys below do not match this map.
  */

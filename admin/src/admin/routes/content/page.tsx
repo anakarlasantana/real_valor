@@ -52,12 +52,16 @@ import {
 } from "@medusajs/ui"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+// Os três `import type` abaixo sobem cinco níveis porque, desde a R7, o CRM é
+// um pacote IRMÃO de `backend/` — e continuam sendo SÓ tipo: valor importado do
+// backend aqui já foi defeito uma vez (a numeração da ordem), e a guarda
+// `scripts/check-boundaries.mjs` falha se voltar. Ver docs/plano-centralizacao.md.
 import type {
   AppearanceGroup,
   CategoryRef,
-} from "../../../modules/content/contract"
-import type { OrderFaixa } from "../../../modules/content/order"
-import type { ContentSchemaPayload } from "../../../modules/content/schema"
+} from "../../../../../backend/src/modules/content/contract"
+import type { OrderFaixa } from "../../../../../backend/src/modules/content/order"
+import type { ContentSchemaPayload } from "../../../../../backend/src/modules/content/schema"
 import { AppearanceRail } from "./appearance-controls"
 import { FieldInput, type FieldSpec } from "./field-input"
 import { isDirty, wireValue } from "./form-draft"

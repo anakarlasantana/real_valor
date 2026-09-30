@@ -115,8 +115,11 @@ services:
   # ---------------------------------------------------------------------------
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # A RAIZ do repositorio, e nao `./backend`: a imagem leva tambem o CRM
+      # (`admin/`, pacote irmao desde a R7) para `/app/admin` — ver o topo do
+      # backend/Dockerfile e docs/plano-centralizacao.md.
+      context: .
+      dockerfile: backend/Dockerfile
       # `runner` = artefato compilado (`medusa build`) sem devDependencies.
       # O estagio `dev` (hot reload) vive no docker-compose.override.yml.
       target: runner

@@ -1,3 +1,16 @@
+# -----------------------------------------------------------------------------
+# O CONTEXTO DE BUILD E A RAIZ DO REPOSITORIO (nao `backend/`)
+# -----------------------------------------------------------------------------
+# Este Dockerfile e de um pacote que depende de outro: o CRM (`admin/`, pacote
+# IRMAO deste, ver docs/plano-centralizacao.md) e compilado pelo Vite do backend
+# (`medusa build` -> `admin.sources` no medusa-config.ts). Um contexto limitado a
+# `backend/` nao alcanca o irmao — o Compose declara `context: .` +
+# `dockerfile: backend/Dockerfile` nos dois modos, e por isso todo `COPY` daqui
+# escreve o caminho a partir da raiz (`COPY backend/ …`) e o CRM entra em
+# `/app/admin` (a raiz do container: a resolucao de import do Vite/Rollup parte
+# da arvore do arquivo e precisa do `node_modules` do backend ACIMA da fonte).
+# Os `.dockerignore` que valem sao os daquele contexto — `/.dockerignore`.
+#
 # =============================================================================
 # Real Valor — Backend (Medusa v2): Loja (Store API) + Admin
 # =============================================================================
@@ -27,8 +40,8 @@ RUN corepack enable
 
 # Copia apenas os manifestos para aproveitar o cache de camadas:
 # mudar o codigo-fonte nao invalida a instalacao das dependencias.
-COPY package.json yarn.lock .yarnrc.yml ./
-COPY .yarn ./.yarn
+COPY backend/package.json backend/yarn.lock backend/.yarnrc.yml ./
+COPY backend/.yarn ./.yarn
 
 RUN yarn install --immutable
 
@@ -45,7 +58,11 @@ RUN corepack enable
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/.yarn ./.yarn
-COPY . .
+COPY backend/ .
+
+# O CRM, ao lado do backend DENTRO da raiz do container: e de `/app/admin` que o
+# `admin.sources` do medusa-config.ts tira a fonte do painel no build.
+COPY admin/ /app/admin
 
 # `medusa build` compila o admin (Vite) para `.medusa/server/public/admin` e
 # transpila os modulos para `.medusa/server`. Ele precisa de uma DATABASE_URL
@@ -80,7 +97,7 @@ WORKDIR /app
 #
 # NAO use `admin.path = "/app"` (o default do Medusa): este WORKDIR tambem e
 # "/app" e a coincidencia quebra, em DEV, a resolucao dos modulos de extensao
-# do admin (`src/admin/**`) — detalhes em `backend/medusa-config.ts`.
+# do admin (`/app/admin/src/admin/**`) — detalhes em `backend/medusa-config.ts`.
 ENV PORT=9000
 
 # Somente o artefato compilado: sem devDependencies, sem ferramentas de build.
@@ -120,7 +137,7 @@ RUN corepack enable \
 RUN mkdir -p /app/static && chown medusa:medusa /app/static
 
 # Entrypoint: aguarda o Postgres, roda migrations sob demanda e cria o admin.
-COPY --chown=medusa:medusa docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --chown=medusa:medusa backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Executa como usuario nao-root
@@ -162,10 +179,15 @@ RUN apk add --no-cache curl postgresql16-client \
 WORKDIR /app
 
 # Codigo-fonte: em DEV o compose SOBREPOE com bind mount do host.
-COPY --chown=medusa:medusa . .
+COPY --chown=medusa:medusa backend/ .
+
+# O CRM, ao lado do backend DENTRO da raiz do container (ver o topo do arquivo):
+# em DEV o override monta `./admin` aqui, e e de `/app/admin` que o
+# `admin.sources` do medusa-config.ts tira a fonte do painel.
+COPY --chown=medusa:medusa admin/ /app/admin
 
 # Entrypoint: aguarda o Postgres, roda migrations sob demanda e cria o admin.
-COPY --chown=medusa:medusa docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --chown=medusa:medusa backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Permissoes de ESCRITA do usuario `medusa` em DEV (bug corrigido).
 #

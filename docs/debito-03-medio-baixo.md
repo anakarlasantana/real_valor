@@ -115,16 +115,17 @@ de ambiente é o **`.env` da raiz** (modelo versionado: `.env.example`).
 ### 3.5 Admin não é servido em modo dev
 
 **Evidência:** o modo de servir o admin é decidido por `NODE_ENV` no loader
-`@medusajs/medusa/dist/loaders/admin.js`: em `development` compila `src/admin/` ao vivo; caso
+`@medusajs/medusa/dist/loaders/admin.js`: em `development` compila a fonte do CRM
+(`admin/src/admin/**` desde a R7) ao vivo; caso
 contrário serve `.medusa/server/public/admin` — diretório que **não existe** neste repositório
 (nunca foi executado `yarn build` no host). O artefato gerado `backend/.medusa/client/entry.jsx`
 comprova o efeito: lista apenas o plugin npm (`plugin0 = @medusajs/draft-order/admin`) e
-**omite o plugin local de `backend/src/admin`**, de modo que a rota `content` nunca é
+**omite o plugin local do CRM**, de modo que a rota `content` nunca é
 compilada.
 
 **Impacto:** a tela **Conteúdo da vitrine** não aparece no menu do Admin, embora o módulo
 `content`, o endpoint `GET /store/content` e o arquivo
-`src/admin/routes/content/page.tsx` estejam corretos. Foi isso que originou a
+`admin/src/admin/routes/content/page.tsx` estejam corretos. Foi isso que originou a
 percepção de "elo incompleto" na seção 2.5.
 
 **Status: resolvido em 2026-09-24 (containerização).** Cada ambiente passou a ter um `NODE_ENV`
@@ -132,7 +133,7 @@ correto e explícito, controlado pelo overlay do compose:
 
 | Ambiente | Comando | `NODE_ENV` | Como o admin é servido |
 |---|---|---|---|
-| DEV (`docker-compose.yml` + `docker-compose.override.yml`) | `yarn dev` (`medusa develop`) | `development` | compilado ao vivo de `src/admin/` — o plugin local aparece |
+| DEV (`docker-compose.yml` + `docker-compose.override.yml`) | `yarn dev` (`medusa develop`) | `development` | compilado ao vivo da fonte do CRM (`./admin` montado em `/app/admin`) — o plugin local aparece |
 | PROD (`docker compose -f docker-compose.yml`) | `yarn start` (`medusa start`) | `production` | `.medusa/server/public/admin`, gerado no **build da imagem** |
 
 O ponto crítico anterior era justamente rodar `yarn start` sem nunca ter executado

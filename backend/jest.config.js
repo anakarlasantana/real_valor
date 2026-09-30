@@ -16,6 +16,12 @@ module.exports = {
   moduleFileExtensions: ["js", "ts", "json"],
   modulePathIgnorePatterns: ["dist/", "<rootDir>/.medusa/"],
   setupFiles: ["./integration-tests/setup.js"],
+  // O CRM (`../admin`, pacote irmão desde a R7) tem tsconfig e bundle próprios,
+  // mas ainda não tem runner: o único teste dele — o do formulário, que decide o
+  // que fica "pendente" na tela — roda aqui, como rodava antes de mudar de casa.
+  // Fora do `roots`, o jest não o acharia e `make test` perderia uma suíte sem
+  // dizer nada.
+  roots: ["<rootDir>", "<rootDir>/../admin/src"],
 };
 
 if (process.env.TEST_TYPE === "integration:http") {

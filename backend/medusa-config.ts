@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
+import type { ConfigModule } from '@medusajs/framework/types'
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
@@ -19,18 +22,43 @@ module.exports = defineConfig({
     // ATENCAO: o default do Medusa para o painel e "/app" — exatamente o
     // WORKDIR deste container (ver backend/Dockerfile). Com `path == "/app"`,
     // o `base` do Vite coincide com o prefixo dos caminhos absolutos emitidos
-    // pelo plugin do admin (`/app/src/admin/...`): o Vite aplica
-    // `stripBase("/app/src/...", "/app")` -> `/src/admin/...`, tenta resolve-lo
-    // como path de FS inexistente e falha com
-    // `Failed to resolve import "/src/admin/i18n/index.ts"` (painel em branco).
-    // Um `path` que NAO seja prefixo do WORKDIR elimina a colisao.
+    // pelo plugin do admin (`/app/admin/src/admin/...`): o Vite aplica
+    // `stripBase("/app/admin/src/...", "/app")` -> `/admin/src/admin/...`, tenta
+    // resolve-lo como path de FS inexistente e falha com
+    // `Failed to resolve import "/admin/src/admin/i18n/index.ts"` (painel em
+    // branco). Um `path` que NAO seja prefixo do WORKDIR elimina a colisao.
     // Ver README > "Enderecos de Acesso".
     // O tipo do admin path e' template literal (`/${string}`); o valor ja vem
     // com "/" (o default "/painel"), entao o cast so resolve o tipo.
     path: (process.env.MEDUSA_ADMIN_PATH ||
       "/painel") as `/${string}`,
     backendUrl: process.env.MEDUSA_BACKEND_URL || "http://localhost:9000",
-  },
+    // As fontes de extensão do admin: os diretórios que o plugin do Vite varre
+    // procurando `routes/`, `widgets/` e `i18n/`. O CRM deixou `src/admin/` na
+    // R7 e virou um pacote próprio (`admin/`), irmão de `backend/` — ver
+    // docs/plano-centralizacao.md.
+    //
+    // Duas linhas porque o CRM tem dois endereços, e é o mesmo diretório: no
+    // repositório ele é IRMÃO de `backend/`; na imagem ele entra em
+    // `/app/admin`, que é a raiz do container. O motivo é medido: a resolução
+    // de import do Vite/Rollup parte da árvore do arquivo, então o
+    // `node_modules` do backend precisa estar ACIMA do CRM — com o CRM em
+    // `/admin`, o `medusa build` morre em
+    // `Rollup failed to resolve import "@medusajs/admin-sdk" from
+    // "/admin/src/admin/routes/probe/page.tsx"`. O `filter` mantém só o
+    // diretório que existe, então a mesma config serve host e container (e na
+    // imagem de execução — que não tem nem um nem outro — a lista fica vazia de
+    // propósito: `medusa start` serve o bundle COMPILADO, não a fonte).
+    //
+    // O cast: `sources` não está no tipo público de `admin` (`AdminOptions`, de
+    // @medusajs/types); quem o declara é `BundlerOptions`
+    // (@medusajs/admin-bundler), o tipo que o `adminLoader` monta e entrega ao
+    // Vite. Sem ele, `make types` acusa TS2769 — medido.
+    sources: [
+      resolve(__dirname, "../admin/src/admin"),
+      resolve(__dirname, "admin/src/admin"),
+    ].filter(existsSync),
+  } as NonNullable<ConfigModule["admin"]> & { sources: string[] },
   modules: [
     // Armazenamento dos arquivos que o painel envia: as fotos das seções da
     // vitrine e as imagens de produto.

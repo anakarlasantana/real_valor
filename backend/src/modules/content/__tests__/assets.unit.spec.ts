@@ -124,7 +124,7 @@ describe("as fontes da prévia do painel", () => {
 
   it("o appearance.css declara @font-face para cada papel, apontando para ./fonts", () => {
     const appearanceCss = read(
-      "backend", "src", "admin", "routes", "content", "appearance.css"
+      "admin", "src", "admin", "routes", "content", "appearance.css"
     )
     const familias = fontFamily(appearanceCss)
     const esperadas = Object.values(THEME_FONTS).map((font) => font.family)
@@ -142,7 +142,7 @@ describe("as fontes da prévia do painel", () => {
     // `src/app/fonts/README.md` documenta), e o do painel é a cópia na mesma
     // pasta do CSS do admin — daí percorrer as famílias, e não os arquivos.
     const panelFonts = join(
-      root, "backend", "src", "admin", "routes", "content", "fonts"
+      root, "admin", "src", "admin", "routes", "content", "fonts"
     )
     const storefrontFonts = join(root, "frontend", "src", "app", "fonts")
 

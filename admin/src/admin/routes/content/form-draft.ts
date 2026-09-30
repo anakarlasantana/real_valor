@@ -14,8 +14,11 @@
  * campo de referência é um objeto na tela (o chip precisa do nome para ser
  * desenhado) e uma lista de ids no corpo — a conversão mora num lugar só, com
  * teste, em vez de dentro do `onSave`.
+ *
+ * O `import type` sobe cinco níveis porque, desde a R7, o CRM é um pacote
+ * IRMÃO de `backend/` (ver docs/plano-centralizacao.md).
  */
-import type { FieldKind } from "../../../modules/content/contract"
+import type { FieldKind } from "../../../../../backend/src/modules/content/contract"
 
 /** Uma impressão do valor, para comparar formulário e conteúdo gravado. */
 export function fingerprint(value: unknown): string {

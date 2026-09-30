@@ -210,7 +210,7 @@ na ordem do contrato, o `FieldSpec` espelhado no admin tem de conhecer o
 `attachedTo`, o `GET /admin/content` tem de mandar `typeLabels`/`itemFields`/
 `palette`/`fonts`/`darkTokens`, e cada família declarada precisa existir como
 `@font-face` em
-`backend/src/admin/routes/content/appearance.css` apontando para um `.woff2`
+`admin/src/admin/routes/content/appearance.css` apontando para um `.woff2`
 com o **mesmo md5** do storefront. As duas últimas são as que nenhuma revisão
 manual pegaria: sem elas a bolinha sai sem cor e a prévia de fonte cai no
 fallback do navegador, e a página continua "funcionando".
@@ -364,7 +364,7 @@ As três são **cópia de leitura para desenhar**: o que pode ser gravado contin
 saindo de `options`, campo a campo, e validado no servidor. A bolinha mostra a
 cor do tema **padrão** (num tema de estação a da loja é outra) e a fonte é a
 mesma da loja, com os arquivos `.woff2` copiados para
-`backend/src/admin/routes/content/fonts/` — o navegador do painel não tem
+`admin/src/admin/routes/content/fonts/` — o navegador do painel não tem
 nenhuma das três. `scripts/check-contract-parity.mjs` confere as pontas todas:
 hex contra o `theme.json`, família e pilha contra o `theme.json`/`theme.ts` e
 md5 dos `.woff2` contra os do storefront. O `schema` inteiro é o formulário do
@@ -573,10 +573,12 @@ tem é aceito. É o que faz o formulário mudar sem deploy.
 
 ## Admin
 
-A página fica em **Conteúdo da vitrine**, na sidebar principal do painel
-(`src/admin/routes/content/`).
+A página fica em **Conteúdo da vitrine**, na sidebar principal do painel. Desde a
+R7 ela mora no pacote do CRM — `admin/src/admin/routes/content/`, irmão de
+`backend/` — e o Vite do backend é quem a compila (ver
+`docs/plano-centralizacao.md`).
 
-Ela **não** vive em `src/admin/routes/settings/`: o dashboard classifica o item pelo
+Ela **não** vive em `admin/src/admin/routes/settings/`: o dashboard classifica o item pelo
 prefixo do path (`DashboardApp.populateMenus`, `path.startsWith("/settings")`), e o
 que está sob `/settings` vai para as extensões da sidebar de Configurações em vez do
 menu principal. Como entrada da sidebar principal, a página participa do mesmo
@@ -630,8 +632,9 @@ Desde a R6.5 ele também não importa **valor** nenhum do backend: só `import t
 (o que some no bundle). O último que restava era a regra da ordem
 (`positionFor`/`renumber`/`nextPosition`), que respondia dentro do navegador a
 mesma pergunta que o servidor respondia ao gravar. A tela recebe o dado —
-`position` de cada seção e a faixa (`order`) — e a guarda reprova qualquer
-`import { … } from "…/modules/…"` dentro de `backend/src/admin/`.
+`position` de cada seção e a faixa (`order`) — e a guarda
+(`scripts/check-boundaries.mjs`, que a R7 herdou) reprova qualquer
+`import { … }` que saia de `admin/` para dentro de `backend/`.
 
 ## Operação
 

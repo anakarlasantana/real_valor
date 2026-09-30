@@ -465,7 +465,7 @@ export type FontRole = (typeof FONT_ROLES)[number]
  * A família e a pilha completa de cada papel de fonte.
  *
  * `family` é o nome declarado no `theme.json` (`fonts`) — o mesmo que o
- * `@font-face` da cópia em `backend/src/admin/routes/content/fonts/` usa —,
+ * `@font-face` da cópia em `admin/src/admin/routes/content/fonts/` usa —,
  * e `stack` é a pilha que `themeToCSSVariables`
  * (`frontend/src/lib/theme.ts`) escreve em `--rv-font-*`, com o mesmo
  * fallback da loja.

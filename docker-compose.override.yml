@@ -81,8 +81,10 @@ services:
   # ---------------------------------------------------------------------------
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # A raiz do repositorio (ver o `context` na base): o CRM vive em `admin/`,
+      # irmão do backend, e entra na imagem em `/app/admin`.
+      context: .
+      dockerfile: backend/Dockerfile
       # `dev` preserva as devDependencies (ts-node), obrigatorias para o
       # `medusa develop` carregar `medusa-config.ts` e os modulos TypeScript.
       # O estagio `runner` (producao) e enxuto e NAO serve para dev.
@@ -113,6 +115,12 @@ services:
     volumes:
       # Codigo do host -> container (habilita o hot reload).
       - ./backend/src:/app/src
+      # O CRM, pacote IRMAO do backend desde a R7: o mesmo caminho da imagem
+      # (`COPY admin/ /app/admin`), que e de onde o `admin.sources` do
+      # medusa-config.ts le a fonte do painel. Dentro de `/app` de proposito: a
+      # resolucao de import do Vite/Rollup parte da arvore do arquivo e precisa
+      # do `node_modules` do backend ACIMA dela.
+      - ./admin:/app/admin
       # Config e scripts tambem observados em dev.
       - ./backend/medusa-config.ts:/app/medusa-config.ts:ro
       - ./backend/package.json:/app/package.json:ro

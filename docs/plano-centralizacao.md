@@ -266,24 +266,26 @@ Conferir: `make types`.
 > Registrado em 2026-09-29, ao lado do G0→G5 e pelo mesmo motivo: o que não está no repo se
 > perde. A fila **G** elimina a guarda; a fila **R** ataca a razão de ela ter crescido — a
 > fronteira entre *manipular dado* e *apresentar dado* não está no layout do repositório.
-> `backend/src/admin` é a extensão do Admin do Medusa: **React 18.3.1**, Vite, servida em
-> `/painel` pelo próprio backend. É CRM, não back-end — e hoje mora debaixo de `backend/`.
+> O CRM era `backend/src/admin`: a extensão do Admin do Medusa — **React 18.3.1**, Vite,
+> servida em `/painel` pelo próprio backend —, ou seja, CRM e não back-end, morando debaixo
+> de `backend/`. A **R7** tirou-o de lá: hoje é o pacote `admin/`.
 
 ### A regra
 
 | Pacote | Runtime | Papel | Fonte de dado |
 |---|---|---|---|
 | `backend/` | Node/Medusa | módulos, schema no banco, `/admin/*` e `/store/*` | **Postgres — dono único** |
-| `admin/` (novo) | Vite + React **18.3.1** + `@medusajs/ui` | CRM (`/painel`) | nenhuma: só chama a API |
+| `admin/` | compilado pelo Vite do **backend** (React **18.3.1** + `@medusajs/ui` vêm de `backend/node_modules`) | CRM (`/painel`) | nenhuma: só chama a API |
 | `frontend/` | Next 15 + React **19.0.5** | storefront (SSR/ISR, SEO, checkout) | nenhuma: render + validação |
 
 React 18 × 19 é o que torna a fronteira **física**: o CRM não pode compartilhar `node_modules`
-com o storefront (é por isso que o `packages/` do G5 não resolve o caso do CRM). A guarda passa
-a ser `scripts/check-boundaries.mjs`, que falha quando `admin/` importar **valor** (≠ `import
-type`) de `backend/`. O painel **não** importa valor nenhum desde a R6.5: eram três (`nextPosition`,
+com o storefront (é por isso que o `packages/` do G5 não resolve o caso do CRM). A guarda é
+`scripts/check-boundaries.mjs`, que falha quando `admin/` importar **valor** (≠ `import type`)
+de `backend/`. O painel **não** importa valor nenhum desde a R6.5: eram três (`nextPosition`,
 `positionFor` e `renumber`, em `page.tsx`), e os três saíram — a regra passou a viajar como dado (a
-faixa no payload) e a gravação virou uma porta só (`POST /admin/content/order`). A verificação já
-existe dentro do `check-contract-parity.mjs` (a R6.5 somou-a ali) e a R7 a herda na `check-boundaries.mjs`.
+faixa no payload) e a gravação virou uma porta só (`POST /admin/content/order`). A verificação
+nasceu dentro do `check-contract-parity.mjs` (a R6.5 a somou ali) e a R7 a herdou na
+`check-boundaries.mjs`, junto com o código que mudou de casa.
 
 ### Fechamento de toda fase R (R0 → R7)
 
@@ -299,7 +301,9 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 > contrato pode somar verificação, e somar é mais barato que redesenhar (a R1 somou três: o
 > que a vitrine de destaque lê ⇔ o formulário, o chip como referência e a tabela do link; a R6.5
 > somou quatro: nenhum import de valor no painel, a faixa da ordem vinda das constantes do módulo,
-> o numeral da tela usando essa faixa e a porta de ordem com um aviso só).
+> o numeral da tela usando essa faixa e a porta de ordem com um aviso só). A **R7** não somou
+> nenhuma: ela mudou uma de casa — a fronteira do painel saiu do `check-contract-parity.mjs` para o
+> `check-boundaries.mjs`, que é onde ela virou a razão de existir do arquivo —, e o total continua 94.
 > O alvo do plano nunca foi o número: é ficar só com o que a linguagem não vê (binário, CSS,
 > migração).
 
@@ -312,7 +316,7 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 | **R1** ✅ | os chips do `featured` deixam de ser texto e viram **referência**: link novo `content_section_category`, `modules/content/filters.ts`, o `kind: "list:category"` no contrato, o seletor de categorias no CRM, o `/store/content` devolvendo `{ categoryId, label, handle }` lido ao vivo e a vitrine filtrando por `category_id`. "Todos" deixou de ser dado — não existe categoria "todas": quem o desenha é a loja | 4 linhas em `content_section_category` (posições 10–40) apontando para Vestidos, Blusas & Camisas, Calças & Alfaiataria e Conjuntos; `/store/content` com `schemaVersion: 5` e os chips com nome e `handle`; `/?peca=blusas-camisas` com a peça da categoria e `/?peca=conjuntos` com o estado vazio; `make check` 90 asserções, `make test` 10 suites / 121 testes, `make types` verde |
 | **R6** ✅ | `api/admin/content/route.ts` quebrou em `modules/content/{validation,resolvers,view}.ts`, e o `nextPosition` duplicado saiu: a rota passou a usar o do `order.ts` (que tem o piso da faixa da vitrine e recebe só a vitrine) | rota **812 → 437 linhas**; `make check` 90 asserções e `make test` **11 suites / 147 testes** verdes (a rota em si não tinha teste — a validação e os resolvedores têm `validation.unit.spec.ts` agora) |
 | **R6.5** ✅ | a ordem da vitrine sai do navegador: `POST /admin/content/order` com `{ ids }`, a renumeração no módulo (`order.ts`: `readOrderIds`, `orderErrors`, `applyOrder`) e a faixa da numeração viajando como **dado** no payload (`order`, para o numeral da lista enquanto a ordem está pendente). O painel deixa de importar valor de `backend/` (eram `nextPosition`, `positionFor` e `renumber`) | uma requisição e **um** aviso à loja com **7** seções mudando de posição (medido no log do frontend: `POST /api/revalidate?tag=content`); a mesma ordem de novo devolve `{"updated":[]}` e nenhum aviso; os 400 por lista incompleta, seção fixa, id inexistente, id repetido e forma inválida; `make check` **94** asserções, `make test` **11 suites / 157 testes** + 20 do vitest, `make types` verde (agora com o `tsc` do painel, que pegou um import morto) |
-| **R7** | o CRM muda de casa: 12 arquivos / 2.282 linhas para `admin/`, com `medusa build` como gate | build do admin sem erro (não precisa de banco) |
+| **R7** ✅ | o CRM muda de casa: sai de `backend/src/admin` para o pacote `admin/` — 17 arquivos (9 de código, 2.538 linhas), `tsconfig` próprio, nenhum `node_modules` próprio — servido em `/painel` pelo Vite do backend (`admin.sources` no `medusa-config.ts`). A imagem passa a compilar com o contexto na **raiz do repositório** e o CRM entra em `/app/admin` | `make build-admin` verde (backend + admin: 10,7s + 33,1s); `make check` **94** asserções; `make test` **11 suites / 157 testes** + 3 arquivos / 20 do vitest; `make types` verde nos três; `/painel` 200, a rota vindo de `/painel/@fs/app/admin/src/admin/routes/content/page.tsx` e `make logs-admin` OK. O caminho até aqui (incluindo o build que **falhou** com o CRM em `/admin`) está em "R7 — o que a fase mediu" |
 | **R2** | tipagem onde hoje há paridade por texto (o destino do G2) | `tsc` limpo, sem `any` novo |
 | **R3-lite → R5** | tema como dado e `themes/` fora do Dockerfile (o F3 refeito sobre `develop`) | `make gen` + `make check`; R4/R5 pedem o Docker de pé |
 
@@ -345,5 +349,25 @@ elas mudaram no código:
 | A gravação em lote funciona | `updateContentSections([{ id, position }, …])` grava as N linhas numa chamada (é a forma que o `applyOrder` usa). Antes eram N transações e uma ordem pela metade quando uma falhava no meio — o aviso mandava "salvar de novo" para terminar o serviço. Medido: 7 posições (100…160) de uma vez, e a loja (`/store/content` e a home `/br`) na ordem nova |
 | Idempotência | `renumber` devolve só o que muda de posição, então republicar a ordem atual não escreve nada. É o que permite a rota não avisar a loja à toa e o que torna um duplo clique inofensivo |
 | Achado de **dado** (não da R6.5) | `hero` estava com `fixed = true` na base local, e a migration que criou a coluna marca só `announcement`, `nav` e `footer` — o contrato (`SINGLETON_SECTION_TYPES`) também. Consequência: o CRM mostrava o hero como **Fixo** (sem setas) e a porta da ordem recusaria qualquer lista que o trouxesse. A tela **não tem controle** para `fixed`, então o lojista não conserta pela UI. Alinhado via API (`PATCH {"fixed": false}`); fica aberto decidir se o corpo pode dizer `fixed` (hoje pode: decisão da fase do `fixed`) ou se a coluna volta a ser derivada do contrato na criação |
+
+### R7 — o que a fase mediu
+
+Cinco sondas, todas descartadas depois de responder. A fase começou por medir **onde** o CRM
+poderia morar, e a medição derrubou a primeira resposta:
+
+| Medição | Resultado, e o que ficou |
+|---|---|
+| Descoberta da fonte em **DEV**, com o CRM fora de `backend/` | Funciona. O `adminLoader` monta `sources` dos plugins locais (o projeto é o plugin `project-plugin`), mas a chave `sources` do config **sobrepõe** a lista — então `medusa-config.ts` declara a fonte. Medido no módulo virtual do plugin (`/painel/@id/__x00__virtual:medusa/routes`): `import RouteComponent0 … from "/painel/@fs/app/admin/src/admin/routes/content/page.tsx"` e `path: "/content"`; o arquivo responde **200 `text/javascript`** (com os `jsxDEV` do Vite), e não o `index.html` do fallback |
+| O plugin só reconhece `/src/admin/` no caminho | `isFileInAdminSubdirectory` e `getRoute` casam o segmento `/src/admin/` (é a convenção do Medusa, igual à de um plugin instalado). Por isso o CRM ficou em `admin/src/admin/**`, e não em `admin/**` |
+| **Build** com o CRM como irmão de `backend/` (em `/admin`) | **Falha** — e essa foi a medição que decidiu a fase: `Rollup failed to resolve import "@medusajs/admin-sdk" from "/admin/src/admin/routes/probe/page.tsx"`. A resolução de import do Vite/Rollup sobe a partir da **árvore do arquivo** e procura `node_modules`: em `/admin` não há nenhum acima (o do backend está em `/app/node_modules`, dentro da raiz). Em DEV isso não apareceria — o otimizador de dependências resolve pelo root —, o que é exatamente o tipo de divergência que só o build pega |
+| Onde o CRM entra na imagem | Em **`/app/admin`** — dentro da raiz do container. Com isso o `node_modules` do backend está acima da fonte (build e dev iguais) e o `medusa build` fecha verde: *Backend build completed successfully (10.66s)* + *Frontend build completed successfully (33.11s)*, e a página do CRM no bundle. Custo: o contexto do build passou a ser a **raiz do repositório** (`context: .` + `COPY backend/ …` + `COPY admin/ /app/admin`), o `/.dockerignore` da raiz (que já existia, órfão de um contexto-raiz antigo) voltou a valer e o `backend/.dockerignore` morreu |
+| `tsc` do CRM fora de `backend/` | O TypeScript sobe a partir do arquivo: sem ajuda, **4 erros** (TS2307/TS7026/TS2875 — `@medusajs/admin-sdk`, `@medusajs/ui`, `react/jsx-runtime`). Ficou com `paths`/`typeRoots` em `admin/tsconfig.json` apontando para `backend/node_modules` (quem compila o painel é o Vite de lá). `react`/`react-dom` precisam de linha própria no `paths` (os pacotes React não trazem tipos); sem `typeRoots`, **34 erros** de `describe/it/expect` no teste do formulário — os dois números medidos, não estimados |
+| Heap do build | Dentro do **serviço dev** (limite de 2G no override, com o `medusa develop` já rodando) o build morre em `FATAL ERROR: Reached heap limit Allocation failed`. O gate virou `make build-admin`, que roda num container **avulso** (`compose run`, sem o dev server dividindo a memória) com `NODE_OPTIONS=--max-old-space-size=1536`. No estágio `builder` da imagem nada disso é preciso: `docker build` não passa pelos limites do Compose |
+
+O que a fase **não** mudou de propósito: o CRM continua importando **tipo** do backend por
+caminho relativo (`../../../../../backend/src/modules/content/…` — cinco níveis, agora), e o
+teste do formulário continua rodando no `jest` do backend (o `roots` do
+`backend/jest.config.js` aponta para `../admin/src`: o CRM ainda não tem runner próprio).
+Os dois são assunto da **R2** — a fase da tipagem própria.
 
 

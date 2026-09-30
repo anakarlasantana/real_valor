@@ -19,7 +19,7 @@
  *   - coerência da própria fonte (todo tipo tem campos, os defaults cobrem
  *     todos os tipos, todo campo obrigatório está preenchido no seed, e
  *     obrigatório/`SECTION_FIELDS` batem com o que a loja lê);
- *   - o editor do admin (`backend/src/admin/routes/content/field-input.tsx`)
+ *   - o editor do admin (`admin/src/admin/routes/content/field-input.tsx`)
  *     saber desenhar todo tipo de lista do contrato, com as mesmas chaves de
  *     ícone que `frontend/src/lib/content/icons.ts` oferece. São espelhos
  *     mantidos à mão — o admin é um pacote separado e não importa nem o
@@ -68,18 +68,21 @@ const APPEARANCE = join(root, "frontend/src/lib/content/appearance.ts")
 const BRAND_CSS = join(root, "frontend/src/styles/brand.css")
 const ADMIN_FIELD_INPUT = join(
   root,
-  "backend/src/admin/routes/content/field-input.tsx"
+  "admin/src/admin/routes/content/field-input.tsx"
 )
 /**
  * A página do editor e o CSS dos controles de aparência. A página é quem
  * decide onde o trilho é desenhado (percorrendo a ordem do contrato) e quem
  * avisa a regra do fundo escuro; o CSS é quem declara o `@font-face` das
  * fontes da prévia.
+ *
+ * Desde a R7 os dois moram no pacote do CRM (`admin/`), irmão de `backend/`
+ * — a guarda segue o código.
  */
-const ADMIN_PAGE = join(root, "backend/src/admin/routes/content/page.tsx")
+const ADMIN_PAGE = join(root, "admin/src/admin/routes/content/page.tsx")
 const APPEARANCE_CSS = join(
   root,
-  "backend/src/admin/routes/content/appearance.css"
+  "admin/src/admin/routes/content/appearance.css"
 )
 const ADMIN_CONTENT_ROUTE = join(root, "backend/src/api/admin/content/route.ts")
 /**
@@ -149,7 +152,7 @@ const LAUNCHES_UTIL = join(root, "frontend/src/lib/util/launches.ts")
  * conferir o arquivo deixaria passar a pior falha possível — a prévia
  * desenhada numa fonte que ninguém está vendo.
  */
-const ADMIN_FONTS = join(root, "backend/src/admin/routes/content/fonts")
+const ADMIN_FONTS = join(root, "admin/src/admin/routes/content/fonts")
 const STOREFRONT_FONTS = join(root, "frontend/src/app/fonts")
 /** O tema padrão: de onde saem os hex e as famílias que o admin exibe. */
 const THEME_JSON = join(root, "frontend/themes/default/theme.json")
@@ -661,44 +664,11 @@ assert(
     " — use `import type` de modules/content/contract"
 )
 
-// Desde a R6.5 o painel também não importa **valor** do backend. O painel é
-// código de **navegador** (`backend/src/admin` tem tsconfig e bundle próprios),
-// e o último valor importado era a regra da ordem (`positionFor`/`renumber`/
-// `nextPosition`): numeração calculada dentro do navegador, com a gravação
-// saindo como N `PATCH`es — o defeito que a fase tirou do caminho. Import de
-// valor aqui **compila** (o módulo importado pode ser puro: `order.ts` era), e é
-// por isso que a proibição precisa de guarda: a divergência volta em silêncio,
-// como uma segunda resposta para "que número esta seção recebe".
-const PANEL_FILES = walk(join(root, "backend/src/admin"), [".ts", ".tsx"])
-
-const panelValueImports = PANEL_FILES.flatMap((file) => {
-  const source = readFileSync(file, "utf8")
-  // `(?:^|\n)[ \t]*import` ancora o começo da **declaração** (o Prettier quebra
-  // o import em várias linhas, e um `import` de dentro de um comentário não tem
-  // esse alinhamento); o `(?!type\b)` separa o que é permitido —
-  // `import type { … }`, que não existe no bundle — do que não é; e o
-  // `(?:(?!\bimport\b)[\s\S])*?` impede que o casamento atravesse a declaração
-  // seguinte (era o falso positivo do `@medusajs/ui` antes de um
-  // `modules/content` mais abaixo no arquivo).
-  const pattern =
-    /(?:^|\n)[ \t]*import\s+(?!type\b)(?:(?!\bimport\b)[\s\S])*?from\s+"([^"]*)"/g
-
-  return [...source.matchAll(pattern)]
-    .filter((match) => match[1].includes("/modules/"))
-    .map((match) => {
-      const file_ = file.slice(root.length + 1)
-      const statement = match[0].trim().split("\n")[0]
-
-      return `${file_}: ${statement}`
-    })
-})
-
-assert(
-  "o painel do CRM não importa valor do backend (só `import type`)",
-  panelValueImports.length === 0,
-  panelValueImports.join("; ") +
-    " — a tela recebe o dado pelo payload da API (ver POST /admin/content/order)"
-)
+// A fronteira do painel — nenhum `import` de VALOR vindo do backend — mudou de
+// casa junto com o código: a R7 a levou para `scripts/check-boundaries.mjs`, que
+// varre o pacote `admin/` inteiro. Aqui, onde ela nasceu, a varredura era só o
+// par `page.tsx`/`field-input.tsx` (e as duas fontes já vieram por parâmetro de
+// outra verificação); lá ela é a razão de existir do arquivo.
 
 // E o outro lado do mesmo defeito: um `schema` que ninguém lê é campo que
 // some da tela. Os dois arquivos precisam consumir o que chega.
@@ -711,7 +681,7 @@ assert(
 assert(
   'a listagem lê os rótulos de tipo do schema ("typeLabels")',
   pageSource.includes("typeLabels"),
-  "leia `schema.typeLabels` em backend/src/admin/routes/content/page.tsx"
+  "leia `schema.typeLabels` em admin/src/admin/routes/content/page.tsx"
 )
 
 const contractItemFields = loadExport(CONTRACT, "ITEM_FIELDS")
@@ -782,7 +752,7 @@ assert(
   "o editor declara a exaustividade por `kind` (UNHANDLED_KINDS, o `tsc` exige)",
   /type UnhandledKind = Exclude<FieldKind, HandledKind>/.test(adminSource) &&
     /UNHANDLED_KINDS/.test(adminSource),
-  "em backend/src/admin/routes/content/field-input.tsx: mantenha a declaração " +
+  "em admin/src/admin/routes/content/field-input.tsx: mantenha a declaração " +
     "que faz o `tsc` reprovar `kind` sem ramo"
 )
 
@@ -1415,7 +1385,7 @@ assert(
   "a tela numera a ordem pendente com a faixa do payload (não com a regra)",
   pageSource.includes("order.first + place * order.step") &&
     pageSource.includes('"/admin/content/order"'),
-  "em backend/src/admin/routes/content/page.tsx: numeral da ordem pendente " +
+  "em admin/src/admin/routes/content/page.tsx: numeral da ordem pendente " +
     "sai de `order` (payload) e a publicação é o POST /admin/content/order"
 )
 

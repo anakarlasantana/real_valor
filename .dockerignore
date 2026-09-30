@@ -5,6 +5,12 @@
 # ~914MB de backend/node_modules, ~598MB de frontend/node_modules e ~31MB de
 # frontend/.next seriam transmitidos a cada `docker build`, tornando o build
 # lento e sujeito a falhas por memoria/espaco em disco.
+#
+# Quem usa ESTE arquivo: o build do backend (`backend/Dockerfile`, que o Compose
+# chama com `context: .` — ele leva o backend e o CRM junto, ver o topo daquele
+# Dockerfile). O storefront tem contexto proprio (`./frontend`), com o
+# `.dockerignore` dele; o antigo `backend/.dockerignore` morreu na R7, quando o
+# contexto deixou de ser `./backend`.
 # =============================================================================
 
 # Dependencias (reinstaladas dentro da imagem)
@@ -30,6 +36,7 @@
 
 # Segredos — NUNCA entram na imagem
 **/.env
+**/.env.*
 **/.env.local
 **/.env.*.local
 
@@ -37,6 +44,18 @@
 docs
 .vscode
 .idea
+.run
+
+# O storefront nao entra em NENHUMA imagem a partir daqui: o dele compila no
+# contexto `./frontend`. Sem esta linha, `COPY backend/ .` continuaria correto mas
+# o contexto carregaria o `frontend/src` inteiro em vao.
+frontend
+
+# Uploads do painel: nao entram na imagem (o Dockerfile cria a pasta vazia com
+# o dono certo e o compose monta o volume `real_valor_uploads` por cima). Sem
+# isto, as fotos do ambiente local seriam ASSADAS na imagem.
+backend/static
+backend/uploads
 
 # Logs e arquivos temporarios
 *.log

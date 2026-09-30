@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen test check doctor
+.PHONY: help up down restart logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen test check types build-admin doctor
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -52,10 +52,12 @@ help:
 	@echo ""
 	@echo "  Contrato de conteudo"
 	@echo "    make gen           - Regera o contrato do storefront (commit o diff)"
-	@echo "    make check         - Falha se o artefato estiver velho ou o contrato incoerente"
+	@echo "    make check         - Falha se o artefato estiver velho, o contrato incoerente ou o CRM importando valor do backend"
 	@echo ""
-	@echo "  Testes"
+	@echo "  Testes, tipos e o CRM"
 	@echo "    make test          - Jest do backend e vitest do storefront (nao precisa da stack)"
+	@echo "    make types         - tsc do backend, do storefront e do CRM (pacote admin/)"
+	@echo "    make build-admin   - Compila o admin (Vite) — o gate de quem mexe no CRM"
 	@echo ""
 	@echo ""
 	@echo "  Modo: use PROD=1 para producao (ex.: make up PROD=1)"
@@ -224,8 +226,37 @@ gen:
 check:
 	@node scripts/gen-content.mjs --check
 	@node scripts/check-contract-parity.mjs
+	@node scripts/check-boundaries.mjs
 	@echo ""
-	@echo "  Contrato e artefato conferidos."
+	@echo "  Contrato, artefato e fronteira conferidos."
+
+# ---------------------------------------------------------------------------
+# Build do admin: o gate de quem mexe no CRM
+# ---------------------------------------------------------------------------
+# `medusa build` compila o admin (Vite) para `.medusa/server/public/admin` — o
+# MESMO comando que o estagio `builder` da imagem roda (`RUN yarn build` no
+# backend/Dockerfile). Aqui ele roda avulso, para medir uma mudanca no CRM sem
+# reconstruir a imagem inteira.
+#
+# POR QUE EM CONTAINER AVULSO (`compose run`) E NAO `compose exec`: o build do
+# admin precisa de mais heap do que o limite do servico em DEV. Medido na R7 —
+# com o limite de 2G do `docker-compose.override.yml`, o build morre em
+#     FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+# (o heap chega a ~1 GB e o `medusa develop`, que ja roda no mesmo container,
+# come o resto). O container do `compose run` e proprio: mesmo limite, sem o dev
+# server dentro, e o `NODE_OPTIONS` abaixo da heap suficiente ao Vite. No estagio
+# `builder` da imagem nada disso e preciso — `docker build` nao passa pelos
+# limites de recurso do Compose.
+#
+# Em DEV o CRM entra no build pelo `admin.sources` do `backend/medusa-config.ts`,
+# que aponta para `/app/admin` — o `docker-compose.override.yml` monta `./admin`
+# la. Alvo de DEV: em `PROD=1` a imagem e a `runner`, sem as devDependencies que
+# o Vite precisa.
+build-admin:
+	@test -n "$$($(COMPOSE) ps -q postgres)" || { echo "postgres nao esta rodando (rode 'make up')"; exit 1; }
+	$(COMPOSE) run --rm -T -e NODE_OPTIONS=--max-old-space-size=1536 backend yarn build
+	@echo ""
+	@echo "  Admin compilado no container (bundle em .medusa/server/public/admin)."
 
 # ---------------------------------------------------------------------------
 # Testes: o jest do backend e o vitest do storefront
@@ -239,8 +270,11 @@ check:
 # Ate agora os testes existiam nos `package.json` (`test:unit` no backend,
 # `test` no storefront) e ninguem os chamava: nem o `make`, nem o hook de
 # commit, nem a CI. Teste que nao roda e' documentacao. O que este alvo passa a
-# exigir, em numero: 9 suites / 91 testes no backend e 3 arquivos / 20 testes
-# no storefront.
+# exigir, em numero, hoje: 11 suites / 157 testes no backend e 3 arquivos / 20
+# testes no storefront. O unico teste do CRM (o do formulario, que decide o que
+# fica "pendente" na tela) veio junto com o pacote na R7: o `roots` do
+# `backend/jest.config.js` aponta para `../admin/src` porque o CRM ainda nao tem
+# runner proprio.
 #
 # `--silent --runInBand --forceExit` sao os mesmos do script do backend, sem
 # mudanca: os specs compartilham o `MetadataStorage` global do MikroORM, entao
@@ -259,17 +293,18 @@ test:
 # `tsc` do storefront leva dezenas de segundos. E um alvo proprio, para a CI
 # (F5) e para quem estiver fechando um trabalho grande rodar antes de subir.
 #
-# O terceiro `tsc` e o do admin (`backend/src/admin/tsconfig.json`): o painel e
-# um pacote separado (bundle proprio, React 18) e o tsconfig dele e MAIS estrito
-# que o do backend — `strict` + `noUnusedLocals`, que foi justamente o que pegou
-# um import de tipo morto na pagina do conteudo. O tsconfig da raiz do backend
-# inclui os arquivos do admin, mas com as regras de la.
+# O terceiro `tsc` e o do CRM (`admin/tsconfig.json`): desde a R7 o painel e um
+# pacote IRMAO do backend (bundle proprio, React 18) e o tsconfig dele e MAIS
+# estrito que o do backend — `strict` + `noUnusedLocals`, que foi justamente o
+# que pegou um import de tipo morto na pagina do conteudo. Os tipos vem do
+# `node_modules` do backend por `paths`/`typeRoots`: o CRM nao tem instalacao
+# propria (quem compila o painel e o Vite do backend). Ver admin/tsconfig.json.
 #
 # `--incremental false` porque e `--noEmit`: sem isso o `tsc` escreveria o
 # `tsconfig.tsbuildinfo` e o cache de build ficaria invalido.
 types:
 	@cd backend && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
-	@cd backend && ./node_modules/.bin/tsc --noEmit -p src/admin/tsconfig.json
+	@cd backend && ./node_modules/.bin/tsc --noEmit -p ../admin/tsconfig.json
 	@cd frontend && ./node_modules/.bin/tsc --noEmit -p tsconfig.json --incremental false
 	@echo ""
 	@echo "  Tipos conferidos nos dois pacotes (e no painel)."

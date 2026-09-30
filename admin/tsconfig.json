@@ -1,0 +1,54 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Onde os tipos moram.
+     *
+     * O CRM é um pacote próprio, IRMÃO de `backend/`, e o TypeScript procura
+     * `node_modules` SUBINDO a partir do arquivo que importa — nunca descendo
+     * para o irmão. Sem isto, `@medusajs/admin-sdk`, `@medusajs/ui` e
+     * `react/jsx-runtime` aparecem como "Cannot find module" (medido: 4 erros
+     * TS2307/TS7026/TS2875 antes de qualquer `paths`). Quem compila o painel é
+     * o Vite do backend (`admin.sources` no `backend/medusa-config.ts`), então
+     * é de lá que os tipos vêm.
+     *
+     * `react` e `react-dom` precisam de linha própria: os pacotes React não
+     * trazem tipos (`@types/react` traz), e o `paths` desvia antes da busca por
+     * `@types` que o node_modules faria — sem as duas linhas, o JSX vira `any`
+     * (TS7016 em `react/jsx-runtime`). */
+    "baseUrl": ".",
+    "paths": {
+      "*": ["../backend/node_modules/*"],
+      "react": ["../backend/node_modules/@types/react"],
+      "react/jsx-runtime": ["../backend/node_modules/@types/react/jsx-runtime"],
+      "react-dom": ["../backend/node_modules/@types/react-dom"],
+      "react-dom/client": ["../backend/node_modules/@types/react-dom/client"]
+    },
+
+    /* Os `@types` AMBIENTES (`jest` para o teste do formulário, `node` para o
+     * resto) também vêm do backend: o CRM não tem `node_modules` próprio — quem
+     * instala as dependências que o painel usa é o `backend/`. Sem esta linha o
+     * `tsc` do painel acusa 34 erros de `describe/it/expect` inexistentes
+     * (medido, todos em `__tests__/form-draft.unit.spec.ts`). */
+    "typeRoots": ["../backend/node_modules/@types"],
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src", "vite-env.d.ts"]
+}

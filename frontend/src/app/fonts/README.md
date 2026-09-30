@@ -50,10 +50,10 @@ permitida inclusive em produto comercial).
 
 O editor de conteúdo (`/painel/content`) mostra a **prévia** de cada fonte do
 tema, desenhando cada opção na própria família — logo, o navegador do painel
-também precisa dos arquivos. Como o admin é um pacote separado, existe uma
-cópia byte a byte destes três `.woff2` em
-`backend/src/admin/routes/content/fonts/`, declarada por `@font-face` em
-`backend/src/admin/routes/content/appearance.css` (ver o `README.md` de lá).
+também precisa dos arquivos. Como o CRM é um pacote separado (`admin/`, irmão do
+`backend/` desde a R7), existe uma cópia byte a byte destes três `.woff2` em
+`admin/src/admin/routes/content/fonts/`, declarada por `@font-face` em
+`admin/src/admin/routes/content/appearance.css` (ver o `README.md` de lá).
 
 A consequência prática: **trocar um `.woff2` aqui é trocar nos dois lugares**.
 `scripts/check-contract-parity.mjs` confere o md5 das cópias contra estes
