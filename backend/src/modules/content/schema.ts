@@ -95,8 +95,19 @@ import {
  *      (`make seed-schema`) o CRM continua desenhando a lista antiga — sem os
  *      dois como fixos, e com uma previsão de numeral que a gravação não segue
  *      (a casa 10 é do rodapé, e a vitrine a pula).
+ *
+ * v8 — a barra de anúncio ganhou **ticker**: `messages` (a lista de mensagens,
+ *      `kind: "list:text"`) e `speedSeconds` (a velocidade, com faixa no campo),
+ *      e o `text` deixou de ser obrigatório — é ele que a barra mostra quando
+ *      não há ticker. A capa ganhou **carrossel** (`hero.slides`, itens de
+ *      `list:hero-slide`) e as coleções ganharam **formato** (`layout`, um
+ *      `select` entre cartões e banners). Sem reescrever o registro
+ *      (`make seed-schema`) o CRM continua desenhando a barra sem o campo de
+ *      mensagens e a seção `hero` sem os slides — e a API admin **recusa** os
+ *      campos novos como desconhecidos, porque quem valida é o registro gravado
+ *      e não o contrato.
  */
-export const SCHEMA_VERSION = 7
+export const SCHEMA_VERSION = 8
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.

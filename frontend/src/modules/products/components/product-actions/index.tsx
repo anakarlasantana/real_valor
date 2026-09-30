@@ -2,6 +2,7 @@
 
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
+import { variantIsAvailable } from "@lib/util/product-availability"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
 import Divider from "@modules/common/components/divider"
@@ -10,6 +11,7 @@ import { isEqual } from "lodash"
 import { useParams, usePathname, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
+import ProductStatusChip from "../product-status-chip"
 import MobileActions from "./mobile-actions"
 import { useRouter } from "next/navigation"
 
@@ -93,28 +95,15 @@ export default function ProductActions({
   }, [selectedVariant, isValidVariant])
 
   // check if the selected variant is in stock
-  const inStock = useMemo(() => {
-    // If we don't manage inventory, we can always add to cart
-    if (selectedVariant && !selectedVariant.manage_inventory) {
-      return true
-    }
-
-    // If we allow back orders on the variant, we can add to cart
-    if (selectedVariant?.allow_backorder) {
-      return true
-    }
-
-    // If there is inventory available, we can add to cart
-    if (
-      selectedVariant?.manage_inventory &&
-      (selectedVariant?.inventory_quantity || 0) > 0
-    ) {
-      return true
-    }
-
-    // Otherwise, we can't add to cart
-    return false
-  }, [selectedVariant])
+  //
+  // A regra é a do `product-availability` — não uma cópia dela. Ela é a mesma
+  // que decide o chip do card ("Pronta entrega", "Esgotado"), e ter as duas
+  // contas em arquivos diferentes era o caminho curto para o card prometer o
+  // que este botão recusa.
+  const inStock = useMemo(
+    () => variantIsAvailable(selectedVariant),
+    [selectedVariant]
+  )
 
   const actionsRef = useRef<HTMLDivElement>(null)
 
@@ -160,7 +149,14 @@ export default function ProductActions({
           )}
         </div>
 
-        <ProductPrice product={product} variant={selectedVariant} />
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <ProductPrice product={product} variant={selectedVariant} />
+          {/* O chip ao lado do preço: o estado da peça é a última informação
+              antes da decisão, e é aqui que ele responde "e se eu clicar?".
+              Ele é do produto (não do variant selecionado) — é o que o
+              lojista escreveu no catálogo, ou o que o estoque do produto diz. */}
+          <ProductStatusChip product={product} />
+        </div>
 
         <Button
           onClick={handleAddToCart}

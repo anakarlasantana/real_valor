@@ -1,4 +1,4 @@
-import type { HomeSection } from "./contract"
+import { ANNOUNCEMENT_SPEED_DEFAULT, type HomeSection } from "./contract"
 
 /**
  * Conteúdo padrão da home — a cópia exata do protótipo.
@@ -35,7 +35,19 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     type: "announcement",
     enabled: true,
     position: 1,
+    /**
+     * A mensagem única é a de sempre — continua sendo o que a barra mostra
+     * quando não há ticker —, e o ticker nasce com a **mesma informação**
+     * separada em duas mensagens: uma por peça de informação, que é o que dá ao
+     * ticker o que rolar.
+     *
+     * Nada de copy nova aqui. O padrão não pode prometer o que a loja não
+     * combinou (prazo de troca, frete grátis) só porque a barra ganhou
+     * movimento; quem escreve mensagem nova é o lojista, no CRM.
+     */
     text: "Frete seguro para todo o Brasil · Até 6x sem juros",
+    messages: ["Frete seguro para todo o Brasil", "Até 6x sem juros"],
+    speedSeconds: ANNOUNCEMENT_SPEED_DEFAULT,
   },
   /**
    * Cabeçalho. Não é uma seção da home — o layout o renderiza em todas

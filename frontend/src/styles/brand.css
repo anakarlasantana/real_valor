@@ -75,6 +75,37 @@
   /* --- Motion --- */
   --rv-ease: cubic-bezier(0.5, 0, 0.5, 1);
   --rv-duration: 200ms;
+
+  /*
+   * Ritmo vertical das seções da vitrine — o respiro entre um bloco e o
+   * seguinte, em um lugar só.
+   *
+   * Nasceu de três utilitários Tailwind repetidos em seis arquivos
+   * (`py-16 small:py-24` e um `py-16 small:py-20` no trilho), e a diferença
+   * entre eles não era intenção: era rastro. Com o token, mudar o respiro da
+   * vitrine inteira é uma linha aqui — e o trilho de lançamentos, que é uma
+   * faixa mais estreita **de propósito**, tem o token próprio em vez de um
+   * valor solto (`-tight`, 5rem contra 6rem).
+   *
+   * Os valores são exatamente os que os utilitários já davam (4rem, e 6rem /
+   * 5rem a partir de 1024px — o `small` do Tailwind), então a troca não move
+   * um pixel: é o mesmo layout com uma fonte só.
+   */
+  --rv-section-space: 4rem;
+  --rv-section-space-tight: 4rem;
+
+  /* Anel de foco do teclado (ver a regra de `:focus-visible` no fim
+   * deste arquivo). Rosa forte, e não o rosa de assinatura, porque o
+   * anel precisa contrastar com o fundo claro **e** com a própria cor
+   * de destaque dos links — sobre um link rosa, um anel rosa sumiria. */
+  --rv-focus-ring: var(--rv-rose-strong);
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --rv-section-space: 6rem;
+    --rv-section-space-tight: 5rem;
+  }
 }
 
 /* Base application of the brand surface + type */
@@ -235,5 +266,303 @@ body {
 @media (min-width: 1024px) {
   .rv-container {
     padding-inline: 3rem;
+  }
+}
+
+/*
+ * Respiro da seção — a versão em classe do token de ritmo.
+ *
+ * brand.css é importado ANTES dos utilitários (`globals.css`), então uma
+ * classe daqui perde para um `py-16` que fique no elemento: a troca é
+ * sempre **remover** o utilitário e deixar a classe, nunca somar as duas.
+ */
+.rv-section-pad {
+  padding-block: var(--rv-section-space);
+}
+
+/* A faixa estreita (o trilho de lançamentos). */
+.rv-section-pad-tight {
+  padding-block: var(--rv-section-space-tight);
+}
+
+/*
+ * Ticker da barra de anúncio
+ * ---------------------------------------------------------------
+ * A barra é um componente **de servidor**: não há estado, nem efeito, nem
+ * listener. O movimento é uma animação de CSS e o laço é geométrico — o
+ * trilho carrega a lista de mensagens **duas vezes** e anda exatamente
+ * metade da própria largura (`translateX(-50%)`), o que coloca a segunda
+ * cópia onde a primeira estava. O olho vê uma faixa contínua; o navegador
+ * não vê costura nenhuma.
+ *
+ * Por isso a duplicata não é "JS duplicando HTML": as duas cópias são o
+ * mesmo `map` sobre a mesma lista, e a segunda sai com `aria-hidden` (o
+ * leitor de tela lê as mensagens **uma vez**, não duas).
+ *
+ * `--rv-marquee-duration` chega inline, do campo `speedSeconds`
+ * (`lib/util/ticker.ts`), com o mesmo padrão do contrato no fallback do
+ * `var()`: sem a variável, a barra anima em 24s como o conteúdo padrão.
+ *
+ * A rolagem para no mouse e no teclado (`:hover` / `:focus-within`): quem
+ * está lendo a linha, ou navegando por Tab dentro dela, não tem o texto
+ * fugindo por baixo do cursor.
+ *
+ * **Limite conhecido:** a WCAG 2.2.2 pede um mecanismo para *parar* o
+ * movimento, e pausar no hover só atende quem está com o ponteiro em cima. O
+ * caso de quem precisa de fato — leitor de tela, baixa visão, cognição — fica
+ * coberto pelo `prefers-reduced-motion` (que para o ticker e mostra as
+ * mensagens paradas), e o que falta é o botão visível de pausa ao lado da
+ * faixa: um `<button>` de estado, que obriga a barra a virar componente de
+ * cliente. É a correção, e ela é pequena — só não foi feita junto porque
+ * acrescenta um controle à moldura de todas as páginas.
+ */
+.rv-marquee {
+  overflow: hidden;
+}
+
+.rv-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: rv-marquee var(--rv-marquee-duration, 24s) linear infinite;
+}
+
+.rv-marquee-group {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.rv-marquee:hover .rv-marquee-track,
+.rv-marquee:focus-within .rv-marquee-track {
+  animation-play-state: paused;
+}
+
+@keyframes rv-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/*
+ * O trilho horizontal (lançamentos, e o carrossel da capa se um dia precisar)
+ * ---------------------------------------------------------------
+ * A navegação é a nativa: arrastar no dedo, rolar com a barra. Sem setas, porque
+ * uma seta "próximo" precisa saber onde a rolagem está — e sem estado ela
+ * mentiria a partir do último card (`rv-hero-dot` tem o mesmo raciocínio).
+ *
+ * A barra de rolagem **aparece no desktop**: é ela a pista de que há mais peça
+ * à direita, e é ela que o mouse arrasta. No celular ela some, porque lá o gesto
+ * de arrastar é o óbvio e uma barra fina embaixo do card é ruído.
+ *
+ * Fina e dourada: a espessura de 6px é a que dá para pegar sem parecer um
+ * controle de sistema, e a cor é o dourado de detalhe da marca — o mesmo tom
+ * das bordas que já aparecem na loja.
+ */
+@media (max-width: 1023px) {
+  .rv-rail {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .rv-rail::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .rv-rail {
+    scrollbar-color: var(--rv-dourado) transparent;
+    scrollbar-width: thin;
+  }
+
+  .rv-rail::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .rv-rail::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .rv-rail::-webkit-scrollbar-thumb {
+    background-color: var(--rv-dourado);
+    border-radius: 9999px;
+  }
+}
+
+/*
+ * Os pontos da capa carrossel
+ * ---------------------------------------------------------------
+ * A navegação do carrossel sem JavaScript: cada ponto é um `<a href="#hero-slide-N">`,
+ * e o que o navegador faz com isso já é a funcionalidade inteira. O
+ * `scroll-behavior: smooth` do trilho (a classe `scroll-smooth`) dá a
+ * transição, e `prefers-reduced-motion` a desliga logo abaixo.
+ *
+ * Off white, e não a cor da marca: os pontos ficam sobre a fotografia, e só a
+ * área escura do véu (o canto em que a cópia mora) garante contraste com
+ * qualquer foto. É lá que eles estão.
+ *
+ * O ponto **não** sabe qual slide está visível — isso é leitura de rolagem, e
+ * o carrossel é servidor. Todos se desenham iguais, e o `:hover` deixa claro
+ * que são clicáveis. O caminho para o ponto aceso é um `IntersectionObserver`
+ * sobre os slides, o que faz do carrossel inteiro um componente de cliente
+ * (e é o preço que hoje não se paga: a capa é a primeira pintura da home).
+ */
+.rv-hero-dot {
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--rv-offwhite);
+  border-radius: 9999px;
+  background-color: transparent;
+  transition: background-color var(--rv-duration) var(--rv-ease);
+}
+
+.rv-hero-dot:hover {
+  background-color: var(--rv-offwhite);
+}
+
+/*
+ * Chip de estado da peça
+ * ---------------------------------------------------------------
+ * "Pronta entrega", "Sob demanda", "Últimas peças", "Esgotado" — o
+ * vocabulário de quem está olhando a peça, e não o de quem a cadastrou. Quem
+ * decide **qual** dos quatro é `lib/util/product-availability.ts`; aqui está
+ * só o desenho.
+ *
+ * As três variáveis (`--rv-chip-color`, `--rv-chip-border`, `--rv-chip-bg`)
+ * existem para que um dia o fundo escuro possa vestir o chip sem reescrever
+ * estas regras: um contexto escuro sobrescreve as três e o chip acompanha,
+ * como o `.rv-section-*` já faz. Sem ninguém sobrescrever, os padrões abaixo
+ * valem, e são eles que estão em uso.
+ *
+ * **A regra de acessibilidade do arquivo manda aqui.** O rosa da marca tem
+ * ~3.4:1 sobre o off white e só pode ser preenchimento, borda, ícone ou texto
+ * grande (≥24px) — então o chip não é texto rosa: ele é **borda** rosa com
+ * texto grafite (11:1), e o único estado que se enche de rosa é o "últimas",
+ * que é justamente o que precisa gritar, com o texto em `--rv-primary-fg`.
+ * É o que dá a hierarquia de leitura: esgotado é o mais quieto da lista e
+ * últimas o mais alto.
+ */
+.rv-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--rv-chip-border, var(--rv-border));
+  border-radius: var(--rv-radius-sm);
+  background-color: var(--rv-chip-bg, transparent);
+  color: var(--rv-chip-color, var(--rv-grafite));
+  font-family: var(--rv-font-sans);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  line-height: 1.4;
+  padding: 0.25rem 0.625rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Pronta entrega: borda da marca, texto grafite — positivo e discreto. */
+.rv-chip-pronta-entrega {
+  --rv-chip-border: var(--rv-rose);
+}
+
+/* Sob demanda: dourado de detalhe, texto cacau — o tom de "sob encomenda". */
+.rv-chip-sob-demanda {
+  --rv-chip-border: var(--rv-dourado);
+  --rv-chip-color: var(--rv-cacau);
+}
+
+/* Últimas peças: o único preenchido. É o chip que precisa ser visto. */
+.rv-chip-ultimas {
+  --rv-chip-bg: var(--rv-rose);
+  --rv-chip-border: var(--rv-rose);
+  --rv-chip-color: var(--rv-primary-fg);
+}
+
+/* Esgotado: o mais baixo da hierarquia — informa, não convida. */
+.rv-chip-esgotado {
+  --rv-chip-color: var(--rv-muted);
+}
+
+/*
+ * Foco de teclado
+ * ---------------------------------------------------------------
+ * Regra da casa, e não a do navegador: o anel padrão do Chrome/`outline:
+ * auto` aparece colado na borda e é invisível sobre o preto da barra de
+ * anúncio e do rodapé. Aqui ele fica em rosa forte, com 2px de folga, e
+ * acompanha o `border-radius` do elemento (o `outline` moderno desenha
+ * arredondado sozinho — não há o que repetir).
+ *
+ * `:focus-visible`, e não `:focus`: quem clica não ganha anel, quem navega
+ * por Tab ganha. É a diferença que faz o anel ser sinal e não ruído.
+ *
+ * Nenhum componente da loja escreve `outline: none` — se algum dia
+ * precisar, o substituto é este anel, nunca a ausência dele.
+ */
+:focus-visible {
+  outline: 2px solid var(--rv-focus-ring);
+  outline-offset: 2px;
+}
+
+/*
+ * Movimento reduzido — a preferência do sistema vale para a loja inteira
+ * ---------------------------------------------------------------
+ * Quem pede menos movimento no sistema operacional
+ * (`prefers-reduced-motion: reduce`) recebe, em geral por enjoo ou
+ * vertigem, a página praticamente parada: as transições e animações do
+ * site caem para um quadro só (0,01ms) e terminam no estado final, em vez
+ * de não acontecerem e deixarem um elemento a meio caminho.
+ *
+ * É o piso, não a solução: uma animação que **depende** do movimento para
+ * fazer sentido tem tratamento próprio, mais abaixo nestas regras (o
+ * ticker da barra de anúncio é o caso — ver `.rv-marquee`). Um
+ * `animation-iteration-count: 1` sozinho deixaria o trilho do ticker
+ * parado no fim do curso, com o texto fora da tela.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /*
+   * O ticker é o caso em que a regra acima **não** basta: parar a animação
+   * no fim do curso deixaria o trilho deslocado meia largura, com a última
+   * mensagem fora da tela. Aqui a animação sai inteira, a cópia duplicada
+   * some (ela só existe para o laço) e o grupo volta a ser o que é: uma
+   * lista de mensagens, centrada e quebrada em linhas se não couber.
+   *
+   * Nenhuma mensagem se perde — quem pediu menos movimento pediu menos
+   * movimento, não menos informação.
+   */
+  .rv-marquee-track {
+    width: 100%;
+    justify-content: center;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .rv-marquee-group {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0.25rem;
+  }
+
+  .rv-marquee-clone {
+    display: none !important;
+  }
+
+  /*
+   * O carrossel da capa continua funcionando (é rolagem, não animação), mas
+   * pula direto para o slide em vez de deslizar até ele.
+   */
+  .rv-hero-track {
+    scroll-behavior: auto !important;
   }
 }

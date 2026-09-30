@@ -14,7 +14,7 @@ export default function InstagramGrid({
   const images = section.images ?? []
 
   return (
-    <section className="rv-section-bg-preto rv-section-text-onmedia w-full py-16 small:py-24">
+    <section className="rv-section-bg-preto rv-section-text-onmedia rv-section-pad w-full">
       <div className="rv-container">
         <header className="mx-auto max-w-[640px] text-center">
           {section.handle && (

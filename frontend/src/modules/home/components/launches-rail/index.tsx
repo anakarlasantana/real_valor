@@ -23,6 +23,11 @@ import { HttpTypes } from "@medusajs/types"
  *    aparecendo de esguelha é o que ensina que há mais à direita) e a mesma
  *    largura da grade de 4 no desktop, para o olho não trocar de régua entre
  *    uma seção e outra.
+ * 3. **A barra de rolagem é a navegação.** `rv-rail` (em `brand.css`) esconde a
+ *    barra no celular — lá o gesto de arrastar é o óbvio — e a mostra fina e
+ *    dourada no desktop, onde ela é a única pista de que há mais peça à direita.
+ *    Sem setas: uma seta "próximo" precisa saber onde a rolagem está, e sem
+ *    estado ela mentiria no último card.
  *
  * `limit` passa por `launchesLimit`: a faixa é do contrato e a API já a
  * confere, mas o que está gravado pode ser anterior à faixa (ver
@@ -51,7 +56,7 @@ export default async function LaunchesRail({
   })
 
   return (
-    <section className="w-full py-16 small:py-20">
+    <section className="rv-section-pad-tight w-full">
       <div className="rv-container">
         <header className="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-4 small:mb-10">
           <div className="max-w-[620px]">
@@ -81,7 +86,7 @@ export default async function LaunchesRail({
         </header>
 
         {products?.length ? (
-          <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-6 overflow-x-auto px-4 pb-2 small:mx-0 small:px-0">
+          <ul className="rv-rail -mx-4 flex snap-x snap-mandatory gap-6 overflow-x-auto px-4 pb-2 small:mx-0 small:px-0">
             {products.map((product) => (
               <li
                 key={product.id}

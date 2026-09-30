@@ -55,10 +55,51 @@ export type SectionBase = {
   position: number
 }
 
+/**
+ * A velocidade do ticker da barra de anúncio, em segundos por volta.
+ *
+ * Mora no contrato, e não solta no campo, porque a faixa é lida em dois
+ * lugares: o `min`/`max` do `SECTION_FIELDS.announcement` (que o CRM desenha e a
+ * API admin valida) e o storefront (`frontend/src/lib/util/ticker.ts`), que é a
+ * última defesa — o que está gravado no banco pode ser anterior à faixa. É o
+ * mesmo arranjo do `limit` do trilho de lançamentos
+ * (`frontend/src/lib/util/launches.ts`), e quem confere o espelho é
+ * `scripts/check-contract-parity.mjs`.
+ *
+ * O piso de 8s não é estético: abaixo dele a linha cruza a tela rápido demais
+ * para ser lida, e texto que não dá para ler é ruído com movimento. O teto de
+ * 60s é o outro extremo — acima dele o ticker parece parado, e o lojista fica
+ * com uma barra que ele acha que quebrou.
+ */
+export const ANNOUNCEMENT_SPEED_MIN = 8
+export const ANNOUNCEMENT_SPEED_MAX = 60
+export const ANNOUNCEMENT_SPEED_DEFAULT = 24
+
 export type AnnouncementSection = SectionBase &
   SectionAppearance & {
     type: "announcement"
+    /**
+     * A mensagem única — como a barra nasceu ("Frete seguro para todo o Brasil ·
+     * Até 6x sem juros"): uma linha, centrada, parada.
+     *
+     * Continua valendo **quando não há `messages`** (base antiga, ou seção a que
+     * ninguém deu ticker ainda), e é o que faz esta mudança não ter migração:
+     * uma base que nunca ouviu falar de ticker desenha o que já desenhava.
+     */
     text: string
+    /**
+     * As mensagens do ticker, na ordem em que aparecem.
+     *
+     * Com **duas ou mais**, a barra rola sozinha e em laço; com **uma só**, ela
+     * fica parada e centrada — a leitura de antes com a redação nova. Vazio é o
+     * caso do `text` acima.
+     */
+    messages?: string[]
+    /**
+     * Quantos segundos o ticker leva para dar uma volta completa
+     * (`ANNOUNCEMENT_SPEED_*`). Ausente é o padrão.
+     */
+    speedSeconds?: number
   }
 
 export type HeroSection = SectionBase &
@@ -79,7 +120,40 @@ export type HeroSection = SectionBase &
      * de 0 a 1. O protótipo usa .72 caindo para .02 em 75% da largura.
      */
     overlay: number
+    /**
+     * Slides da capa — o carrossel.
+     *
+     * Vazio (o padrão) é a capa de sempre: a foto e a cópia dos campos acima.
+     * Com um ou mais slides, quem manda é a lista, e cada slide traz a própria
+     * foto e a própria cópia — os campos acima ficam de reserva, que é o que
+     * permite a base que nunca teve carrossel desenhar a mesma capa de antes.
+     */
+    slides?: HeroSlide[]
   }
+
+/**
+ * Um slide da capa: a foto e a cópia que entram no carrossel.
+ *
+ * São os mesmos campos do `hero`, **sem** os de bloco (`enabled`, `position`,
+ * aparência), que são da seção e não de um slide. A ordem da lista é a ordem do
+ * carrossel, e a ordem dos campos daqui é a do sub-formulário no CRM
+ * (`ITEM_FIELDS["list:hero-slide"]`) — a guarda de paridade compara as duas.
+ *
+ * O scrim (`overlay`) **não** é por slide de propósito: ele é a força do escuro
+ * sobre a foto, e um valor por slide seria mais um campo num formulário que já
+ * repete oito. Quem tem fotos de luminosidade muito diferente acerta o scrim
+ * pela média, ou escolhe fotos parecidas.
+ */
+export type HeroSlide = {
+  imageUrl: string
+  imageAlt: string
+  eyebrow: string
+  headline: string
+  headlineEmphasis: string
+  subtitle: string
+  ctaLabel: string
+  ctaHref: string
+}
 
 export type BenefitItem = {
   /** Chave de ícone resolvida por `frontend/src/lib/content/icons.ts`. */
@@ -109,6 +183,18 @@ export type CollectionsSection = SectionBase &
     eyebrow: string
     title: string
     subtitle: string
+    /**
+     * O formato da faixa: `cards` (a grade de três cartões altos, como a seção
+     * nasceu) ou `banners` (uma linha de dois banners largos, um ao lado do
+     * outro).
+     *
+     * É escolha de **formato**, então é um `select` e não um booleano: um
+     * segundo formato já era previsível, e um terceiro é mais um valor aqui e um
+     * ramo no render. Ausente ou desconhecido = `cards`, que é o que a loja
+     * desenhava antes deste campo existir — e é o que continua desenhando numa
+     * base onde ninguém escolheu nada.
+     */
+    layout?: "cards" | "banners"
     items: CollectionHighlight[]
   }
 
@@ -611,6 +697,11 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     "enabled": true,
     "position": 1,
     "text": "Frete seguro para todo o Brasil · Até 6x sem juros",
+    "messages": [
+      "Frete seguro para todo o Brasil",
+      "Até 6x sem juros",
+    ],
+    "speedSeconds": 24,
   },
   {
     "id": "nav",

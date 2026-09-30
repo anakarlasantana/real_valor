@@ -174,6 +174,11 @@ const LAUNCHES_RAIL = join(
 )
 const LAUNCHES_UTIL = join(root, "frontend/src/lib/util/launches.ts")
 /**
+ * A tolerância da barra de anúncio ao `speedSeconds`: o número que a loja
+ * clampa quando o campo do CRM está ausente ou fora da faixa.
+ */
+const TICKER_UTIL = join(root, "frontend/src/lib/util/ticker.ts")
+/**
  * As fontes da prévia: `THEME_FONTS` diz a família e a pilha, mas quem
  * entrega os bytes ao navegador do painel é o `@font-face` do
  * `appearance.css` apontando para a cópia local. Conferir a família sem
@@ -563,6 +568,60 @@ assert(
     `       padrão: ${seedLaunches?.limit}`
 )
 
+// Mesma regra para a velocidade do ticker da barra de anúncio: os três números
+// (piso, teto e padrão) existem no campo do contrato e na util do storefront, e
+// divergência aqui é o tipo de erro que só aparece em produção — o CRM deixa
+// escolher 30s e a loja anima em 12s, ou o contrário.
+const tickerUtil = readFileSync(TICKER_UTIL, "utf8")
+const tickerConstant = (name) => {
+  const match = new RegExp(`export const ${name} = (\\d+)`).exec(tickerUtil)
+
+  return match ? Number(match[1]) : null
+}
+const speedField = (sourceFields.announcement ?? []).find(
+  (field) => field.name === "speedSeconds"
+)
+const seedAnnouncement = defaults.find(
+  (section) => section.type === "announcement"
+)
+
+assert(
+  "a faixa da velocidade do ticker é a do campo declarado no contrato",
+  speedField?.min !== undefined &&
+    speedField?.max !== undefined &&
+    tickerConstant("ANNOUNCEMENT_SPEED_MIN") === speedField.min &&
+    tickerConstant("ANNOUNCEMENT_SPEED_MAX") === speedField.max,
+  `util: ${tickerConstant("ANNOUNCEMENT_SPEED_MIN")}–${tickerConstant(
+    "ANNOUNCEMENT_SPEED_MAX"
+  )}\n` +
+    `       campo: ${speedField?.min}–${speedField?.max}`
+)
+
+assert(
+  "a velocidade padrão do ticker é a do conteúdo padrão",
+  seedAnnouncement?.speedSeconds !== undefined &&
+    tickerConstant("ANNOUNCEMENT_SPEED_DEFAULT") ===
+      seedAnnouncement.speedSeconds,
+  `util: ${tickerConstant("ANNOUNCEMENT_SPEED_DEFAULT")}\n` +
+    `       padrão: ${seedAnnouncement?.speedSeconds}`
+)
+
+// E a mensagem do padrão **não pode ter vírgula**: ela é o separador do campo
+// (`list:text` no editor do CRM), então uma vírgula dentro de uma mensagem vira
+// duas mensagens no primeiro salvamento — a copy do seed se parte em duas sem
+// ninguém pedir.
+const seedMessages = seedAnnouncement?.messages ?? []
+
+assert(
+  "nenhuma mensagem do ticker do padrão tem vírgula",
+  Array.isArray(seedMessages) && seedMessages.every((m) => !m.includes(",")),
+  `com vírgula: ${
+    (Array.isArray(seedMessages) ? seedMessages : []).filter((m) =>
+      m.includes(",")
+    ).join(" | ") || "nenhuma"
+  }`
+)
+
 console.log("\nVITRINE DE DESTAQUE (render ⇔ contrato)")
 
 // Mesma regra do rodapé e do trilho, agora para a seção que ganhou referência:
@@ -877,6 +936,7 @@ assert(
 const contractSource = readFileSync(CONTRACT, "utf8")
 
 const ITEM_TYPES = {
+  "list:hero-slide": "HeroSlide",
   "list:benefit": "BenefitItem",
   "list:highlight": "CollectionHighlight",
   "list:link": "HeaderLink",

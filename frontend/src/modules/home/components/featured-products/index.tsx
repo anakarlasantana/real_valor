@@ -77,7 +77,7 @@ export default async function FeaturedProducts({
   })
 
   return (
-    <section className="w-full py-16 small:py-24">
+    <section className="rv-section-pad w-full">
       <div className="rv-container">
         <header className="mb-8 max-w-[620px] small:mb-10">
           {section.eyebrow && (

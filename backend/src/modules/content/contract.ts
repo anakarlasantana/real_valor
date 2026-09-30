@@ -70,10 +70,51 @@ export type SectionBase = {
   position: number
 }
 
+/**
+ * A velocidade do ticker da barra de anúncio, em segundos por volta.
+ *
+ * Mora no contrato, e não solta no campo, porque a faixa é lida em dois
+ * lugares: o `min`/`max` do `SECTION_FIELDS.announcement` (que o CRM desenha e a
+ * API admin valida) e o storefront (`frontend/src/lib/util/ticker.ts`), que é a
+ * última defesa — o que está gravado no banco pode ser anterior à faixa. É o
+ * mesmo arranjo do `limit` do trilho de lançamentos
+ * (`frontend/src/lib/util/launches.ts`), e quem confere o espelho é
+ * `scripts/check-contract-parity.mjs`.
+ *
+ * O piso de 8s não é estético: abaixo dele a linha cruza a tela rápido demais
+ * para ser lida, e texto que não dá para ler é ruído com movimento. O teto de
+ * 60s é o outro extremo — acima dele o ticker parece parado, e o lojista fica
+ * com uma barra que ele acha que quebrou.
+ */
+export const ANNOUNCEMENT_SPEED_MIN = 8
+export const ANNOUNCEMENT_SPEED_MAX = 60
+export const ANNOUNCEMENT_SPEED_DEFAULT = 24
+
 export type AnnouncementSection = SectionBase &
   SectionAppearance & {
     type: "announcement"
+    /**
+     * A mensagem única — como a barra nasceu ("Frete seguro para todo o Brasil ·
+     * Até 6x sem juros"): uma linha, centrada, parada.
+     *
+     * Continua valendo **quando não há `messages`** (base antiga, ou seção a que
+     * ninguém deu ticker ainda), e é o que faz esta mudança não ter migração:
+     * uma base que nunca ouviu falar de ticker desenha o que já desenhava.
+     */
     text: string
+    /**
+     * As mensagens do ticker, na ordem em que aparecem.
+     *
+     * Com **duas ou mais**, a barra rola sozinha e em laço; com **uma só**, ela
+     * fica parada e centrada — a leitura de antes com a redação nova. Vazio é o
+     * caso do `text` acima.
+     */
+    messages?: string[]
+    /**
+     * Quantos segundos o ticker leva para dar uma volta completa
+     * (`ANNOUNCEMENT_SPEED_*`). Ausente é o padrão.
+     */
+    speedSeconds?: number
   }
 
 export type HeroSection = SectionBase &
@@ -94,7 +135,40 @@ export type HeroSection = SectionBase &
      * de 0 a 1. O protótipo usa .72 caindo para .02 em 75% da largura.
      */
     overlay: number
+    /**
+     * Slides da capa — o carrossel.
+     *
+     * Vazio (o padrão) é a capa de sempre: a foto e a cópia dos campos acima.
+     * Com um ou mais slides, quem manda é a lista, e cada slide traz a própria
+     * foto e a própria cópia — os campos acima ficam de reserva, que é o que
+     * permite a base que nunca teve carrossel desenhar a mesma capa de antes.
+     */
+    slides?: HeroSlide[]
   }
+
+/**
+ * Um slide da capa: a foto e a cópia que entram no carrossel.
+ *
+ * São os mesmos campos do `hero`, **sem** os de bloco (`enabled`, `position`,
+ * aparência), que são da seção e não de um slide. A ordem da lista é a ordem do
+ * carrossel, e a ordem dos campos daqui é a do sub-formulário no CRM
+ * (`ITEM_FIELDS["list:hero-slide"]`) — a guarda de paridade compara as duas.
+ *
+ * O scrim (`overlay`) **não** é por slide de propósito: ele é a força do escuro
+ * sobre a foto, e um valor por slide seria mais um campo num formulário que já
+ * repete oito. Quem tem fotos de luminosidade muito diferente acerta o scrim
+ * pela média, ou escolhe fotos parecidas.
+ */
+export type HeroSlide = {
+  imageUrl: string
+  imageAlt: string
+  eyebrow: string
+  headline: string
+  headlineEmphasis: string
+  subtitle: string
+  ctaLabel: string
+  ctaHref: string
+}
 
 export type BenefitItem = {
   /** Chave de ícone resolvida por `frontend/src/lib/content/icons.ts`. */
@@ -124,6 +198,18 @@ export type CollectionsSection = SectionBase &
     eyebrow: string
     title: string
     subtitle: string
+    /**
+     * O formato da faixa: `cards` (a grade de três cartões altos, como a seção
+     * nasceu) ou `banners` (uma linha de dois banners largos, um ao lado do
+     * outro).
+     *
+     * É escolha de **formato**, então é um `select` e não um booleano: um
+     * segundo formato já era previsível, e um terceiro é mais um valor aqui e um
+     * ramo no render. Ausente ou desconhecido = `cards`, que é o que a loja
+     * desenhava antes deste campo existir — e é o que continua desenhando numa
+     * base onde ninguém escolheu nada.
+     */
+    layout?: "cards" | "banners"
     items: CollectionHighlight[]
   }
 
@@ -830,12 +916,16 @@ export type FieldKind =
   // O que **não** se grava aqui é o rótulo: `label` e `handle` são lidos da
   // categoria na hora de desenhar (`modules/content/filters.ts`).
   | "list:category"
-  // Lista de textos simples: um input separado por vírgula, sem sub-campos.
-  // Nenhum campo a usa desde que os chips do `featured` viraram referência
-  // (`list:category`) — ela fica por ser o caminho declarado de uma lista de
-  // strings (a guarda de paridade e o editor a tratam como a exceção que não
-  // precisa de entrada em `ITEM_FIELDS`).
+  // Lista de textos simples: um input separado por vírgula, sem sub-campos —
+  // e sem entrada em `ITEM_FIELDS` (não há sub-formulário para desenhar). É o
+  // campo das mensagens do ticker da barra de anúncio (`messages`), e a vírgula
+  // é a razão de a ajuda do campo pedir mensagem sem vírgula: o editor quebra o
+  // texto em cada uma delas.
   | "list:text"
+  // O slide da capa (`hero.slides`): foto e cópia, o sub-formulário do tipo
+  // `HeroSlide` — item de lista como o `list:highlight`, com a mesma forma
+  // (imagem, textos e link) e por isso o mesmo editor do admin.
+  | "list:hero-slide"
   | "list:benefit"
   | "list:highlight"
   | "list:image"
@@ -912,11 +1002,41 @@ export type FieldSpec = {
 /** Campos de `data` por tipo de seção, na ordem em que o admin os mostra. */
 export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
   announcement: [
-    { name: "text", label: "Mensagem", kind: "text", required: true },
+    // Deixou de ser obrigatória na v8: quem preenche o ticker (`messages`)
+    // pode esvaziar a mensagem única sem a API recusar o salvamento. É a
+    // mensagem que a barra mostra **quando não há ticker**, e é por isso que
+    // ela ainda existe.
+    {
+      name: "text",
+      label: "Mensagem única",
+      kind: "text",
+      help: "A barra fica parada nesta mensagem quando não houver mensagens no ticker abaixo. Foi assim que a barra nasceu.",
+    },
+    {
+      name: "messages",
+      label: "Mensagens do ticker",
+      kind: "list:text",
+      help: "Uma mensagem por vírgula — o ticker rola sozinho com duas ou mais e fica parado com uma. O que estiver aqui substitui a mensagem única.",
+    },
     // A barra é uma linha só: tem a fonte e a cor do texto e a cor da
     // própria barra. Sem títulos nem detalhes para vestir.
-    ...appearanceTexts("text"),
-    ...appearanceBackground("text"),
+    ...appearanceTexts("messages"),
+    ...appearanceBackground("messages"),
+    // A velocidade vem **depois** dos trilhos de propósito: o `attachedTo` do
+    // contrato é a promessa de "aparece embaixo do campo que muda", e a guarda
+    // de paridade exige que o trilho fique logo abaixo do último campo de
+    // conteúdo — aqui, `messages`. A ordem do formulário também fica melhor
+    // assim: o que o lojista vem fazer nesta seção é escrever mensagem, e a
+    // velocidade é o último ajuste.
+    {
+      name: "speedSeconds",
+      label: "Segundos por volta",
+      kind: "number",
+      min: ANNOUNCEMENT_SPEED_MIN,
+      max: ANNOUNCEMENT_SPEED_MAX,
+      step: 1,
+      help: "Quanto tempo o ticker leva para dar uma volta completa. A rolagem para no mouse e no teclado.",
+    },
   ],
   hero: [
     { name: "eyebrow", label: "Eyebrow", kind: "text" },
@@ -949,6 +1069,12 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       max: 1,
       step: 0.01,
       help: "Opacidade do overlay escuro no lado do texto.",
+    },
+    {
+      name: "slides",
+      label: "Slides (carrossel)",
+      kind: "list:hero-slide",
+      help: "Com um ou mais slides a capa vira um carrossel: a foto e a cópia de cada um, na ordem da lista. Vazio, a capa é a de sempre — a foto e o texto dos campos acima.",
     },
     // Sem trilho de fundo: o fundo do hero é a fotografia.
   ],
@@ -1007,6 +1133,17 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     ...appearanceTitles("title"),
     { name: "subtitle", label: "Subtítulo", kind: "textarea" },
     ...appearanceTexts("subtitle"),
+    {
+      name: "layout",
+      label: "Formato",
+      kind: "select",
+      options: ["cards", "banners"] as const,
+      optionLabels: {
+        cards: "Cartões (grade de 3)",
+        banners: "Banners largos (linha de 2)",
+      },
+      help: "Cartões é a grade de três colunas de hoje; banners é a faixa de dois banners largos, um ao lado do outro.",
+    },
     { name: "items", label: "Coleções", kind: "list:highlight" },
     // O fundo fecha a seção: é a única escolha que vale para o bloco todo.
     ...appearanceBackground("items"),
@@ -1284,6 +1421,27 @@ export const ITEM_FIELDS: ItemFields = {
     },
     { name: "title", label: "Título" },
     { name: "subtitle", label: "Subtítulo" },
+  ],
+  /**
+   * O slide da capa (`hero.slides`): os mesmos oito campos do hero, sem os de
+   * bloco. A ordem desta lista **é** a ordem dos campos de `HeroSlide` — a
+   * guarda de paridade compara as duas (`ITEM_TYPES`), e um campo num lado só
+   * deixaria o lojista sem como preencher o que a loja desenha.
+   */
+  "list:hero-slide": [
+    {
+      name: "imageUrl",
+      label: "Imagem",
+      kind: "image",
+      help: "Envie a foto pelo botão, ou informe um caminho do site (ex.: /brand/hero.jpg) ou uma URL.",
+    },
+    { name: "imageAlt", label: "Imagem (alt)" },
+    { name: "eyebrow", label: "Eyebrow" },
+    { name: "headline", label: "Título" },
+    { name: "headlineEmphasis", label: "Título (parte em itálico)" },
+    { name: "subtitle", label: "Subtítulo" },
+    { name: "ctaLabel", label: "Texto do botão" },
+    { name: "ctaHref", label: "Link do botão" },
   ],
   "list:highlight": [
     { name: "title", label: "Título" },

@@ -65,7 +65,7 @@ export default function EditorialBanner({
   )
 
   return (
-    <section className="rv-section-bg-surface w-full py-16 small:py-24">
+    <section className="rv-section-bg-surface rv-section-pad w-full">
       <div className="rv-container">
         <div className="grid grid-cols-1 items-center gap-10 small:grid-cols-2 small:gap-16">
           {imageFirst ? (

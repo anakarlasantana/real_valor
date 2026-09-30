@@ -4,11 +4,35 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import Image from "next/image"
 
 /**
- * Collections — three tall editorial cards ("Nossas coleções").
+ * Collections — the editorial band of the home.
  *
- * The prototype hard-coded the three names. Here they are data, so the
- * CMS can retitle, reorder or re-image them later.
+ * Two formats, and the shopkeeper picks between them in the CRM
+ * (`section.layout`):
+ *
+ *   cards   — a grade de três cartões altos (3/4), como a seção nasceu;
+ *   banners — uma linha de **dois banners largos** (16/9 no desktop), um ao
+ *             lado do outro, para quando as fotos são horizontais.
+ *
+ * Nenhuma escolha é "melhor": o formato depende da foto que a loja tem. Um
+ * recorte 3/4 numa foto horizontal corta a peça, e é por isso que o formato é
+ * escolha e não um reajuste automático — a loja sabe qual foto mandou.
+ *
+ * O protótipo hard-coded the three names. Here they are data, so the CMS can
+ * retitle, reorder or re-image them later.
  */
+const LAYOUTS = {
+  cards: {
+    list: "grid grid-cols-1 gap-6 small:grid-cols-3",
+    frame: "aspect-[3/4]",
+    sizes: "(min-width: 1024px) 33vw, 100vw",
+  },
+  banners: {
+    list: "grid grid-cols-1 gap-6 small:grid-cols-2",
+    frame: "aspect-[4/3] small:aspect-[16/9]",
+    sizes: "(min-width: 1024px) 50vw, 100vw",
+  },
+} as const
+
 export default function CollectionHighlights({
   section,
 }: {
@@ -18,8 +42,12 @@ export default function CollectionHighlights({
     return null
   }
 
+  // Campo vazio ou desconhecido cai em `cards` — o desenho de antes do campo
+  // existir. É a regra de todo campo novo do contrato: ausente é "como era".
+  const layout = section.layout === "banners" ? LAYOUTS.banners : LAYOUTS.cards
+
   return (
-    <section className="w-full py-16 small:py-24">
+    <section className="rv-section-pad w-full">
       <div className="rv-container">
         <header className="mb-10 max-w-[620px] small:mb-14">
           {section.eyebrow && (
@@ -37,7 +65,7 @@ export default function CollectionHighlights({
           )}
         </header>
 
-        <ul className="grid grid-cols-1 gap-6 small:grid-cols-3">
+        <ul className={layout.list}>
           {section.items.map((item) => {
             // A imagem pode chegar como chave crua do provider (upload pelo
             // CRM) ou como URL do backend — ver `lib/util/media.ts`.
@@ -49,13 +77,15 @@ export default function CollectionHighlights({
                   href={item.href}
                   className="block focus:outline-none"
                 >
-                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-rv-dourado/20">
+                  <div
+                    className={`relative ${layout.frame} w-full overflow-hidden bg-rv-dourado/20`}
+                  >
                     {image && (
                       <Image
                         src={image}
                         alt={item.imageAlt}
                         fill
-                        sizes="(min-width: 1024px) 33vw, 100vw"
+                        sizes={layout.sizes}
                         className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-[1.03]"
                       />
                     )}
