@@ -21,11 +21,13 @@
  *     obrigatório/`SECTION_FIELDS` batem com o que a loja lê);
  *   - o editor do admin (`admin/src/admin/routes/content/field-input.tsx`)
  *     saber desenhar todo tipo de lista do contrato, com as mesmas chaves de
- *     ícone que `frontend/src/lib/content/icons.ts` oferece. São espelhos
- *     mantidos à mão — o admin é um pacote separado e não importa nem o
- *     contrato nem o registro de ícones —, então é justamente onde a
- *     divergência acontece em silêncio (um campo sem editor, um ícone que não
- *     desenha);
+ *     ícone que `frontend/src/lib/content/icons.ts` oferece. O painel importa o
+ *     *tipo* do contrato desde a R2 (`import type` pelo alias `@conteudo/*` do
+ *     `admin/tsconfig.json`), e import de VALOR do backend é a fronteira que
+ *     `scripts/check-boundaries.mjs` vigia; o que continua mantido à mão é o
+ *     **dado** — as chaves de ícone, o sub-formulário dos itens, os rótulos de
+ *     tipo —, então é aqui que a divergência acontece em silêncio (um campo sem
+ *     editor, um ícone que não desenha);
  *   - a aparência: os valores do contrato que o storefront pinta
  *     (`brand.css`, `appearance.ts`) e os arquivos que a prévia do painel
  *     desenha.
@@ -49,7 +51,7 @@ import {
   writeFileSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import { dirname } from "node:path"
 
@@ -80,6 +82,37 @@ const ADMIN_FIELD_INPUT = join(
  * — a guarda segue o código.
  */
 const ADMIN_PAGE = join(root, "admin/src/admin/routes/content/page.tsx")
+
+/**
+ * Todo o código do painel: `.ts`/`.tsx` sob `admin/src`, menos os testes.
+ *
+ * As duas asserções de espelho (`MIRRORS` e `PANEL_TYPE_SHAPES`) dizem "**o
+ * painel** não declara dado nem forma do contrato", e até a R2 elas liam dois
+ * arquivos (o editor e a página). Medido na R2: uma cópia da forma de um tipo num
+ * TERCEIRO arquivo do painel passava pelas duas — a asserção era mais estreita
+ * que a frase que ela imprime. Agora a varredura é o pacote inteiro, que é o que
+ * a frase diz.
+ *
+ * `__tests__` fica de fora: um teste monta fixture com o formato de um payload, e
+ * um fixture chamado como uma tabela do contrato seria falso positivo. O que se
+ * proíbe é o painel **em execução** ter uma segunda fonte de dado ou de tipo.
+ */
+function panelSources(dir = join(root, "admin/src")) {
+  return readdirSync(dir, { withFileTypes: true })
+    .flatMap((entry) => {
+      const path = join(dir, entry.name)
+
+      if (entry.isDirectory()) {
+        return entry.name === "__tests__" ? [] : panelSources(path)
+      }
+
+      return /\.tsx?$/.test(entry.name)
+        ? [{ path: relative(root, path), source: readFileSync(path, "utf8") }]
+        : []
+    })
+    .sort((a, b) => a.path.localeCompare(b.path))
+}
+
 const APPEARANCE_CSS = join(
   root,
   "admin/src/admin/routes/content/appearance.css"
@@ -620,12 +653,14 @@ const MIRRORS = [
   "TYPE_LABELS",
 ]
 
+const PANEL_SOURCES = panelSources()
+
 const mirrorHouses = MIRRORS.flatMap((name) => {
   const pattern = new RegExp(`const ${name}\\b`)
-  return [
-    pattern.test(adminSource) ? `field-input.tsx (${name})` : null,
-    pattern.test(pageSource) ? `page.tsx (${name})` : null,
-  ].filter(Boolean)
+
+  return PANEL_SOURCES.filter(({ source }) => pattern.test(source)).map(
+    ({ path }) => `${path} (${name})`
+  )
 })
 
 assert(
@@ -639,6 +674,14 @@ assert(
 // ContentSchemaPayload`) — que é o desejado: o nome local aponta para o
 // contrato em vez de copiar o corpo. O `=` depois do nome é obrigatório, senão a
 // checagem casaria com o próprio `import type { … }` do painel.
+//
+// Por que isto continua sendo TEXTO e não o `tsc` — medido na R2, já com o painel
+// importando tipo por `@conteudo/*`: no MESMO arquivo que importa `FieldKind`,
+// redeclarar a forma dá **TS2440** (o compilador pega, mas é o caso que o texto já
+// pegava); num arquivo que não importa o nome, `type FieldKind = { x: string }`
+// compila **verde** — tipo estrutural não enxerga cópia, e é a cópia que se
+// proíbe. O compilador cobre o caso que já estava coberto e é cego para o que
+// importa. O caminho certo aqui é a asserção, com a varredura do painel inteiro.
 const PANEL_TYPE_SHAPES = [
   "FieldKind",
   "FieldSpec",
@@ -647,21 +690,23 @@ const PANEL_TYPE_SHAPES = [
   "Schema",
 ]
 
-const panelTypeShapes = PANEL_TYPE_SHAPES.filter((name) =>
-  [adminSource, pageSource].some((source) =>
-    new RegExp(
-      `^\\s*(export )?type ${name} = (\\{|\\n\\s*\\||\\|)`,
-      "m"
-    ).test(source)
+const panelTypeShapes = PANEL_TYPE_SHAPES.flatMap((name) => {
+  const pattern = new RegExp(
+    `^\\s*(export )?type ${name} = (\\{|\\n\\s*\\||\\|)`,
+    "m"
   )
-)
+
+  return PANEL_SOURCES.filter(({ source }) => pattern.test(source)).map(
+    ({ path }) => `${path} (${name})`
+  )
+})
 
 assert(
   "o painel não declara a forma dos tipos do contrato (importa com `import type`)",
   panelTypeShapes.length === 0,
   "declarado no painel: " +
     panelTypeShapes.join(", ") +
-    " — use `import type` de modules/content/contract"
+    " — use `import type` de `@conteudo/contract` (o alias de admin/tsconfig.json)"
 )
 
 // A fronteira do painel — nenhum `import` de VALOR vindo do backend — mudou de

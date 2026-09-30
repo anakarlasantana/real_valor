@@ -55,7 +55,7 @@ help:
 	@echo "    make check         - Falha se o artefato estiver velho, o contrato incoerente ou o CRM importando valor do backend"
 	@echo ""
 	@echo "  Testes, tipos e o CRM"
-	@echo "    make test          - Jest do backend e vitest do storefront (nao precisa da stack)"
+	@echo "    make test          - Jest do backend e do CRM (admin/), vitest do storefront"
 	@echo "    make types         - tsc do backend, do storefront e do CRM (pacote admin/)"
 	@echo "    make build-admin   - Compila o admin (Vite) — o gate de quem mexe no CRM"
 	@echo ""
@@ -220,6 +220,12 @@ doctor:
 #
 # `make check` e o que o hook de commit roda. Ele nao precisa da stack de pe
 # (e so Node lendo arquivos), entao serve tambem para o pre-push e a CI.
+#
+# A verificacao da SUITE do CRM (`scripts/check-panel-tests.mjs`, R2) nao mora
+# aqui de proposito: ela pergunta ao jest do CRM o que ele vai rodar, e o job
+# `guard` da CI nao instala `node_modules` nenhum — este alvo tem que continuar
+# rodando em segundos, sem instalacao. Ela roda no `make test`, que e' onde a
+# suite roda e onde as dependencias existem.
 gen:
 	@node scripts/gen-content.mjs
 
@@ -252,39 +258,78 @@ check:
 # que aponta para `/app/admin` — o `docker-compose.override.yml` monta `./admin`
 # la. Alvo de DEV: em `PROD=1` a imagem e a `runner`, sem as devDependencies que
 # o Vite precisa.
+#
+# POR QUE ESTE ALVO CONFERE A LINHA DE SUCESSO (medido na R2): o `medusa build`
+# sai **0 mesmo quando o painel nao compila**. Medido com um import de valor pelo
+# apelido `@conteudo/*` (que o Rollup nao resolve): o log trouxe
+#     x Build failed in 8.55s
+#     error: Unable to compile frontend source
+#     [vite]: Rollup failed to resolve import "@conteudo/contract" from …
+# e o `$?` do `yarn build` foi **0** — nos dois casos (com e sem o defeito). Um
+# gate que so olha o exit code diria "verde" com o painel quebrado, que e' pior do
+# que nao ter gate. Por isso o alvo guarda o log e exige a linha
+# `Frontend build completed successfully` (a mesma que a R7 leu para fechar a
+# medicao do build). Se o Medusa mudar essa mensagem, este alvo falha — alto e
+# claro, que e' o comportamento desejado.
+ADMIN_BUILD_LOG ?= /tmp/real-valor-build-admin.log
+
 build-admin:
 	@test -n "$$($(COMPOSE) ps -q postgres)" || { echo "postgres nao esta rodando (rode 'make up')"; exit 1; }
-	$(COMPOSE) run --rm -T -e NODE_OPTIONS=--max-old-space-size=1536 backend yarn build
+	@$(COMPOSE) run --rm -T -e NODE_OPTIONS=--max-old-space-size=1536 backend yarn build 2>&1 | tee "$(ADMIN_BUILD_LOG)"
+	@grep -q "Frontend build completed successfully" "$(ADMIN_BUILD_LOG)" || { echo ""; echo "  O painel NAO compilou (procure 'Rollup failed to resolve' ou 'Build failed' no log acima)."; exit 1; }
 	@echo ""
 	@echo "  Admin compilado no container (bundle em .medusa/server/public/admin)."
 
 # ---------------------------------------------------------------------------
-# Testes: o jest do backend e o vitest do storefront
+# Testes: o jest do backend, o jest do CRM e o vitest do storefront
 # ---------------------------------------------------------------------------
-# Os dois sao de UNIDADE e nao precisam da stack de pe nem de banco: o setup do
-# jest zera o `MetadataStorage` do MikroORM (`integration-tests/setup.js`) e os
-# specs do storefront sao de funcao pura (`supported-sections`, `launches`,
-# `media`). Por isso este alvo serve o terminal, o pre-push e a CI sem `make up`
-# antes — a mesma propriedade do `make check`.
+# Os tres sao de UNIDADE e nao precisam da stack de pe nem de banco: o setup do
+# jest do backend zera o `MetadataStorage` do MikroORM (`integration-tests/
+# setup.js`), o teste do CRM e' de funcao pura (e o runner dele nem carrega esse
+# setup) e os specs do storefront tambem. Por isso este alvo serve o terminal, o
+# pre-push e a CI sem `make up` antes — a mesma propriedade do `make check`.
 #
 # Ate agora os testes existiam nos `package.json` (`test:unit` no backend,
 # `test` no storefront) e ninguem os chamava: nem o `make`, nem o hook de
 # commit, nem a CI. Teste que nao roda e' documentacao. O que este alvo passa a
-# exigir, em numero, hoje: 11 suites / 157 testes no backend e 3 arquivos / 20
-# testes no storefront. O unico teste do CRM (o do formulario, que decide o que
-# fica "pendente" na tela) veio junto com o pacote na R7: o `roots` do
-# `backend/jest.config.js` aponta para `../admin/src` porque o CRM ainda nao tem
-# runner proprio.
+# exigir, em numero, hoje: 10 suites / 145 testes no backend, 1 suite / 12 testes
+# no CRM e 3 arquivos / 20 testes no storefront. O total (11 suites / 157 testes)
+# e' o mesmo de antes da R2, e isso nao e' coincidencia: e' a medida de que o
+# teste que saiu do `roots` do backend entrou no runner do CRM inteiro (145 + 12
+# = 157; 10 + 1 = 11).
 #
-# `--silent --runInBand --forceExit` sao os mesmos do script do backend, sem
-# mudanca: os specs compartilham o `MetadataStorage` global do MikroORM, entao
-# arquivo em paralelo e' corrida entre arquivos. `--silent` esconde o log de
-# aplicacao para a falha aparecer sozinha no terminal.
+# A linha do CRM e' a mudanca da R2. Ate' entao o teste do painel rodava na
+# PRIMEIRA linha, por um `roots` do `backend/jest.config.js` que apontava para
+# `../admin/src`: o vizinho declarava o que era teste do painel, e uma limpeza
+# banal nesse `roots` faria a suite sumir sem dizer nada. Agora o CRM tem config
+# proprio (`admin/jest.config.js`) e este alvo chama o runner DELE: o binario
+# continua sendo o do backend (`../backend/node_modules/.bin/jest`) porque o CRM
+# nao tem instalacao propria — o resto medido que a G5 fecha.
+#
+# Sem `--runInBand`/`--forceExit` na linha do CRM: os dois existem na linha do
+# backend por causa do `MetadataStorage` global, que o teste do painel nao toca
+# (medido: o runner do CRM sai limpo, 0,47s). E sem `--passWithNoTests`: se a
+# suite do CRM desaparecer, o jest falha com "No tests found" em vez de passar
+# verde.
+#
+# Depois da linha do CRM vem `scripts/check-panel-tests.mjs`, que fecha a perda
+# PARCIAL (a que o jest nao ve): ele compara os specs que existem no disco com os
+# que o runner do CRM lista (`--listTests`, sem rodar nada, ~0,25s). Um spec
+# renomeado para um sufixo que o `testMatch` nao cobre reprova — antes ficava
+# verde, rodando menos. Ele mora aqui e nao no `make check` porque precisa de
+# `node_modules`; ver o comentario do alvo `check`.
+#
+# `--silent --runInBand --forceExit` na linha do backend sao os mesmos do script
+# de la, sem mudanca: os specs compartilham o `MetadataStorage` global do
+# MikroORM, entao arquivo em paralelo e' corrida entre arquivos. `--silent`
+# esconde o log de aplicacao para a falha aparecer sozinha no terminal.
 test:
 	@cd backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules ./node_modules/.bin/jest --silent --runInBand --forceExit
+	@cd admin && ../backend/node_modules/.bin/jest -c jest.config.js
+	@node scripts/check-panel-tests.mjs
 	@cd frontend && ./node_modules/.bin/vitest run
 	@echo ""
-	@echo "  Testes conferidos nos dois pacotes."
+	@echo "  Testes conferidos nos tres pacotes (backend, CRM e storefront)."
 
 # ---------------------------------------------------------------------------
 # Tipos: o `tsc` dos dois pacotes — e o do painel, que tem regras proprias
@@ -299,6 +344,12 @@ test:
 # que pegou um import de tipo morto na pagina do conteudo. Os tipos vem do
 # `node_modules` do backend por `paths`/`typeRoots`: o CRM nao tem instalacao
 # propria (quem compila o painel e o Vite do backend). Ver admin/tsconfig.json.
+#
+# O `paths` do painel carrega tambem o apelido `@conteudo/*` (R2): e por ele que
+# o painel importa TIPO do modulo de conteudo do backend, em vez de subir cinco
+# niveis de `..`. Este `tsc` verde e o que prova que os tres arquivos do CRM que
+# citam o modulo estao ligados de verdade — o apelido sozinho nao valeria nada.
+# Import de VALOR por ele quem reprova e' `scripts/check-boundaries.mjs`.
 #
 # `--incremental false` porque e `--noEmit`: sem isso o `tsc` escreveria o
 # `tsconfig.tsbuildinfo` e o cache de build ficaria invalido.

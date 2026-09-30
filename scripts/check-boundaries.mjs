@@ -18,6 +18,13 @@
  * A verificação nasceu dentro do `check-contract-parity.mjs` (a R6.5 a somou ali)
  * e a R7 a herdou aqui, junto com o código que mudou de casa.
  *
+ * A R2 não mudou a regra — mudou a FORMA do caminho: o painel deixou de chegar ao
+ * backend subindo cinco níveis de `..` e passou a chegar pelo apelido
+ * `@conteudo/*`. Como o alvo do apelido só existe no `tsconfig.json` do painel, a
+ * verificação passou a LER o apelido de lá (`panelBackendAliases`) em vez de
+ * repetir o prefixo aqui: apelido renomeado (ou um segundo apontando para o
+ * backend) continua sendo vigiado.
+ *
  * Rode com:
  *   node scripts/check-boundaries.mjs
  *
@@ -74,15 +81,48 @@ function assert(label, condition, detail = "") {
 const VALUE_IMPORT =
   /(?:^|\n)[ \t]*import\s+(?!type\b)(?:(?!\bimport\b)[\s\S])*?from\s+"([^"]*)"/g
 
-/** O import aponta para dentro de `backend/`? Relativo, absoluto ou por texto. */
+/**
+ * O import aponta para dentro de `backend/`? Relativo, por apelido ou por texto.
+ *
+ * Desde a R2 o painel não chega mais ao módulo por caminho relativo: chega pelo
+ * apelido `@conteudo/*`, declarado no `tsconfig.json` dele. O apelido é lido do
+ * próprio tsconfig em vez de repetido aqui de propósito — renomear o apelido (ou
+ * somar outro que aponte para o backend) não pode abrir buraco na verificação, e
+ * é o arquivo que declara o vínculo que responde por ele.
+ */
+function panelBackendAliases() {
+  const tsconfig = readFileSync(join(PANEL, "tsconfig.json"), "utf8")
+
+  // `"@algo/*": ["../backend/..."]` — o destino é relativo ao pacote do painel,
+  // então resolve-se como qualquer caminho e compara-se com `backend/`.
+  const entry = /"([^"]+)\/\*"\s*:\s*\[\s*"([^"]+)\/\*"/g
+
+  return [...tsconfig.matchAll(entry)]
+    .filter(([, , target]) => target.startsWith("."))
+    .filter(
+      ([, , target]) =>
+        !relative(BACKEND, resolve(PANEL, target)).startsWith("..")
+    )
+    .map(([, alias]) => `${alias}/`)
+}
+
+const BACKEND_ALIASES = panelBackendAliases()
+
 function targetsBackend(file, specifier) {
   if (specifier.startsWith(".")) {
     // Um relativo que escapa do CRM denuncia a fronteira pela própria forma
-    // (`../../../../../backend/src/modules/…`): resolve-se o alvo e compara-se
+    // (`../../../../backend/src/modules/…`): resolve-se o alvo e compara-se
     // com o diretório do backend.
     const fromBackend = relative(BACKEND, resolve(dirname(file), specifier))
 
     return !fromBackend.startsWith("..")
+  }
+
+  // O apelido declarado pelo painel vale como caminho para o backend: um
+  // `import` de VALOR por `@conteudo/…` é o mesmo defeito da numeração na R6.5,
+  // escrito numa forma que não se parece com um caminho.
+  if (BACKEND_ALIASES.some((alias) => specifier.startsWith(alias))) {
+    return true
   }
 
   // O que não resolve por sistema de arquivos (apelido, nome de pacote) ainda é

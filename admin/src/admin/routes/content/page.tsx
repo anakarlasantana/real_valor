@@ -52,16 +52,14 @@ import {
 } from "@medusajs/ui"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
-// Os três `import type` abaixo sobem cinco níveis porque, desde a R7, o CRM é
-// um pacote IRMÃO de `backend/` — e continuam sendo SÓ tipo: valor importado do
-// backend aqui já foi defeito uma vez (a numeração da ordem), e a guarda
-// `scripts/check-boundaries.mjs` falha se voltar. Ver docs/plano-centralizacao.md.
-import type {
-  AppearanceGroup,
-  CategoryRef,
-} from "../../../../../backend/src/modules/content/contract"
-import type { OrderFaixa } from "../../../../../backend/src/modules/content/order"
-import type { ContentSchemaPayload } from "../../../../../backend/src/modules/content/schema"
+// Os três `import type` abaixo vêm pelo alias `@conteudo/*` (declarado em
+// `admin/tsconfig.json`), e continuam sendo SÓ tipo: valor importado do backend
+// aqui já foi defeito uma vez (a numeração da ordem), e a guarda
+// `scripts/check-boundaries.mjs` falha se voltar — inclusive por este alias.
+// Ver docs/plano-centralizacao.md, R2.
+import type { AppearanceGroup, CategoryRef } from "@conteudo/contract"
+import type { OrderFaixa } from "@conteudo/order"
+import type { ContentSchemaPayload } from "@conteudo/schema"
 import { AppearanceRail } from "./appearance-controls"
 import { FieldInput, type FieldSpec } from "./field-input"
 import { isDirty, wireValue } from "./form-draft"

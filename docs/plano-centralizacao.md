@@ -138,7 +138,7 @@ teste ou checagem de dado — nenhuma das 89 some sem substituto, e nenhuma das
 | Contrato gerado do storefront | 1 | artefato fresco | **build** | G5: com `packages/contrato` não há cópia — o storefront importa o tipo, e `gen-content.mjs` sai do mundo |
 | `SECTION_TYPES ⇔ SECTION_FIELDS` | 2 | todo tipo tem campos; sem tipo fora | **tipagem** | `Record<SectionType, …>` já é exaustivo; a assert só existe porque a guarda lê a cópia por JSON |
 | `DEFAULTS_HOME_SECTIONS` | 9 | seed cobre os tipos, posições únicas/ordenadas, obrigatórios preenchidos, cromo igual ao fallback | **teste** (1 spec) + **serviço** | `defaults.spec.ts`; `position` único vira validação do serviço (o que a tabela de riscos já previa) |
-| `ADMIN` — espelhos | 5 | o painel não redeclara `ITEM_FIELDS`/`ICON_LABELS`/… | **tipagem** | G2: o painel é do **mesmo pacote** do contrato; `import type` some em build |
+| `ADMIN` — espelhos | 5 | o painel não redeclara `ITEM_FIELDS`/`ICON_LABELS`/… | **tipagem** → na prática **fica asserção** (medido na R2) | G2: `import type` some em build. **R2:** o painel não é "o mesmo pacote" do contrato — é irmão, ligado pelo alias `@conteudo/*` — e o `tsc` **não vê cópia** de forma (`type FieldKind = { x: string }` num arquivo que não importa compila verde; medido). A asserção ficou, e a varredura foi alargada para o pacote inteiro |
 | `ADMIN` — ramo por `kind` | 5 | todo `kind` tem ramo no `FieldInput` | **tipagem** | G2: `Record<FieldKind, JSX>` + `satisfies` → apagar um ramo é erro de compilação |
 | `ADMIN` — cobertura de `ITEM_FIELDS` | 15 | todo `list:*` tem editor e é alcançável | **teste** (1 spec) | percorre `ITEM_FIELDS` contra `SECTION_FIELDS` com os tipos reais |
 | `ADMIN` — opções/ícones/labels ⇔ storefront | 12 | mesmas chaves, toda chave com ícone e com rótulo | **teste** (1 spec) ou **tipagem** com o pacote | `Record<IconKey, …>` torna o registro exaustivo |
@@ -154,8 +154,9 @@ teste ou checagem de dado — nenhuma das 89 some sem substituto, e nenhuma das
 
 **Contagem honesta:** as ~6 que ficam (CSS ×2, fontes ×2, migration ×1, e o
 `--check` na CI) são as que nenhuma linguagem nem ferramenta padrão vê. As ~15
-de `ADMIN` viram compilador. As ~30 de paridade entre pacotes só morrem na G5.
-O meio vai para teste.
+de `ADMIN` viram compilador — menos a de **forma de tipo**, que a R2 mediu e manteve
+como asserção (tipo estrutural não enxerga cópia). As ~30 de paridade entre pacotes só
+morrem na G5. O meio vai para teste.
 
 ### Fases
 
@@ -303,7 +304,11 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 > somou quatro: nenhum import de valor no painel, a faixa da ordem vinda das constantes do módulo,
 > o numeral da tela usando essa faixa e a porta de ordem com um aviso só). A **R7** não somou
 > nenhuma: ela mudou uma de casa — a fronteira do painel saiu do `check-contract-parity.mjs` para o
-> `check-boundaries.mjs`, que é onde ela virou a razão de existir do arquivo —, e o total continua 94.
+> `check-boundaries.mjs`, que é onde ela virou a razão de existir do arquivo —, e o total ficou 94.
+> A **R2** somou **uma** verificação, mas não neste alvo: `scripts/check-panel-tests.mjs` (a suíte
+> que está no disco do CRM é a que o runner dele executa) **precisa do jest instalado**, e o job
+> `guard` da CI roda este alvo sem instalar nada — ela foi para o `make test`, que é onde a suíte
+> roda. Aqui o total segue **94**: 93 do contrato + 1 da fronteira.
 > O alvo do plano nunca foi o número: é ficar só com o que a linguagem não vê (binário, CSS,
 > migração).
 
@@ -317,7 +322,7 @@ Gate verde não fecha fase sozinho. Cada uma fecha com mais duas coisas:
 | **R6** ✅ | `api/admin/content/route.ts` quebrou em `modules/content/{validation,resolvers,view}.ts`, e o `nextPosition` duplicado saiu: a rota passou a usar o do `order.ts` (que tem o piso da faixa da vitrine e recebe só a vitrine) | rota **812 → 437 linhas**; `make check` 90 asserções e `make test` **11 suites / 147 testes** verdes (a rota em si não tinha teste — a validação e os resolvedores têm `validation.unit.spec.ts` agora) |
 | **R6.5** ✅ | a ordem da vitrine sai do navegador: `POST /admin/content/order` com `{ ids }`, a renumeração no módulo (`order.ts`: `readOrderIds`, `orderErrors`, `applyOrder`) e a faixa da numeração viajando como **dado** no payload (`order`, para o numeral da lista enquanto a ordem está pendente). O painel deixa de importar valor de `backend/` (eram `nextPosition`, `positionFor` e `renumber`) | uma requisição e **um** aviso à loja com **7** seções mudando de posição (medido no log do frontend: `POST /api/revalidate?tag=content`); a mesma ordem de novo devolve `{"updated":[]}` e nenhum aviso; os 400 por lista incompleta, seção fixa, id inexistente, id repetido e forma inválida; `make check` **94** asserções, `make test` **11 suites / 157 testes** + 20 do vitest, `make types` verde (agora com o `tsc` do painel, que pegou um import morto) |
 | **R7** ✅ | o CRM muda de casa: sai de `backend/src/admin` para o pacote `admin/` — 17 arquivos (9 de código, 2.538 linhas), `tsconfig` próprio, nenhum `node_modules` próprio — servido em `/painel` pelo Vite do backend (`admin.sources` no `medusa-config.ts`). A imagem passa a compilar com o contexto na **raiz do repositório** e o CRM entra em `/app/admin` | `make build-admin` verde (backend + admin: 10,7s + 33,1s); `make check` **94** asserções; `make test` **11 suites / 157 testes** + 3 arquivos / 20 do vitest; `make types` verde nos três; `/painel` 200, a rota vindo de `/painel/@fs/app/admin/src/admin/routes/content/page.tsx` e `make logs-admin` OK. O caminho até aqui (incluindo o build que **falhou** com o CRM em `/admin`) está em "R7 — o que a fase mediu" |
-| **R2** | tipagem onde hoje há paridade por texto (o destino do G2) | `tsc` limpo, sem `any` novo |
+| **R2** ✅ | o vínculo do painel com o módulo de conteúdo ganha **nome**: o alias `@conteudo/*` (`admin/tsconfig.json`) substitui os cinco níveis de `..` nos 5 especificadores de tipo, em 3 arquivos. A guarda de fronteira passa a **ler** os apelidos do tsconfig (antes `@conteudo/…` não tinha `/modules/` nem era relativo — passaria batido); o teste do formulário sai do jest do backend e ganha runner próprio (`admin/jest.config.js`), com `scripts/check-panel-tests.mjs` fechando a perda silenciosa; e as asserções de espelho do painel passam a varrer o pacote inteiro (eram 2 arquivos) | `make check` **94** asserções; `make test` **10 suites / 145 testes** no backend + **1 / 12** no CRM + 3 / 20 do vitest = **11 / 157**, o mesmo total da R7, mais a verificação de suíte (no `make test`, porque precisa de instalação); `make types` verde; o painel compilado na **imagem** (`Frontend build completed successfully`, 27,5s) e o import de valor pelo apelido **reprovado** pelo Rollup. O caminho (e o gate `build-admin` que a fase consertou) está em "R2 — o que a fase mediu" |
 | **R3-lite → R5** | tema como dado e `themes/` fora do Dockerfile (o F3 refeito sobre `develop`) | `make gen` + `make check`; R4/R5 pedem o Docker de pé |
 
 **Por que esta ordem:** R6.5 antes de R7 tira a última importação de valor do painel (a R7 deixa
@@ -368,6 +373,37 @@ O que a fase **não** mudou de propósito: o CRM continua importando **tipo** do
 caminho relativo (`../../../../../backend/src/modules/content/…` — cinco níveis, agora), e o
 teste do formulário continua rodando no `jest` do backend (o `roots` do
 `backend/jest.config.js` aponta para `../admin/src`: o CRM ainda não tem runner próprio).
-Os dois são assunto da **R2** — a fase da tipagem própria.
+Os dois foram assunto da **R2** — a fase da tipagem própria, feita logo depois: os cinco
+níveis viraram o alias `@conteudo/*` e o `roots` do backend saiu (ver "R2 — o que a fase
+mediu", abaixo).
+
+### R2 — o que a fase mediu
+
+Sete medições, e três delas derrubaram o que a fase ia fazer:
+
+| Medição | Resultado, e o que ficou |
+|---|---|
+| O apelido precisa existir também no Vite? | **Não.** O painel entra no build pelo `admin.sources` do backend, e o apelido só existe no `tsconfig.json` de quem importa: `import type` é apagado antes do bundle. Medido compilando o painel de verdade (ver a nota de ambiente abaixo): `Frontend build completed successfully (27,52s)`, `BUILD_EXIT=0`, e o CSS da prévia (`allura-latin`) no bundle |
+| E um import de **valor** pelo apelido? | **O build reprova.** `x Build failed in 8.55s` + `error: Unable to compile frontend source` + `[vite]: Rollup failed to resolve import "@conteudo/contract" from "/app/admin/src/admin/routes/content/form-draft.ts"`. O apelido não é buraco no build: é caminho de **tipo** |
+| O exit code do `yarn build` serve de gate? | **Não** — e isso valeu um conserto. O `$?` foi **0 nas duas medições** (com e sem o defeito acima); quem reprovou foi a linha de erro no log. O alvo `make build-admin` agora guarda o log e exige `Frontend build completed successfully`: se o Medusa mudar a mensagem, o alvo falha alto em vez de dar verde com o painel quebrado |
+| A guarda de fronteira **via** o apelido? | **Não** — era o buraco que a R2 abriria. A regra antiga reconhecia caminho relativo e o segmento `/modules/`; `@conteudo/contract` não tem nenhum dos dois. `check-boundaries.mjs` passou a **ler** o `paths` do `admin/tsconfig.json` (`panelBackendAliases`) — renomear o apelido ou somar outro não abre buraco. Sonda: import de valor pelo apelido reprova (`exit=1`); limpo, verde |
+| Onde o teste do painel roda? | Medido **antes** de decidir: o `vitest` existe só no `node_modules` do **frontend** (o painel passaria a depender do runner da loja — o mesmo cruzamento, só com outro vizinho) e o `admin/` não tem instalação própria (R7, medido no build). Ficou runner **próprio**: `admin/jest.config.js` com o `rootDir` e o `testMatch` do painel e **sem** o `setupFiles` do MikroORM (o teste do formulário é de função pura), chamado pelo `make test`; o `roots` do `backend/jest.config.js` saiu. O **binário** continua vindo do backend — o empréstimo que a G5 fecha, medido em vez de esquecido |
+| A suíte do painel podia sumir sem aviso? | Em parte, **sim** — e é a razão da fase. O caso extremo o jest pega sozinho (sem nada casando com o `testMatch`: `No tests found`, exit 1, medido); a perda **parcial** (um ajuste que estreita o `testMatch`, um `.unit.spec` renomeado para `.spec`) passava verde. `scripts/check-panel-tests.mjs` compara o disco com o `--listTests` do runner do CRM (0,25s, sem banco) e roda no **`make test`**, logo depois do jest do CRM — não no `make check`: ele precisa de `node_modules`, e o job `guard` da CI roda o `check` sem instalar nada |
+| O `tsc` substitui a asserção "o painel não declara a forma dos tipos"? | **Não**, e a medição mudou o plano da fase (que era converter a asserção em garantia do compilador). Três sondas: no **mesmo** arquivo que importa `FieldKind`, redeclarar a forma dá **TS2440** (o `tsc` pega — mas é o caso que o texto já pegava); num arquivo que não importa, `type FieldKind = { x: string }` compila **verde** (tipo estrutural não enxerga cópia); e essa cópia num **terceiro** arquivo do painel passava pelas **duas** asserções — a frase dizia "o painel" e o texto lia 2 arquivos. Ficou: a asserção mantida, a varredura alargada para o pacote inteiro (`panelSources`) e o porquê escrito nela |
+
+E uma medição de **ambiente** (não do repositório), que muda como a fase mediu o build: aqui o
+container monta `./admin` em `/app/admin` mas **vê o diretório vazio** — `ls -la /app/admin` →
+`total 0`, um arquivo criado no `admin/` do host **não** aparece, enquanto um arquivo criado no
+`backend/src/` do host aparece na hora (medido nos dois sentidos, e igual em container novo).
+Consequência: o `make build-admin` daqui compila um admin **sem o painel** — e passa verde,
+porque o Medusa compila o admin do zero quando não encontra fonte. Por isso as duas linhas de
+build acima saíram do caminho que a **imagem** usa (`docker compose build backend`, cujo
+contexto é enviado pela CLI, não pelo daemon, e `yarn build` dentro da imagem, sem bind
+nenhum). O resto da fase (`make check`, `make types`, `make test`) não depende de container.
+Para quem for conferir o `/painel` em DEV: **não use o código HTTP** — o mesmo container
+responde `200` com o casco do SPA para qualquer caminho, inclusive um que não existe (medido:
+752 bytes de `text/html` para o arquivo do painel, para o caminho antigo e para um caminho
+inexistente). O teste é o conteúdo (`text/javascript` com os `jsxDEV` do Vite, como a R7
+mediu) ou, antes de acusar o CRM, `docker compose exec backend ls /app/admin`.
 
 

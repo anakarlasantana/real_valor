@@ -44,9 +44,9 @@ import { ImageInput } from "./image-input"
  * item que some da tela em silêncio — que é o defeito que a guarda de paridade
  * procurava com texto.
  *
- * O `import type` sobe cinco níveis porque, desde a R7, o CRM é um pacote
- * IRMÃO de `backend/` (o contrato continua morando lá — ver
- * docs/plano-centralizacao.md; a tipagem própria do CRM é a fase R2).
+ * O `import type` vem pelo alias `@conteudo/*` (`admin/tsconfig.json`), que aponta
+ * para o módulo do conteúdo no backend — o vínculo tem nome em vez de cinco
+ * níveis de `..` (ver docs/plano-centralizacao.md, R2).
  */
 import type {
   CategoryRef,
@@ -54,7 +54,7 @@ import type {
   FieldSpec,
   ItemFieldSpec,
   ItemFields,
-} from "../../../../../backend/src/modules/content/contract"
+} from "@conteudo/contract"
 
 export type { FieldKind, FieldSpec, ItemFieldSpec, ItemFields }
 

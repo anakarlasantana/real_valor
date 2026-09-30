@@ -15,10 +15,11 @@
  * desenhado) e uma lista de ids no corpo — a conversão mora num lugar só, com
  * teste, em vez de dentro do `onSave`.
  *
- * O `import type` sobe cinco níveis porque, desde a R7, o CRM é um pacote
- * IRMÃO de `backend/` (ver docs/plano-centralizacao.md).
+ * O `import type` vem pelo alias `@conteudo/*` (`admin/tsconfig.json`), que aponta
+ * para o módulo do conteúdo no backend: o vínculo tem nome em vez de cinco
+ * níveis de `..` (ver docs/plano-centralizacao.md, R2).
  */
-import type { FieldKind } from "../../../../../backend/src/modules/content/contract"
+import type { FieldKind } from "@conteudo/contract"
 
 /** Uma impressão do valor, para comparar formulário e conteúdo gravado. */
 export function fingerprint(value: unknown): string {

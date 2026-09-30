@@ -179,13 +179,17 @@ real_valor/
 ├── scripts/
 │   ├── doctor.sh                    # diagnostico do ambiente (le e nao mexe)
 │   ├── gen-content.mjs           # gera o contrato do storefront a partir do backend
-│   ├── check-contract-parity.mjs # guarda hoje: 94 asserts (o G2 levou de 89 p/ 80;
+│   ├── check-contract-parity.mjs # guarda hoje: 93 asserts (o G2 levou de 89 p/ 80;
 │   │                           #   o resto virou `tsc` e teste — ver docs/plano-centralizacao.md)
 │   ├── check-boundaries.mjs      # o CRM (`admin/`) importando VALOR do backend reprova aqui
+│   │                           #   — inclusive pelo apelido `@conteudo/*` (R2)
+│   ├── check-panel-tests.mjs     # a suíte que está no disco do CRM é a que o runner dele roda
 │   └── vendor-fonts.mjs          # (re)baixa e valida os `.woff2` self-hosted
 │
 ├── admin/                            # CRM servido em `/painel` — pacote PRÓPRIO desde a R7
 │   ├── tsconfig.json                 # `strict` + `noUnusedLocals` (mais estrito que o do backend)
+│   │                                 #   + o alias `@conteudo/*` → `backend/src/modules/content/`
+│   ├── jest.config.js                # o runner do CRM (R2): a suíte dele não roda no jest do backend
 │   └── src/admin/                    # a extensão do Admin do Medusa, compilada pelo Vite do backend
 │       ├── i18n/                     # pt-BR do painel
 │       └── routes/content/           # a página do CMS, os campos, o CSS e as fontes da prévia
@@ -229,6 +233,15 @@ backend (que é quem tem React 18.3.1 e `@medusajs/ui` instalados), e o pacote d
 declara isso em `admin/tsconfig.json` (`paths` e `typeRoots` apontando para
 `backend/node_modules`). Um `node_modules` próprio aqui seria uma segunda instalação de
 React no mesmo bundle — o plano (`docs/plano-centralizacao.md`) diz por quê.
+
+A R2 deu **nome** às duas coisas que o CRM pega emprestado. O vínculo com o módulo de
+conteúdo é o alias `@conteudo/*` (`admin/tsconfig.json`) — só `import type` atravessa, e a
+guarda de fronteira reprova valor que venha por ele; o dado continua vindo do payload da
+API. E o teste do painel roda no **runner do CRM** (`admin/jest.config.js`, chamado pelo
+`make test`), não mais num `roots` do `jest.config.js` do backend: o vizinho deixou de
+saber que `admin/` existe. O que sobra do empréstimo é o **binário** (`../backend/node_modules/.bin/jest`)
+e o transformador — é o resto que a instalação unificada (G5) fecha, e é medido, não
+esquecido.
 
 Os dois repos seguem o **mesmo padrão de Dockerfile**: `deps` (instala tudo, uma vez) → `builder` (compila) → `runner` (só o artefato). O estágio final de cada Dockerfile é o de **produção**, e é justamente por isso que o modo nunca pode depender do estágio default: a base fixa `target: runner` e o override fixa `target: dev`. A diferença é o contexto: o do storefront é `./frontend`; o do backend é a **raiz do repositório** (`context: .`), porque a imagem leva também o CRM — que não é uma pasta qualquer dentro dele, é outro pacote (`COPY admin/ /app/admin` no `backend/Dockerfile`).
 
@@ -311,9 +324,10 @@ git config core.hooksPath .githooks   # uma vez por clone
 
 | Onde | Comando | O que faz |
 | :--- | :--- | :--- |
-| Commit (hook) + CI | `make check` | artefato do contrato em dia + **94 asserções** de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ registro do contrato, ⇔ a ordem da vitrine e o painel sem import de valor). **Não instala nada**: os dois scripts leem arquivos com Node puro |
-| CI | `make types` | `tsc` dos dois pacotes — e o do painel, com as regras dele (**0 erros**). Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
-| CI (job `testes`) | `make test` — jest do `backend/` | **157 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração, inserção, a forma do corpo de `POST /admin/content/order` e a gravação em uma chamada), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da validação e dos resolvedores do corpo do CRM (campo desconhecido, obrigatório por rota, faixa de número, lista fechada, âncora, `position` e as duas listas de referência) e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| Commit (hook) + CI | `make check` | artefato do contrato em dia + **94 asserções**: 93 de paridade (contrato ⇔ loja, ⇔ CRM, ⇔ trilho de lançamentos, ⇔ vitrine de destaque, ⇔ CSS, ⇔ fontes, ⇔ registro do contrato, ⇔ a ordem da vitrine) e 1 de fronteira (o painel sem import de **valor** do backend — inclusive pelo apelido `@conteudo/*`). **Não instala nada**: são scripts lendo arquivos com Node puro, e é por isso que o hook de commit roda em segundos |
+| CI | `make types` | `tsc` dos dois pacotes — e o do painel, com as regras dele (**0 erros**) e o alias `@conteudo/*` no `paths`. Fora do `check` de propósito — o `tsc` do storefront leva dezenas de segundos, e o hook não deve pagar isso |
+| CI (job `testes`) | `make test` — jest do `backend/` | **145 testes** dos invariantes do contrato, do conteúdo padrão, do plano do "Restaurar padrão", da ordem (renumeração, inserção, a forma do corpo de `POST /admin/content/order` e a gravação em uma chamada), do registro do contrato, da curadoria (posições, ordem das escritas e a forma do link), dos chips de categoria (as duas referências, a conversão da base antiga e a forma do link), da validação e dos resolvedores do corpo do CRM (campo desconhecido, obrigatório por rota, faixa de número, lista fechada, âncora, `position` e as duas listas de referência) e do que só aparece lendo arquivo (CSS, `.woff2`, registros de ícone) |
+| CI (job `testes`) | `make test` — jest do **CRM** (`admin/jest.config.js`) | **12 testes** do formulário do painel: o que o rascunho da tela guarda — ausente/nulo/vazio como a mesma coisa, número contra texto (`8` e `"8"`), a referência de categoria virando lista de ids no corpo. São os que decidem se a barra de **Salvar** aparece; rodam no runner do CRM, não no jest do backend. Logo depois, `scripts/check-panel-tests.mjs` confere que a suíte que está no **disco** é a que o runner executa (a perda parcial que o "No tests found" não pega) |
 | CI (job `testes`) | `make test` — vitest do `frontend/` | **20 testes** da tolerância da loja ao tipo desconhecido, do `src` das imagens do CMS (`resolveMediaUrl`) e do tamanho do trilho de lançamentos (`launchesLimit`) |
 | CI | `make check-schema` | o registro do `content_contract` conferido contra o contrato, num Postgres efêmero |
 | CI | `next build` | build do storefront, **sem infra** (as `NEXT_PUBLIC_*` são fictícias de propósito) |

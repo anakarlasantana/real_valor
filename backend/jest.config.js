@@ -16,12 +16,10 @@ module.exports = {
   moduleFileExtensions: ["js", "ts", "json"],
   modulePathIgnorePatterns: ["dist/", "<rootDir>/.medusa/"],
   setupFiles: ["./integration-tests/setup.js"],
-  // O CRM (`../admin`, pacote irmão desde a R7) tem tsconfig e bundle próprios,
-  // mas ainda não tem runner: o único teste dele — o do formulário, que decide o
-  // que fica "pendente" na tela — roda aqui, como rodava antes de mudar de casa.
-  // Fora do `roots`, o jest não o acharia e `make test` perderia uma suíte sem
-  // dizer nada.
-  roots: ["<rootDir>", "<rootDir>/../admin/src"],
+  // O CRM tem runner PRÓPRIO desde a R2 (`admin/jest.config.js`) — o teste dele
+  // não roda daqui. O `roots` que apontava para `../admin/src` (R7, quando o CRM
+  // ainda não tinha runner) saiu no mesmo dia: este arquivo não sabe que `admin/`
+  // existe, e é assim que deve ser. Ver docs/plano-centralizacao.md, R2.
 };
 
 if (process.env.TEST_TYPE === "integration:http") {

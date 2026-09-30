@@ -30,6 +30,32 @@
      * (TS7016 em `react/jsx-runtime`). */
     "baseUrl": ".",
     "paths": {
+      /* O vínculo com o módulo de conteúdo, com NOME (R2).
+       *
+       * Antes da R2 os três arquivos que importam tipo do backend subiam cinco
+       * níveis (`../../../../../backend/src/modules/content/contract`). Caminho
+       * relativo não declara dependência: ele conta `..` e torce — mudar o
+       * módulo de lugar quebrava o painel num erro que fala de caminho, não de
+       * contrato, e quem abria `admin/` sozinho não descobria de onde o tipo
+       * vinha sem subir a árvore. Aqui o vínculo tem uma linha, e é esta.
+       *
+       * Vale para os TRÊS arquivos que o painel lê (medido na R2): `contract`
+       * (os tipos de campo), `order` (a faixa da numeração) e `schema` (o
+       * payload do `GET /admin/content`). O alias não é um segundo lugar de
+       * dado — o dado continua vindo pelo payload da API.
+       *
+       * Só `import type` atravessa, e isso é garantido duas vezes: pelo `tsc`
+       * (a linha de `paths` existe só no tsconfig do painel; valor importado
+       * por ela não é empacotado) e por `scripts/check-boundaries.mjs`, que
+       * conhece este prefixo e reprova import de VALOR que venha por ele.
+       *
+       * `import type` é apagado pelo `tsc`/swc antes do bundle, então o Vite do
+       * backend (que compila o painel por `admin.sources`) não precisa resolver
+       * este alias — medido: `make build-admin` fecha verde com ele.
+       *
+       * É também o encaixe da G5: o dia do pacote `packages/contrato` é a troca
+       * desta linha, não uma caça a cinco níveis em três arquivos. */
+      "@conteudo/*": ["../backend/src/modules/content/*"],
       "*": ["../backend/node_modules/*"],
       "react": ["../backend/node_modules/@types/react"],
       "react/jsx-runtime": ["../backend/node_modules/@types/react/jsx-runtime"],

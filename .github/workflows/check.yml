@@ -8,8 +8,10 @@
 #
 # Cinco jobs, porque as dependências não são as mesmas:
 #
-#   guard  — `make check`. NÃO instala nada: os dois scripts leem arquivos com
-#            Node puro (é por isso que o hook de commit roda em segundos).
+#   guard  — `make check`. NÃO instala nada: os scripts leem arquivos com
+#            Node puro (é por isso que o hook de commit roda em segundos). A
+#            verificação da suíte do CRM não cabe aqui (precisa do jest) — ela
+#            roda no job `testes`, dentro do `make test`.
 #   types  — `make types`: `tsc` dos dois pacotes. Precisa de `yarn install`.
 #   schema — o registro do `content_schema` conferido contra o contrato, num
 #            Postgres efêmero. Verifica **dado**, que é o que nenhuma linguagem
@@ -17,11 +19,14 @@
 #   build  — `next build`, que tem de passar **sem infra** (o build não pode
 #            depender de API no ar; ver o item 3.2 do registro de débito).
 #
-#   testes — `make test`: o jest do backend (9 suites / 91 testes) e o vitest do
-#            storefront (3 arquivos / 20 testes). São de unidade: não abrem banco
-#            nem precisam da stack — a mesma propriedade do `guard`. Antes disto
-#            os testes existiam nos `package.json` e ninguém os chamava: nem o
-#            `make`, nem o hook de commit, nem a CI.
+#   testes — `make test`: o jest do backend (10 suites / 145 testes), o jest do
+#            CRM (`admin/jest.config.js`, desde a R2: 1 suite / 12 testes, mais
+#            `scripts/check-panel-tests.mjs` conferindo que a suíte no disco do
+#            CRM é a que o runner dele roda) e o vitest do storefront (3 arquivos
+#            / 20 testes). São de unidade: não abrem banco nem precisam da stack —
+#            a mesma propriedade do `guard`. Antes disto os testes existiam nos
+#            `package.json` e ninguém os chamava: nem o `make`, nem o hook de
+#            commit, nem a CI.
 name: check
 
 on:
