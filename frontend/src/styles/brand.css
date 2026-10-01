@@ -72,9 +72,27 @@
   --rv-shadow-card-hover: 0 2px 4px rgba(48, 48, 51, 0.06),
     0 12px 28px rgba(48, 48, 51, 0.12);
 
-  /* --- Motion --- */
+  /*
+   * Movimento
+   * ---------------------------------------------------------------
+   * Duas escalas, e nenhuma delas passa de 640ms: a loja é uma vitrine de roupa,
+   * e animação aqui existe para o olho acompanhar a troca — não para ser vista.
+   * `--rv-duration` (200ms) é a escala antiga, das cores e das sombras dos cards,
+   * e continua sendo a mais usada; as três novas são do movimento maior (a
+   * entrada em cena, a troca de página do carrossel, o pulso do chip).
+   *
+   * Duas curvas: `--rv-ease-out` é a de quem chega (entra rápido, para devagar)
+   * e `--rv-ease-soft` a de quem respira (simétrica, para o laço do chip não ter
+   * ponto de virada brusco). Uma escala de duração e duas curvas são o
+   * suficiente para a vitrine inteira parecer a mesma loja.
+   */
   --rv-ease: cubic-bezier(0.5, 0, 0.5, 1);
   --rv-duration: 200ms;
+  --rv-motion-fast: 180ms;
+  --rv-motion: 320ms;
+  --rv-motion-slow: 640ms;
+  --rv-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --rv-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
 
   /*
    * Ritmo vertical das seções da vitrine — o respiro entre um bloco e o
@@ -250,22 +268,32 @@ body {
   scroll-margin-top: 5rem;
 }
 
+/*
+ * O respiro lateral da página, em uma régua só.
+ *
+ * `--rv-gutter` existe para o trilho sangrado (`.rv-carousel-track`) ler o
+ * **mesmo** valor que a página usa: o primeiro card nasce exatamente onde o
+ * título da seção nasce, e os dois só podem mudar juntos. Sem a variável, a
+ * sangria precisaria repetir aqui os 1rem/1.5rem/3rem — e a segunda régua é a
+ * que fica velha primeiro.
+ */
 .rv-container {
+  --rv-gutter: 1rem;
   width: 100%;
   max-width: 1440px;
   margin-inline: auto;
-  padding-inline: 1rem;
+  padding-inline: var(--rv-gutter);
 }
 
 @media (min-width: 512px) {
   .rv-container {
-    padding-inline: 1.5rem;
+    --rv-gutter: 1.5rem;
   }
 }
 
 @media (min-width: 1024px) {
   .rv-container {
-    padding-inline: 3rem;
+    --rv-gutter: 3rem;
   }
 }
 
@@ -347,13 +375,17 @@ body {
 }
 
 /*
- * O trilho horizontal (lançamentos, e o carrossel da capa se um dia precisar)
+ * O trilho horizontal (a capa e o carrossel da vitrine)
  * ---------------------------------------------------------------
- * A navegação é a nativa: arrastar no dedo, rolar com a barra. Sem setas, porque
- * uma seta "próximo" precisa saber onde a rolagem está — e sem estado ela
- * mentiria a partir do último card. (Os pontos da capa eram o mesmo caso e hoje
- * têm estado: o carrossel de lá virou ilha de cliente. Aqui não é preciso —
- * todos os cards estão visíveis, e a barra de rolagem é a pista de que há mais.)
+ * A navegação é a nativa: arrastar no dedo, rolar com a barra, girar a roda. As
+ * setas e os pontos do carrossel são a navegação **com estado** — elas sabem em
+ * que página a fila está (a ilha de cliente em
+ * `modules/home/components/product-carousel/index.tsx`, e a da capa em
+ * `hero/carousel.tsx`), e por isso podem existir. Antes disso não existia estado
+ * nenhum no cliente, e a barra de rolagem era a única pista de que havia mais
+ * peça à direita: uma seta "próximo" sem estado mentiria a partir do último card.
+ * Hoje a barra continua sendo a pista — mas ela é **aparência**, não o único
+ * caminho.
  *
  * A barra de rolagem **aparece no desktop**: é ela a pista de que há mais peça
  * à direita, e é ela que o mouse arrasta. No celular ela some, porque lá o gesto
@@ -395,6 +427,294 @@ body {
 }
 
 /*
+ * O carrossel da vitrine ("Peças em destaque" e "Lançamentos")
+ * ---------------------------------------------------------------
+ * O trilho é o mesmo `.rv-rail` de sempre — quem rola é o dedo, a barra, a roda
+ * e o `scrollTo` da ilha de cliente (`product-carousel/index.tsx`) —, e o que
+ * estas regras acrescentam é a **régua**: quantos cards cabem na tela.
+ *
+ * A largura do card é uma fração da largura do trilho, e é daqui que sai a conta
+ * de páginas (medida no DOM por `lib/util/carousel.ts`):
+ *
+ *   celular             76%                -> cabe 1,29 card: um inteiro e o próximo de esguelha
+ *   a partir de 512px   calc(40% - .75rem) -> cabem 2,48: dois inteiros e **metade do terceiro**
+ *   a partir de 1024px  calc(30% - .75rem) -> cabem 3,29: três inteiros e o quarto de esguelha
+ *
+ * **O card do desktop encolheu de 40% para 30%, e o motivo é a foto.** Na régua
+ * antiga o card media 461,6px numa tela de 1280px e a foto dentro dele 429,6px
+ * de largura por 555px de altura: a peça ocupava a tela, e o preço e o convite
+ * ficavam abaixo da dobra. A 30% o mesmo card mede 343,2px e a foto 311px — a
+ * **mesma proporção**, e por isso o mesmo corte (0,7% no 3:4 do catálogo: o
+ * `inset-4` da moldura encolhe junto) com ~26% menos área de imagem.
+ *
+ * O `scrollTo` da virada de página anda uma largura de tela, e é a fração — e
+ * não um valor fixo — que faz essa conta fechar em qualquer tela. **Por que a
+ * fração, e não um teto em px:** com um `max-width` de 520px, por exemplo,
+ * sobraria vão à direita numa tela larga, a segunda página ficaria fora de
+ * alcance (o trilho não teria para onde rolar) e o segundo ponto nunca
+ * acenderia — é o caso que `pageIndexFromScroll` resolve para o fim do trilho.
+ *
+ * E **por que um pedaço do próximo card, e não uma conta exata:** a régua de 50%
+ * fechava a tela com dois cards e nenhum pedaço a mais — a seção parecia uma
+ * grade de dois, e a peça cortada pela borda é o que diz, sem uma palavra, que
+ * o trilho continua. No celular vale o mesmo com 1,29: o convite é o pedaço.
+ *
+ * **O que a régua de 30% custa hoje:** o catálogo tem três peças publicadas, e
+ * três cabem inteiras na tela do desktop (3,29 > 3). Sem página para trocar não
+ * há seta, ponto nem rodízio — é a regra do componente, medida no DOM (ver o
+ * item 2 de `product-carousel/index.tsx`), e não uma exceção: publicada a quarta
+ * peça, o pedaço de esguelha volta e com ele a segunda página e os controles. A
+ * régua de 40% mantinha dois pontos na tela **à custa** de um card que não cabia
+ * em si mesmo.
+ *
+ * O `gap` é lido pelo componente (`getComputedStyle(...).columnGap`), então
+ * mudar o vão aqui muda a conta lá: uma régua só.
+ */
+
+/*
+ * Quem hospeda o trilho sangrado: a **seção**.
+ *
+ * A sangria é do trilho (`100vw` com margens negativas, logo abaixo) e o que
+ * sobra dela para a seção é a barra de rolagem: num navegador de barra
+ * clássica, `100vw` é a largura da tela **incluindo** a barra, então o trilho
+ * fica uns 15px mais largo que a área visível e esses 15px virariam rolagem
+ * horizontal na página inteira. `overflow-x: clip` apara a sobra sem tocar na
+ * rolagem do trilho, que é outra coisa e acontece dentro dele.
+ *
+ * `clip`, e não `hidden`: um eixo em `hidden` obriga o outro a virar `auto`, e
+ * a seção passaria a rolar por dentro (um contêiner de rolagem a mais, no meio
+ * da página). `clip` corta e não cria contêiner nenhum — `overflow-y` continua
+ * `visible`, e o que a seção tem de sobra na vertical (sombra de card, o
+ * `translate` da entrada em cena) segue à vista.
+ */
+.rv-bleed {
+  overflow-x: clip;
+}
+
+.rv-carousel-track {
+  display: flex;
+  gap: 1.5rem;
+  /*
+   * A sangria: o trilho atravessa a tela de borda a borda, mesmo morando dentro
+   * do `rv-container` (que é centrado e para em 1440px). `100vw` de largura e
+   * margens negativas iguais ao que falta para o centro da tela põem o trilho
+   * exatamente sobre a tela, qualquer que seja ela — o `50%` é o centro do
+   * contêiner, e o contêiner é centrado.
+   *
+   * O respiro interno é o `--rv-gutter` do `rv-container` (mesma régua): o
+   * primeiro card nasce alinhado com o título da seção e, ao rolar, o último
+   * atravessa a borda em vez de parar antes dela. O `scroll-padding-inline`
+   * acompanha porque o `snap` mede pelo respiro: sem ele o card pararia no
+   * canto da tela e deslizaria 1rem para dentro ao assentá-lo.
+   */
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  padding-inline: var(--rv-gutter, 1rem);
+  scroll-padding-inline: var(--rv-gutter, 1rem);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  /* Rolagem presa ao trilho: o gesto não vira navegação do histórico. */
+  overscroll-behavior-x: contain;
+  /*
+   * O respiro de baixo é para a barra de rolagem — e é também o que impede o
+   * trilho de ganhar uma barra **vertical** que ninguém pediu: `overflow-x:
+   * auto` implica `overflow-y: auto`, e o card entra em cena deslocado 12px para
+   * baixo (`.rv-reveal`, mais abaixo). Com 1rem (16px) de respiro, o deslocamento
+   * cabe dentro da caixa e não há o que rolar na vertical; com os 0.5rem que a
+   * barra sozinha pediria, os 4px que sobram ligariam a barra vertical por um
+   * quadro em cada seção.
+   */
+  padding-bottom: 1rem;
+}
+
+.rv-carousel-item {
+  flex: none;
+  /*
+   * Celular: um card inteiro e **o próximo de esguelha na borda** — o pedaço
+   * que convida a arrastar é o mesmo desenho do desktop em escala menor.
+   */
+  width: 76%;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 512px) {
+  .rv-carousel-item {
+    /*
+     * 40% menos meio vão: dois cards inteiros, o vão entre eles e a **metade do
+     * terceiro** atravessando a borda direita (cabe 2,48 card). O pedaço não é
+     * sobra: é ele que diz que o trilho continua. É a régua do tablet.
+     */
+    width: calc(40% - 0.75rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .rv-carousel-item {
+    /*
+     * 30% menos meio vão: três cards inteiros, os vãos entre eles e o **pedaço do
+     * quarto** atravessando a borda direita (cabem 3,29). É a ideia da régua do
+     * tablet com uma peça a mais na tela, e existe porque a foto do card de 40%
+     * (ver o bloco "O carrossel da vitrine", acima) tomava a tela sozinha.
+     */
+    width: calc(30% - 0.75rem);
+  }
+}
+
+/*
+ * O holofote do ponteiro: o card apontado fica aceso e os irmãos recuam.
+ *
+ * `:has` no contêiner, e não `:hover` nele: com o `:hover` no carrossel inteiro,
+ * apontar a **seta** escureceria todos os cards — o oposto do que o gesto quer
+ * dizer. Onde o navegador não conhece `:has` (Safari < 15.4, Firefox < 121) a
+ * regra simplesmente não vale: nenhum card recua e nada quebra.
+ */
+@media (hover: hover) {
+  .rv-carousel-item {
+    transition: opacity var(--rv-motion) var(--rv-ease-out);
+  }
+
+  .rv-carousel:has(.rv-carousel-item:hover) .rv-carousel-item {
+    opacity: 0.7;
+  }
+
+  .rv-carousel:has(.rv-carousel-item:hover) .rv-carousel-item:hover {
+    opacity: 1;
+  }
+}
+
+/*
+ * As setas
+ * ---------------------------------------------------------------
+ * Círculo de 2.75rem (44px, o alvo que o dedo acerta sem mira) sobre a foto: o
+ * `top: 43%` é o meio da área da imagem no card do carrossel, e não o meio do
+ * card inteiro (que inclui título e preço embaixo).
+ *
+ * Onde há ponteiro, a seta aparece quando ele chega e some quando ele sai: dois
+ * círculos fixos sobre a foto pesariam numa vitrine que é feita de foto. Onde
+ * **não** há ponteiro (o celular, `hover: none`), ela fica visível — sem hover
+ * não haveria como descobri-la, e trocar de página depende do dedo.
+ *
+ * `pointer-events: none` na seta escondida é para ela não capturar o clique que
+ * era do card; o foco do teclado continua chegando nela (o `pointer-events` não
+ * bloqueia Tab) e o `:focus-visible` a traz de volta à tela.
+ */
+.rv-carousel-arrow {
+  position: absolute;
+  top: 43%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--rv-border);
+  border-radius: 9999px;
+  background-color: var(--rv-surface);
+  color: var(--rv-grafite);
+  box-shadow: var(--rv-shadow-card);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: opacity var(--rv-motion) var(--rv-ease-out),
+    color var(--rv-motion-fast) var(--rv-ease-out),
+    border-color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-carousel-arrow-prev {
+  left: 0.5rem;
+}
+
+.rv-carousel-arrow-next {
+  right: 0.5rem;
+}
+
+.rv-carousel-arrow:hover {
+  border-color: var(--rv-rose);
+  color: var(--rv-rose);
+}
+
+.rv-carousel-arrow-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+@media (hover: hover) {
+  .rv-carousel-arrow {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .rv-carousel:hover .rv-carousel-arrow,
+  .rv-carousel:focus-within .rv-carousel-arrow,
+  .rv-carousel-arrow:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (min-width: 1024px) {
+  .rv-carousel-arrow-prev {
+    left: 1rem;
+  }
+
+  .rv-carousel-arrow-next {
+    right: 1rem;
+  }
+}
+
+/*
+ * Os pontos — um por página
+ * ---------------------------------------------------------------
+ * A bolinha de 8px é o desenho; o botão é o alvo, com 44px de largura por 28px de
+ * altura (a WCAG 2.2 pede 24px para um alvo de toque). O ponto fica pequeno no
+ * olho e grande no dedo, e o respiro entre um e outro vira área de toque em vez
+ * de espaço morto.
+ *
+ * Grafite e não off white: aqui eles ficam sobre o fundo claro da página, e não
+ * sobre a foto (como os da capa).
+ */
+.rv-carousel-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-top: 1.25rem;
+}
+
+.rv-carousel-dot {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.rv-carousel-dot::before {
+  content: "";
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--rv-muted);
+  border-radius: 9999px;
+  background-color: transparent;
+  transition: background-color var(--rv-motion-fast) var(--rv-ease-out),
+    border-color var(--rv-motion-fast) var(--rv-ease-out),
+    transform var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-carousel-dot:hover::before,
+.rv-carousel-dot[aria-current="true"]::before {
+  border-color: var(--rv-rose);
+  background-color: var(--rv-rose);
+  transform: scale(1.25);
+}
+
+/*
  * Os pontos da capa carrossel
  * ---------------------------------------------------------------
  * Cada ponto é um `<button>` (`hero/carousel.tsx`), e não o `<a
@@ -410,7 +730,8 @@ body {
  *
  * Off white, e não a cor da marca: os pontos ficam sobre a fotografia, e só a
  * área escura do véu (o canto em que a cópia mora) garante contraste com
- * qualquer foto. É lá que eles estão — junto do botão de pausa.
+ * qualquer foto. É lá que eles estão — no canto inferior esquerdo, na mesma
+ * faixa do `rv-container`.
  */
 .rv-hero-dot {
   appearance: none;
@@ -431,40 +752,117 @@ body {
 }
 
 /*
- * O botão de pausa do rodízio (WCAG 2.2.2)
+ * Onde está o mecanismo de parada do rodízio (WCAG 2.2.2)
  * ---------------------------------------------------------------
- * É `Pausar`/`Retomar`, texto e não ícone: o movimento que ele para é a troca
- * da foto inteira, e a palavra diz o estado e o que o clique faz — um par de
- * barrinhas exigiria legenda. Sai do `rv-eyebrow` (mesma família e mesmo espaço
- * de letra dos rótulos da loja), que é o que o alinha com os pontos.
+ * Aqui havia o estilo de um botão `Pausar`/`Retomar` que **nunca chegou ao
+ * HTML**: a classe `.rv-hero-pause` foi escrita junto com o carrossel da capa e
+ * nenhum componente a usou — um controle que não existia, e que um teste media
+ * sem que ninguém pudesse clicar nele. O que fecha o critério na capa é outra
+ * coisa, e está em `hero/carousel.tsx`:
  *
- * Off white pelo mesmo motivo dos pontos, com a opacidade o mantendo discreto
- * até o ponteiro chegar. O `aria-pressed` não muda a aparência: quem diz o
- * estado é o próprio texto do botão.
+ *   - o clique no **ponto** para o rodízio de vez (`stopped`): no primeiro gesto
+ *     de navegação o visitante assume o volante, e a capa não volta a andar
+ *     sozinha;
+ *   - o ponteiro em cima e o foco do teclado seguram o rodízio enquanto estão lá;
+ *   - e `prefers-reduced-motion` o desliga por inteiro (ver o fim deste arquivo).
+ *
+ * O que continua faltando é um botão **visível** de pausa — o mesmo que a barra
+ * de anúncio espera (`.rv-marquee`) —, e ele põe um controle na moldura de todas
+ * as páginas: é decisão de produto, e não uma classe de CSS.
  */
-.rv-hero-pause {
-  appearance: none;
-  padding: 0.25rem 0;
-  border: 0;
-  background-color: transparent;
-  color: var(--rv-offwhite);
-  cursor: pointer;
-  opacity: 0.75;
-  text-decoration: underline;
-  text-underline-offset: 0.25rem;
-  transition: opacity var(--rv-duration) var(--rv-ease);
-}
-
-.rv-hero-pause:hover,
-.rv-hero-pause:focus-visible {
-  opacity: 1;
-}
 
 /* O anel de foco do tema é rosa, e rosa sobre a foto não se vê. */
-.rv-hero-dot:focus-visible,
-.rv-hero-pause:focus-visible {
+.rv-hero-dot:focus-visible {
   outline: 2px solid var(--rv-offwhite);
   outline-offset: 2px;
+}
+
+/*
+ * O preço e o convite do card
+ * ---------------------------------------------------------------
+ * O card lista a peça em todos os lugares (vitrine, trilho, catálogo,
+ * relacionados), e depois do título ele mostrava duas coisas quietas: o preço em
+ * `--rv-muted` — cinza, do mesmo tamanho do texto de apoio — e o "Comprar" em
+ * letra miúda rosa. Quem abria a vitrine não via nem **quanto custa** nem **onde
+ * clica**; a promessa da seção ("preço sempre visível") era justamente essa.
+ *
+ * Aqui as duas coisas passam a ser lidas na ordem em que importam:
+ *
+ *   1. `.rv-price` — o preço em `--rv-fg-strong` (preto: 16:1 sobre o off white
+ *      da página, 17,4:1 sobre a superfície do card), 1.125rem e semibold. É o
+ *      maior peso tipográfico do bloco de informação, e o primeiro número que o
+ *      olho encontra depois do título.
+ *   2. `.rv-card-cta` — o "Comprar" deixa de ser uma linha de texto e vira um
+ *      **botão** de largura inteira: cheio de grafite, texto off white (11,7:1),
+ *      cerca de 2,6rem de altura. É o único elemento cheio do card, e é para
+ *      onde o olho vai. Não é `<button>`: o card inteiro já é um link, e um
+ *      controle dentro de outro seria HTML inválido (e dois alvos para o mesmo
+ *      toque) — o que ele empresta do botão é a moldura, o alvo e a promessa de
+ *      clique.
+ *
+ * **As cores são medidas, não escolhidas no olho.** A regra de acessibilidade
+ * deste arquivo (o rosa da marca dá 3,1:1 sobre o off white e só serve para
+ * preenchimento, borda, ícone ou texto ≥24px) vale aqui:
+ *
+ *   - o preço comum vai em `--rv-fg-strong`, e não em rosa (16:1);
+ *   - o preço **em oferta** usa `--rv-rose-strong`, e não o rosa de assinatura:
+ *     4,80:1 sobre a superfície do card e 4,42:1 sobre o off white da página,
+ *     onde o número mora — três centésimos abaixo do 4,5 que o texto normal
+ *     pede, e ainda assim o melhor preço em oferta que este card já teve (o rosa
+ *     de assinatura dava 3,39:1 e 3,12:1 nos mesmos dois fundos);
+ *   - o botão em repouso é grafite; no hover ele passa a `--rv-rose-strong`, e o
+ *     texto off white sobre ele mede 4,42:1 — o rosa de assinatura daria 3,12:1
+ *     e não serviria para um rótulo de 11px.
+ *
+ * O hover do botão é o **do card** (`.rv-card`, em `product-preview/index.tsx`):
+ * apontar a peça acende o convite junto com o título, e o traço da seta anda —
+ * o movimento é o que o ponteiro acrescenta, porque a palavra já está aqui.
+ */
+.rv-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.625rem;
+}
+
+.rv-price-value {
+  font-family: var(--rv-font-sans);
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--rv-fg-strong);
+}
+
+/* O preço que a peça tinha: riscado, menor e quieto — quem fala é o de agora. */
+.rv-price-was {
+  font-size: 0.875rem;
+  color: var(--rv-muted);
+  text-decoration: line-through;
+}
+
+.rv-price-sale {
+  color: var(--rv-rose-strong);
+}
+
+.rv-card-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.8125rem 1.25rem;
+  border: 1px solid var(--rv-grafite);
+  background-color: var(--rv-grafite);
+  color: var(--rv-offwhite);
+  transition: background-color var(--rv-motion-fast) var(--rv-ease-out),
+    border-color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-card:hover .rv-card-cta,
+.rv-card-cta:hover {
+  border-color: var(--rv-rose-strong);
+  background-color: var(--rv-rose-strong);
 }
 
 /*
@@ -527,6 +925,118 @@ body {
 /* Esgotado: o mais baixo da hierarquia — informa, não convida. */
 .rv-chip-esgotado {
   --rv-chip-color: var(--rv-muted);
+}
+
+/*
+ * Quem respira e quem pulsa
+ * ---------------------------------------------------------------
+ * A hierarquia de leitura acima é **cor**: esgotado é o mais quieto, últimas o
+ * mais alto. Aqui ela vira **movimento**, e na mesma ordem — só os dois estados
+ * que falam de disponibilidade se mexem. Quem decide isso é `pulses`
+ * (`lib/util/motion.ts`, com teste), e o componente é quem pede a classe
+ * `rv-chip-pulse`; o desenho de cada pulso é desta folha, porque desenho é aqui.
+ *
+ *   - **pronta entrega respira.** Um anel rosa que aparece e some devagar (3,4s,
+ *     curva simétrica) com um crescimento de 5%: a peça está aqui, e o sinal é
+ *     calmo — é o que se procura na vitrine.
+ *   - **últimas peças pulsa.** Um anel que sai do chip e desaparece (2,6s, curva
+ *     de saída): é o único estado com urgência, e o movimento é o que separa
+ *     "últimas" de um rótulo a mais. Ele é o único chip preenchido de rosa, e o
+ *     pulso mexe no contorno e não na cor — o contraste de leitura do chip fica
+ *     onde estava.
+ *
+ * **Nada pisca.** Nenhum dos dois vai a opaco e volta em frequência alta: a WCAG
+ * 2.3.1 proíbe mais de três lampejos por segundo, e um chip de vitrine não tem
+ * por que chegar perto disso. O que a marca ganha aqui é a leitura de "tem" e
+ * "está acabando", e essa leitura é de um ciclo lento.
+ *
+ * Com `prefers-reduced-motion`, a guarda global do fim deste arquivo zera a
+ * duração e a repetição das duas animações: os chips ficam parados no estado
+ * final (o anel some), e nada mais muda na página.
+ */
+.rv-chip-pulse {
+  position: relative;
+}
+
+.rv-chip-pulse::after {
+  content: "";
+  position: absolute;
+  border: 1px solid var(--rv-rose);
+  border-radius: var(--rv-radius-sm);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Pronta entrega: o anel fica sobre a borda e respira em volta dela. */
+.rv-chip-pulse.rv-chip-pronta-entrega::after {
+  inset: -1px;
+  animation: rv-chip-breathe 3.4s var(--rv-ease-soft) infinite;
+}
+
+/* Últimas peças: o anel sai do chip e some — o pulso de "acaba". */
+.rv-chip-pulse.rv-chip-ultimas::after {
+  inset: 0;
+  animation: rv-chip-radar 2.6s var(--rv-ease-out) infinite;
+}
+
+@keyframes rv-chip-breathe {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.55;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes rv-chip-radar {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+/*
+ * A entrada em cena dos cards
+ * ---------------------------------------------------------------
+ * `.rv-reveal` é o estado de espera, `.rv-reveal-in` o de chegado, e a segunda
+ * classe é posta pelo JavaScript (`modules/common/components/reveal/index.tsx`)
+ * quando o bloco aparece na tela. O atraso entre um card e o outro chega inline,
+ * do compasso de `lib/util/motion.ts`.
+ *
+ * **As duas condições do `@media` são a segurança desta regra.** Uma classe que
+ * esconde conteúdo é uma promessa, e uma promessa quebrada deixa um buraco na
+ * página: se o JavaScript não rodar, ou se falhar antes de observar o bloco, o
+ * card não aparece nunca. Por isso a espera só vale quando o navegador diz que
+ * **tem JavaScript** (`scripting: enabled`) e que o visitante **não pediu menos
+ * movimento** — nas outras combinações a regra não existe, o card nasce visível
+ * e a vitrine é a de sempre.
+ *
+ * O movimento é de `transform` e `opacity`, os dois únicos que o navegador
+ * compõe sem refazer o layout: rolar a página com dez cards entrando continua
+ * sendo rolar a página.
+ */
+@media (prefers-reduced-motion: no-preference) and (scripting: enabled) {
+  .rv-reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity var(--rv-motion-slow) var(--rv-ease-out),
+      transform var(--rv-motion-slow) var(--rv-ease-out);
+  }
+
+  .rv-reveal-in {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /*
@@ -602,10 +1112,14 @@ body {
   }
 
   /*
-   * O carrossel da capa continua funcionando (é rolagem, não animação), mas
-   * pula direto para o slide em vez de deslizar até ele.
+   * Os carrosséis continuam funcionando (é rolagem, não animação), mas pulam
+   * direto para a página em vez de deslizar até ela. Os dois componentes já
+   * pedem `behavior: "auto"` quando a preferência está ligada — esta regra é o
+   * cinto junto com o suspensório, e vale para qualquer rolagem suave que o
+   * navegador resolva fazer por conta própria (o `snap`, por exemplo).
    */
-  .rv-hero-track {
+  .rv-hero-track,
+  .rv-carousel-track {
     scroll-behavior: auto !important;
   }
 }

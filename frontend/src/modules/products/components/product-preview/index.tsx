@@ -20,6 +20,19 @@ import PreviewPrice from "./price"
  *      catálogo hoje tem **uma imagem por produto** (medido na Store API),
  *      então na prática o card não troca nada; a peça está aqui e passa a
  *      funcionar sozinha quando o catálogo tiver galeria.
+ *   3. **O convite, sempre visível — e com cara de convite.** O "Comprar" era
+ *      `opacity-0` até o ponteiro chegar, e no celular não existe hover: o
+ *      caminho para a peça não existia para quem navega no toque — que é a
+ *      maioria de quem abre a vitrine. Ele voltou a ser visível, mas ainda como
+ *      uma linha de letra miúda; hoje é o **botão** que fecha o card
+ *      (`.rv-card-cta`, em `brand.css`) e o preço acima dele é o número em preto
+ *      do bloco (`.rv-price`). Quem mede as duas cores é o `brand.css` — é o
+ *      arquivo que responde à regra de acessibilidade da marca.
+ *
+ * O card **não sabe** que está num carrossel: quem o apaga quando o ponteiro
+ * aponta o vizinho é o CSS do trilho (`.rv-carousel`, em `brand.css`), e quem
+ * mede a página é a ilha (`product-carousel/index.tsx`). Aqui só mora o que o
+ * card é em qualquer lugar em que a loja o liste.
  */
 export default async function ProductPreview({
   product,
@@ -41,7 +54,13 @@ export default async function ProductPreview({
   return (
     <LocalizedClientLink
       href={`/products/${product.handle}`}
-      className="group block"
+      /*
+       * `group` é do Tailwind (o `group-hover:` do título e da seta) e `rv-card`
+       * é do `brand.css`: é ele que acende o convite quando o ponteiro entra no
+       * card. Duas classes porque são duas folhas — o utilitário é emitido
+       * depois do `brand.css` e venceria qualquer regra de `:hover` escrita lá.
+       */
+      className="group rv-card block"
     >
       <div data-testid="product-wrapper">
         <div className="relative">
@@ -52,27 +71,44 @@ export default async function ProductPreview({
             size="full"
             isFeatured={isFeatured}
           />
-          {/* O respiro de 1rem é o mesmo `p-4` da moldura da foto, então o
-              chip alinha com a imagem e não com a sombra dela. */}
+          {/* O respiro de 1rem é o mesmo `p-4` da moldura da foto — e é o recuo
+              que a foto do carrossel agora respeita (`inset-4`, no `thumbnail`),
+              então o chip alinha com a imagem e não com a sombra dela. */}
           <ProductStatusChip
             product={product}
             className="absolute left-4 top-4"
           />
         </div>
-        <div className="flex flex-col gap-y-1 mt-4">
-          <div className="flex txt-compact-medium justify-between gap-x-4">
-            <span
-              className="rv-display text-base leading-snug group-hover:text-rv-rose transition-colors duration-200"
-              data-testid="product-title"
-            >
-              {product.title}
-            </span>
-            <div className="flex items-center gap-x-2 shrink-0">
-              {cheapestPrice && <PreviewPrice price={cheapestPrice} />}
-            </div>
-          </div>
-          <span className="rv-eyebrow text-rv-rose opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        {/*
+         * Título, preço e convite — nesta ordem, e cada um na sua linha.
+         *
+         * Era uma linha só (título à esquerda, preço à direita), e o preço
+         * perdia as duas vezes: era cinza — a cor do texto de apoio — e ficava
+         * espremido quando o nome da peça era comprido. Empilhado, o título
+         * ganha a largura toda (nome de peça é comprido: "Camisa Feminina em
+         * Alfaiataria Seda Pura"), o preço fica sozinho na linha em que o olho o
+         * procura, e o botão fecha o card com um alvo do tamanho do polegar.
+         */}
+        <div className="mt-4 flex flex-col gap-y-2">
+          <span
+            className="rv-display text-base leading-snug group-hover:text-rv-rose transition-colors duration-200"
+            data-testid="product-title"
+          >
+            {product.title}
+          </span>
+          {cheapestPrice && <PreviewPrice price={cheapestPrice} />}
+          {/* O traço anda no hover do card (`group-hover`): o movimento é o que
+              o ponteiro acrescenta, já que a palavra está sempre aqui — e a
+              moldura do botão é o que diz, antes de qualquer hover, que isto é
+              onde se clica. */}
+          <span className="rv-card-cta rv-eyebrow">
             Comprar
+            <span
+              aria-hidden="true"
+              className="transition-transform duration-200 ease-out group-hover:translate-x-1"
+            >
+              →
+            </span>
           </span>
         </div>
       </div>

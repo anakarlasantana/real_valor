@@ -1,5 +1,6 @@
 import { clx } from "@medusajs/ui"
 
+import { pulses } from "@lib/util/motion"
 import {
   PRODUCT_STATUS_LABELS,
   productStatus,
@@ -23,6 +24,10 @@ import {
  *
  * O `className` existe para **posicionar** (o card o sobrepõe à foto) sem que
  * cada chamador precise repetir a tipografia e as cores do chip.
+ *
+ * **E o chip se anima — em dois dos quatro estados.** O desenho do pulso é do CSS
+ * (`.rv-chip-pulse`, em `brand.css`); *se* este estado pulsa é pergunta que o
+ * componente faz a `pulses` (`lib/util/motion.ts`), e não decide sozinho.
  */
 
 /** Estado → classe do `brand.css`. Um estado sem classe aqui seria um chip nu. */
@@ -44,7 +49,17 @@ export default function ProductStatusChip({
   const status = productStatus(product)
 
   return (
-    <span className={clx("rv-chip", STATUS_CLASSES[status], className)}>
+    <span
+      className={clx(
+        "rv-chip",
+        STATUS_CLASSES[status],
+        // O pulso é desenho do CSS (`.rv-chip-pulse`, em `brand.css`), e **se**
+        // este estado pulsa é decisão de comportamento: `pulses`, com teste, e
+        // dois dos quatro estados respondem `true` (ver `lib/util/motion.ts`).
+        pulses(status) && "rv-chip-pulse",
+        className
+      )}
+    >
       {PRODUCT_STATUS_LABELS[status]}
     </span>
   )

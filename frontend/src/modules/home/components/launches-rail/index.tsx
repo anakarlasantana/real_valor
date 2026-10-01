@@ -1,8 +1,11 @@
 import { type LaunchesSection } from "@lib/content/home-sections"
 import { listProducts } from "@lib/data/products"
 import { launchesLimit } from "@lib/util/launches"
+import { revealDelay } from "@lib/util/motion"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import Reveal from "@modules/common/components/reveal"
 import ProductPreview from "@modules/products/components/product-preview"
+import ProductCarousel from "../product-carousel"
 import { HttpTypes } from "@medusajs/types"
 
 /**
@@ -16,18 +19,22 @@ import { HttpTypes } from "@medusajs/types"
  * Duas decisões de layout, e o motivo de cada uma:
  *
  * 1. **Trilho, não grade.** O bloco responde "o que chegou?", e a resposta é uma
- *    sequência, não um quadro: `overflow-x-auto` com `snap-x` deixa o gesto
- *    horizontal e cada card para no lugar certo. A grade fica na seção "Peças em
- *    destaque", que é catálogo.
- * 2. **Card estreito, largura de grade.** `w-[68%]` no celular (o card seguinte
- *    aparecendo de esguelha é o que ensina que há mais à direita) e a mesma
- *    largura da grade de 4 no desktop, para o olho não trocar de régua entre
- *    uma seção e outra.
- * 3. **A barra de rolagem é a navegação.** `rv-rail` (em `brand.css`) esconde a
- *    barra no celular — lá o gesto de arrastar é o óbvio — e a mostra fina e
- *    dourada no desktop, onde ela é a única pista de que há mais peça à direita.
- *    Sem setas: uma seta "próximo" precisa saber onde a rolagem está, e sem
- *    estado ela mentiria no último card.
+ *    sequência, não um quadro: o trilho rola na horizontal, cada card para no
+ *    lugar certo (`snap-x`, em `.rv-carousel-track`) e o trilho **atravessa a
+ *    tela** — a seção é quem hospeda a sangria (`rv-bleed`), então o próximo
+ *    card é cortado pela borda em vez de terminar antes dela. A grade fica no
+ *    catálogo (`/store`), e "Peças em destaque" — que era grade de quatro
+ *    colunas — virou o mesmo carrossel, logo acima.
+ * 2. **O mesmo carrossel da outra seção, e não um parecido.** Largura de card,
+ *    setas, pontos, rodízio e o holofote do ponteiro vêm todos de
+ *    `product-carousel/index.tsx`: eram duas ilhas para a mesma decisão, e duas
+ *    cópias divergiriam no primeiro ajuste feito em uma só. O que continua sendo
+ *    **desta seção** é a ordem (as novidades, por `-created_at`) e a faixa
+ *    estreita (`rv-section-pad-tight`, 5rem de respiro contra 6rem): a vitrine é
+ *    a mesma, e os lançamentos chegam mais cedo na página.
+ * 3. **Com uma peça só, sem carrossel.** Com duas ou mais, a seção monta a ilha
+ *    (é ela quem mede a tela e decide se há página para trocar); com uma, a lista
+ *    é desenhada parada — não há página nenhuma em tela nenhuma.
  *
  * `limit` passa por `launchesLimit`: a faixa é do contrato e a API já a
  * confere, mas o que está gravado pode ser anterior à faixa (ver
@@ -55,8 +62,26 @@ export default async function LaunchesRail({
     },
   })
 
+  /*
+   * Os cards, montados uma vez só: a mesma lista serve o carrossel e o trilho
+   * parado (a loja com uma peça só). O `isFeatured` pede a proporção larga das
+   * seções de vitrine (11/14) — ver `thumbnail/index.tsx`.
+   */
+  const cards = (products ?? []).map((product, index) => (
+    <li key={product.id} className="rv-carousel-item">
+      {/* A entrada em cena é escalonada pelo índice do card: a seção chega como
+          uma coisa só, e não como cards soltos (ver `revealDelay`). */}
+      <Reveal delay={revealDelay(index)}>
+        <ProductPreview product={product} region={region} isFeatured />
+      </Reveal>
+    </li>
+  ))
+
+  /* Com uma peça só, nenhuma tela tem página para trocar (ver o item 3 acima). */
+  const hasPages = (products?.length ?? 0) > 1
+
   return (
-    <section className="rv-section-pad-tight w-full">
+    <section className="rv-bleed rv-section-pad-tight w-full">
       <div className="rv-container">
         <header className="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-4 small:mb-10">
           <div className="max-w-[620px]">
@@ -85,24 +110,27 @@ export default async function LaunchesRail({
           )}
         </header>
 
-        {products?.length ? (
-          <ul className="rv-rail -mx-4 flex snap-x snap-mandatory gap-6 overflow-x-auto px-4 pb-2 small:mx-0 small:px-0">
-            {products.map((product) => (
-              <li
-                key={product.id}
-                // `snap-start` é o que faz o card parar alinhado à esquerda em
-                // vez de parar onde o dedo largou.
-                className="w-[68%] shrink-0 snap-start small:w-[260px]"
-              >
-                <ProductPreview product={product} region={region} />
-              </li>
-            ))}
-          </ul>
-        ) : (
+        {!products?.length ? (
           <p className="rv-section-text py-10 text-base">
             Nenhuma peça publicada ainda. As novidades aparecem aqui conforme
             entrarem na loja.
           </p>
+        ) : hasPages ? (
+          /*
+           * `label` é o que o leitor de tela ouve ao entrar no carrossel — o
+           * mesmo título que a seção mostra na tela.
+           */
+          <ProductCarousel label={section.title} count={products.length}>
+            {cards}
+          </ProductCarousel>
+        ) : (
+          /*
+           * Sem ilha: a lista parada. O `rv-rail` continua aqui pela barra de
+           * rolagem (fina e dourada no desktop, ausente no celular) e as classes
+           * de card são as mesmas do carrossel — a peça sozinha ocupa a mesma
+           * largura que ocuparia no trilho.
+           */
+          <ul className="rv-carousel-track rv-rail">{cards}</ul>
         )}
       </div>
     </section>

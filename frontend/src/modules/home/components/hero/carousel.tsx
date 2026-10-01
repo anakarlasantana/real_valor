@@ -10,15 +10,27 @@ import {
 } from "react"
 
 import {
-  HERO_AUTOPLAY_SECONDS,
-  HERO_SCROLL_SETTLE_MS,
+  CAROUSEL_SCROLL_SETTLE_MS,
   nextIndex,
+  pageIndexFromScroll,
   shouldAutoplay,
-  slideIndexFromScroll,
-} from "@lib/util/hero-carousel"
+} from "@lib/util/carousel"
 
 /**
- * O trilho da capa carrossel: o relógio, o ponto aceso e o botão de pausa.
+ * Quantos segundos cada slide da capa fica antes de o rodízio passar ao próximo.
+ *
+ * Sete — um a mais que os seis da vitrine (`CAROUSEL_AUTOPLAY_SECONDS`): a capa é
+ * uma foto inteira com uma frase, e a frase precisa de tempo de leitura. Menos
+ * que isso a capa vira GIF; mais que isso o segundo slide quase não existe —
+ * quem percorre a home passa da dobra antes do rodízio fechar a volta. É
+ * **constante de código, e não campo do CRM**: o contrato só ganha campo quando o
+ * lojista tem o que decidir com ele, e "trocar mais devagar" ainda não foi
+ * pedido. Quando for, o número que ele herda é este.
+ */
+const HERO_AUTOPLAY_SECONDS = 7
+
+/**
+ * O trilho da capa carrossel: o relógio e o ponto aceso.
  *
  * A capa com dois slides ou mais é **esta ilha de cliente**, e ela é pequena de
  * propósito: quem recebe o HTML das fotos e das cópias é o `children`, que o
@@ -26,9 +38,11 @@ import {
  * que atravessa é o *estado* de navegação, que é o que não existe no servidor.
  * Com um slide só, a ilha nem é montada: a capa continua HTML puro.
  *
- * As três decisões puras (de quanto em quanto tempo, de quem é a vez, em que
- * slide está) moram em `lib/util/hero-carousel.ts`, com teste próprio — aqui
- * fica só o que é de React: efeito, `ref` e evento.
+ * As decisões puras (de quanto em quanto tempo, de quem é a vez, em que slide
+ * está) moram em `lib/util/carousel.ts`, com teste próprio — aqui fica só o que é
+ * de React: efeito, `ref` e evento. A conta é a **mesma do carrossel de produtos**
+ * (`product-carousel/index.tsx`): a capa é o caso particular em que cada página é
+ * um slide, e por isso `pageCount` aqui é o número de slides.
  *
  * **O relógio reinicia a cada troca, venha de onde vier.** O temporizador é um
  * `setTimeout` que depende do slide atual, e não um `setInterval`: o rodízio
@@ -38,12 +52,22 @@ import {
  * **A rolagem é a fonte da verdade.** O clique no ponto e o relógio chamam o
  * mesmo `scrollTo`, e é a posição do trilho que decide o ponto aceso — por isso
  * arrastar com o dedo acende o ponto certo sem nenhum código de dedo. Durante o
- * `scrollTo` a rolagem é ignorada de propósito (ver `HERO_SCROLL_SETTLE_MS`).
+ * `scrollTo` a rolagem é ignorada de propósito (ver `CAROUSEL_SCROLL_SETTLE_MS`).
+ *
+ * **Quem para o rodízio (WCAG 2.2.2).** São três coisas, e nenhuma é um botão de
+ * pausa: o `prefers-reduced-motion` do sistema desliga o rodízio por inteiro, o
+ * ponteiro em cima e o foco do teclado o seguram enquanto estão lá, e o **clique
+ * no ponto o para de vez** — no primeiro gesto de navegação o visitante assume o
+ * volante, e a capa não volta a andar sozinha. É o mecanismo que existe no lugar
+ * de um botão `Pausar`/`Retomar` que chegou a ser estilizado (`.rv-hero-pause`)
+ * e nunca chegou ao HTML: um controle que ninguém podia clicar não atendia
+ * critério nenhum. O que falta é o botão visível — decisão de produto, e não
+ * código esquecido (ver `brand.css`).
  *
  * **Limite conhecido:** com a aba visível e a capa fora da dobra, o rodízio
- * continua rodando. Parar no `IntersectionObserver` é o caminho, e é o mesmo que
- * a capa de um slide não precisa — hoje o rodízio se contenta com o
- * `visibilitychange`.
+ * continua rodando. Parar no `IntersectionObserver` é o caminho — e é o que o
+ * carrossel de produtos já faz —, mas a capa é a primeira dobra em qualquer
+ * navegação normal, e um observador a mais aqui não mudaria nada que se veja.
  */
 export default function HeroCarousel({
   count,
@@ -61,7 +85,11 @@ export default function HeroCarousel({
   const animating = useRef(false)
 
   const [index, setIndex] = useState(0)
-  const [paused, setPaused] = useState(false)
+  /*
+   * O visitante assumiu o volante: o primeiro clique num ponto para o rodízio de
+   * vez (ver o cabeçalho). É o `stopped` do `shouldAutoplay`.
+   */
+  const [stopped, setStopped] = useState(false)
   const [hovering, setHovering] = useState(false)
   const [focused, setFocused] = useState(false)
   const [hidden, setHidden] = useState(false)
@@ -130,10 +158,16 @@ export default function HeroCarousel({
 
         if (settled) {
           setIndex(
-            slideIndexFromScroll(settled.scrollLeft, settled.clientWidth, count)
+            pageIndexFromScroll({
+              scrollLeft: settled.scrollLeft,
+              clientWidth: settled.clientWidth,
+              scrollWidth: settled.scrollWidth,
+              // Cada página é um slide: o número de páginas é o de slides.
+              pageCount: count,
+            })
           )
         }
-      }, HERO_SCROLL_SETTLE_MS)
+      }, CAROUSEL_SCROLL_SETTLE_MS)
 
       element.scrollTo({
         left: to * element.clientWidth,
@@ -148,10 +182,13 @@ export default function HeroCarousel({
   useEffect(() => {
     if (
       !shouldAutoplay({
-        count,
+        // Cada página é um slide: o número de páginas é o de slides.
+        pageCount: count,
         reducedMotion: reduced,
-        paused,
         held: hovering || focused || hidden,
+        stopped,
+        // A capa não observa a interseção (ver o limite conhecido, acima).
+        onScreen: true,
       })
     ) {
       return
@@ -163,7 +200,7 @@ export default function HeroCarousel({
     )
 
     return () => window.clearTimeout(timer)
-  }, [count, focused, go, hidden, hovering, index, paused, reduced])
+  }, [count, focused, go, hidden, hovering, index, reduced, stopped])
 
   /**
    * A leitura da rolagem, uma por quadro.
@@ -186,11 +223,12 @@ export default function HeroCarousel({
         return
       }
 
-      const current = slideIndexFromScroll(
-        element.scrollLeft,
-        element.clientWidth,
-        count
-      )
+      const current = pageIndexFromScroll({
+        scrollLeft: element.scrollLeft,
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+        pageCount: count,
+      })
 
       setIndex((previous) => (previous === current ? previous : current))
     })
@@ -244,14 +282,23 @@ export default function HeroCarousel({
               // do leitor de tela, e a cor sai do mesmo atributo no CSS.
               aria-current={dot === index ? "true" : undefined}
               aria-label={`Ir para o slide ${dot + 1} de ${count}`}
-              onClick={() => go(dot)}
+              onClick={() => {
+                // O primeiro clique à mão para o rodízio de vez: é o mecanismo
+                // de parada que existe no lugar do botão de pausa.
+                setStopped(true)
+                go(dot)
+              }}
             />
           </li>
         ))}
 
         {/*
-         * Sem rodízio (movimento reduzido no sistema) não há o que pausar: um
-         * botão que não pausa nada seria um controle morto na capa.
+         * O botão de pausa **não** está aqui, e este comentário é o registro que
+         * ficou dele: o estilo chegou a ser escrito (`.rv-hero-pause`, em
+         * `brand.css`) e nenhum `Pausar` chegou ao HTML — um controle que ninguém
+         * podia clicar. O que para o rodízio é o clique no ponto (acima), o
+         * ponteiro em cima, o foco do teclado e o `prefers-reduced-motion`; ver o
+         * cabeçalho deste arquivo.
          */}
       </ul>
     </div>

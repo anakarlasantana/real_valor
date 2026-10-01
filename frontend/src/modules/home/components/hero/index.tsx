@@ -40,21 +40,22 @@ import HeroCarousel from "./carousel"
  *
  * A ilha acrescenta o que faltava na capa:
  *
- *   - **o rodízio**, sete segundos por slide (`lib/util/hero-carousel.ts`), com
- *     a contagem reiniciada a cada troca — inclusive na que o visitante fez à
- *     mão;
- *   - **o ponto aceso**, lido da posição do trilho uma vez por quadro: é por
- *     isso que arrastar com o dedo acende o ponto certo;
- *   - **o botão de pausa**, que é o que a WCAG 2.2.2 pede de um movimento
- *     automático — e que o `:hover` sozinho não atendia (quem pausa no ponteiro
- *     precisa estar com o ponteiro em cima). O rodízio também não anda em
- *     `prefers-reduced-motion`, nem com a aba oculta, nem com o foco do teclado
- *     dentro da capa.
+ *   - **o rodízio**, sete segundos por slide (`hero/carousel.tsx`), com a
+ *     contagem reiniciada a cada troca — inclusive na que o visitante fez à mão;
+ *   - **o ponto aceso**, lido da posição do trilho uma vez por quadro: é por isso
+ *     que arrastar com o dedo acende o ponto certo;
+ *   - **a parada de vez no primeiro clique**, que é o que atende a WCAG 2.2.2 sem
+ *     um botão de pausa: quem clica num ponto assume o volante, e o rodízio não
+ *     volta. Junto com ele, o `prefers-reduced-motion` desliga o movimento por
+ *     inteiro, e o ponteiro, o foco do teclado e a aba oculta seguram enquanto
+ *     estão lá.
  *
- * Uma coisa continua de fora, e de propósito: **setas.** O ponto leva a
- * qualquer slide e diz onde a capa está; uma seta "próximo" seria um segundo
- * controle para a mesma decisão — e, a partir do último slide, uma seta que não
- * tem para onde ir.
+ * Uma coisa continua de fora, e de propósito: **setas.** O ponto leva a qualquer
+ * slide e diz onde a capa está; uma seta "próximo" seria um segundo controle para
+ * a mesma decisão — e, a partir do último slide, uma seta que não tem para onde
+ * ir. O carrossel de produtos, que é o mesmo componente de trilho, tem as duas
+ * coisas: lá as páginas são cards, e a seta é o gesto de "ver as próximas peças"
+ * que o dedo já conhece.
  *
  * Com **um slide só** — a capa estática — não há rodízio a fazer: a seção
  * desenha a foto e a cópia e não monta JavaScript nenhum. Sem slide nenhum a
