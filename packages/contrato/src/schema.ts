@@ -106,8 +106,20 @@ import {
  *      mensagens e a seção `hero` sem os slides — e a API admin **recusa** os
  *      campos novos como desconhecidos, porque quem valida é o registro gravado
  *      e não o contrato.
+ *
+ * v9 — a capa ficou com **uma forma só**: os campos de seção do `hero`
+ *      (`eyebrow`, `headline`, `headlineEmphasis`, `subtitle`, `ctaLabel`,
+ *      `ctaHref`, `imageUrl`, `imageAlt`, `overlay`) saíram do contrato, e o que
+ *      sobra é a lista `slides` — que passa a ser obrigatória no tipo. Um item é
+ *      a capa estática; dois ou mais são o carrossel (nada muda no
+ *      sub-formulário do slide, `list:hero-slide`). Sem reescrever o registro
+ *      (`make seed-schema`) o CRM continua desenhando a foto e a cópia **fora**
+ *      da lista — os dois jeitos de escrever a mesma capa, que é o que a v9
+ *      tira. A gravação que ainda mandar os campos velhos é recusada como campo
+ *      desconhecido, e os que sobraram no `data` gravado são ignorados pela loja
+ *      e caem fora na primeira gravação do formulário.
  */
-export const SCHEMA_VERSION = 8
+export const SCHEMA_VERSION = 9
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.

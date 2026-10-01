@@ -351,7 +351,9 @@ body {
  * ---------------------------------------------------------------
  * A navegação é a nativa: arrastar no dedo, rolar com a barra. Sem setas, porque
  * uma seta "próximo" precisa saber onde a rolagem está — e sem estado ela
- * mentiria a partir do último card (`rv-hero-dot` tem o mesmo raciocínio).
+ * mentiria a partir do último card. (Os pontos da capa eram o mesmo caso e hoje
+ * têm estado: o carrossel de lá virou ilha de cliente. Aqui não é preciso —
+ * todos os cards estão visíveis, e a barra de rolagem é a pista de que há mais.)
  *
  * A barra de rolagem **aparece no desktop**: é ela a pista de que há mais peça
  * à direita, e é ela que o mouse arrasta. No celular ela some, porque lá o gesto
@@ -395,33 +397,74 @@ body {
 /*
  * Os pontos da capa carrossel
  * ---------------------------------------------------------------
- * A navegação do carrossel sem JavaScript: cada ponto é um `<a href="#hero-slide-N">`,
- * e o que o navegador faz com isso já é a funcionalidade inteira. O
- * `scroll-behavior: smooth` do trilho (a classe `scroll-smooth`) dá a
- * transição, e `prefers-reduced-motion` a desliga logo abaixo.
+ * Cada ponto é um `<button>` (`hero/carousel.tsx`), e não o `<a
+ * href="#hero-slide-N">` de antes: quem decide o slide é a rolagem do trilho, e
+ * o ponto precisa saber onde ela está para acender — a âncora não sabia (o
+ * navegador rolava até o slide e nada mudava de aparência). Os `#hero-slide-N`
+ * continuam no HTML, então o endereço antigo de um slide ainda funciona.
+ *
+ * `aria-current="true"` é o aceso: o estado é do leitor de tela também, e a cor
+ * sai do atributo em vez de uma classe que só a tela lê. `appearance` e
+ * `padding` zerados porque um `<button>` traz a moldura e o respiro do
+ * navegador, e o alvo aqui é a mesma bolinha de 8px de antes.
  *
  * Off white, e não a cor da marca: os pontos ficam sobre a fotografia, e só a
  * área escura do véu (o canto em que a cópia mora) garante contraste com
- * qualquer foto. É lá que eles estão.
- *
- * O ponto **não** sabe qual slide está visível — isso é leitura de rolagem, e
- * o carrossel é servidor. Todos se desenham iguais, e o `:hover` deixa claro
- * que são clicáveis. O caminho para o ponto aceso é um `IntersectionObserver`
- * sobre os slides, o que faz do carrossel inteiro um componente de cliente
- * (e é o preço que hoje não se paga: a capa é a primeira pintura da home).
+ * qualquer foto. É lá que eles estão — junto do botão de pausa.
  */
 .rv-hero-dot {
+  appearance: none;
   display: block;
   width: 0.5rem;
   height: 0.5rem;
+  padding: 0;
   border: 1px solid var(--rv-offwhite);
   border-radius: 9999px;
   background-color: transparent;
+  cursor: pointer;
   transition: background-color var(--rv-duration) var(--rv-ease);
 }
 
-.rv-hero-dot:hover {
+.rv-hero-dot:hover,
+.rv-hero-dot[aria-current="true"] {
   background-color: var(--rv-offwhite);
+}
+
+/*
+ * O botão de pausa do rodízio (WCAG 2.2.2)
+ * ---------------------------------------------------------------
+ * É `Pausar`/`Retomar`, texto e não ícone: o movimento que ele para é a troca
+ * da foto inteira, e a palavra diz o estado e o que o clique faz — um par de
+ * barrinhas exigiria legenda. Sai do `rv-eyebrow` (mesma família e mesmo espaço
+ * de letra dos rótulos da loja), que é o que o alinha com os pontos.
+ *
+ * Off white pelo mesmo motivo dos pontos, com a opacidade o mantendo discreto
+ * até o ponteiro chegar. O `aria-pressed` não muda a aparência: quem diz o
+ * estado é o próprio texto do botão.
+ */
+.rv-hero-pause {
+  appearance: none;
+  padding: 0.25rem 0;
+  border: 0;
+  background-color: transparent;
+  color: var(--rv-offwhite);
+  cursor: pointer;
+  opacity: 0.75;
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+  transition: opacity var(--rv-duration) var(--rv-ease);
+}
+
+.rv-hero-pause:hover,
+.rv-hero-pause:focus-visible {
+  opacity: 1;
+}
+
+/* O anel de foco do tema é rosa, e rosa sobre a foto não se vê. */
+.rv-hero-dot:focus-visible,
+.rv-hero-pause:focus-visible {
+  outline: 2px solid var(--rv-offwhite);
+  outline-offset: 2px;
 }
 
 /*

@@ -31,6 +31,7 @@ import {
 } from "./appearance-controls"
 import { parseTextList } from "./form-draft"
 import { ImageInput } from "./image-input"
+import { itemSummary, move } from "./list-order"
 
 /**
  * Os tipos do campo vem do **contrato**, não são declarados aqui.
@@ -118,6 +119,12 @@ export const UNHANDLED_KINDS: [UnhandledKind] extends [never]
  * desenha os níveis internos em vez de um ramo por profundidade. O
  * `addLabel` existe para o botão do nível de dentro não repetir
  * "Adicionar item" logo abaixo do rótulo "Links".
+ *
+ * O cabeçalho de cada item diz **o que ele é** (`Item 3 · Vestidos de festa`) e
+ * é onde a ordem se mexe: as setas trocam o item com o vizinho, como nos chips
+ * de categoria. As duas coisas saem de `list-order.ts` (`itemSummary`, `move`),
+ * com teste próprio — são regra, não desenho, e a lista de itens é o campo em
+ * que o lojista passa mais tempo.
  */
 function ObjectListInput({
   kind,
@@ -135,6 +142,10 @@ function ObjectListInput({
   const fields = itemFields[kind] ?? []
   const items = Array.isArray(value) ? (value as Record<string, unknown>[]) : []
 
+  // O que cada item diz de si mesmo no cabeçalho (`list-order.ts`): é o que faz
+  // a lista ser navegável sem abrir os itens um a um.
+  const summaries = items.map((item) => itemSummary(fields, item))
+
   const update = (index: number, name: string, next: unknown) => {
     onChange(
       items.map((item, i) => (i === index ? { ...item, [name]: next } : item))
@@ -148,17 +159,49 @@ function ObjectListInput({
           key={index}
           className="flex flex-col gap-y-3 rounded-md border border-ui-border-base p-3"
         >
-          <div className="flex items-center justify-between">
-            <Text size="xsmall" weight="plus">
-              Item {index + 1}
-            </Text>
-            <Button
-              variant="transparent"
-              size="small"
-              onClick={() => onChange(items.filter((_, i) => i !== index))}
-            >
-              Remover
-            </Button>
+          <div className="flex items-center justify-between gap-x-2">
+            <div className="flex min-w-0 flex-1 items-baseline gap-x-2">
+              <Text size="xsmall" weight="plus" className="whitespace-nowrap">
+                Item {index + 1}
+              </Text>
+              {summaries[index] && (
+                <Text size="xsmall" className="min-w-0 truncate text-ui-fg-subtle">
+                  {summaries[index]}
+                </Text>
+              )}
+            </div>
+
+            <div className="flex flex-none items-center gap-x-1">
+              {/* A ordem é da lista: a posição do item é o `position` que a API
+                  grava, e as setas são o jeito de mexer nela — as mesmas do
+                  seletor de categorias, que já funcionava assim. */}
+              <Button
+                variant="transparent"
+                size="small"
+                disabled={index === 0}
+                aria-label={`Mover o item ${index + 1} para cima`}
+                onClick={() => onChange(move(items, index, -1))}
+              >
+                <ArrowUpMini />
+              </Button>
+              <Button
+                variant="transparent"
+                size="small"
+                disabled={index === items.length - 1}
+                aria-label={`Mover o item ${index + 1} para baixo`}
+                onClick={() => onChange(move(items, index, 1))}
+              >
+                <ArrowDownMini />
+              </Button>
+              <Button
+                variant="transparent"
+                size="small"
+                aria-label={`Remover o item ${index + 1}`}
+                onClick={() => onChange(items.filter((_, i) => i !== index))}
+              >
+                Remover
+              </Button>
+            </div>
           </div>
 
           {fields.map((field) => {
@@ -378,17 +421,11 @@ function CategoryChipsInput({
     (category) => !chosen.has(category.categoryId)
   )
 
-  const move = (index: number, delta: number) => {
-    const target = index + delta
-    const next = [...chips]
-
-    if (target < 0 || target >= next.length) {
-      return
-    }
-
-    ;[next[index], next[target]] = [next[target], next[index]]
-    onChange(next)
-  }
+  // A troca de lugar é a mesma do editor de itens (`list-order.ts`): um só
+  // lugar decide o que "mover para cima" quer dizer, e o de fora da faixa não
+  // acende o "Salvar".
+  const swap = (index: number, delta: number) =>
+    onChange(move(chips, index, delta))
 
   return (
     <div className="flex flex-col gap-y-2">
@@ -406,7 +443,8 @@ function CategoryChipsInput({
             variant="transparent"
             size="small"
             disabled={index === 0}
-            onClick={() => move(index, -1)}
+            aria-label={`Mover ${chip.label} para cima`}
+            onClick={() => swap(index, -1)}
           >
             <ArrowUpMini />
           </Button>
@@ -414,13 +452,15 @@ function CategoryChipsInput({
             variant="transparent"
             size="small"
             disabled={index === chips.length - 1}
-            onClick={() => move(index, 1)}
+            aria-label={`Mover ${chip.label} para baixo`}
+            onClick={() => swap(index, 1)}
           >
             <ArrowDownMini />
           </Button>
           <Button
             variant="transparent"
             size="small"
+            aria-label={`Remover ${chip.label}`}
             onClick={() => onChange(chips.filter((_, i) => i !== index))}
           >
             Remover
@@ -609,10 +649,11 @@ export const FieldInput = ({
         {label}
         {/*
           A faixa vem do CAMPO (`min`/`max`/`step` no contrato), não deste
-          editor: era daqui que todo número herdava o 0 a 1 do `overlay` do
-          hero, e um campo novo — o limite de itens de uma vitrine — ficaria
-          impossível de preencher. Campo sem faixa é um número livre; a rota
-          admin cobra exatamente a mesma faixa.
+          editor: era daqui que todo número herdava a faixa do primeiro campo
+          numérico que a tivesse — o scrim da capa, 0 a 1 —, e um campo novo (o
+          limite de itens de uma vitrine, por exemplo) ficaria impossível de
+          preencher. Campo sem faixa é um número livre; a rota admin cobra
+          exatamente a mesma faixa.
         */}
         <Input
           type="number"

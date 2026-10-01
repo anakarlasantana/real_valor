@@ -4,6 +4,8 @@ import { resolveMediaUrl } from "@lib/util/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 
+import HeroCarousel from "./carousel"
+
 /**
  * Hero — a capa: fotografia full-bleed com a cópia ancorada à esquerda, sobre
  * um véu escuro horizontal.
@@ -14,38 +16,62 @@ import Image from "next/image"
  *
  * O véu é o gradiente da esquerda para a direita: escuro atrás da cópia e
  * quase transparente em 75% da largura, então a foto continua visível enquanto
- * o texto branco mantém contraste. A força vem do `overlay` do conteúdo, e o
- * tom é um cacau translúcido para a capa ficar dentro da paleta da marca em vez
- * de preto puro.
+ * o texto branco mantém contraste. A força é a constante `SCRIM` abaixo — o tom
+ * é um cacau translúcido para a capa ficar dentro da paleta da marca em vez de
+ * preto puro.
+ *
+ * Era um campo do conteúdo (`overlay`, "Scrim (0 a 1)") até a v9, quando a capa
+ * ficou só com a lista de slides: a força do véu é valor de **desenho**, e não
+ * conteúdo que o lojista escreve — um nono campo no formulário da capa para um
+ * ajuste que ninguém pede. O valor é o que estava no ar quando o campo saiu.
  *
  * A foto passa por `resolveMediaUrl`, então a imagem enviada pelo CRM (chave
  * crua do provider) e a URL absoluta do backend chegam as duas ao
  * `/uploads/...` do próprio storefront — a única forma que o otimizador de
  * imagem consegue buscar de dentro do contêiner. Ver `lib/util/media.ts`.
  *
- * **Com dois slides ou mais, a capa vira carrossel** — e sem JavaScript
- * nenhum. O trilho é um `flex` com encaixe (`scroll-snap`) e rolagem
- * horizontal: no celular é o gesto de arrastar de sempre, no desktop são os
- * pontos. Cada ponto é um `<a href="#hero-slide-N">`, o que dá a navegação por
- * teclado de graça, e o `scroll-behavior: smooth` faz a transição — desligada
- * em `prefers-reduced-motion` (ver `brand.css`).
+ * **Com dois slides ou mais, a capa vira carrossel** — e o carrossel é uma
+ * ilha de cliente (`./carousel.tsx`): o rodízio precisa de relógio e o ponto
+ * aceso precisa da posição da rolagem, e as duas coisas só existem no
+ * navegador. As fotos e as cópias continuam vindo do **servidor**: os slides
+ * atravessam a fronteira como `children`, então a primeira pintura da home
+ * segue sendo a capa com a cópia no HTML — o que hidrata é o controle, não a
+ * imagem.
  *
- * O que este desenho **não** tem, de propósito:
+ * A ilha acrescenta o que faltava na capa:
  *
- *   - **autoplay.** Trocar de foto sozinho é movimento que a WCAG 2.2.2 obriga
- *     a poder parar, e um botão de pausa sobre a capa é ruído que a loja não
- *     pediu. Quem rola é o visitante;
- *   - **setas.** Uma seta "próximo" precisa saber em que slide está para não
- *     mentir, e sem estado ela mentiria (a partir do último, "próximo" não
- *     existe). Os pontos não mentem: cada um leva a um slide nomeado;
- *   - **ponto aceso.** Marcar o slide atual pede a posição da rolagem, que é
- *     leitura de cliente — e o carrossel inteiro é servidor, o que é o que faz
- *     a capa ser a primeira pintura da home. O caminho é um
- *     `IntersectionObserver` sobre os slides, e é uma troca consciente: ponto
- *     aceso por hidratação da capa.
+ *   - **o rodízio**, sete segundos por slide (`lib/util/hero-carousel.ts`), com
+ *     a contagem reiniciada a cada troca — inclusive na que o visitante fez à
+ *     mão;
+ *   - **o ponto aceso**, lido da posição do trilho uma vez por quadro: é por
+ *     isso que arrastar com o dedo acende o ponto certo;
+ *   - **o botão de pausa**, que é o que a WCAG 2.2.2 pede de um movimento
+ *     automático — e que o `:hover` sozinho não atendia (quem pausa no ponteiro
+ *     precisa estar com o ponteiro em cima). O rodízio também não anda em
+ *     `prefers-reduced-motion`, nem com a aba oculta, nem com o foco do teclado
+ *     dentro da capa.
+ *
+ * Uma coisa continua de fora, e de propósito: **setas.** O ponto leva a
+ * qualquer slide e diz onde a capa está; uma seta "próximo" seria um segundo
+ * controle para a mesma decisão — e, a partir do último slide, uma seta que não
+ * tem para onde ir.
+ *
+ * Com **um slide só** — a capa estática — não há rodízio a fazer: a seção
+ * desenha a foto e a cópia e não monta JavaScript nenhum. Sem slide nenhum a
+ * capa não existe: a seção some da página em vez de virar uma faixa vazia.
  */
+
+/**
+ * A força do véu escuro da capa, de 0 (foto limpa) a 1 (cacau sólido).
+ *
+ * Constante do render desde a v9 — era o campo `overlay` do conteúdo. 0.75 é o
+ * valor que estava gravado quando o campo saiu do formulário; o protótipo usa
+ * .72 caindo para .02 em 75% da largura (o gradiente abaixo).
+ */
+const SCRIM = 0.75
+
 export default function Hero({ section }: { section: HeroSection }) {
-  const overlay = Math.min(Math.max(section.overlay ?? 0.72, 0), 1)
+  const overlay = SCRIM
   const slides = heroSlides(section)
 
   if (slides.length === 0) {
@@ -55,26 +81,25 @@ export default function Hero({ section }: { section: HeroSection }) {
   return (
     <section className="relative w-full overflow-hidden bg-rv-cacao">
       {slides.length > 1 ? (
-        <>
-          <div className="rv-hero-track no-scrollbar flex snap-x snap-mandatory scroll-smooth overflow-x-auto">
-            {slides.map((slide, index) => (
-              <div
-                key={`${index}:${slide.headline}`}
-                id={heroSlideId(index)}
-                className="w-full min-w-full flex-none snap-start"
-              >
-                <HeroPane
-                  slide={slide}
-                  overlay={overlay}
-                  // Só a primeira foto tem pressa: as outras estão fora da tela
-                  // e o `next/image` as busca quando o carrossel chegar nelas.
-                  priority={index === 0}
-                />
-              </div>
-            ))}
-          </div>
-          <HeroDots count={slides.length} />
-        </>
+        <HeroCarousel count={slides.length}>
+          {slides.map((slide, index) => (
+            <div
+              key={`${index}:${slide.headline}`}
+              // O `id` fica no slide, e não no ponto: é ele que faz
+              // `#hero-slide-2` continuar sendo um endereço da capa.
+              id={heroSlideId(index)}
+              className="w-full min-w-full flex-none snap-start"
+            >
+              <HeroPane
+                slide={slide}
+                overlay={overlay}
+                // Só a primeira foto tem pressa: as outras estão fora da tela
+                // e o `next/image` as busca quando o carrossel chegar nelas.
+                priority={index === 0}
+              />
+            </div>
+          ))}
+        </HeroCarousel>
       ) : (
         <HeroPane slide={slides[0]} overlay={overlay} priority />
       )}
@@ -82,7 +107,7 @@ export default function Hero({ section }: { section: HeroSection }) {
   )
 }
 
-/** O `id` da âncora de um slide — o destino dos pontos e nada mais. */
+/** O `id` da âncora de um slide — o endereço de `#hero-slide-N`. */
 function heroSlideId(index: number): string {
   return `hero-slide-${index + 1}`
 }
@@ -163,30 +188,6 @@ function HeroPane({
         </div>
       </div>
     </div>
-  )
-}
-
-/**
- * Os pontos: um `<a href="#hero-slide-N">` por slide.
- *
- * Ficam no canto inferior esquerdo, **sobre a área escura do véu** — é o único
- * lugar da capa em que uma bolinha off white fica visível sobre qualquer foto,
- * e é também onde a cópia já está: o olho que lê o título encontra a navegação
- * no caminho, sem uma segunda faixa de controles por cima da fotografia.
- */
-function HeroDots({ count }: { count: number }) {
-  return (
-    <ul className="rv-container absolute inset-x-0 bottom-8 z-20 flex items-center gap-x-3">
-      {Array.from({ length: count }, (_, index) => (
-        <li key={index}>
-          <a
-            href={`#${heroSlideId(index)}`}
-            aria-label={`Ir para o slide ${index + 1} de ${count}`}
-            className="rv-hero-dot"
-          />
-        </li>
-      ))}
-    </ul>
   )
 }
 

@@ -8,7 +8,7 @@ import { model } from "@medusajs/framework/utils"
  *
  * Por que uma tabela só, com `data` em JSON, em vez de uma tabela por
  * tipo de seção? Porque a árvore de conteúdo é heterogênea e cada tipo
- * tem um formulário próprio: `hero` tem `headlineEmphasis` + `overlay`,
+ * tem um formulário próprio: `hero` tem a lista de slides,
  * `benefits` tem uma lista de itens, `instagram` tem uma lista de
  * imagens. Um schema relacional daria 7 tabelas + 7 migrations e o
  * admin teria 7 telas. Aqui as colunas que se filtram/ordenam ficam

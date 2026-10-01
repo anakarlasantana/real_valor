@@ -26,6 +26,13 @@ import { tickerMessages, tickerSeconds } from "@lib/util/ticker"
  * fecha o laço sem costura. Com uma mensagem só, a barra é a de sempre —
  * uma linha centrada e parada —, e com nenhuma ela não é desenhada.
  *
+ * **A faixa é de borda a borda, e o ticker rola na largura da tela.** O que
+ * rola não fica dentro do `rv-container` (1440px, centrado): com ele, a faixa
+ * preta ia até a borda enquanto a linha sumia e reaparecia só no meio dela —
+ * o trilho nasce e morre no meio da tela, que é o defeito que se vê. Quem
+ * centraliza a mensagem única é o próprio `<p>` (`w-full px-6`), que é o
+ * respiro que o container dava.
+ *
  * Os dois campos de conteúdo (`text` e `messages`) são lidos por
  * `tickerMessages` (`lib/util/ticker.ts`), que **não** mora aqui de
  * propósito: é a decisão "qual mensagem vale", ela tem caso de borda
@@ -77,15 +84,13 @@ export default function AnnouncementBar({
         } as CSSProperties
       }
     >
-      <div className="rv-container">
-        {rolling ? (
-          <Marquee messages={messages} />
-        ) : (
-          <p className="rv-eyebrow rv-section-text-onmedia flex min-h-[38px] items-center justify-center text-center leading-none">
-            {messages[0]}
-          </p>
-        )}
-      </div>
+      {rolling ? (
+        <Marquee messages={messages} />
+      ) : (
+        <p className="rv-eyebrow rv-section-text-onmedia flex min-h-[38px] w-full items-center justify-center px-6 text-center leading-none">
+          {messages[0]}
+        </p>
+      )}
     </div>
   )
 }

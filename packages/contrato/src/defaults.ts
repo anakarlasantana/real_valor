@@ -81,21 +81,28 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
    * A capa. É a **abertura da home**: a vitrine a desenha, mas ela não entra na
    * ordem das setas — junto com a faixa de benefícios, é o começo da página, e
    * não conteúdo que se reordena (casa 3, ver `FIXED_SECTION_POSITIONS`).
+   *
+   * Nasce com **um** slide: é a capa estática de sempre (a foto e a cópia do
+   * protótipo), e é o mínimo que a seção desenha — a lista é a capa inteira
+   * desde a v9, e sem slide nenhum não há capa.
    */
   {
     id: "hero",
     type: "hero",
     enabled: true,
     position: 3,
-    eyebrow: "Nova coleção",
-    headline: "Você não precisa ser rica para se",
-    headlineEmphasis: "sentir elegante.",
-    subtitle: "Alfaiataria para todas.",
-    ctaLabel: "Conheça a coleção",
-    ctaHref: "/store",
-    imageUrl: "/brand/hero.jpg",
-    imageAlt: "Alfaiataria feminina Real Valor",
-    overlay: 0.72,
+    slides: [
+      {
+        imageUrl: "/brand/hero.jpg",
+        imageAlt: "Alfaiataria feminina Real Valor",
+        eyebrow: "Nova coleção",
+        headline: "Você não precisa ser rica para se",
+        headlineEmphasis: "sentir elegante.",
+        subtitle: "Alfaiataria para todas.",
+        ctaLabel: "Conheça a coleção",
+        ctaHref: "/store",
+      },
+    ],
   },
   /**
    * A faixa de benefícios. Fecha a **abertura da home** (casa 4) e nasce fixa,

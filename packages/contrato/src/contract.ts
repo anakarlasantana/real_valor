@@ -113,47 +113,42 @@ export type AnnouncementSection = SectionBase &
     speedSeconds?: number
   }
 
-export type HeroSection = SectionBase &
-  SectionAppearance & {
-    type: "hero"
-    eyebrow: string
-    /** Renderizado como texto antes da parte enfatizada. */
-    headline: string
-    /** Renderizado dentro de `<em>` — itálico Playfair, como no protótipo. */
-    headlineEmphasis: string
-    subtitle: string
-    ctaLabel: string
-    ctaHref: string
-    imageUrl: string
-    imageAlt: string
-    /**
-     * Força do scrim escuro da esquerda para a direita, no lado do texto,
-     * de 0 a 1. O protótipo usa .72 caindo para .02 em 75% da largura.
-     */
-    overlay: number
-    /**
-     * Slides da capa — o carrossel.
-     *
-     * Vazio (o padrão) é a capa de sempre: a foto e a cópia dos campos acima.
-     * Com um ou mais slides, quem manda é a lista, e cada slide traz a própria
-     * foto e a própria cópia — os campos acima ficam de reserva, que é o que
-     * permite a base que nunca teve carrossel desenhar a mesma capa de antes.
-     */
-    slides?: HeroSlide[]
-  }
+/**
+ * A capa da home — a **abertura** da página, desenhada pela vitrine.
+ *
+ * Desde a v9 ela tem **uma forma só**: a lista de slides. Até então a seção
+ * carregava também os campos de um slide (`eyebrow`, `headline`, `imageUrl`, o
+ * scrim…) e a lista era opcional, valendo os campos quando ela estava vazia.
+ * Dois jeitos de escrever a mesma capa no formulário eram um a mais, e o pior
+ * deles: quem preenchia a foto de cima não via mudança nenhuma na loja — quem
+ * estava no ar era o slide — e o campo ficava de reserva, no CRM, para sempre.
+ * Com a lista, o que o lojista escreve é o que a home desenha.
+ */
+export type HeroSection = SectionBase & {
+  type: "hero"
+  /**
+   * Os slides da capa, na ordem em que aparecem — a capa **é** esta lista.
+   *
+   * Um item é a capa estática: a foto e a cópia dele, sem rodízio e sem
+   * controle nenhum. Dois ou mais viram carrossel (`./carousel.tsx` da
+   * vitrine), com ponto, pausa e a troca a cada sete segundos. Lista vazia não
+   * desenha capa: a seção some da página em vez de virar uma faixa vazia.
+   */
+  slides: HeroSlide[]
+}
 
 /**
- * Um slide da capa: a foto e a cópia que entram no carrossel.
+ * Um slide da capa: a foto e a cópia que entram na capa ou no carrossel.
  *
- * São os mesmos campos do `hero`, **sem** os de bloco (`enabled`, `position`,
- * aparência), que são da seção e não de um slide. A ordem da lista é a ordem do
- * carrossel, e a ordem dos campos daqui é a do sub-formulário no CRM
- * (`ITEM_FIELDS["list:hero-slide"]`) — a guarda de paridade compara as duas.
+ * A ordem da lista é a ordem do carrossel, e a ordem dos campos daqui é a do
+ * sub-formulário no CRM (`ITEM_FIELDS["list:hero-slide"]`) — a guarda de
+ * paridade compara as duas.
  *
- * O scrim (`overlay`) **não** é por slide de propósito: ele é a força do escuro
- * sobre a foto, e um valor por slide seria mais um campo num formulário que já
- * repete oito. Quem tem fotos de luminosidade muito diferente acerta o scrim
- * pela média, ou escolhe fotos parecidas.
+ * O scrim (o véu escuro sobre a foto, do lado do texto) **não** está aqui: ele
+ * é um valor de desenho, e não conteúdo — é constante da vitrine (a `SCRIM` de
+ * `frontend/src/modules/home/components/hero/index.tsx`) desde a v9, quando o
+ * campo saiu do formulário. Um valor por slide seria mais um campo num
+ * sub-formulário que já repete oito.
  */
 export type HeroSlide = {
   imageUrl: string
@@ -989,10 +984,11 @@ export type FieldSpec = {
    * a rota admin usa para reprovar valor fora dela.
    *
    * Declaradas no campo, e não no editor: o formulário do painel é desenhado a
-   * partir deste contrato, então um segundo campo numérico — o limite de itens
-   * de uma vitrine, por exemplo — herdaria a faixa do `overlay` do hero (0 a 1)
-   * se ela estivesse escrita no `field-input.tsx`, e o lojista não conseguiria
-   * digitar 8. Campo sem faixa é um número livre.
+   * partir deste contrato, então um campo numérico novo — o limite de itens de
+   * uma vitrine, por exemplo — herdaria a faixa do primeiro campo que a tivesse
+   * (os segundos por volta do ticker, 8 a 60) se ela estivesse escrita no
+   * `field-input.tsx`, e o lojista não conseguiria digitar 8. Campo sem faixa é
+   * um número livre.
    */
   min?: number
   max?: number
@@ -1040,44 +1036,21 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     },
   ],
   hero: [
-    { name: "eyebrow", label: "Eyebrow", kind: "text" },
-    { name: "headline", label: "Título", kind: "text", required: true },
-    ...appearanceTitles("headline"),
-    {
-      name: "headlineEmphasis",
-      label: "Título (parte em itálico)",
-      kind: "text",
-    },
-    // O destaque do hero é a parte em itálico do título — e o botão, que
-    // usa a mesma cor cheia.
-    ...appearanceDetails("headlineEmphasis"),
-    { name: "subtitle", label: "Subtítulo", kind: "text" },
-    ...appearanceTexts("subtitle"),
-    { name: "ctaLabel", label: "Texto do botão", kind: "text" },
-    { name: "ctaHref", label: "Link do botão", kind: "text" },
-    {
-      name: "imageUrl",
-      label: "Imagem",
-      kind: "image",
-      help: "Envie a foto pelo botão, ou informe um caminho do site (ex.: /brand/hero.jpg) ou uma URL.",
-    },
-    { name: "imageAlt", label: "Imagem (alt)", kind: "text" },
-    {
-      name: "overlay",
-      label: "Scrim (0 a 1)",
-      kind: "number",
-      min: 0,
-      max: 1,
-      step: 0.01,
-      help: "Opacidade do overlay escuro no lado do texto.",
-    },
+    // A capa é **só** isto: a lista de slides. Um item é a capa estática; dois
+    // ou mais são o carrossel. Até a v9 havia também os campos de um slide
+    // (`eyebrow`, `headline`, `imageUrl`, `overlay`…) fora da lista, e quem
+    // preenchia a foto de cima não via mudança nenhuma na loja — quem estava no
+    // ar era o slide. Com uma forma só, o formulário não oferece o que a vitrine
+    // ignora.
+    //
+    // Sem trilho de fundo: o fundo do hero é a fotografia, e sem trilho de
+    // títulos: a cópia de cada slide é a que ele traz.
     {
       name: "slides",
-      label: "Slides (carrossel)",
+      label: "Slides da capa",
       kind: "list:hero-slide",
-      help: "Com um ou mais slides a capa vira um carrossel: a foto e a cópia de cada um, na ordem da lista. Vazio, a capa é a de sempre — a foto e o texto dos campos acima.",
+      help: "Um item por capa, na ordem em que aparecem. Um item só é a capa estática; dois ou mais viram carrossel automático. Sem nenhum item a capa não é desenhada.",
     },
-    // Sem trilho de fundo: o fundo do hero é a fotografia.
   ],
   launches: [
     { name: "eyebrow", label: "Eyebrow", kind: "text" },
@@ -1088,10 +1061,10 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     { name: "subtitle", label: "Subtítulo", kind: "textarea" },
     ...appearanceTexts("subtitle"),
     {
-      // O único campo do contrato além do `overlay` do hero com faixa: os
-      // produtos vêm da loja, então o que o lojista escolhe aqui é QUANTOS.
-      // Sem o limite, ou com um limite grande, o trilho viraria o catálogo
-      // inteiro — e um `limit` de 0 devolveria uma seção vazia.
+      // O `limit` é o número com faixa da seção: os produtos vêm da loja, então
+      // o que o lojista escolhe aqui é QUANTOS. Sem o limite, ou com um limite
+      // grande, o trilho viraria o catálogo inteiro — e um `limit` de 0
+      // devolveria uma seção vazia.
       name: "limit",
       label: "Quantos produtos",
       kind: "number",

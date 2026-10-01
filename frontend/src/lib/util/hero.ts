@@ -1,20 +1,22 @@
 /**
- * Os slides da capa — a lista que o carrossel desenha (e o herói de um só).
+ * Os slides da capa — a lista que o carrossel desenha (e a capa estática de um
+ * só).
  * -------------------------------------------------------------------------
- * A regra é uma só e tem duas metades:
+ * A regra é uma só: **a capa é a lista `slides` da seção**, na ordem em que o
+ * lojista a escreveu no CRM. Um item é a capa estática — a foto e a cópia dele,
+ * e nenhum controle; dois ou mais viram carrossel
+ * (`modules/home/components/hero/carousel.tsx`).
  *
- *   1. **Com slides, quem manda é a lista.** Cada slide traz a própria foto e a
- *      própria cópia, na ordem em que o lojista os escreveu no CRM.
- *   2. **Sem slides, vale a capa de sempre** — a foto e o texto dos campos da
- *      própria seção. É o que faz este recurso não ter migração: uma base que
- *      nunca ouviu falar de carrossel desenha exatamente o que desenhava, e o
- *      lojista que quiser um carrossel preenche uma lista nova em vez de
- *      reescrever a capa que já está no ar.
+ * Lista vazia é o caso **sem capa**: até a v9 valiam também os campos da própria
+ * seção (`eyebrow`, `headline`, `imageUrl`…), e era essa a segunda forma que
+ * saiu do contrato — dois jeitos de escrever a mesma capa no formulário
+ * confundiam mais do que ajudavam, porque o campo de reserva continuava na tela
+ * (e a loja continuava desenhando o slide) depois de o carrossel entrar no ar.
  *
  * Slide **vazio** (sem título e sem foto) cai fora: é o rastro de uma linha
  * recém-criada no editor do CRM, e uma tela preta no meio do carrossel é pior
  * do que a linha não existir. Sobrando um slide só depois do filtro, o
- * componente desenha o herói simples — carrossel de um slide é uma capa com
+ * componente desenha a capa simples — carrossel de um slide é uma capa com
  * controles que não fazem nada.
  *
  * O tipo é **estrutural** (e não `HeroSection`) pelo mesmo motivo de
@@ -36,8 +38,8 @@ export type HeroSlide = {
 
 /** De onde os slides saem — a seção `hero`, como ela chega do CMS. */
 export type HeroSlideSource = {
-  [field in keyof HeroSlide]?: unknown
-} & { slides?: unknown }
+  slides?: unknown
+}
 
 /** Texto de verdade: o que não for string vira string vazia. */
 const text = (value: unknown): string =>
@@ -53,24 +55,16 @@ const text = (value: unknown): string =>
 const hasContent = (slide: HeroSlide): boolean =>
   Boolean(slide.headline || slide.imageUrl)
 
-/** Os slides da capa, na ordem — a lista do CMS ou a capa única. */
+/** Os slides da capa, na ordem da lista — sem os itens vazios. */
 export function heroSlides(section: HeroSlideSource): HeroSlide[] {
-  const declared = Array.isArray(section.slides)
+  return Array.isArray(section.slides)
     ? section.slides.map(toSlide).filter(hasContent)
     : []
-
-  if (declared.length > 0) {
-    return declared
-  }
-
-  const legacy = toSlide(section)
-
-  return hasContent(legacy) ? [legacy] : []
 }
 
-/** Um item da lista (ou a própria seção) como slide de campos de texto. */
+/** Um item da lista como slide de campos de texto. */
 function toSlide(source: unknown): HeroSlide {
-  const slide = (source ?? {}) as HeroSlideSource
+  const slide = (source ?? {}) as Partial<Record<keyof HeroSlide, unknown>>
 
   return {
     imageUrl: text(slide.imageUrl),
