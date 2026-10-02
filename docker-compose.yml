@@ -163,6 +163,17 @@ services:
       # Ver `backend/src/modules/content/revalidate.ts`.
       FRONTEND_URL: ${FRONTEND_URL:-http://frontend:8000}
       REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
+      # Pagamento (Mercado Pago). Sem default DE PROPOSITO, pelo mesmo motivo do
+      # `REVALIDATE_SECRET`: um valor padrao conhecido aqui subiria a loja com
+      # pagamento quebrado, e a cliente so descobriria no checkout. Vazia = o
+      # provider responde "indisponivel" com mensagem, em vez de 500.
+      # NUNCA com prefixo `NEXT_PUBLIC_` — ver o bloco correspondente no
+      # `.env.example`: aquele prefixo INLINA a variavel no bundle do navegador.
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      MP_APP_ID: ${MP_APP_ID:-}
+      MP_NOTIFICATION_URL: ${MP_NOTIFICATION_URL:-}
+      MP_BACK_URL: ${MP_BACK_URL:-}
     volumes:
       # Uploads do painel (`@medusajs/file-local`, ver medusa-config.ts): o que
       # o CRM envia fica no volume, e nao na camada de escrita do container —
@@ -211,7 +222,6 @@ services:
         NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:-pk_test}
         NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:8000}
         NEXT_PUBLIC_DEFAULT_REGION: ${NEXT_PUBLIC_DEFAULT_REGION:-br}
-        NEXT_PUBLIC_STRIPE_KEY: ${NEXT_PUBLIC_STRIPE_KEY:-}
     image: real_valor_frontend:${REAL_VALOR_TAG:-local}
     container_name: real_valor_frontend
     restart: unless-stopped

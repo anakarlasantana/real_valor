@@ -287,8 +287,21 @@ junto (`admin/`, `COPY admin/ /app/admin`) e o storefront leva o pacote do contr
 | [`README.md`](README.md) | este arquivo: subir a stack, operar o dia a dia, troubleshooting |
 | [`backend/src/modules/content/README.md`](backend/src/modules/content/README.md) | o CMS: contrato, seed, API e painel |
 | [`frontend/src/app/fonts/README.md`](frontend/src/app/fonts/README.md) | por que as fontes são self-hosted e como regerá-las |
-| [`docs/DEBITO-TECNICO.md`](docs/DEBITO-TECNICO.md) | entrada do registro de débito (mapa dos quatro assuntos) |
-| [`docs/plano-centralizacao.md`](docs/plano-centralizacao.md) | plano de arquitetura do CMS: o contrato como dado no Postgres, com o status de cada fase |
+| [`docs/real-valor/01-auditoria-projeto.md`](docs/real-valor/01-auditoria-projeto.md) | auditoria do estado atual, área por área, com caminhos de arquivo |
+| [`docs/real-valor/02-analise-site-referencia.md`](docs/real-valor/02-analise-site-referencia.md) | padrões de UX extraídos da referência e como aplicá-los aqui |
+| [`docs/real-valor/03-gap-analysis.md`](docs/real-valor/03-gap-analysis.md) | comparativo atual × desejado, com prioridade |
+| [`docs/real-valor/04-requisitos-funcionais.md`](docs/real-valor/04-requisitos-funcionais.md) | RV-001 a RV-013 e RV-042 a RV-046: regras, estados, integrações e critérios de aceite |
+| [`docs/real-valor/05-requisitos-nao-funcionais.md`](docs/real-valor/05-requisitos-nao-funcionais.md) | acessibilidade, SEO técnico, performance, segurança, produção |
+| [`docs/real-valor/06-design-system.md`](docs/real-valor/06-design-system.md) | o design system existente, suas lacunas e o inventário de componentes |
+| [`docs/real-valor/07-fluxos-de-usuario.md`](docs/real-valor/07-fluxos-de-usuario.md) | a jornada de compra, os pontos de abandono e os cenários de exceção |
+| [`docs/real-valor/08-arquitetura-e-integracoes.md`](docs/real-valor/08-arquitetura-e-integracoes.md) | mapa frontend x backend, arquivos impactados e a camada modular |
+| [`docs/real-valor/09-backlog-implementacao.md`](docs/real-valor/09-backlog-implementacao.md) | 46 itens em 4 fases, com dependências e pré-requisitos |
+| [`docs/real-valor/10-roadmap.md`](docs/real-valor/10-roadmap.md) | ordem de implementação, tradução da marca e resumo executivo |
+
+> **Nota:** os arquivos `DEBITO-TECNICO.md` e `plano-centralizacao.md`, antes referenciados aqui,
+> foram removidos no commit `6c7feef6e7` e não voltaram. O conjunto em `docs/real-valor/` cobre o
+> estado atual. O conteúdo antigo está no histórico Git, caso queira recuperar
+> (`git show 6c7feef6e7^:docs/DEBITO-TECNICO.md`).
 
 O débito técnico está em quatro assuntos, por severidade — bloqueadores, alto, médio/baixo e as
 armadilhas de ambiente Docker —, cada item com evidência e impacto.
