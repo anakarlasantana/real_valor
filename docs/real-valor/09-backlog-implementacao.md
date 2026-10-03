@@ -113,8 +113,21 @@ e **reprova** quando se injeta um import proibido.
 
 ## Fase 1 — Essencial para a inauguração
 
-### RV-003 · Interface 100% pt-BR
-**Descrição:** substituir todos os textos em inglês verificados na RV-003.
+### ✅ RV-003 · Interface 100% pt-BR — **FEITO** (`316be39e46`)
+
+**O escopo real foi maior que o registrado:** a tabela do requisito previa 19 itens; o levantamento
+sistemático achou **35 arquivos e 127 strings**. As labels de formulário (15 em endereço e
+cobrança), os textos de conta (17), os metadados (17) e a ordenação não estavam na tabela.
+
+**Mensagens ficaram acionáveis, não literais:** "Enter a valid email address" → **"Informe um
+e-mail válido"** (o original só diz que falhou); "Welcome back" → **"Bem-vinda de volta"** (com "a",
+coerente com o tom da marca).
+
+**Ficou para o RV-007 (SEO), que é outro requisito:** os títulos de produto, categoria e coleção
+ainda vazam " | Medusa Store" — é vazamento de marca do template, não de idioma, e misturar os dois
+tornaria a revisão mais difícil.
+
+**Descrição original:** substituir todos os textos em inglês verificados na RV-003.
 **Tipo:** UI · **Prioridade:** CRÍTICA · **Complexidade:** baixa
 **Depende de:** nenhuma — **pode começar hoje**
 **Arquivos:** 8 páginas + 5 componentes (tabela da RV-003)
@@ -181,8 +194,27 @@ JSON-LD.
 **Aceite:** os 3 critérios da RV-011
 **Pré-requisito:** `get-percentage-diff` já existe
 
-### RV-017 · Tokens de estado, escala de texto e `reduced-motion`
-**Descrição:** fechar as três lacunas do design system (cores de estado, escala tipográfica,
+### ✅ RV-017 · Tokens de estado, escala tipográfica e `reduced-motion` — **FEITO** (`325dafa850`)
+
+**2 das 3 lacunas fechadas; a terceira estava errada na auditoria.**
+
+Fechadas: **9 tokens** de escala tipográfica e **8** de cores de estado. A escala é a **mesma** dos
+utilitários que já eram usados (trocar o token pelo utilitário não move um pixel) — o que muda é ter
+nome: `--rv-text-2xl` diz "título de seção"; `text-2xl` não diz nada.
+
+`--rv-info` **reaproveita o cacau** em vez de introduzir azul: um azul quebraria a paleta terrosa e
+cairia no clichê de interface corporativa que a marca evita.
+
+**Contraste medido (WCAG 2.1):** danger 6.10, info 9.72, success 5.12, warning 4.80 — todos acima
+de AA para texto normal. O verde e o âmbar começaram mais claros e foram **escurecidos** até passar
+(`#4a7c59` dava 4.33 e `#a8752a` dava 3.57). Escurecer é melhor do que documentar a limitação.
+
+**Correção:** o `prefers-reduced-motion` foi escrito na auditoria como lacuna, e **não era** — o
+`brand.css` já tinha o bloco (linha 1130), e ele é **melhor** do que a proposta que eu faria: tem
+tratamento próprio para o ticker, porque o piso global pararia o trilho no fim do curso com a última
+mensagem fora da tela. Deixado como estava.
+
+**Descrição original:** fechar as três lacunas do design system (cores de estado, escala tipográfica,
 `prefers-reduced-motion`).
 **Tipo:** UI · **Prioridade:** MÉDIA · **Complexidade:** baixa
 **Depende de:** nenhuma
@@ -389,14 +421,14 @@ Git, se o conteúdo ainda for válido.
 
 ## 9.10 Resumo quantitativo
 
-| Fase | Itens | CRÍTICA | ALTA | MÉDIA | BAIXA |
-| :--- | :--- | --- | --- | --- | :--- |
-| Fase 0 | 4 | 1 | 3 | 0 | 0 |
-| Fase 1 | 15 | 3 | 9 | 3 | 0 |
-| Fase 2 | 7 | 0 | 0 | 5 | 2 |
-| Fase 3 | 7 | 0 | 0 | 4 | 3 |
-| Fase 4 | 12 | 0 | 0 | 0 | 12 |
-| **Total** | **46** | **4** | **11** | **13** | **17** |
+| Fase | Itens | CRÍTICA | ALTA | MÉDIA | BAIXA | **Feitos** |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Fase 0 | 4 | 1 | 3 | 0 | 0 | **2** (RV-001, RV-014) |
+| Fase 1 | 15 | 3 | 9 | 3 | 0 | **2** (RV-003, RV-017) |
+| Fase 2 | 7 | 0 | 0 | 5 | 2 | 0 |
+| Fase 3 | 7 | 0 | 0 | 4 | 3 | 0 |
+| Fase 4 | 12 | 0 | 0 | 0 | 12 | 0 |
+| **Total** | **46** | **4** | **11** | **13** | **17** | **4** |
 
 > **Um item cancelado:** o RV-015 (stop-gap com Stripe) saiu do backlog — ver a seção dele. Total
 > efetivo: **44 itens**.

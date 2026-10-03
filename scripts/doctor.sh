@@ -35,6 +35,25 @@ else
   bad "Docker não responde" "suba o Docker Desktop (ou o daemon) e rode de novo"
 fi
 
+# 0. A instalacao do workspace. Este e' o primeiro porque e' o que faz TODAS as
+#    verificacoes de codigo falharem com uma mensagem que nao aponta para a
+#    causa: `yarn install` termina em 1s reportando sucesso, mas o
+#    `install-state.gz` acredita num install antigo e nao religa nada — e
+#    `next`/`vitest` simplesmente nao existem. Sem este aviso, quem chega
+#    procura erro de codigo durante meia hora.
+#    Detalhe em docs/real-valor/11-ambiente-local.md.
+for pacote in next vitest; do
+  achou=0
+  [ -d "node_modules/$pacote" ] && achou=1
+  [ -d "frontend/node_modules/$pacote" ] && achou=1
+  if [ "$achou" -eq 0 ]; then
+    bad "node_modules sem '$pacote'" "rm -f .yarn/install-state.gz && corepack yarn install --immutable"
+  fi
+done
+if [ -d node_modules/next ] || [ -d frontend/node_modules/next ]; then
+  ok "workspace instalado (next e vitest presentes)"
+fi
+
 # 1. Containers do projeto parados: é o que faz o Compose recusar com
 #    "container name is already in use".
 parados="$(docker ps -a --filter 'name=real_valor' --format '{{.Names}} {{.Status}}' 2>/dev/null | grep -vE 'Up ' | awk '{print $1}')"

@@ -323,6 +323,20 @@ stop-gap do Stripe — ver o backlog).
 **Marcos:** M0 Fundação · M1 Venda real (MP) · M2 Envio e rastreio · M3 Descoberta ·
 M4 Vitrine completa (inauguração).
 
+### Situação hoje
+
+| Marco | Itens | Estado |
+| :--- | :--- | :--- |
+| **M0 — Fundação** | RV-003, RV-017, RV-001, RV-014 | ✅ **completo** |
+| **M1 — Venda real** | RV-002, RV-042 | ⬜ próximo — trava em credencial e URL do webhook |
+| **M2 — Envio e rastreio** | RV-043, RV-044 | ⬜ não depende do MP |
+| **M3 — Descoberta** | RV-004, RV-005, RV-007 | ⬜ independe do MP |
+| **M4 — Vitrine completa** | RV-009, RV-008, RV-016, RV-018, RV-006 | ⬜ RV-008 depende do MP |
+
+**M0 fechado é o que importa aqui:** o registry existe, a guarda que o protege roda em CI, e o
+Mercado Pago entra como *mais um adapter*. Nenhuma linha de `modules/checkout/` vai precisar ser
+tocada para isso.
+
 **Sem stop-gap de Stripe:** o Stripe foi removido do escopo — não atende o parcelamento necessário e
 seu código de tokenização não serve para o MP, que é redirecionamento.
 
@@ -400,12 +414,19 @@ onde persiste e quando grava). Novo item **RV-048** para a remoção do código 
 
 | Etapa | Estado |
 | :--- | :--- |
-| Provider do MP, webhook, registry e adapter (RV-001, RV-002) | **Não iniciado** |
-| Desacoplamento de `shouldInputCard` (`payment/index.tsx:80`) | **Não iniciado** |
+| Idioma pt-BR (RV-003) | ✅ **FEITO** (`316be39e46`) |
+| Tokens do design system (RV-017) | ✅ **FEITO** (`325dafa850`) |
+| Registry de pagamento (RV-001) | ✅ **FEITO** (`73ed719544`) |
+| Guarda de fronteira do pagamento (RV-014) | ✅ **FEITO** (`73ed719544`) |
+| Provider do MP, Preference API e webhook (RV-002) | **Não iniciado** |
+| Captura do pagamento e reserva (RV-042) | **Não iniciado** |
 | Remoção do código Stripe (RV-048) | **Não iniciado — depois do MP** |
 | `medusa-config.ts` lendo `MP_ACCESS_TOKEN` | **Não iniciado** |
 | Validação das `MP_*` no `scripts/doctor.sh` | **Não iniciado** |
-| Idioma pt-BR (RV-003) | **Não iniciado** |
+
+**Ambiente local:** as três armadilhas encontradas ao validar o RV-001 estão em
+[`11-ambiente-local.md`](11-ambiente-local.md). A mais cara foi um `yarn install` que reportava
+sucesso sem instalar `next` nem `vitest` — e o `doctor.sh` agora avisa.
 
 O código do frontend ainda importa `@stripe/*` e ainda lê `NEXT_PUBLIC_STRIPE_KEY`, que agora não é
 mais fornecida — isso é **intencional e temporário**: a remoção só deve acontecer junto com o adapter do

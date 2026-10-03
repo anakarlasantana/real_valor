@@ -27,7 +27,7 @@ O que impede a venda hoje **não é a vitrine** — é a ausência de provedor d
 | Checkout | **Quebrado para venda** | UI completa, **mas nenhum provedor de pagamento registrado** |
 | Backend | Sólido | Medusa v2, seed idempotente, módulo de conteúdo próprio |
 | CMS | **Sólido** | Painel em `/painel` edita vitrine e tema sem deploy |
-| Testes | **Forte** | 310 testes (210 backend + 81 storefront + 19 CRM) com CI |
+| Testes | **Forte** | 371 testes (210 backend + 142 storefront + 19 CRM) com CI |
 | i18n / pt-BR | **Falha** | Interface com textos em inglês |
 | SEO | **Falha** | Sem sitemap, robots ou dados estruturados |
 
@@ -246,7 +246,7 @@ consumidas por `next/font/local`. Sem requisição ao Google no build. Regenerá
 | Runner | Suítes | Testes | Comando |
 | :--- | :--- | :--- | :--- |
 | Backend (jest) | 12 | 210 | `make test` |
-| Storefront (vitest) | 7 arquivos | 81 | `make test` |
+| Storefront (vitest) | 10 arquivos | 142 | `make test` |
 | CRM (jest próprio) | 2 | 19 | `make test` |
 
 `.github/workflows/check.yml` — um job por dependência: contrato, tipos, testes, registro do
