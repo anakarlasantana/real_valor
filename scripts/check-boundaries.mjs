@@ -152,6 +152,55 @@ assert(
     " — a tela recebe o dado pelo payload da API (ver POST /admin/content/order)"
 )
 
+// ---------------------------------------------------------------------------
+// A fronteira do pagamento (RV-014).
+//
+// `modules/checkout/` pergunta ao REGISTRO quem responde por um `provider_id` —
+// e não pode importá-lo. Sem esta verificação, o primeiro adapter escrito "só
+// para não perder tempo" importa direto do componente, e no quarto provedor o
+// `switch` volta: é o que o RV-001 desfez e o que voltaria sem um guarda.
+//
+// A regra é mais estrita que a do painel: aqui **nenhum** import de adapter
+// passa, nem por tipo. O checkout só conhece `@lib/payments` (o registry).
+//
+// Há uma exceção, e ela é o que prova que a regra funciona: os dois arquivos
+// do cartão e do botão do Stripe foram MOVIDOS para dentro do adapter
+// (`lib/payments/adapters/stripe/`). Eles eram UI de provedor usado no
+// checkout — que é o acoplamento. O RV-048 apaga esse diretório inteiro e a
+// exceção desaparece com ele.
+// ---------------------------------------------------------------------------
+const CHECKOUT = join(root, "frontend/src/modules/checkout")
+const ADAPTER_PREFIX = "@lib/payments/adapters"
+const STRIPE_PACKAGES = ["@stripe/react-stripe-js", "@stripe/stripe-js"]
+
+const checkoutLeaks = walk(CHECKOUT, [".ts", ".tsx"]).flatMap((file) => {
+  const source = readFileSync(file, "utf8")
+  const file_ = relative(root, file)
+
+  return [...source.matchAll(VALUE_IMPORT)]
+    .filter((match) => {
+      const specifier = match[1]
+
+      if (specifier.includes(ADAPTER_PREFIX)) {
+        return true
+      }
+
+      // O SDK do Stripe é a mesma coisa pelo outro lado: um `import` dele no
+      // checkout significa que um componente de pagamento conhece um provedor.
+      return STRIPE_PACKAGES.some((pkg) => specifier.startsWith(pkg))
+    })
+    .map((match) => `${file_}: ${match[0].trim().split("\n")[0]}`)
+})
+
+assert(
+  "o checkout não importa adapter nem SDK de pagamento (só o registry)",
+  checkoutLeaks.length === 0,
+  checkoutLeaks.join("; ") +
+    " — quem responde por um `provider_id` é `resolvePayment()` (@lib/payments); " +
+    "a UI de um meio fica dentro do adapter dele"
+)
+
+
 if (failures.length) {
   console.log(`\n${failures.length} verificação(ões) falharam.`)
   console.log(

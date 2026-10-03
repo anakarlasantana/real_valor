@@ -21,3 +21,4 @@
  */
 export * from "./contract.ts"
 export * from "./defaults.ts"
+export * from "./payment.ts"

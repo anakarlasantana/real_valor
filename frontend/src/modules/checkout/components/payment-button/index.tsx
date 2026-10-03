@@ -1,10 +1,9 @@
 "use client"
 
-import { isManual, isStripeLike } from "@lib/constants"
+import { resolvePayment } from "@lib/payments/registry"
 import { placeOrder } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
-import { useElements, useStripe } from "@stripe/react-stripe-js"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
 
@@ -13,6 +12,19 @@ type PaymentButtonProps = {
   "data-testid": string
 }
 
+/**
+ * O botão de finalizar, resolvido pelo registro.
+ *
+ * **Não há `switch` aqui.** O componente pergunta ao registry quem responde por
+ * este `provider_id` e segue o que o adapter disser — é a inversão que o
+ * RV-001 existe para fazer. Um provedor novo não acrescenta um `if` aqui.
+ *
+ * A pergunta que o código fazia antes ("este meio precisa de cartão na minha
+ * página?") virou `adapter.fulfillment`: `redirect` vai para o Checkout Pro do
+ * provedor, `inline` desenha o meio na nossa página, `external` é só
+ * finalizar o pedido. Trocar Checkout Pro por Checkout API é mudar um valor no
+ * adapter — não esta linha.
+ */
 const PaymentButton: React.FC<PaymentButtonProps> = ({
   cart,
   "data-testid": dataTestId,
@@ -25,133 +37,44 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     (cart.shipping_methods?.length ?? 0) < 1
 
   const paymentSession = cart.payment_collection?.payment_sessions?.[0]
+  const adapter = resolvePayment(paymentSession?.provider_id)
 
-  switch (true) {
-    case isStripeLike(paymentSession?.provider_id):
-      return (
-        <StripePaymentButton
-          notReady={notReady}
-          cart={cart}
-          data-testid={dataTestId}
-        />
-      )
-    case isManual(paymentSession?.provider_id):
-      return (
-        <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
-      )
-    default:
-      return <Button disabled>Selecione uma forma de pagamento</Button>
+  // `inline`: o meio tem uma confirmação própria — hoje, o cartão do Stripe,
+  // que precisa mandar os dados ao provedor antes de finalizar o pedido.
+  // Quem tem o botão é o ADAPTER; o checkout não sabe qual é.
+  if (adapter.ConfirmButton) {
+    return (
+      <adapter.ConfirmButton
+        notReady={notReady}
+        cart={cart}
+        data-testid={dataTestId}
+      />
+    )
   }
+
+  // `redirect` e `external`: o botão é o mesmo — finalizar o pedido. O que
+  // muda entre os dois é o que acontece ANTES (a preference já foi criada e a
+  // cliente foi redirecionada) ou se há cobrança a fazer por fora.
+  return (
+    <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
+  )
 }
 
-const StripePaymentButton = ({
-  cart,
+/**
+ * O botão de finalizar, comum a `redirect` e `external`.
+ *
+ * O nome é o do meio manual porque é o que ele sempre foi: o botão que chama
+ * `placeOrder()`. Ele não sabe que meio está ativo, e é por isso que o mesmo
+ * botão serve para o Mercado Pago (que já autorizou fora) e para o meio manual
+ * (que não autorizou nada). O RV-048 renomeia, junto com a remoção do Stripe.
+ */
+const ManualTestPaymentButton = ({
   notReady,
   "data-testid": dataTestId,
 }: {
-  cart: HttpTypes.StoreCart
   notReady: boolean
   "data-testid"?: string
 }) => {
-  const [submitting, setSubmitting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
-  const onPaymentCompleted = async () => {
-    await placeOrder()
-      .catch((err) => {
-        setErrorMessage(err.message)
-      })
-      .finally(() => {
-        setSubmitting(false)
-      })
-  }
-
-  const stripe = useStripe()
-  const elements = useElements()
-  const card = elements?.getElement("card")
-
-  const session = cart.payment_collection?.payment_sessions?.find(
-    (s) => s.status === "pending"
-  )
-
-  const disabled = !stripe || !elements ? true : false
-
-  const handlePayment = async () => {
-    setSubmitting(true)
-
-    if (!stripe || !elements || !card || !cart) {
-      setSubmitting(false)
-      return
-    }
-
-    await stripe
-      .confirmCardPayment(session?.data.client_secret as string, {
-        payment_method: {
-          card: card,
-          billing_details: {
-            name:
-              cart.billing_address?.first_name +
-              " " +
-              cart.billing_address?.last_name,
-            address: {
-              city: cart.billing_address?.city ?? undefined,
-              country: cart.billing_address?.country_code ?? undefined,
-              line1: cart.billing_address?.address_1 ?? undefined,
-              line2: cart.billing_address?.address_2 ?? undefined,
-              postal_code: cart.billing_address?.postal_code ?? undefined,
-              state: cart.billing_address?.province ?? undefined,
-            },
-            email: cart.email,
-            phone: cart.billing_address?.phone ?? undefined,
-          },
-        },
-      })
-      .then(({ error, paymentIntent }) => {
-        if (error) {
-          const pi = error.payment_intent
-
-          if (
-            (pi && pi.status === "requires_capture") ||
-            (pi && pi.status === "succeeded")
-          ) {
-            onPaymentCompleted()
-          }
-
-          setErrorMessage(error.message || null)
-          return
-        }
-
-        if (
-          (paymentIntent && paymentIntent.status === "requires_capture") ||
-          paymentIntent.status === "succeeded"
-        ) {
-          return onPaymentCompleted()
-        }
-
-        return
-      })
-  }
-
-  return (
-    <>
-      <Button
-        disabled={disabled || notReady}
-        onClick={handlePayment}
-        size="large"
-        isLoading={submitting}
-        data-testid={dataTestId}
-      >
-        Place order
-      </Button>
-      <ErrorMessage
-        error={errorMessage}
-        data-testid="stripe-payment-error-message"
-      />
-    </>
-  )
-}
-
-const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -178,9 +101,9 @@ const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
         isLoading={submitting}
         onClick={handlePayment}
         size="large"
-        data-testid="submit-order-button"
+        data-testid={dataTestId}
       >
-        Place order
+        Finalizar pedido
       </Button>
       <ErrorMessage
         error={errorMessage}

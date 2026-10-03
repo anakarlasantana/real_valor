@@ -14,6 +14,14 @@ export default defineConfig({
   resolve: {
     alias: {
       "@lib": resolve(__dirname, "src/lib"),
+      // O pacote do contrato é um workspace: sem este alias o vitest não
+      // resolve `@rv/contrato/payment` (o subpath), e o teste do registry
+      // falha no import antes de exercitar qualquer comportamento.
+      "@rv/contrato": resolve(__dirname, "../packages/contrato/src/index.ts"),
+      "@rv/contrato/payment": resolve(
+        __dirname,
+        "../packages/contrato/src/payment.ts"
+      ),
     },
   },
 })

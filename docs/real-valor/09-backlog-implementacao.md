@@ -11,16 +11,25 @@ impactados · critérios de aceite · complexidade · pré-requisitos.
 
 Pré-requisito de tudo. Curta, e cria a estrutura que os itens seguintes consomem.
 
-### RV-001 · Camada de abstração de pagamento
-**Descrição:** criar `PaymentAdapter`/`PaymentResult` no contrato compartilhado, o registry no
+### ✅ RV-001 · Camada de abstração de pagamento — **FEITO**
+
+**O que foi feito:** contrato `packages/contrato/src/payment.ts` (`FulfillmentMode`, `PaymentResult`,
+`PaymentCapabilities`, `InstallmentInfo`, `MANUAL_PROVIDER_ID`); `lib/payments/{types,registry,labels}.ts`;
+adapters `manual`, `unsupported` e `stripe`; checkout sem nenhum import de adapter. A UI do cartão
+(`card-container`) e o botão (`payment-button`) foram MOVIDOS para dentro de `adapters/stripe/` — são
+UI de provedor, não do checkout.
+
+**Descrição original:** criar `PaymentAdapter`/`PaymentResult` no contrato compartilhado, o registry no
 storefront, e migrar o Stripe atual para dentro de um adapter — sem mudar a aparência.
 **Tipo:** arquitetura · **Prioridade:** CRÍTICA · **Complexidade:** média
 **Depende de:** nenhuma
-**Arquivos:**
-- *novos:* `packages/contrato/src/payment.ts`, `frontend/src/lib/payments/{types,registry,resolve}.ts`,
-  `adapters/{stripe,manual,unsupported}/`
-- *alterados:* `lib/constants.tsx` (esvazia o registro), `payment-button/index.tsx` (tira o `switch`),
-  `payment/index.tsx`
+**Arquivos (como ficaram):**
+- *novos:* `packages/contrato/src/payment.ts`, `frontend/src/lib/payments/{types,registry,labels,index}.ts`,
+  `adapters/{manual,unsupported}.ts`, `adapters/stripe/{index,card-container,payment-button}`
+- *alterados:* `lib/constants.tsx` (perdeu o registro), `payment/index.tsx`, `payment-button/index.tsx`,
+  `payment-container/index.tsx`, `payment-wrapper/index.tsx`, `order/payment-details/index.tsx`,
+  `vitest.config.ts`
+- *removido:* `payment-wrapper/stripe-wrapper.tsx`
 **Aceite:** os 8 critérios da RV-001; `grep -r "adapters/" modules/checkout` vazio
 **Pré-requisito:** nenhum
 
@@ -62,8 +71,13 @@ implementando-o.
 
 ---
 
-### RV-014 · Guarda de fronteira do pagamento
-**Descrição:** estender `scripts/check-boundaries.mjs` para reprovar `modules/checkout/` que importe
+### ✅ RV-014 · Guarda de fronteira do pagamento — **FEITO**
+
+**O que foi feito:** `scripts/check-boundaries.mjs` ganhou uma segunda verificação — `modules/checkout/`
+não importa `@lib/payments/adapters` nem `@stripe/*`. Testada nos dois sentidos: passa no código atual
+e **reprova** quando se injeta um import proibido.
+
+**Descrição original:** estender `scripts/check-boundaries.mjs` para reprovar `modules/checkout/` que importe
 `lib/payments/adapters/` diretamente.
 **Tipo:** arquitetura · **Prioridade:** ALTA · **Complexidade:** baixa
 **Depende de:** RV-001

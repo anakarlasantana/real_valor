@@ -1,17 +1,27 @@
 "use client"
 
 import { RadioGroup } from "@headlessui/react"
-import { isStripeLike, paymentInfoMap } from "@lib/constants"
+import { resolvePayment } from "@lib/payments/registry"
 import { initiatePaymentSession } from "@lib/data/cart"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import { Button, Container, Heading, Text, clx } from "@medusajs/ui"
 import ErrorMessage from "@modules/checkout/components/error-message"
-import PaymentContainer, {
-  StripeCardContainer,
-} from "@modules/checkout/components/payment-container"
+import PaymentContainer from "@modules/checkout/components/payment-container"
 import Divider from "@modules/common/components/divider"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+
+/**
+ * Este meio precisa de formulário na NOSSA página?
+ *
+ * A pergunta que o checkout fazia antes era `isStripeLike(id)`, e ela é a
+ * razão de o fluxo estar amarrado a um provedor. Agora é `fulfillment`:
+ * `inline` desenha aqui, `redirect` vai para o Checkout Pro do provedor,
+ * `external` é só finalizar o pedido. Trocar Checkout Pro por Checkout API é
+ * mudar um valor no adapter — esta linha não muda.
+ */
+const needsInlineInput = (providerId?: string | null) =>
+  resolvePayment(providerId).fulfillment === "inline"
 
 const Payment = ({
   cart,
@@ -41,7 +51,10 @@ const Payment = ({
   const setPaymentMethod = async (method: string) => {
     setError(null)
     setSelectedPaymentMethod(method)
-    if (isStripeLike(method)) {
+    // O meio `inline` precisa de uma sessão ativa antes de o cartão existir
+    // (é ela que traz o `client_secret`). Os demais não: o Checkout Pro cria a
+    // preference no redirecionamento, e o manual não cria nada.
+    if (resolvePayment(method).fulfillment === "inline") {
       await initiatePaymentSession(cart, {
         provider_id: method,
       })
@@ -73,8 +86,12 @@ const Payment = ({
   const handleSubmit = async () => {
     setIsLoading(true)
     try {
-      const shouldInputCard =
-        isStripeLike(selectedPaymentMethod) && !activeSession
+      // **Este é o ponto de desacoplamento do RV-002.** Antes era
+      // `isStripeLike(...) && !activeSession` — o fluxo perguntava ao PROVEDOR
+      // "este meio precisa de cartão na minha página?". Agora pergunta ao
+      // REGISTRO "como este meio se completa?": `redirect` vai para o Checkout
+      // Pro do provedor, `inline` desenha aqui, `external` é só finalizar.
+      const inlineInput = needsInlineInput(selectedPaymentMethod) && !activeSession
 
       const checkActiveSession =
         activeSession?.provider_id === selectedPaymentMethod
@@ -85,7 +102,7 @@ const Payment = ({
         })
       }
 
-      if (!shouldInputCard) {
+      if (!inlineInput) {
         return router.push(
           pathname + "?" + createQueryString("step", "review"),
           {
@@ -127,7 +144,7 @@ const Payment = ({
               className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
               data-testid="edit-payment-button"
             >
-              Edit
+              Editar
             </button>
           </Text>
         )}
@@ -140,26 +157,41 @@ const Payment = ({
                 value={selectedPaymentMethod}
                 onChange={(value: string) => setPaymentMethod(value)}
               >
-                {availablePaymentMethods.map((paymentMethod) => (
-                  <div key={paymentMethod.id}>
-                    {isStripeLike(paymentMethod.id) ? (
-                      <StripeCardContainer
-                        paymentProviderId={paymentMethod.id}
-                        selectedPaymentOptionId={selectedPaymentMethod}
-                        paymentInfoMap={paymentInfoMap}
-                        setCardBrand={setCardBrand}
-                        setError={setError}
-                        setCardComplete={setCardComplete}
-                      />
-                    ) : (
-                      <PaymentContainer
-                        paymentInfoMap={paymentInfoMap}
-                        paymentProviderId={paymentMethod.id}
-                        selectedPaymentOptionId={selectedPaymentMethod}
-                      />
-                    )}
-                  </div>
-                ))}
+                {availablePaymentMethods.map((paymentMethod) => {
+                  // O meio `inline` traz a própria UI; os outros, só a linha de
+                  // seleção. Quem decide é o ADAPTER — o checkout não compara
+                  // id, não conhece provedor e não importa adapter.
+                  const adapter = resolvePayment(paymentMethod.id)
+                  const { InlineUI } = adapter
+                  const selected = selectedPaymentMethod === paymentMethod.id
+
+                  return (
+                    <div key={paymentMethod.id}>
+                      {adapter.fulfillment === "inline" && InlineUI ? (
+                        <PaymentContainer
+                          paymentProviderId={paymentMethod.id}
+                          selectedPaymentOptionId={selectedPaymentMethod}
+                        >
+                          <InlineUI
+                            selected={selected}
+                            onStatus={(status) => {
+                              setCardComplete(status.complete ?? false)
+                              if (status.brand) {
+                                setCardBrand(status.brand)
+                              }
+                              setError(status.error ?? null)
+                            }}
+                          />
+                        </PaymentContainer>
+                      ) : (
+                        <PaymentContainer
+                          paymentProviderId={paymentMethod.id}
+                          selectedPaymentOptionId={selectedPaymentMethod}
+                        />
+                      )}
+                    </div>
+                  )
+                })}
               </RadioGroup>
             </>
           )}
@@ -167,13 +199,13 @@ const Payment = ({
           {paidByGiftcard && (
             <div className="flex flex-col w-1/3">
               <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                Payment method
+                Forma de pagamento
               </Text>
               <Text
                 className="txt-medium text-ui-fg-subtle"
                 data-testid="payment-method-summary"
               >
-                Gift card
+                Cartão-presente
               </Text>
             </div>
           )}
@@ -189,14 +221,15 @@ const Payment = ({
             onClick={handleSubmit}
             isLoading={isLoading}
             disabled={
-              (isStripeLike(selectedPaymentMethod) && !cardComplete) ||
+              (needsInlineInput(selectedPaymentMethod) &&
+                !cardComplete) ||
               (!selectedPaymentMethod && !paidByGiftcard)
             }
             data-testid="submit-payment-button"
           >
-            {!activeSession && isStripeLike(selectedPaymentMethod)
-              ? " Enter card details"
-              : "Continue to review"}
+            {needsInlineInput(selectedPaymentMethod)
+              ? " Informar os dados do cartão"
+              : "Continuar para a revisão"}
           </Button>
         </div>
 
@@ -205,33 +238,32 @@ const Payment = ({
             <div className="flex items-start gap-x-1 w-full">
               <div className="flex flex-col w-1/3">
                 <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                  Payment method
+                  Forma de pagamento
                 </Text>
                 <Text
                   className="txt-medium text-ui-fg-subtle"
                   data-testid="payment-method-summary"
                 >
-                  {paymentInfoMap[activeSession?.provider_id]?.title ||
-                    activeSession?.provider_id}
+                  {resolvePayment(activeSession?.provider_id).label}
                 </Text>
               </div>
               <div className="flex flex-col w-1/3">
                 <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                  Payment details
+                  Detalhes do pagamento
                 </Text>
                 <div
                   className="flex gap-2 txt-medium text-ui-fg-subtle items-center"
                   data-testid="payment-details-summary"
                 >
                   <Container className="flex items-center h-7 w-fit p-2 bg-ui-button-neutral-hover">
-                    {paymentInfoMap[selectedPaymentMethod]?.icon || (
+                    {resolvePayment(selectedPaymentMethod).icon || (
                       <CreditCard />
                     )}
                   </Container>
                   <Text>
-                    {isStripeLike(selectedPaymentMethod) && cardBrand
+                    {needsInlineInput(selectedPaymentMethod) && cardBrand
                       ? cardBrand
-                      : "Another step will appear"}
+                      : "O próximo passo aparece aqui"}
                   </Text>
                 </div>
               </div>
@@ -239,13 +271,13 @@ const Payment = ({
           ) : paidByGiftcard ? (
             <div className="flex flex-col w-1/3">
               <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                Payment method
+                Forma de pagamento
               </Text>
               <Text
                 className="txt-medium text-ui-fg-subtle"
                 data-testid="payment-method-summary"
               >
-                Gift card
+                Cartão-presente
               </Text>
             </div>
           ) : null}
