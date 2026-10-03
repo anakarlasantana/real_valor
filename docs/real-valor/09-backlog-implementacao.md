@@ -134,8 +134,36 @@ tornaria a revisão mais difícil.
 **Aceite:** os 5 critérios da RV-003
 **Pré-requisito:** nenhum
 
-### RV-002 · Adapter Mercado Pago
-**Descrição:** provider do MP no backend com Pix, cartão parcelado e boleto; webhook com assinatura e
+### ⛔ RV-002 · Adapter Mercado Pago — **NÃO INICIADO, bloqueado por credencial**
+
+> **Estado verificado em 10/02/2026:** este item **está inteiro por fazer**. Três verificações
+> independentes confirmam:
+>
+> | Verificação | Resultado |
+> | :--- | :--- |
+> | `backend/medusa-config.ts` registra módulo de pagamento? | **Não** — só `file` e `content` |
+> | `lib/payments/registry.ts` tem o adapter do MP? | **Não** — só `stripe`, `manual`, `unsupported` |
+> | Backend tem dependência do Mercado Pago? | **Não** |
+>
+> **Por que ainda não foi feito (ver `10-roadmap.md`, seção 10.7):** o código pode ser escrito sem
+> chave, mas **não dá para validar** a Preference real, o redirect, o retorno, o webhook chegando, e
+> **a assinatura contra um caso verdadeiro** — que é exatamente o que quebra. Escrever sem conseguir
+> rodar produz uma falsa sensação de pronto, e em pagamento o custo de descobrir isso tarde é o mais
+> alto do projeto.
+>
+> **O que destrava, e depende de você (não do código):**
+> 1. Abertura/aprovação da conta de produção no Mercado Pago — o caminho crítico real.
+> 2. `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET`.
+> 3. URL pública com HTTPS para o webhook — o Compose não expõe proxy TLS.
+>
+> **O que já está pronto para receber o MP:** o registry (RV-001) existe, a guarda de fronteira
+> (RV-014) roda em CI, e as chaves `MP_*` já estão no `.env.example` e no Compose **sem valor
+> padrão** (fail-closed). O adapter entra sem tocar em `modules/checkout/`.
+>
+> **Sequência ao retomar:** RV-002 → RV-042 (captura e reserva), que é o que transforma pagamento
+> aprovado em pedido com estoque reservado.
+
+**Descrição original:** provider do MP no backend com Pix, cartão parcelado e boleto; webhook com assinatura e
 idempotência; adapter no frontend.
 **Tipo:** integração · **Prioridade:** CRÍTICA · **Complexidade:** alta
 **Depende de:** RV-001
@@ -243,7 +271,8 @@ mensagem fora da tela. Deixado como estava.
 **Pré-requisito:** RV-002
 **Nota:** `backend/src/workflows/` **não existe** — é código novo, não adaptação.
 
-### RV-043 · Painel de envio (registro de rastreio)
+### ✅ RV-043 · Painel de envio (registro de rastreio) — **CONCLUÍDO (10/02/2026)**
+
 **Descrição:** campo no Admin para gravar `carrier`, `tracking_number`, `tracking_url` e
 `status_label` em `order.metadata`. **Campos em texto livre, sem lista de transportadoras.**
 **Tipo:** funcional + CMS · **Prioridade:** ALTA · **Complexidade:** baixa
@@ -253,7 +282,31 @@ mensagem fora da tela. Deixado como estava.
 **Nota:** a rota de track **já existe e funciona**; falta quem escreve. Sem este item, a cliente
 consulta e vê `null`.
 
-### RV-044 · Página pública de rastreio
+**Entregue:**
+- `backend/src/modules/shipping/tracking.ts` — a regra pura (normalizar, deduzir link, validar).
+  A validação mora aqui e não na rota, porque é a parte testável sem I/O.
+- `backend/src/api/admin/shipping/route.ts` — a fila de envio, do mais antigo para o mais novo.
+- `backend/src/api/admin/shipping/[id]/route.ts` — grava o registro.
+- `admin/src/admin/routes/shipping/` — a tela (fila, formulário) + `envio-form.ts`.
+- **23 testes** no backend e **13** no CRM.
+
+**Três decisões que valem lembrar:**
+1. **`metadata` é MESCLADO, nunca substituído.** Ele também guarda o CPF e o e-mail que a rota de
+   rastreio usa para validar a identidade; regravar o objeto inteiro faria **toda** consulta de
+   cliente virar 403. Há teste para isso.
+2. **Ausente ≠ vazio.** Ausente é "não mexe" e vazio é "limpa" — é o que permite corrigir a
+   transportadora sem redigitar o código.
+3. **Link só é deduzido quando o lojista não digita** e o formato casa com um padrão conhecido
+   (Correios, Jadlog, Totvs). Formato desconhecido devolve `null`: um link errado leva a cliente a
+   uma página de erro em outro domínio. O campo continua texto livre, então o RV-046 (adapter de
+   transportadora) entra sem retrabalho.
+
+**Defeito encontrado pelos testes:** o rótulo da fila comparava só o prefixo `entreg`, e classificava
+"Saiu para entrega" e "Em rota de entrega" como **entregues** — a tela affirmaria à loja que a
+cliente já recebeu o pedido. Corrigido para a palavra inteira, com teste de regressão.
+
+### ✅ RV-044 · Página pública de rastreio — **CONCLUÍDO (10/02/2026)**
+
 **Descrição:** tela `/rastreio` consumindo `GET /store/orders/track`, sem login, com linha do tempo e
 link no rodapé.
 **Tipo:** funcional + UI · **Prioridade:** ALTA · **Complexidade:** baixa
@@ -262,6 +315,29 @@ link no rodapé.
 `modules/order/components/track-{form,timeline}.tsx`
 **Aceite:** os 5 critérios da RV-044
 **Nota:** a rota já valida identidade com **403** — a tela deve respeitar esse contrato.
+
+**Entregue:**
+- `frontend/src/app/[countryCode]/(main)/rastreio/page.tsx` — rota **pt-BR** (`/rastreio`, como
+  `/carrinho` e `/conta`), não `/track` como a API.
+- `frontend/src/modules/tracking/templates/index.tsx` — o formulário e os quatro estados.
+- `frontend/src/lib/data/tracking.ts` — traduz a resposta HTTP em situação de tela. `no-store`.
+- **12 testes** no storefront.
+
+**Três decisões que valem lembrar:**
+1. **A página não busca nada no servidor.** É um server component que só entrega o formulário; a
+   consulta acontece quando a cliente aperta o botão. Se a busca fosse no servidor, o **CPF iria
+   para os `searchParams`**, para o log do servidor e para o histórico do navegador.
+2. **`cache: "no-store"` é a garantia central da rota.** É a única função do storefront sem cache:
+   todas as outras respostas são públicas, esta tem o CPF da cliente dentro. Com qualquer cache, uma
+   consulta poderia ser servida para outra pessoa. Há teste conferindo o `no-store`.
+3. **"Não encontrado" e "recusado" são mensagens diferentes.** A 403 **existe** e não muda o status
+   no Medusa — a cliente digitou errado, e a tela precisa dizer o que conferir, não sugerir que
+   algo quebrou. "Pendente" também é um estado de primeira classe: pedido pago, envio ainda não
+   registrado.
+
+**Acessibilidade:** o resultado está em `aria-live="polite"` — sem ele, quem usa leitor de tela
+pressiona o botão e não recebe nenhuma confirmação de que a página respondeu. Os três campos têm
+`<label>` ligado por `htmlFor`, e o botão desabilita durante a consulta para impedir envio duplo.
 
 ### RV-045 · Notificação de envio à cliente
 **Descrição:** e-mail com o código quando o admin salva o rastreio pela primeira vez.

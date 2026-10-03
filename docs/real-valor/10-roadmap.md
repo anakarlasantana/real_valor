@@ -328,8 +328,8 @@ M4 Vitrine completa (inauguração).
 | Marco | Itens | Estado |
 | :--- | :--- | :--- |
 | **M0 — Fundação** | RV-003, RV-017, RV-001, RV-014 | ✅ **completo** |
-| **M1 — Venda real** | RV-002, RV-042 | ⬜ próximo — trava em credencial e URL do webhook |
-| **M2 — Envio e rastreio** | RV-043, RV-044 | ⬜ não depende do MP |
+| **M1 — Venda real** | RV-002, RV-042 | ⬜ **BLOQUEADO** — ver 10.7 |
+| **M2 — Envio e rastreio** | RV-043, RV-044 | ✅ **completo** |
 | **M3 — Descoberta** | RV-004, RV-005, RV-007 | ⬜ independe do MP |
 | **M4 — Vitrine completa** | RV-009, RV-008, RV-016, RV-018, RV-006 | ⬜ RV-008 depende do MP |
 
@@ -440,3 +440,102 @@ e da marca já presente, e sinalizou explicitamente essa lacuna — em vez de in
 
 **Documentos relacionados:** `01` auditoria · `02` referência · `03` gaps · `04` requisitos · `05`
 não funcionais · `06` design system · `07` fluxos · `08` arquitetura · `09` backlog.
+
+## 10.7 Decisão de sequência: por que M2 antes de M1
+
+**Decisão de 10/02/2026**, com o RV-002 pronto para começar e **sem as credenciais do
+Mercado Pago**.
+
+### O que foi decidido
+
+O **RV-002 (Mercado Pago) fica para depois**, e o **RV-043 + RV-044 (envio e rastreio) entram
+agora**. A ordem documentada na seção 10.1 não muda de um item só: as duas etapas trocam de lugar.
+
+### Por quê
+
+**1. O RV-002 sem credencial é código de pagamento não testado.** O código pode ser escrito — mas
+sem chave não dá para validar a Preference real, o redirect, o retorno, o webhook chegando, e
+**a assinatura contra um caso verdadeiro**. E a assinatura é justamente o que quebra: uma assinatura
+aceita indevidamente é alguém forjando um pagamento confirmado.
+
+Escrever sem conseguir rodar produz uma falsa sensação de pronto, e em pagamento o custo de
+descobrir isso tarde é o mais alto do projeto.
+
+**2. O RV-043/044 é 100% testável agora.** Nada externo, nada a esperar. E fecha uma lacuna que já
+está verificada: a rota `/store/orders/track` existe, está bem feita (aceita nº do pedido + CPF **ou**
+e-mail, e devolve 403 quando a identidade não bate) — **mas ninguém escreve `tracking_number`**.
+A cliente consulta e vê vazio. O painel que grava esse dado não existe.
+
+**3. O que trava o RV-002 não é código — é a conta.** A aprovação da conta de produção do Mercado
+Pago leva dias e é processo doMercado Pago, não deste repositório. Ela pode começar **antes** de o
+código existir.
+
+### O que isso NÃO é
+
+Não é o RV-002 descartado, nem adiado para depois da inauguração. A sequência volta a ser:
+
+```
+M1  RV-002  Mercado Pago    → RV-042  captura e reserva     (assim que houver credencial)
+M2  RV-043  Painel de envio  → RV-044  Página de rastreio    (AGORA)
+```
+
+### O que destrava em paralelo, sem depender de mim
+
+1. **Abrir/aprovar a conta de produção no Mercado Pago** — o caminho crítico real.
+2. **`MP_ACCESS_TOKEN`** e **`MP_WEBHOOK_SECRET`** (Painel → App → Notificações).
+3. **URL pública com HTTPS** para o webhook — o Compose não expõe proxy TLS, e é infraestrutura que
+   precisa ser decidida antes da inauguração.
+
+### Como saber que o RV-002 está pendente
+
+- O backlog (documento 09) marca RV-002 como **não iniciado**, com a dependência explícita.
+- `medusa-config.ts` **não** registra nenhum módulo de pagamento — é o estado verificável, e é o
+  mesmo achado da auditoria que originou o RV-001.
+- A lista de meios em `lib/payments/registry.ts` **não** tem o adapter do MP.
+
+---
+
+---
+
+### 10.8 Estado do build de produção (10/02/2026) — **PENDENTE, NÃO É DO RV-043/044**
+
+Ao validar o RV-044, `next build` **falhou**. A verificação mostrou que a falha é
+**pré-existente**: ela reproduz com as mudanças do RV-043/044 removidas (`git stash`), e
+persiste depois de apagar o `.next`.
+
+```
+Error: <Html> should not be imported outside of pages/_document.
+Error occurred prerendering page "/404".
+Export encountered an error on /_error: /404, exiting the build.
+```
+
+**O que já foi descartado:**
+
+| Hipótese | Verificação | Resultado |
+| :--- | :--- | :--- |
+| Foi o RV-043/044 | `git stash` e build | ❌ falha igual |
+| Cache velho | `rm -rf .next` e build | ❌ falha igual |
+| `not-found.tsx` da raiz | removido o arquivo e build | ❌ falha igual |
+| Import de `next/document` no `src/` ou em `@medusajs/*` | `grep` em `src/` e em `node_modules` | ❌ ninguém importa |
+
+O `_error.js` gerado pelo Next carrega só `chunks/548.js`, que é o **próprio `next/document`** —
+ou seja, o erro é do Next montando a página 404, não de código da loja. **A causa raiz não foi
+identificada** e este registro não a inventa.
+
+**Por que está anotado aqui e não foi consertado.** Não pertence ao RV-043/044, mexer nisso no
+meio da tarefa seria ampliar o escopo sem saber a causa. Mas `next build` é o que gera a imagem do
+storefront (`output: "standalone"`, `frontend/Dockerfile`): **enquanto isso não fechar, a loja não
+sobe em produção.** É o próximo item, e ele trava a inauguração tanto quanto a credencial do
+Mercado Pago trava o RV-002.
+
+**Uma pista a investigar primeiro:** `@medusajs/ui` está declarado como `"latest"` no
+`frontend/package.json`, e a versão instalada é a `4.2.6`. Sem `package-lock.json` no workspace, um
+`npm install` em outra máquina pode resolver uma versão diferente da que o build verde usou. Fechar
+a versão é o candidato mais barato.
+
+**O que está verde e foi verificado depois dessa falha:** `tsc` nos três pacotes, `make test` completo
+(233 no backend, 13 no CRM, 154 no storefront) e a guarda de fronteira. A rota `/rastreio` **compila**
+e aparece em `.next/server/app/[countryCode]/(main)/rastreio` — o build morre no prerender do 404,
+depois da compilação.
+
+---
