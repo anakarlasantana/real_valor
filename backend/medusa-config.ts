@@ -169,6 +169,23 @@ module.exports = defineConfig({
     // Arquitetura Modular: Novos módulos de pagamento e frete (Mercado Pago, Melhor Envio, etc.)
     // serão registrados aqui de forma plugável e independente.
     //
+    // **Frete: o provider "tabela" (src/modules/fulfillment/tabela).**
+    //
+    // Registrado, mas **inativo até uma shipping option ser criada para ele**
+    // no Admin (ver o README do módulo). Isso é deliberado: o provider calcula
+    // preço por peso × região com **valores fictícios**, e não queremos que
+    // ele apareça na loja enquanto os números não forem reais. O seed continua
+    // criando PAC e SEDEX com preço fixo, e as duas convivem — o carrinho
+    // mostra só as opções que existem.
+    //
+    // Quando houver transportadora, ela entra como **outro** provider aqui, ao
+    // lado deste, e nenhum consumidor (carrinho, checkout, painel de envio,
+    // página de rastreio) muda: todos leem `StoreCartShippingOption`, que é
+    // uniforme por definição.
+    {
+      resolve: "./src/modules/fulfillment/tabela",
+    },
+    //
     // Módulo de conteúdo: guarda as seções da vitrine (home) editáveis
     // pelo admin. Ver src/modules/content.
     {

@@ -241,16 +241,34 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
    * O fallback do storefront (`DEFAULT_FOOTER`) é derivado deste bloco pelo
    * gerador — não há segunda cópia.
    *
-   * `columns` nasce vazia de propósito: coluna é conteúdo, não existe
-   * coluna padrão, e o lojista insere quantas quiser no admin — digitando
+   * `columns` quase nasce vazia: coluna é conteúdo, e o lojista insere,
+   * edita, reordena e remove todas pelo mesmo editor do admin — digitando
    * os links ou apontando a coluna para o catálogo (`source`).
+   *
+   * A **única** coluna que vem de fábrica é "Ajuda", com o link de
+   * rastreio. A página `/rastreio` (RV-044) existe e funciona, mas uma tela
+   * que ninguém consegue achar não serve para nada: o rodapé é o lugar onde
+   * uma cliente procura "onde está o meu pedido" depois de receber a
+   * confirmação. Fica como conteúdo — e não como JSX no componente — para
+   * que a loja possa renomear, mover ou apagar sem deploy.
    */
   {
     id: "footer",
     type: "footer",
     enabled: true,
     position: 10,
-    columns: [],
+    columns: [
+      {
+        title: "Ajuda",
+        source: "links",
+        links: [
+          {
+            label: "Acompanhar pedido",
+            href: "/rastreio",
+          },
+        ],
+      },
+    ],
     social: [
       {
         icon: "instagram",
