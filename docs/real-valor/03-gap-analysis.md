@@ -21,7 +21,7 @@ profissional) · **MÉDIA** (melhoria importante) · **BAIXA** (melhoria futura)
 | **Filtros** | Só ordenação (3 critérios) | Cor, tamanho, preço, disponibilidade — com contagem | **Total** | Implementar facetas em `refinement-list` | **ALTA** |
 | **SEO — títulos** | `` `${title} | Medusa Store` `` vaza em produto, categoria e coleção | `%s | Real Valor` + descrição real | Média | Corrigir 3 `generateMetadata` | **ALTA** |
 | **SEO — cobertura** | Sem sitemap, sem robots, sem JSON-LD | Sitemap dinâmico + robots + Product/Offer schema | **Total** | Criar `sitemap.ts`, `robots.ts`, JSON-LD na PDP | **ALTA** |
-| **Frete — transportadora** | Opções manuais seedadas | Cálculo por transportadora (a definir) | **Total** | `ShippingAdapter` + registry; plugar o escolhido | **ALTA** |
+| **Frete — transportadora** | Opções manuais seedadas, preço fixo | Cálculo por peso × região ✅ | **Parcial** | Provider `tabela` feito; falta transportadora real (RV-046) | ~~ALTA~~ MÉDIA |
 | **PDP — parcelamento** | Não exibido | "6x de R$ X sem juros" e preço Pix | **Total** | Consumir a camada de pagamento | **ALTA** |
 | **PDP — guia de medidas** | Não existe | Link ao lado do seletor de tamanho | **Total** | Modelar dado + criar página | **ALTA** |
 | **Home — vitrines** | 10 tipos de seção; `featured` com chips de categoria | Completa e editável | **Nenhum** | — | — |
@@ -106,7 +106,7 @@ Registrados como pergunta, não como suposição:
 | Questão | Bloqueia | Quem decide |
 | :--- | :--- | :--- |
 | Qual modalidade do Mercado Pago? (Point, Pro, Advanced) | Parcelamento e split | Comercial |
-| Provedor de frete definitivo | `ShippingAdapter` real | Comercial |
+| Provedor de frete definitivo | Provider de fulfillment real (RV-046) | Comercial |
 | Tabela de medidas: `metadata` ou módulo novo? | Guia de medidas | Arquitetura |
 | Quantidade de imagens por produto | Layout da galeria | Comercial |
 | Catálogo real: tamanho e número de categorias | Facetas de filtro, paginação | Comercial |

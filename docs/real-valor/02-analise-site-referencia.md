@@ -179,7 +179,7 @@ compra. Falta apenas garantir que o texto apareça **também junto ao seletor de
 **Referência:** campo de CEP com "Alterar CEP" / "Não sei meu CEP", dentro da PDP.
 
 **Como aplicar:** campo de CEP na PDP que consulta a opção de envio e atualiza custo e prazo.
-**É também o consumidor da camada de frete** (`ShippingAdapter`, Fase 0).
+**É também o consumidor da camada de frete** (o provider de fulfillment do Medusa, RV-006).
 
 **Motivo:** reduz abandono pós-adição — a dúvida de frete aparece antes do carrinho.
 

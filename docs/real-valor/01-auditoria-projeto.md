@@ -288,7 +288,7 @@ schema (Postgres efêmero) e build do storefront **sem infra**.
 | Acessibilidade | `parcialmente implementado` | — | contraste documentado |
 | **Documentação** | `quebrado` | `docs/` | vazio, README cita 6 arquivos |
 | Armazenamento de imagem | `parcialmente implementado` | `medusa-config.ts` | local, sem CDN |
-| Testes | `implementado` | 3 runners | 310 testes |
+| Testes | `implementado` | 3 runners | **456 testes** (250 · 52 · 154) |
 | Docker / operação | `implementado` | Compose + Makefile | 1 arquivo base |
 
 ## 1.5 Problemas técnicos encontrados

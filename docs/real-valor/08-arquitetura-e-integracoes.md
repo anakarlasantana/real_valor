@@ -123,10 +123,37 @@ Conforme a seção 9 do briefing. Arquivos marcados *(proposto)* **não existem*
 - `frontend/src/modules/checkout/components/shipping/`
 - `frontend/src/lib/data/fulfillment.ts`
 
-**Novos propostos:**
-- `packages/contrato/src/shipping.ts` *(proposto)*
-- `frontend/src/lib/shipping/registry.ts` *(proposto)*
-- `frontend/src/lib/shipping/adapters/manual/` *(proposto)*
+**✅ CORRIGIDO — o que foi feito, e o que não foi necessário.**
+
+A proposta original era um contrato `ShippingAdapter` em `packages/contrato/src/shipping.ts` mais um
+registry em `frontend/src/lib/shipping/registry.ts`. **Nenhum dos dois foi criado**, porque o Medusa já
+entrega o contrato pronto:
+
+- `AbstractFulfillmentProviderService` (`@medusajs/utils/dist/fulfillment/provider`);
+- tipos em `@medusajs/types/fulfillment/`;
+- registro via `ModuleProvider(Modules.FULFILLMENT, { services: [...] })`.
+
+E o frontend **não precisa de registry**: `StoreCartShippingOption` já é uniforme.
+
+**Frete é o oposto de pagamento.** No pagamento os providers são genuinamente diferentes (Stripe
+redireciona, Pix mostra QR), e é por isso que `resolvePayment` existe. No frete todo mundo devolve
+"preço + prazo" — não há decisão para o frontend tomar. Um registry de frete seria um sistema paralelo.
+
+**O que existe:**
+
+| Caminho | Papel |
+| :--- | :--- |
+| `backend/src/modules/fulfillment/tabela/tabela.ts` | Regra comercial (peso × região), funções puras |
+| `backend/src/modules/fulfillment/tabela/service.ts` | O provider que o Medusa chama |
+| `backend/src/modules/fulfillment/tabela/index.ts` | `ModuleProvider(Modules.FULFILLMENT, …)` |
+| `backend/src/modules/fulfillment/tabela/README.md` | Ativação e como plugar uma transportadora |
+
+Registrado em `medusa-config.ts`, com **17 testes** sobre a regra. Preços **fictícios** por enquanto —
+a regra comercial está isolada em um arquivo só, para ser trocada quando houver transportadora.
+
+> **O que não existe no Medusa:** webhook de frete. Se uma transportadora mudar o preço depois da
+> cliente pagar, a loja **não descobre**. Com a tabela isso não ocorre; com API real, passa a ser
+> conciliação manual. Decisão consciente — revisar quando houver transportadora.
 
 ### RV-007 — SEO
 

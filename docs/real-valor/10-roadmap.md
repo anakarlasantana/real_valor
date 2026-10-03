@@ -253,7 +253,7 @@ falhou, mesmo com as cores certas.
 
 **Fundação sólida, venda impossibilitada.** Monorepo Medusa v2 + Next.js 15 com arquitetura acima da
 média: contrato compartilhado por 3 runtimes, CMS funcional que edita a vitrine sem deploy, design
-system derivado da marca (1125 linhas), 310 testes em 3 runners com CI, e operação 100% em Docker com
+system derivado da marca (1125 linhas), **456 testes** em 3 runners com CI, e operação 100% em Docker com
 build offline. Home, header, footer, carrinho, conta, tema sazonal e pedido confirmado estão **prontos**.
 
 **O bloqueio:** `medusa-config.ts` não registra nenhum provedor de pagamento, e a região usa
@@ -534,8 +534,92 @@ Mercado Pago trava o RV-002.
 a versão é o candidato mais barato.
 
 **O que está verde e foi verificado depois dessa falha:** `tsc` nos três pacotes, `make test` completo
-(233 no backend, 13 no CRM, 154 no storefront) e a guarda de fronteira. A rota `/rastreio` **compila**
+(250 no backend, 52 no CRM, 154 no storefront) e a guarda de fronteiras. A rota `/rastreio` **compila**
 e aparece em `.next/server/app/[countryCode]/(main)/rastreio` — o build morre no prerender do 404,
 depois da compilação.
+
+---
+## 10.9 Frete automático (RV-006) — ✅ FEITO, sem esperar transportadora
+
+**Data:** 10/02/2026
+
+### O que mudou
+
+O RV-006 estava especificado sobre uma premissa errada: que faltava uma camada de abstração de frete,
+a ser construída no frontend, no formato `ShippingAdapter` + registry — espelhando o padrão do
+pagamento. **A verificação do código do Medusa mostrou que a abstração já existe e que ela é do
+backend.** A especificação foi corrigida e o que era preciso foi feito.
+
+### Por que pagamento e frete não são o mesmo problema
+
+| | Pagamento | Frete |
+| :--- | :--- | :--- |
+| Cada provedor tem formato diferente? | **Sim** — Stripe redireciona, Pix mostra QR | **Não** — todos devolvem preço + prazo |
+| Precisa de registry no frontend? | **Sim** | **Não** |
+| Onde vive a modularidade | Storefront **e** backend | **Só no backend** |
+
+`resolvePayment` existe porque o frontend **precisa decidir** qual provedor mostrar. No frete não há
+decisão a tomar: `StoreCartShippingOption` já é uniforme. Um registry de frete no storefront seria um
+sistema paralelo ao Medusa, sem ganho nenhum.
+
+### O que foi entregue
+
+Um **Fulfillment Provider** real, registrado no `medusa-config.ts`, que calcula preço por
+**peso × região**:
+
+```
+backend/src/modules/fulfillment/tabela/
+├── tabela.ts      ← a regra comercial (funções puras)
+├── service.ts     ← o provider que o Medusa chama
+├── index.ts       ← ModuleProvider(Modules.FULFILLMENT, …)
+├── README.md      ← como ativar e como plugar uma transportadora
+└── __tests__/     ← 17 testes sobre a regra
+```
+
+**Os valores são fictícios**, marcados como tal nos dois arquivos e no README. Ficam **isolados em
+`tabela.ts`** — trocar por valores reais é uma edição naquele arquivo e nada mais.
+
+### O que isso destrava
+
+**Frete automático sai da lista de "aguardando transportadora".** O problema original do RV-006 — que
+duas roupas e um sofá saíam pelo mesmo preço fixo — está resolvido.
+
+E o mais importante: **a arquitetura de plug-in ficou comprovada antes de existir transportadora.** Quando
+ela for escolhida, entra como **outro** provider, ao lado deste, e **nenhum consumidor muda** — carrinho,
+checkout, painel de envio e `/rastreio` já leem `StoreCartShippingOption` ou `order.metadata`.
+
+### O que ainda espera decisão comercial
+
+O **RV-046** (transportadora real). Quatro entradas:
+
+| O que é preciso | De quem |
+| :--- | :--- |
+| Qual transportadora | Comercial |
+| Se é link (Opção A) ou API (Opção B) | Comercial |
+| Tabela ou regra de preço | Comercial |
+| **Peso dos produtos cadastrado** | **Loja** — é trabalho de cadastro, não de integração |
+
+Sem peso cadastrado **não há cálculo possível**, e nenhuma API resolve isso. Vale começar o cadastro
+antes de fechar a transportadora.
+
+### Uma limitação que precisa ser revisitada
+
+**O Medusa não tem webhook de frete.** Se a transportadora mudar o preço depois da cliente pagar, a
+loja **não descobre**. Com a tabela isso não acontece — a regra é nossa e não muda. Com API real, passa
+a ser um processo de conciliação manual. É uma decisão consciente, registrada aqui para ser revista
+quando houver transportadora.
+
+### Verificação
+
+| Verificação | Resultado |
+| :--- | :--- |
+| Testes da regra | **17/17** |
+| `tsc` nos três runtimes | limpo |
+| Guarda de fronteiras | ok |
+| Suíte completa | **456** (250 · 52 · 154) |
+
+O provider está **registrado mas inativo**: registrar não cria shipping option. As opções PAC e SEDEX
+com preço fixo do seed continuam valendo, e o README do módulo explica como criar a opção `Calculada`
+quando os números forem reais.
 
 ---

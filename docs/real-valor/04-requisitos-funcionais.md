@@ -16,7 +16,7 @@ Caminhos sem marcador já existem no repositório.
 | [RV-003](#rv-003--idioma-da-interface-pt-br) | Interface 100% pt-BR | **CRÍTICA** |
 | [RV-004](#rv-004--filtros-de-catálogo) | Filtros de catálogo com contagem | ALTA |
 | [RV-005](#rv-005--busca-de-produtos) | Busca de produtos | ALTA |
-| [RV-006](#rv-006--camada-de-abstração-de-frete) | Camada de abstração de frete | ALTA |
+| [RV-006](#rv-006--frete-automático-e-plugável-️-feito) | Frete automático e plugável ✅ | ALTA |
 | [RV-007](#rv-007--metadados-de-seo) | Metadados de SEO e dados estruturados | ALTA |
 | [RV-008](#rv-008--parcelamento-e-pix-na-vitrine) | Parcelamento e Pix na vitrine | ALTA |
 | [RV-009](#rv-009--guia-de-medidas) | Guia de medidas | ALTA |
@@ -30,9 +30,10 @@ Caminhos sem marcador já existem no repositório.
 | [RV-045](#rv-045--notificao-de-envio-cliente) | Notificação de envio à cliente | MÉDIA |
 | [RV-046](#rv-046--adapter-de-transportadora) | Adapter de transportadora *(bloqueado)* | BAIXA |
 
-> **Bloco de pedido e envio (RV-042 a RV-046):** o provedor de frete **ainda não foi decidido**. Os
-> requisitos 042 a 045 são **independentes da transportadora** — precisam ser feitos de qualquer forma.
-> Só o RV-046 depende da escolha. Ver a observação em RV-006.
+> **Bloco de pedido e envio (RV-042 a RV-046):** o provedor de frete **ainda não foi decidido**, e
+> isso não segura nada — ver a correção no RV-006: **frete não precisa de registry no frontend**, e a
+> camada já foi construída (provider `tabela`). Os requisitos 042 a 045 são independentes da
+> transportadora; só o RV-046 depende da escolha.
 
 ---
 
@@ -574,88 +575,94 @@ Página /br/busca?q=
 
 ---
 
-## RV-006 — Camada de abstração de frete
+## RV-006 — Frete automático e plugável ✅ FEITO
 
 **Prioridade:** ALTA · **Tipo:** arquitetura + integração · **Complexidade:** média
 
-### Objetivo
-Deixar o cálculo de frete **modular**, para que o provedor definitivo seja plugado depois sem tocar
-em carrinho, checkout ou PDP.
+> **⚠️ Este requisito foi reescrito.** A versão original propunha um contrato
+> `ShippingAdapter` próprio e um registry no **frontend**, espelhando o padrão do pagamento.
+> **Isso estava errado** — e a verificação do código do Medusa mostrou por quê.
 
-### Contexto
+### A correção
 
-O provedor de frete **ainda não foi decidido**. O `seed.ts` cria opções de envio manuais e o
-`fulfillment-manual` está registrado — a loja funciona com frete fixo.
+O frete tem uma arquitetura **fundamentalmente diferente** da do pagamento:
 
-Escrever agora um adapter de transportadora seria especulação. O que é specification-worthy é a
-**fronteira**, exatamente como no pagamento: definir o contrato, deixar o `manual` implementando-o,
-e documentar o que plugar depois.
-
-> **Revisão (decisão de escopo):** o contrato **não pode assumir nenhuma das opções abaixo**. Ele
-> precisa servir às duas, para que a escolha da transportadora não force redesenho:
->
-> | Opção | Como funciona | Custo | Quando escolher |
-> | :--- | :--- | :--- | :--- |
-> | **A — Link** | Admin cola `carrier` + código; a rota monta o link de consulta | Baixa | Inauguração (recomendado) |
-> | **B — API** | Backend consulta a API da transportadora e atualiza o status | Alta | Volume que justifique |
->
-> **A é a recomendação para a inauguração.** A rota de rastreio **já aceita a opção A hoje** — retorna
-> `tracking_number`, `tracking_url` e `carrier` a partir de `order.metadata`. Falta quem escreve esses
-> campos (é o RV-043). Escolher A não é gambiarra: é o padrão do mercado, e a rota já foi desenhada
-> assim.
-
-**Contrato `ShippingAdapter`:**
-
-| Member | Assinatura | Para quê |
+| | Pagamento | Frete |
 | :--- | :--- | :--- |
-| `id` | `string` | identificador do método |
-| `label` | `string` | "PAC", "SEDEX", "Retirada na loja" |
-| `isAvailable` | `(ctx) => Promise<boolean>` | aplica a um CEP |
-| `quote` | `(ctx) => Promise<ShippingOption[]>` | opções com preço e prazo |
-| `estimate` | `(ctx) => Promise<string>` | "Chega em 5 dias úteis" |
+| Cada provedor tem formato diferente? | **Sim** — Stripe redireciona, Pix mostra QR | **Não** — todo mundo devolve "preço + prazo" |
+| Precisa de registry no frontend? | **Sim** (por isso existe `resolvePayment`) | **Não** |
+| Onde vive a modularidade | Storefront **e** backend | **Só no backend** |
 
-`ShippingOption` = `{ id, price, estimatedDays, carrier, errors? }` — **o mesmo formato**, venha de
-onde vier.
+O checkout já consome `StoreCartShippingOption` do Medusa, que é **uniforme por definição**: toda
+opção tem id, nome, preço e prazo. Não há nada para o frontend decidir, e portanto **nada para o
+frontend abstrair**. Um `ShippingAdapter` + registry no storefront duplicaria o que o Medusa já faz —
+seria inventar um sistema paralelo.
 
-**Arquivos propostos:**
-- `packages/contrato/src/shipping.ts` *(proposto)* — o contrato, compartilhado
-- `frontend/src/lib/shipping/registry.ts` *(proposto)* — espelha o padrão de pagamento
-- `frontend/src/lib/shipping/adapters/manual/` *(proposto)* — opções fixas do seed
+**A abstração do frete já vem pronta:** `AbstractFulfillmentProviderService` (em
+`@medusajs/utils/dist/fulfillment/provider`), com os tipos em `@medusajs/types/fulfillment/`.
+
+### O que foi entregue
+
+Um **Fulfillment Provider real**, que calcula preço por peso × região:
+
+| Arquivo | Papel |
+| :--- | :--- |
+| `backend/src/modules/fulfillment/tabela/tabela.ts` | A regra comercial — funções puras |
+| `backend/src/modules/fulfillment/tabela/service.ts` | O provider que o Medusa chama |
+| `backend/src/modules/fulfillment/tabela/index.ts` | `ModuleProvider(Modules.FULFILLMENT, …)` |
+| `backend/src/modules/fulfillment/tabela/README.md` | Como ativar e como plugar uma transportadora |
+
+Registrado em `medusa-config.ts`. **17 testes** sobre a regra.
+
+**Os valores são FICTÍCIOS** e estão marcados como tal nos dois arquivos. Trocá-los é uma edição em
+`tabela.ts` e nada mais — é o único lugar onde a regra comercial está escrita.
+
+### Os três métodos que importam
+
+| Método | Devolve | Quando o Medusa chama |
+| :--- | :--- | :--- |
+| `getFulfillmentOptions()` | `[{ id, name, is_return? }]` | No Admin, ao criar a opção |
+| `canCalculate(data)` | `boolean` | Se a opção é de preço calculado |
+| `calculatePrice(optionData, data, context)` | `{ calculated_amount, is_calculated_price_tax_inclusive }` | No checkout, a cada cálculo |
+
+**O que entra em `context`** (verificado em `@medusajs/types/fulfillment/common/cart.d.ts`):
+
+```ts
+{
+  shipping_address: { postal_code, city, province, country_code },
+  items: [{ quantity, variant: { weight, length, height, width } }]
+}
+```
+
+`calculated_amount` é **em centavos**.
 
 ### Regras de negócio
-1. O carrinho e a PDP **só conhecem `resolveShipping()`** — nunca um transportador.
-2. O preço do frete é **sempre calculado no backend** a partir do CEP e do subtotal. O front nunca
-   calcula frete.
-3. Opção indisponível para o CEP **não** é exibida com preço zero — some, ou mostra indisponível.
-4. O adapter `manual` continua funcionando até o real ser plugado — é o que garante a inauguração.
-5. Trocar de transportadora = escrever um adapter + uma linha de registro.
+1. O preço do frete é **sempre calculado no backend**. O front nunca calcula frete.
+2. **CEP inválido ou peso acima do limite falha — não devolve 0.** Zero na tela é frete grátis que a
+   loja paga.
+3. Peso zerado ou ausente cai na faixa **mais barata**: um produto sem peso cadastrado não pode
+   custar mais que um leve.
+4. Trocar de transportadora = **um `service.ts` + uma linha em `medusa-config.ts`**.
+5. O provider `tabela` fica **inativo até uma shipping option ser criada para ele** no Admin —
+   registrar não cria opção. Isso evita que valores fictícios apareçam na loja.
 
 ### Comportamento visual
-Idêntico ao atual: as opções de envio do checkout (`modules/checkout/components/shipping`) e do
-resumo. A mudança é interna.
-
-### Responsividade
-Idêntica ao atual.
+**Nenhuma mudança.** As opções de envio do checkout (`modules/checkout/components/shipping`) já
+consomem `StoreCartShippingOption`. O que muda é o valor — e ele passa a depender do peso e do
+destino, em vez de ser fixo.
 
 ### Estados
-| Estado | Comportamento |
-| :--- | :--- |
-| `sem CEP` | Pedir CEP antes de calcular (padrão atual do checkout) |
-| `carregando` | "Calculando…" |
-| `CEP inválido` | "Não encontramos esse CEP. Está bem escrito?" |
-| `sem opção` | "Nenhuma opção de entrega para este CEP" — com sugestão de retirada, se existir |
-| `erro` | Mensagem legível; o checkout **não** prossegue sem frete escolhido |
-
-### Integrações
-- `POST /store/shipping-methods` e `GET /store/shipping-options` (Medusa)
-- `Modules.FULFILLMENT` — já seedado com `manual_manual`
+`sem CEP` (pede antes de calcular) · `carregando` ("Calculando…") · `CEP inválido` · `sem opção` ·
+`erro` — todos os quatro **já implementados** no checkout atual.
 
 ### Critérios de aceite
-1. `resolveShipping("manual")` devolve o adapter de opções fixas.
-2. `grep -r "manual" frontend/src/modules/checkout` retorna vazio (a UI não conhece o adapter).
-3. Plugar um adapter novo não altera `shipping/index.tsx`.
-4. Frete nunca é calculado no cliente (nenhuma conta de preço de frete no front).
-5. O `manual` mantém a loja vendável até o provedor real existir.
+1. `tabela-nacional` aparece na lista do Admin quando o provider está registrado.
+2. Criada a opção com `price_type: "calculated"`, o preço no checkout muda com o **peso** e o **CEP**.
+3. CEP inválido não mostra preço 0 — a opção sai da lista.
+4. Peso acima de 20kg não calcula.
+5. Nenhum valor em reais onde se espera centavos (teste).
+6. A tabela não tem buraco: todo par (região, faixa) tem número (teste).
+7. Trocar de transportadora **não altera** carrinho, checkout, painel de envio nem `/rastreio`.
 
 ---
 
@@ -1166,29 +1173,43 @@ Avisar a cliente quando a peça saiu, com o código de rastreio — reduzindo "c
 
 ---
 
-## RV-046 — Adapter de transportadora
+## RV-046 — Transportadora real
 
 **Prioridade:** BAIXA · **Tipo:** integração · **Complexidade:** média
-**Depende de:** **decisão comercial** · **BLOQUEADO — provedor não definido**
+**Depende de:** **decisão comercial** · **BLOQUEADO — transportadora não escolhida**
 
 ### Objetivo
-Substituir o `manual` por cálculo real de frete quando a transportadora for escolhida.
+Trocar o preço da tabela por cotação real, quando houver transportadora com API.
 
 ### Estado atual
-**Bloqueado por decisão externa.** O `fulfillment-manual` está seedado com PAC/SEDEX e mantém a loja
-vendável. Este requisito **não entra no caminho crítico da inauguração**.
+**Bloqueado por decisão externa — mas não bloqueia nada mais.** A camada já está pronta e
+comprovada: o provider `tabela` (RV-006) calcula preço por peso × região e está registrado no
+`medusa-config.ts`. A loja já é vendável com ele.
 
 ### O que será feito quando houver decisão
-1. `packages/contrato/src/shipping.ts` já define o contrato (RV-006) — **sem mudança**.
-2. Escrever `backend/src/modules/shipping/<transportadora>/` seguindo o padrão de
-   `08-arquitetura-e-integracoes.md`, seção 8.6.
-3. Normalizar a resposta para `ShippingOption` (`id`, `price`, `estimatedDays`, `carrier`).
-4. Se for **opção B (API)**, plugar a atualização de status no RV-043.
+1. Escrever `backend/src/modules/fulfillment/<transportadora>/service.ts` seguindo o mesmo formato
+   do `tabela` — três métodos: `getFulfillmentOptions()`, `canCalculate()`, `calculatePrice()`.
+2. Registrar em `medusa-config.ts` — **mais nada**.
+3. Criar a shipping option no Admin apontando para o provider novo.
+4. Desligar a tabela, se ela deixar de ser usada.
+5. Se for integração por **API**, avaliar polling de status — o Medusa não avisa mudanças de status
+   sozinho (ver "O que não existe").
+
+### O que NÃO precisa ser feito
+Carrinho, checkout, painel de envio e `/rastreio` **não mudam**. Todos leem `StoreCartShippingOption`
+ou `order.metadata`, e `carrier` lá é texto livre de propósito.
+
+### O que a transportadora precisa ter
+- API com consulta por CEP e peso (ou um link de consulta, que basta para rastreio);
+- tabela ou API de prazos por região;
+- peso dos produtos cadastrado no Medusa — **sem isso não há cálculo possível**, e é um trabalho de
+  cadastro, não de integração;
+- se houver mais de um fornecedor por região, avaliar **split de fulfillment** (vários pedidos).
 
 ### Critérios de aceite
 1. Carrinho e checkout **não são alterados** ao plugar a transportadora.
 2. Preço e prazo reais para CEP de teste.
-3. `resolveShipping("<transportadora>")` devolve o adapter novo.
+3. Nenhum consumidor precisa conhecer o nome da transportadora.
 
 ---
 
@@ -1211,7 +1232,7 @@ Registrados para que **não sejam reimplementados**:
 | Tema sazonal | `lib/theme.ts` + 4 `theme.json` |
 | CMS com upload e paleta | `admin/…/routes/content` |
 | Fontes self-hosted | `src/app/fonts/` + `scripts/vendor-fonts.mjs` |
-| Testes com CI | 310 testes em 3 runners |
+| Testes com CI | **456 testes** em 3 runners (250 backend · 52 CRM · 154 storefront) |
 | Purge de cache | `POST /api/revalidate` com `REVALIDATE_SECRET` |
 
 **Conclusão:** nenhum destes entra em backlog. O backlog em `09-backlog-implementacao.md` cobre

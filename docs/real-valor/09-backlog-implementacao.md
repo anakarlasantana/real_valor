@@ -33,14 +33,20 @@ storefront, e migrar o Stripe atual para dentro de um adapter — sem mudar a ap
 **Aceite:** os 8 critérios da RV-001; `grep -r "adapters/" modules/checkout` vazio
 **Pré-requisito:** nenhum
 
-### RV-006 · Camada de abstração de frete
-**Descrição:** `ShippingAdapter` + `ShippingOption` no contrato, registry, e o adapter `manual`
-implementando-o.
+### RV-006 · Frete automático e plugável ✅ FEITO
+**Descrição:** Fulfillment Provider que calcula preço por peso × região, com valores fictícios
+isolados em um arquivo só.
 **Tipo:** arquitetura · **Prioridade:** ALTA · **Complexidade:** média
 **Depende de:** nenhuma
-**Arquivos:** *novos:* `packages/contrato/src/shipping.ts`, `frontend/src/lib/shipping/`
-**Aceite:** os 5 critérios da RV-006
-**Pré-requisito:** nenhum
+**Arquivos (como ficaram):**
+- *novos:* `backend/src/modules/fulfillment/tabela/{tabela,service,index}.ts` + `README.md`
+  + `__tests__/tabela.unit.spec.ts`
+- *alterado:* `backend/medusa-config.ts` (registra o provider)
+**Aceite:** os 7 critérios da RV-006
+**Desvio do backlog original:** não foi criado `packages/contrato/src/shipping.ts` nem
+`frontend/src/lib/shipping/`. O Medusa já entrega a abstração
+(`AbstractFulfillmentProviderService` + `StoreCartShippingOption`), e o frontend não tem o que decidir.
+Ver a correção em `04-requisitos-funcionais.md`.
 
 ### RV-048 · Remoção do código Stripe
 **Descrição:** apagar o que sobrou do Stripe no frontend, depois que o MP estiver funcionando.
@@ -323,6 +329,16 @@ link no rodapé.
 - `frontend/src/lib/data/tracking.ts` — traduz a resposta HTTP em situação de tela. `no-store`.
 - **12 testes** no storefront.
 
+**O link do rodapé (pendência fechada em 10/02/2026).** A rota existia, mas **ninguém conseguia chegar
+até ela** — uma tela que não se alcança não serve para nada, e "onde está o meu pedido" é justamente o
+que a cliente procura depois da confirmação. O link foi para a coluna **"Ajuda"** em
+`DEFAULT_HOME_SECTIONS` (`packages/contrato/src/defaults.ts`).
+
+O lugar certo **não** era o JSX do rodapé: as colunas são conteúdo editável pelo admin, e escrever o
+link em JSX faria a loja precisar de deploy para renomear ou remover um link do próprio rodapé. Como
+conteúdo, a loja edita, move ou apaga no painel. O `nav-link` já resolve rota interna, e por isso o
+link é escrito `/rastreio` (pt-BR, como `/carrinho` e `/conta`) e não `/track`.
+
 **Três decisões que valem lembrar:**
 1. **A página não busca nada no servidor.** É um server component que só entrega o formulário; a
    consulta acontece quando a cliente aperta o botão. Se a busca fosse no servidor, o **CPF iria
@@ -521,9 +537,12 @@ rastreio funcionando** — sem depender da escolha da transportadora.
 | RV-043 Painel de envio | ALTA | Não |
 | RV-044 Página de rastreio | ALTA | Não |
 | RV-045 Notificação de envio | MÉDIA | Não |
-| RV-046 Adapter de transportadora | BAIXA | **Sim — bloqueado** |
+| RV-006 Frete automático | ALTA | **Não — ✅ feito** |
+| RV-046 Transportadora real | BAIXA | **Sim — bloqueado** |
 
-**Quatro dos cinco independem da transportadora** e entram no caminho crítico. Só o RV-046 espera a
-decisão comercial — e o `fulfillment-manual` seedado mantém a loja vendável até lá.
+**Cinco dos seis independem da transportadora.** O RV-006 (frete automático) ficou resolvido sem
+esperar ninguém: o provider `tabela` calcula preço por peso × região hoje, e a transportadora real
+entra depois como **outro** provider, sem tocar em carrinho, checkout, painel de envio ou `/rastreio`.
+Só o RV-046 espera a decisão comercial — e o `fulfillment-manual` seedado mantém a loja vendável até lá.
 
 Ver `10-roadmap.md` para a ordem de execução.
