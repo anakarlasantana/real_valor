@@ -6,8 +6,8 @@ import { retrieveCustomer } from "@lib/data/customer"
 import { listOrders } from "@lib/data/orders"
 
 export const metadata: Metadata = {
-  title: "Account",
-  description: "Overview of your account activity.",
+  title: "Minha conta",
+  description: "Resumo da atividade da sua conta.",
 }
 
 export default async function OverviewTemplate() {
