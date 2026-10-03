@@ -54,14 +54,13 @@ adicionado.
 | `--rv-secondary` | `--rv-cacao` | apoio |
 | `--rv-focus-ring` | `--rv-rose-strong` | foco de teclado |
 
-### 6.1.4 Cores de estado — **lacuna**
+### 6.1.4 Cores de estado — ✅ fechado no RV-017
 
-**Não há tokens de estado no `brand.css`.** Os componentes usam cores literais ou cores do
-`@medusajs/ui`. Isso é uma inconsistência real: o badge de desconto (RV-011) e o chip de erro do
-checkout (RV-002) vão precisar de cores de estado, e sem tokens o resultado será cada componente
-inventando a sua.
+**Lacuna verificada:** não havia tokens de estado no `brand.css`. Os componentes usavam cores literais
+ou cores do `@medusajs/ui` — inconsistência real, porque o badge de desconto (RV-011) e o chip de erro
+do checkout (RV-002) iam precisar de cores de estado, e sem tokens cada componente inventaria a sua.
 
-**Proposta — adicionar ao `brand.css`:**
+**Adicionado ao `brand.css` no RV-017:**
 
 ```css
 --rv-success: #4A7C59;   /* verde contido, não saturated — combina com a paleta terrosa */
@@ -77,6 +76,9 @@ inventando a sua.
 **Justificativa:** `--rv-info` reaproveita o cacau em vez de introduzir azul — um azul quebraria a
 paleta terrosa e recairia no clichê de "interface corporativa". Verde e vermelho foram escolhidos
 dessaturados para conviver com `--rv-rose` sem competir.
+
+**Status:** ✅ tokens adicionados. **Restam 3 usos de cor literal de estado em componentes**
+(`text-red-500`, `text-green-*`) — migrá-los é do RV-011/RV-002, não deste item.
 
 **Critério de aceite:** nenhum componente novo usa cor literal; todo estado usa token.
 
@@ -97,12 +99,12 @@ dessaturados para conviver com `--rv-rose` sem competir.
 **Utilitários já existentes:** `.rv-display`, `.rv-script`, `.rv-eyebrow` (Montserrat
 capitalizado com tracking — o padrão dos rótulos da marca).
 
-**Lacuna verificada:** **não há escala tipográfica em tokens.** Os tamanhos estão espalhados em
+**Lacuna verificada:** não havia escala tipográfica em tokens. Os tamanhos estavam espalhados em
 utilitários Tailwind (`text-lg`, `text-2xl`, `text-3xl`, `text-4xl`, `text-base`, `text-xs`) sem
-uma escala nomeada. Isso significa que um novo componente precisa *adivinhar* qual tamanho usar, e
-não há como garantir consistência.
+escala nomeada — o que faz um componente novo *adivinhar* o tamanho, e não há como garantir
+consistência.
 
-**Proposta — escala em tokens no `brand.css`:**
+**Adicionado ao `brand.css` no RV-017:**
 
 ```css
 --rv-text-eyebrow: 0.6875rem;  /* 11px — rótulos */
@@ -115,6 +117,10 @@ não há como garantir consistência.
 --rv-text-3xl:     1.875rem;   /* 30px — título de página */
 --rv-text-4xl:     2.25rem;    /* 36px — hero */
 ```
+
+**Status:** ✅ escala adicionada. **Ela é a mesma dos utilitários que já eram usados** — trocar o token
+pelo utilitário equivalente não move um pixel. O que muda é ter nome: `--rv-text-2xl` diz "título de
+seção"; `text-2xl` não diz nada.
 
 **Critério de aceite:** nenhum tamanho de fonte em utilitário solto nos componentes novos.
 
@@ -183,8 +189,20 @@ Sombras **muito suaves**, coerentes com a paleta clara. **Manter.**
 > a troca — não para ser vista."* Isso está alinhado ao briefing, que proíbe excesso de animações.
 > **Manter como regra.**
 
-**Lacuna:** não há token para `prefers-reduced-motion`. **Proposta:** adicionar o bloco que desliga
-animações para quem pediu no sistema — exigência de acessibilidade que hoje não existe.
+> **Correção (verificada na implementação do RV-017):** este item foi escrito na auditoria como
+> lacuna, e **não era**. O `brand.css` **já tem** o bloco `prefers-reduced-motion: reduce`
+> (linha 1130), e ele é **melhor** do que a proposta que eu faria: não é só o piso global — tem
+> tratamento próprio para o ticker da barra de anúncio.
+>
+> O motivo está no comentário do próprio arquivo, e vale registrar porque é a armadilha clássica: o
+> piso global (`animation-duration: 0.01ms`) **pararia o trilho do ticker no fim do curso**, com o
+> texto deslocado meia largura e a última mensagem fora da tela. Daí as três regras do ticker:
+> `.rv-marquee-track` (animação e `transform` fora), `.rv-marquee-clone` (a cópia que existe só para
+> o laço some) e `.rv-marquee-group` (volta a ser a lista de mensagens que é).
+>
+> **O princípio está certo e registrado no arquivo:** *"quem pediu menos movimento pediu menos
+> movimento, não menos informação"* — nenhum item do RV-017 mexe nesse bloco, que já estava pronto e
+> correto.
 
 ```css
 @media (prefers-reduced-motion: reduce) {

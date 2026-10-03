@@ -62,6 +62,72 @@
   --rv-font-sans: var(--font-montserrat), system-ui, sans-serif;
   --rv-font-script: var(--font-allura), cursive;
 
+  /*
+   * Escala tipográfica
+   * ---------------------------------------------------------------
+   * Antes os tamanhos viviam soltos em utilitários Tailwind (`text-lg`,
+   * `text-2xl`, `text-3xl`…) espalhados pelos componentes. Nomes para a
+   * escala é o que permite dizer "isto é um subtítulo" em vez de "isto é
+   * `text-xl`", e é o que impede um componente novo de escolher o tamanho
+   * por adivinhação.
+   *
+   * A ESCALA é a mesma dos utilitários que já eram usados — trocar o token
+   * pelo utilitário equivalente não move um pixel. O que muda é a lista:
+   * `eyebrow` (11px) é o corpo dos rótulos `.rv-eyebrow`, que antes
+   * dependia de a classe acertar o tamanho.
+   */
+  --rv-text-eyebrow: 0.6875rem; /* 11px — rótulos, `.rv-eyebrow` */
+  --rv-text-xs: 0.75rem; /* 12px — apoio, chips, legendas */
+  --rv-text-sm: 0.875rem; /* 14px — texto secundário */
+  --rv-text-base: 1rem; /* 16px — corpo */
+  --rv-text-lg: 1.125rem; /* 18px — preço */
+  --rv-text-xl: 1.25rem; /* 20px — subtítulo */
+  --rv-text-2xl: 1.5rem; /* 24px — título de seção */
+  --rv-text-3xl: 1.875rem; /* 30px — título de página */
+  --rv-text-4xl: 2.25rem; /* 36px — capa */
+
+  /*
+   * Cores de estado
+   * ---------------------------------------------------------------
+   * Faltavam: os componentes usavam cor literal ou a paleta do `@medusajs/ui`,
+   * e cada um inventava a sua. Com o badge de desconto, o chip de erro do
+   * checkout e o aviso de estoque chegando, isso ia virar três definições
+   * diferentes para "erro".
+   *
+   * Escolhas deliberadas, na linha da paleta:
+   *  - o verde e o vermelho são **dessaturados**, para conviver com o rosa
+   *    queimado sem competir com ele;
+   *  - `--rv-info` REAPROVEITA o cacau em vez de introduzir azul — um azul
+   *    quebraria a paleta terrosa e recairia no clichê de interface
+   *    corporativa que a marca evita;
+   *  - o `--rv-*-bg` é a versão de baixa ênfase, para fundo de chip.
+   *
+   * Contraste — MEDIDO (WCAG 2.1, razão sobre o fundo claro e sobre o
+   * próprio `-bg` do estado):
+   *
+   *   danger   6.10 / 5.93   — AA para texto normal
+   *   info     9.72          — AA para texto normal (reaproveita o cacau)
+   *   success  5.12 / 5.10   — AA para texto normal
+   *   warning  4.80 / 4.89   — AA para texto normal
+   *
+   * O verde e o âmbar começaram mais claros e foram ESCURECIDOS até passar:
+   * `#4a7c59` dava 4.33 e `#a8752a` dava 3.57 — abaixo de AA para texto
+   * normal, o que obrigaria a restringi-los a texto grande. Escurecer é
+   * melhor do que documentar a limitação: quem usa `--rv-warning` num chip
+   * pequeno não deveria ter que saber dessa regra.
+   *
+   * Os `-bg` continuam sendo a versão de baixa ênfase — para fundo de chip,
+   * borda ou preenchimento; texto sobre eles usa o `-*` correspondente.
+   */
+  --rv-success: #41704f;
+  --rv-success-bg: #edf3ee;
+  --rv-warning: #8f611f;
+  --rv-warning-bg: #fbf3e6;
+  --rv-danger: #9b3b32;
+  --rv-danger-bg: #f8ecea;
+  --rv-info: var(--rv-cacao);
+  --rv-info-bg: #f2ece8;
+
   /* --- Shape & depth --- */
   --rv-radius-sm: 2px;
   --rv-radius: 4px;
