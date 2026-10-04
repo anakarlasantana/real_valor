@@ -253,7 +253,7 @@ falhou, mesmo com as cores certas.
 
 **Fundação sólida, venda impossibilitada.** Monorepo Medusa v2 + Next.js 15 com arquitetura acima da
 média: contrato compartilhado por 3 runtimes, CMS funcional que edita a vitrine sem deploy, design
-system derivado da marca (1125 linhas), **456 testes** em 3 runners com CI, e operação 100% em Docker com
+system derivado da marca (1125 linhas), **463 testes** em 3 runners com CI, e operação 100% em Docker com
 build offline. Home, header, footer, carrinho, conta, tema sazonal e pedido confirmado estão **prontos**.
 
 **O bloqueio:** `medusa-config.ts` não registra nenhum provedor de pagamento, e a região usa
@@ -616,10 +616,95 @@ quando houver transportadora.
 | Testes da regra | **17/17** |
 | `tsc` nos três runtimes | limpo |
 | Guarda de fronteiras | ok |
-| Suíte completa | **456** (250 · 52 · 154) |
+| Suíte completa | **463** (257 · 52 · 154) |
 
 O provider está **registrado mas inativo**: registrar não cria shipping option. As opções PAC e SEDEX
 com preço fixo do seed continuam valendo, e o README do módulo explica como criar a opção `Calculada`
 quando os números forem reais.
+
+---
+---
+
+### 10.10 Dois bugs de boot e de seed — **CORRIGIDOS (10/02/2026)**
+
+**Descoberto ao tentar acessar as páginas**, não por revisão de código. Ambos estão aqui porque a
+lição é sobre **o que a verificação anterior não cobria**, não sobre o conserto.
+
+#### Bug 1 — o backend não subia (o provider de frete derrubava o boot)
+
+**Sintoma:** `real_valor_backend` em `Restarting (1)`, e o log repetindo:
+
+```
+Error in loading config: Cannot read properties of undefined (reading 'prototype')
+    at @medusajs/utils/.../define-config.ts:131
+    at Object.<anonymous> (/app/backend/medusa-config.ts:83)
+```
+
+**Causa.** Eu havia registrado o provider como `{ resolve: "./src/modules/fulfillment/tabela" }`
+direto na lista `modules`. Dois erros em uma linha:
+
+1. **`ModuleProvider` não é um módulo.** `@medusajs/fulfillment-manual` — que é a referência que eu
+   segui — também exporta um `ModuleProvider`, mas ele **não é registrado em `modules`**: ele entra
+   como item da lista `providers` do **módulo FULFILLMENT**. Declarado como módulo,
+   `transformModules` acessa `defaultExport.service.prototype` e o processo morre — `ModuleProvider`
+   devolve `{ module, services, loaders }`, sem `service`.
+2. **O registro **sobrescreve** o padrão.** O `transformModules` termina em
+   `acc[serviceName] = moduleConfig` — o **último** do mesmo módulo vence. Então meu item não
+   *somava* um provider: **substituía** a configuração padrão do FULFILLMENT, que é onde mora o
+   `manual`.
+
+**Correção:** declarar `@medusajs/medusa/fulfillment` — o mesmo `resolve` do padrão — com a lista
+`providers` **completa**: `manual` e `tabela`.
+
+**A parte que morde, e que quase me passou.** O `providersToDisable` do loader do FULFILLMENT
+**desabilita no banco tudo que está fora da lista**. Se eu tivesse escrito a lista só com o `tabela`,
+o boot ia subir **sem dar nenhum erro** — e as PAC/SEDEX do `seed` estariam desligadas: a loja
+abriria **sem uma única opção de frete**. Um erro que não aparece em log nenhum é pior do que um
+que derruba o processo, porque ninguém procura.
+
+#### Bug 2 — o seed duplicava as opções de envio a cada execução
+
+**Sintoma:** a cliente veria "Entrega Econômica (PAC)" **repetida 7 vezes**, indistinguível e com o
+mesmo preço. **Medido no banco:** 7 PAC e 7 SEDEX.
+
+**Causa.** `createShippingOptionsWorkflow` **não falha** numa base já semeada — ao contrário de
+`createProductsWorkflow`, que estoura com "already exists" e fez o seed de produtos ser escrito
+com guarda. As opções de frete não tinham guarda nenhuma: cada `make seed` somava mais um par.
+
+E, como o README manda rodar `make seed` para imprimir a chave do storefront, **o seed era feito
+para rodar mais de uma vez** — foi só que a repetição era silenciosa.
+
+**Correção:** a mesma guarda dos produtos, comparando por **(nome, perfil de envio)** — o `id` muda a
+cada execução, então comparar por ele não encontraria a opção da rodada anterior. E limpei as 12
+duplicatas que já estavam no banco.
+
+#### O que a verificação anterior não pegou — e devia ter pegado
+
+| Verificação | Resultado | Por que não viu |
+| :--- | :--- | :--- |
+| 17 testes da regra | ✅ passou | Testam `tabela.ts` — o arquivo **não estava errado** |
+| `tsc` nos três runtimes | ✅ limpo | `{ resolve: string }` é **um tipo válido** |
+| `check-boundaries` | ✅ ok | Não vê formato de `defineConfig` |
+| `medusa-config.ts` como módulo do TS | ✅ compilava | O erro é de **runtime** |
+
+**A lacuna é uma só, e ela tem nome: eu nunca subi o backend.** O resumo anterior dizia "provider
+registrado em `medusa-config.ts`" — e isso era verdade, e não significava nada. Registro só é
+verificação depois que o processo sobe. Typecheck não executa o `reduce` do framework, e teste
+unitário não carrega o `medusa-config`.
+
+**O que entra a partir de agora:** `registro.unit.spec.ts` roda o **`defineConfig` de verdade** e
+confere que a forma antiga **estoura** — se deixar de estourar, o contrato do framework mudou e o
+teste avisa, em vez de o build silenciosamente quebrar em produção.
+
+#### Verificação
+
+| Item | Antes | Depois |
+| :--- | :--- | :--- |
+| `real_valor_backend` | `Restarting (1)` | **Up (healthy)** — `Server is ready on port: 9000` |
+| Provider de frete | não registrado | `tabela_tabela` habilitado, com `manual_manual` **preservado** |
+| Opções de envio | 7 PAC + 7 SEDEX | **1 + 1** |
+| Guard do seed | inexistente | **verificado**: 2ª execução pulou |
+| Testes backend | 250 | **257** |
+| Rotas | — | `/br`, `/rastreio`, `/cart`, `/store`, produto e categoria **todas 200** |
 
 ---

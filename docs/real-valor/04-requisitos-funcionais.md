@@ -1232,7 +1232,7 @@ Registrados para que **não sejam reimplementados**:
 | Tema sazonal | `lib/theme.ts` + 4 `theme.json` |
 | CMS com upload e paleta | `admin/…/routes/content` |
 | Fontes self-hosted | `src/app/fonts/` + `scripts/vendor-fonts.mjs` |
-| Testes com CI | **456 testes** em 3 runners (250 backend · 52 CRM · 154 storefront) |
+| Testes com CI | **463 testes** em 3 runners (257 backend · 52 CRM · 154 storefront) |
 | Purge de cache | `POST /api/revalidate` com `REVALIDATE_SECRET` |
 
 **Conclusão:** nenhum destes entra em backlog. O backlog em `09-backlog-implementacao.md` cobre
