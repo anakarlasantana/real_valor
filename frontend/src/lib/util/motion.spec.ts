@@ -65,9 +65,15 @@ describe("revealDelay", () => {
 })
 
 describe("pulses", () => {
-  it("os dois estados de disponibilidade se mexem", () => {
-    expect(pulses("pronta-entrega")).toBe(true)
+  it("só o estado que está acabando se mexe", () => {
     expect(pulses("ultimas")).toBe(true)
+  })
+
+  it("pronta entrega fica parada (o movimento vira ruido em vitrine)", () => {
+    // Pedido da loja depois de ver a vitrine inteira pulsando: com todo produto
+    // em estoque animando, o movimento deixa de ser informação. E "pronta
+    // entrega" não precisa de animação para dizer que está disponível.
+    expect(pulses("pronta-entrega")).toBe(false)
   })
 
   it("o que a pessoa não pode comprar agora fica parado", () => {

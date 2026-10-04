@@ -157,8 +157,19 @@ export default function ProductCarousel({
    * Serve para separar as duas rolagens: a que nós pedimos (seta, ponto,
    * relógio) e a que o visitante fez. A distância de comparação é folgada
    * porque o `snap` do navegador ainda ajusta alguns pixels depois de parar.
+   *
+   * `null` = "ainda não sabemos onde o trilho está", e é o estado inicial de
+   * propósito. Começava em `0`, e essa era a origem de o rodízio nunca
+   * arrancar: o `.rv-carousel-track` tem `scroll-padding-inline` e `padding-inline`
+   * (o trilho é sangrado com `margin-inline: calc(50% - 50vw)`), então o
+   * navegador abre o trilho **já deslocado**, e não em `0`. No primeiro quadro
+   * o `onScroll` comparava a posição real com `0`,viava da tolerância de 8px e
+   * marcava `setStopped(true)` — que é o estado que **não volta atrás** (fecha a
+   * WCAG 2.2.2 depois do primeiro gesto). O carrossel era "assumido pela
+   * visitante" antes de ela tocar em nada, e nenhuma seta aparecia para
+   * desfazer. `null` faz a comparação não valer até a primeira leitura real.
    */
-  const restingAt = useRef(0)
+  const restingAt = useRef<number | null>(null)
 
   /**
    * A medida do trilho.
@@ -303,6 +314,17 @@ export default function ProductCarousel({
 
       // Rolagem que não é nossa é do visitante: ele assumiu o volante, e a fila
       // não volta a andar sozinha (ver o item 4 do cabeçalho).
+      //
+      // A **primeira** leitura não conta como gesto: até aqui o `restingAt` é
+      // `null` (ver o comentário do ref), porque o navegador abre o trilho já
+      // deslocado pelo `scroll-padding-inline`. Adotar essa posição como ponto de
+      // partida é o que permite ao rodízio arrancar; comparar a posição real com
+      // um `0` imaginado é o que o matava na origem.
+      if (restingAt.current === null) {
+        restingAt.current = element.scrollLeft
+        return
+      }
+
       if (Math.abs(element.scrollLeft - restingAt.current) > 8) {
         restingAt.current = element.scrollLeft
         setStopped(true)

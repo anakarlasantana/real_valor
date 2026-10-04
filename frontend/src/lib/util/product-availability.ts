@@ -9,10 +9,10 @@
  *      do produto (`product-actions`) precisam concordar: um card dizendo
  *      "pronta entrega" que leva a um produto com o botão desabilitado é o
  *      defeito que esta função existe para não ter.
- *   2. **Ela tem precedência.** O lojista escreve `tag_status` no produto
- *      (medido no catálogo real: `metadata.tag_status: "Pronta Entrega"`) e
- *      essa palavra vence; sem ela valem as tags do produto e, sem elas, o
- *      estoque. Precedência é regra, e regra se testa sem renderizar.
+ *   2. **A precedência é do estoque para o rótulo.** A loja escreve
+ *      `tag_status` no produto, e essa palavra entra só onde o estoque é
+ *      ambíguo — nunca para afirmar disponibilidade que não existe (ver
+ *      `productStatus`). Precedência é regra, e regra se testa sem renderizar.
  *   3. **Ela lê estoque — e o estoque engana.** Ver `variantIsAvailable`.
  *
  * **O rótulo é da loja, o estado é do catálogo.** As quatro palavras do chip
@@ -188,42 +188,83 @@ function statusFromInventory(variants: (VariantLike | null)[]): ProductStatus {
     0
   )
 
-  if (stock <= 0) {
-    return "sob-demanda"
+  if (stock > 0) {
+    // **O estoque vem antes do motivo de ser comprável.** Um variant com
+    // `allow_backorder` é comprável sem estoque — mas se ele tem peça em mãos,
+    // a peça existe e a loja entrega agora. Ler "sob demanda" primeiro (como
+    // fazia) rotulava como encomenda uma peça que estava na prateleira: era o
+    // que a `Jaqueta` mostrava, com `inventory_quantity: 50` na API.
+    //
+    // "Sob demanda" aqui significa só isto: comprável, e por nada além de
+    // encomenda — nenhum variant tem número. A etiqueta comercialmente
+    // correta ("é fabrico sob encomenda") é do lojista, por `tag_status`, e
+    // entra em `productStatus`.
+    return stock <= LAST_UNITS_THRESHOLD ? "ultimas" : "pronta-entrega"
   }
 
-  return stock <= LAST_UNITS_THRESHOLD ? "ultimas" : "pronta-entrega"
+  return "sob-demanda"
 }
 
 /**
- * O estado da peça: **o que o lojista escreveu** primeiro, o estoque depois.
+ * O estado da peça: **o estoque primeiro**, e a palavra do lojista só onde a
+ * peça não pode contradizer o que é verdade.
  *
- * A ordem é a decisão, e ela não é simétrica:
+ * A ordem é a decisão, e ela **mudou** — o texto antigo era "o que o lojista
+ * escreveu vence o estoque", e isso produzia exatamente o defeito que a loja
+ * viu: "Pronta entrega" num produto sem estoque, com o botão de comprar
+ * ligado. O rótulo era escrito pelo seed, e o seed não é a loja — a informação
+ * de uma peça tem de vir da API e do que foi cadastrado no painel.
  *
- *   1. `metadata.tag_status` — a palavra do lojista sobre esta peça;
- *   2. as tags do produto, na ordem em que vierem — a mesma palavra, escrita no
- *      lugar onde o catálogo já tinha tags;
- *   3. o estoque, por `statusFromInventory`.
+ *   1. **Esgotado vence sempre.** Se nenhum variant é comprável, a peça está
+ *      esgotada — e nenhum rótulo escrito à mão pode virar isso. Um chip de
+ *      "Pronta entrega" sobre peça sem estoque é promessa que a loja não pode
+ *      cumprir, e o card passa a mentir para a cliente.
+ *   2. **O estoque decide o resto**, por `statusFromInventory`: soma o que é
+ *      comprável e compara com `LAST_UNITS_THRESHOLD`.
+ *   3. **O rótulo do lojista** (`metadata.tag_status`, depois as tags) só entra
+ *      quando o estoque é **ambíguo** — isto é, quando ele não diz "esgotado"
+ *      nem "últimas". "Sob demanda" é o caso que ele resolve: peça com estoque
+ *      que a loja fabrica sob encomenda é "pronta entrega" pelo número, e é
+ *      "sob demanda" pela palavra, e a palavra é a que sabe.
  *
- * Só a primeira reconhecida vale: duas tags dizendo coisas diferentes não se
- * somam, e "Pronta Entrega" escrito à mão vence um estoque zerado **de
- * propósito** — quem conhece a peça é quem a vende, e o chip é aviso, não
- * trava (quem trava é o botão do carrinho, pela regra de estoque).
+ * Só a primeira tag reconhecida vale: duas tags dizendo coisas diferentes não
+ * se somam.
+ *
+ * **O que a loja perde, e por quê.** Um `tag_status` que contradiz o estoque
+ * agora é ignorado em vez de vencê-lo. É deliberado: o rótulo existe para dizer
+ * "esta peça é sob encomenda", e ele continua fazendo isso. O que ele não pode
+ * mais fazer é afirmar disponibilidade que não existe.
  */
 export function productStatus(product: AvailabilityProduct): ProductStatus {
+  // 1. O estoque tem a palavra final sobre estar ou não esgotado.
+  const peloEstoque = statusFromInventory(product.variants ?? [])
+
+  if (peloEstoque === "esgotado") {
+    return "esgotado"
+  }
+
+  // 2. O estoque também decide "últimas peças": é número, não palavra — e é
+  // o número que muda sozinho, quando alguém compra.
+  if (peloEstoque === "ultimas") {
+    return "ultimas"
+  }
+
+  // 3. Aqui o estoque é "tem peça". Quem acrescenta o resto é o lojista.
   const declared = statusFromLabel(product.metadata?.tag_status)
 
-  if (declared) {
+  if (declared && declared !== "esgotado") {
     return declared
   }
 
   const tagged = (product.tags ?? [])
     .map((tag) => statusFromLabel(tag?.value))
-    .find((status): status is ProductStatus => Boolean(status))
+    .find(
+      (status): status is ProductStatus => Boolean(status) && status !== "esgotado"
+    )
 
   if (tagged) {
     return tagged
   }
 
-  return statusFromInventory(product.variants ?? [])
+  return peloEstoque
 }

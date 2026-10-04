@@ -211,25 +211,48 @@ export default async function seedDemoData({ container }: ExecArgs) {
 
   // 5. Centro de Distribuição / Estoque
   logger.info("[Real Valor] Configurando Estoque Central...");
-  const { result: stockLocationResult } = await createStockLocationsWorkflow(
-    container
-  ).run({
-    input: {
-      locations: [
-        {
-          name: "Centro de Distribuição Real Valor",
-          address: {
-            city: "São Paulo",
-            country_code: "BR",
-            province: "SP",
-            address_1: "Avenida Paulista",
-            postal_code: "01310-100",
+  // Idempotente, e a consequência é séria. `createStockLocationsWorkflow` não
+  // falha numa base já semeada: ele **cria outro local**. Medido nesta base: 8
+  // locais e 81 níveis de estoque, de 10 SKUs. E o efeito não era só sujeira —
+  // a `inventory_quantity` que a loja mostrava era a **soma dos 8 locais**, então
+  // uma peça com 50 reais virava "400" na vitrine. Um número de estoque
+  // inflado por seed é pior do que nenhum: a loja acredita que pode vender 400
+  // e descobre na reserva (RV-042) que tinha 50.
+  const { data: existingStockLocations } = await query.graph({
+    entity: "stock_location",
+    fields: ["id", "name"],
+    filters: { name: "Centro de Distribuição Real Valor" },
+  })
+
+  let stockLocation: { id: string }
+
+  if (existingStockLocations?.length) {
+    stockLocation = existingStockLocations[0]
+    logger.info(
+      "[Real Valor] Centro de Distribuicao ja existe — reaproveitando."
+    )
+  } else {
+    const { result: stockLocationResult } = await createStockLocationsWorkflow(
+      container
+    ).run({
+      input: {
+        locations: [
+          {
+            name: "Centro de Distribuição Real Valor",
+            address: {
+              city: "São Paulo",
+              country_code: "BR",
+              province: "SP",
+              address_1: "Avenida Paulista",
+              postal_code: "01310-100",
+            },
           },
-        },
-      ],
-    },
-  });
-  const stockLocation = stockLocationResult[0];
+        ],
+      },
+    })
+
+    stockLocation = stockLocationResult[0]
+  }
 
   await updateStoresWorkflow(container).run({
     input: {
@@ -537,6 +560,19 @@ export default async function seedDemoData({ container }: ExecArgs) {
   // falha com "Product with handle: ..., already exists" numa base já semeada, e o
   // passo 10 (estoque) consulta os inventory items em vez de usar o retorno daqui —
   // então pular as peças existentes não deixa nada pela metade.
+  // **Este seed não escreve mais `tag_status`.** Ele escrevia
+  // `tag_status: "Pronta Entrega"` em todo produto, e o chip da vitrine dava
+  // precedência a essa palavra sobre o estoque (`productStatus`,
+  // `lib/util/product-availability.ts`) — então uma peça sem estoque aparecia
+  // como "Pronta entrega", com o botão de comprar ligado.
+  //
+  // Duas coisas consertadas em conjunto, e as duas importam: a precedência foi
+  // invertida (o estoque tem a palavra final sobre "esgotado") e o seed parou
+  // de escrever a etiqueta. Se voltasse a escrever, não quebraria mais — o
+  // estoque venceria — mas continuaria mentindo sobre peça que existe, que é
+  // o que a etiqueta faz.
+  //
+  // O estado da peça agora vem da API e do que o lojista cadastrar no painel.
   const wantedProducts = [
         {
           title: "Vestido Midi Linho Floral",
@@ -548,7 +584,6 @@ export default async function seedDemoData({ container }: ExecArgs) {
           status: ProductStatus.PUBLISHED,
           shipping_profile_id: shippingProfile.id,
           metadata: {
-            tag_status: "Pronta Entrega",
             size_guide: [
               { size: "P", bust: "84-88 cm", waist: "66-70 cm", hip: "92-96 cm" },
               { size: "M", bust: "89-94 cm", waist: "71-76 cm", hip: "97-102 cm" },
@@ -622,7 +657,6 @@ export default async function seedDemoData({ container }: ExecArgs) {
           status: ProductStatus.PUBLISHED,
           shipping_profile_id: shippingProfile.id,
           metadata: {
-            tag_status: "Pronta Entrega",
             size_guide: [
               { size: "P", bust: "86-90 cm", waist: "68-72 cm", length: "64 cm" },
               { size: "M", bust: "91-96 cm", waist: "73-78 cm", length: "66 cm" },
@@ -686,7 +720,6 @@ export default async function seedDemoData({ container }: ExecArgs) {
           status: ProductStatus.PUBLISHED,
           shipping_profile_id: shippingProfile.id,
           metadata: {
-            tag_status: "Pronta Entrega",
             size_guide: [
               { size: "38 (P)", waist: "68-72 cm", hip: "96-100 cm", length: "110 cm" },
               { size: "40 (M)", waist: "73-77 cm", hip: "101-105 cm", length: "112 cm" },

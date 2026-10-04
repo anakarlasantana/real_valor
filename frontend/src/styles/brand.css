@@ -970,104 +970,123 @@ body {
   white-space: nowrap;
 }
 
-/* Pronta entrega: borda da marca, texto grafite — positivo e discreto. */
+/*
+ * **O chip é escuro.** Saiu do contorno claro sobre a foto para um fundo
+ * cacau/preto com texto offwhite, e a peça do pedido era a posição: o chip
+ * desceu para a linha do preço, abaixo da foto, onde ele é lido como
+ * informação da peça e não como selo grudado na imagem.
+ *
+ * O ganho não é só de contraste — é de **hierarquia**. Sobre a foto, o chip
+ * disputava atenção com a peça e com o botão; ao lado do preço, ele entra na
+ * mesma frase ("Pronta entrega · R$ 249,90") e some quando não tem o que dizer.
+ *
+ * Todos os quatro estados compartilham o fundo escuro, e o que os separa é a
+ * **borda** — o acento da marca, não o fundo. Assim nenhum estado pede mais
+ * atenção que outro, e a peça esgotada não grita.
+ */
+
+/* Pronta entrega: borda rose, texto offwhite — o positivo, discreto. */
 .rv-chip-pronta-entrega {
   --rv-chip-border: var(--rv-rose);
+  --rv-chip-bg: var(--rv-cacao);
+  --rv-chip-color: var(--rv-offwhite);
 }
 
-/* Sob demanda: dourado de detalhe, texto cacau — o tom de "sob encomenda". */
+/* Sob demanda: dourado de detalhe — o tom de "sob encomenda". */
 .rv-chip-sob-demanda {
   --rv-chip-border: var(--rv-dourado);
-  --rv-chip-color: var(--rv-cacau);
+  --rv-chip-bg: var(--rv-cacao);
+  --rv-chip-color: var(--rv-offwhite);
 }
 
-/* Últimas peças: o único preenchido. É o chip que precisa ser visto. */
+/*
+ * Últimas peças: borda dourada, que é o acento de urgência da marca. A borda
+ * rose é da marca inteira, e "acabando" é um tom de aviso — dourado diz isso
+ * sem gritar como o rosa-filled faria sobre fundo escuro.
+ */
 .rv-chip-ultimas {
-  --rv-chip-bg: var(--rv-rose);
-  --rv-chip-border: var(--rv-rose);
-  --rv-chip-color: var(--rv-primary-fg);
+  --rv-chip-border: var(--rv-dourado);
+  --rv-chip-bg: var(--rv-cacao);
+  --rv-chip-color: var(--rv-offwhite);
 }
 
-/* Esgotado: o mais baixo da hierarquia — informa, não convida. */
+/*
+ * Esgotado: o mais baixo da hierarquia. Fica escuro e **sem pulso** — um chip
+ * pedindo atenção numa peça que não pode ser comprada seria o oposto de
+ * honesto. O `is_enabled`-like da informação está em `pulses()`
+ * (`lib/util/motion.ts`), e "esgotado" não está nela.
+ */
 .rv-chip-esgotado {
+  --rv-chip-border: var(--rv-border);
+  --rv-chip-bg: var(--rv-grafite);
   --rv-chip-color: var(--rv-muted);
 }
 
 /*
- * Quem respira e quem pulsa
+ * Quem pulsa
  * ---------------------------------------------------------------
- * A hierarquia de leitura acima é **cor**: esgotado é o mais quieto, últimas o
- * mais alto. Aqui ela vira **movimento**, e na mesma ordem — só os dois estados
- * que falam de disponibilidade se mexem. Quem decide isso é `pulses`
- * (`lib/util/motion.ts`, com teste), e o componente é quem pede a classe
- * `rv-chip-pulse`; o desenho de cada pulso é desta folha, porque desenho é aqui.
+ * A hierarquia de leitura acima é **cor**: os quatro estados são escuros e o
+ * que os separa é a borda. Aqui ela vira **movimento**, e **só um estado se
+ * mexe** — "últimas peças".
  *
- *   - **pronta entrega respira.** Um anel rosa que aparece e some devagar (3,4s,
- *     curva simétrica) com um crescimento de 5%: a peça está aqui, e o sinal é
- *     calmo — é o que se procura na vitrine.
- *   - **últimas peças pulsa.** Um anel que sai do chip e desaparece (2,6s, curva
- *     de saída): é o único estado com urgência, e o movimento é o que separa
- *     "últimas" de um rótulo a mais. Ele é o único chip preenchido de rosa, e o
- *     pulso mexe no contorno e não na cor — o contraste de leitura do chip fica
- *     onde estava.
+ * Eram dois, e a loja pediu um depois de ver a vitrine: com toda peça em
+ * estoque pulsando, o movimento deixa de ser informação e vira ruído — e uma
+ * dobra mostra dez peças ao mesmo tempo. "Últimas peças" é o único estado em
+ * que o movimento carrega algo que o texto não carrega: **acaba**. "Pronta
+ * entrega" não precisa de animação para dizer que está disponível, e "esgotado"
+ * jamais deveria — um chip pedindo atenção numa peça que não pode ser comprada
+ * é o oposto de honesto.
  *
- * **Nada pisca.** Nenhum dos dois vai a opaco e volta em frequência alta: a WCAG
- * 2.3.1 proíbe mais de três lampejos por segundo, e um chip de vitrine não tem
- * por que chegar perto disso. O que a marca ganha aqui é a leitura de "tem" e
- * "está acabando", e essa leitura é de um ciclo lento.
+ * O desenho é um **halo dourado** que sai da borda e some, em 4,2s: lento e
+ * contínuo, lido como "está vivo" sem piscar. A WCAG 2.3.1 proíbe mais de três
+ * lampejos por segundo, mas esse é o piso legal, não o alvo — aqui a leitura
+ * pretendida é calma, e é o ciclo longo que a produz.
+ *
+ * Quem decide ** qual** estado pulsa é `pulses` (`lib/util/motion.ts`, com
+ * teste); o desenho do pulso é desta folha, porque desenho é aqui.
  *
  * Com `prefers-reduced-motion`, a guarda global do fim deste arquivo zera a
- * duração e a repetição das duas animações: os chips ficam parados no estado
- * final (o anel some), e nada mais muda na página.
+ * duração e a repetição: o chip fica parado no estado final (o anel some), e
+ * nada mais muda na página.
  */
 .rv-chip-pulse {
   position: relative;
 }
 
+/*
+ * O pulso é um **halo** que sai da borda do chip e some, e só existe em
+ * "últimas peças" (quem decide é `pulses()`, em `lib/util/motion.ts`).
+ *
+ * Lento e contínuo de propósito: um ciclo de 4,2s com opacidade baixa é
+ * lido como "está vivo" sem nunca piscar rápido. A WCAG 2.3.1 proíbe mais de
+ * três lampejos por segundo, e um chip de vitrine não tem por que chegar perto
+ * disso — mas o limite é o piso, não o alvo: aqui a leitura pretendida é calma,
+ * e é o movimento lento que dá isso.
+ */
 .rv-chip-pulse::after {
   content: "";
   position: absolute;
-  border: 1px solid var(--rv-rose);
+  border: 1px solid var(--rv-dourado);
   border-radius: var(--rv-radius-sm);
   opacity: 0;
   pointer-events: none;
 }
 
-/* Pronta entrega: o anel fica sobre a borda e respira em volta dela. */
-.rv-chip-pulse.rv-chip-pronta-entrega::after {
-  inset: -1px;
-  animation: rv-chip-breathe 3.4s var(--rv-ease-soft) infinite;
-}
-
-/* Últimas peças: o anel sai do chip e some — o pulso de "acaba". */
 .rv-chip-pulse.rv-chip-ultimas::after {
   inset: 0;
-  animation: rv-chip-radar 2.6s var(--rv-ease-out) infinite;
-}
-
-@keyframes rv-chip-breathe {
-  0%,
-  100% {
-    opacity: 0;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.55;
-    transform: scale(1.05);
-  }
+  animation: rv-chip-radar 4.2s var(--rv-ease-out) infinite;
 }
 
 @keyframes rv-chip-radar {
   0% {
-    opacity: 0.7;
+    opacity: 0.55;
     transform: scale(1);
   }
 
   70%,
   100% {
     opacity: 0;
-    transform: scale(1.35);
+    transform: scale(1.28);
   }
 }
 

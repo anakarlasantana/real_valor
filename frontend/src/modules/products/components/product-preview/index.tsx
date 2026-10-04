@@ -71,13 +71,13 @@ export default async function ProductPreview({
             size="full"
             isFeatured={isFeatured}
           />
-          {/* O respiro de 1rem é o mesmo `p-4` da moldura da foto — e é o recuo
-              que a foto do carrossel agora respeita (`inset-4`, no `thumbnail`),
-              então o chip alinha com a imagem e não com a sombra dela. */}
-          <ProductStatusChip
-            product={product}
-            className="absolute left-4 top-4"
-          />
+          {/*
+            O chip **saiu de cima da foto**. Sobre a imagem ele disputava
+            atenção com a peça e com o botão, e o `inset-4` do recuo da foto
+            (o `thumbnail`) tinha de existir só para o chip não encostar nela.
+            Agora ele vive na linha de baixo, com o preço — vira informação da
+            peça ("Pronta entrega · R$ 249,90") em vez de selo sobre a imagem.
+          */}
         </div>
         {/*
          * Título, preço e convite — nesta ordem, e cada um na sua linha.
@@ -96,7 +96,16 @@ export default async function ProductPreview({
           >
             {product.title}
           </span>
-          {cheapestPrice && <PreviewPrice price={cheapestPrice} />}
+          {/*
+            Preço e estado na **mesma linha**: os dois são sobre a peça, e o olho
+            desce uma vez só. O `justify-between` põe o preço à esquerda e o chip
+            encostado na direita — é onde a etiqueta tem de estar, e é o que dá
+            a leitura de "estado da peça" e não de "botão do card".
+          */}
+          <div className="flex items-center justify-between gap-3">
+            {cheapestPrice && <PreviewPrice price={cheapestPrice} />}
+            <ProductStatusChip product={product} />
+          </div>
           {/* O traço anda no hover do card (`group-hover`): o movimento é o que
               o ponteiro acrescenta, já que a palavra está sempre aqui — e a
               moldura do botão é o que diz, antes de qualquer hover, que isto é

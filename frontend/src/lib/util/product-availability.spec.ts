@@ -3,11 +3,14 @@
  * -------------------------------------------------------------------------
  * O que este teste protege é a **precedência** e a simetria com o estoque:
  *
- *   - um rótulo que a loja conhece vence o estoque, e um que ela não conhece não
- *     vira chip vazio — cai para o que o estoque diz;
- *   - "Pronta Entrega" escrito à mão (o valor que o catálogo real já tem em
- *     `metadata.tag_status`) precisa aparecer no card, e não ser engolido pela
- *     derivação;
+ *   - um rótulo que a loja conhece entra, e um que ela não conhece não vira
+ *     chip vazio — cai para o que o estoque diz;
+ *   - **o estoque tem a palavra final sobre "esgotado"**, e o chip nunca promete
+ *     disponibilidade que não existe. Essa precedência foi invertida depois de
+ *     a loja ver "Pronta entrega" num produto sem estoque, com o botão de
+ *     comprar ligado: o `tag_status` vinha do seed, e o seed não é a loja;
+ *   - `tag_status` continua resolvendo o que o estoque não diz — "sob encomenda"
+ *     com estoque é "sob demanda" pela palavra, e é a palavra que sabe;
  *   - o estado derivado tem de bater com `variantIsAvailable`: um produto com
  *     estoque zerado e sem encomenda é "esgotado", e o botão da página concorda
  *     (se as duas contas divergirem, o card promete o que o botão recusa);
@@ -37,9 +40,14 @@ const stocked = (quantity: number) => ({
 
 describe("productStatus — o que o lojista escreve vence", () => {
   it("`metadata.tag_status` é lido (o valor que o catálogo real tem)", () => {
-    expect(productStatus({ metadata: { tag_status: "Pronta Entrega" } })).toBe(
-      "pronta-entrega"
-    )
+    // Com estoque: sem ele a peça é esgotada por falta de variant, e o chip
+    // tem de dizer a verdade antes de ouvir o rótulo.
+    expect(
+      productStatus({
+        metadata: { tag_status: "Pronta Entrega" },
+        variants: [stocked(250)],
+      })
+    ).toBe("pronta-entrega")
   })
 
   it("acento, caixa e separador não mudam o estado", () => {
@@ -56,13 +64,40 @@ describe("productStatus — o que o lojista escreve vence", () => {
     ).toBe("sob-demanda")
   })
 
-  it("palavra do lojista vence o estoque zerado (o chip é aviso, não trava)", () => {
+  it("estoque zerado vence a palavra do lojista (o chip não promete o que não há)", () => {
+    // **Esta é a regra que mudou**, e ela veio da loja: "Pronta Entrega" num
+    // produto sem estoque, com o botão de comprar ligado. O `tag_status` vinha
+    // do seed — e o seed não é a loja. Agora o estoque tem a palavra final
+    // sobre estar ou não esgotado, e nenhum rótulo escrito à mão vira isso.
     expect(
       productStatus({
         metadata: { tag_status: "Pronta Entrega" },
         variants: [stocked(0)],
       })
+    ).toBe("esgotado")
+  })
+
+  it("`tag_status` de esgotado também não esconde o estoque", () => {
+    // O caminho simétrico: escrever "Esgotado" à mão num produto com estoque
+    // seria inventar escassez para fazer a peça parecer urgente.
+    expect(
+      productStatus({
+        metadata: { tag_status: "Esgotado" },
+        variants: [stocked(250)],
+      })
     ).toBe("pronta-entrega")
+  })
+
+  it("`tag_status` ainda resolve o que o estoque não diz (sob encomenda)", () => {
+    // Onde o rótulo tem voto: peça com estoque que a loja fabrica por encomenda
+    // é "pronta entrega" pelo número e "sob demanda" pela palavra — e a
+    // palavra é a que sabe.
+    expect(
+      productStatus({
+        metadata: { tag_status: "Sob demanda" },
+        variants: [stocked(250)],
+      })
+    ).toBe("sob-demanda")
   })
 
   it("rótulo fora da tabela cai no estoque (e não inventa estado)", () => {
@@ -141,6 +176,57 @@ describe("productStatus — o que o estoque diz", () => {
 
   it("estoque zerado sem encomenda é esgotado", () => {
     expect(productStatus({ variants: [stocked(0)] })).toBe("esgotado")
+  })
+
+  it("aceita encomenda MAS tem peça em mãos é pronta entrega, não sob demanda", () => {
+    // O caso real medido na loja: a `Jaqueta`, com `allow_backorder: true` e
+    // `inventory_quantity: 50` na API. O `allow_backorder` diz que ela pode ser
+    // comprada **sem** estoque — não que não tem estoque. Ler o motivo antes do
+    // número rotulava como encomenda uma peça que estava na prateleira, e era
+    // o chip que aparecia na vitrine.
+    expect(
+      productStatus({
+        variants: [
+          {
+            manage_inventory: true,
+            allow_backorder: true,
+            inventory_quantity: 50,
+          },
+        ],
+      })
+    ).toBe("pronta-entrega")
+  })
+
+  it("aceita encomenda com pouca peça ainda é última peça, não encomenda", () => {
+    expect(
+      productStatus({
+        variants: [
+          {
+            manage_inventory: true,
+            allow_backorder: true,
+            inventory_quantity: 2,
+          },
+        ],
+      })
+    ).toBe("ultimas")
+  })
+
+  it("a etiqueta de sob encomenda continua sendo do lojista", () => {
+    // O número decide disponibilidade; a **palavra** decide o que a peça é. A
+    // loja que fabrica sob encomenda escreve `tag_status` e o chip obedece —
+    // agora que o estoque já deixou de escondê-lo atrás do número.
+    expect(
+      productStatus({
+        metadata: { tag_status: "Sob demanda" },
+        variants: [
+          {
+            manage_inventory: true,
+            allow_backorder: true,
+            inventory_quantity: 50,
+          },
+        ],
+      })
+    ).toBe("sob-demanda")
   })
 
   it("sem controle de estoque é pronta entrega (não há o que contar)", () => {

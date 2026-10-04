@@ -4,6 +4,8 @@ import React from "react"
 
 import PlaceholderImage from "@modules/common/icons/placeholder-image"
 
+import { resolveMediaUrl } from "@lib/util/media"
+
 type ThumbnailProps = {
   thumbnail?: string | null
   // TODO: Fix image typings
@@ -72,7 +74,17 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
   className,
   "data-testid": dataTestid,
 }) => {
-  const initialImage = thumbnail || images?.[0]?.url
+  const initialImage = resolveMediaUrl(thumbnail || images?.[0]?.url)
+
+  /*
+   * O hover é a **segunda** foto, e precisa passar pelo mesmo
+   * `resolveMediaUrl` que a capa: sem isso, um produto com galeria (foto
+   * enviada pelo painel) troca a capa — que carrega — por uma imagem que
+   * devolve 500, e o hover passa a **mostrar o nada**. É a mesma falha da
+   * galeria da PDP, no mesmo lugar: a URL absoluta do backend chegando ao
+   * `next/image`.
+   */
+  const resolvedHover = resolveMediaUrl(hoverImage)
 
   return (
     <Container
@@ -111,8 +123,8 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
             size={size}
             featured={isFeatured}
           />
-          {hoverImage && (
-            <HoverImage image={hoverImage} featured={isFeatured} />
+          {resolvedHover && (
+            <HoverImage image={resolvedHover} featured={isFeatured} />
           )}
         </div>
       ) : (
@@ -122,8 +134,8 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
             size={size}
             featured={isFeatured}
           />
-          {hoverImage && (
-            <HoverImage image={hoverImage} featured={isFeatured} />
+          {resolvedHover && (
+            <HoverImage image={resolvedHover} featured={isFeatured} />
           )}
         </>
       )}

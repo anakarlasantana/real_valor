@@ -66,9 +66,21 @@ export function revealDelay(index: number): number {
 /**
  * O chip deste estado se mexe?
  *
- * São dois, e os dois falam de disponibilidade — é o estado que muda o que a
- * pessoa pode fazer agora. O que não muda (sob demanda, esgotado) fica parado.
+ * **Só "últimas peças".** Eram dois, e a loja pediu um: numa vitrine em que
+ * toda peça com estoque tem o chip pulsando, o movimento deixa de ser
+ * informação e vira ruído — e o browser mostra dez peças pulsando ao mesmo
+ * tempo na dobra.
+ *
+ * "Últimas peças" é o único estado em que o movimento carrega algo que o
+ * texto não carrega: acaba. "Pronta entrega" não precisa de animação para
+ * dizer que a peça está disponível, e "esgotado" **jamais** deveria piscar —
+ * um chip pedindo atenção numa peça que não pode ser comprada é o oposto de
+ * honesto.
+ *
+ * O movimento em si é lento e contínuo (nada de piscar rápido): ver
+ * `rv-chip-pulse` no `brand.css`, e a regra da WCAG 2.3.1 dita no comentário
+ * de lá.
  */
 export function pulses(status: ProductStatus): boolean {
-  return status === "pronta-entrega" || status === "ultimas"
+  return status === "ultimas"
 }
