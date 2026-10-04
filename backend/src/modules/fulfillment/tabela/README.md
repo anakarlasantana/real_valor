@@ -39,11 +39,30 @@ permite testar a regra hoje, sem esperar ninguém escolher nada.
 
 ## Como está ligado
 
-`medusa-config.ts` registra o provider:
+`medusa-config.ts` registra o provider como item da lista `providers` do **módulo FULFILLMENT**:
 
 ```ts
-{ resolve: "./src/modules/fulfillment/tabela" }
+{
+  resolve: "@medusajs/medusa/fulfillment",
+  options: {
+    providers: [
+      { resolve: "@medusajs/medusa/fulfillment-manual", id: "manual" },
+      { resolve: "./src/modules/fulfillment/tabela", id: "tabela" },
+    ],
+  },
+},
 ```
+
+**A lista precisa ser completa — repare no `manual` estar ali.** O `defineConfig` resolve os módulos
+num reduce que termina em `acc[serviceName] = moduleConfig`: o **último** registro do mesmo módulo
+vence. Ou seja, declarar `{ resolve: "./src/modules/fulfillment/tabela" }` direto na lista `modules`
+não acrescenta um provider — ele **substitui** a configuração padrão do FULFILLMENT e o backend nem
+sobe (`defaultExport.service` é `undefined` num `ModuleProvider`, que não é um módulo).
+
+E, ao declarar o módulo, a lista `providers` precisa vir **inteira**: o loader do FULFILLMENT
+sincroniza o banco a cada boot, e tudo que está no banco mas **fora** da lista é **desabilitado**
+(`providersToDisable` no `@medusajs/fulfillment`). Tirar o `manual` daqui desligaria as PAC/SEDEX do
+`seed` — e isso **não dá erro**: a loja simplesmente abre sem nenhuma opção de frete.
 
 **Ele fica inativo até uma shipping option ser criada para ele** no Admin — registrar o provider não
 cria opção nenhuma. Isso é deliberado: não queremos valores fictícios aparecendo na loja enquanto não
@@ -133,8 +152,9 @@ Os métodos que o Medusa chama:
 **Em centavos.** `calculated_amount` é em centavos. Um erro de unidade aqui é um frete 100× errado, e é
 a classe de erro mais difícil de enxergar numa tela.
 
-Depois: registrar em `medusa-config.ts`, criar a shipping option no Admin com `price_type:
-"calculated"`, e **desligar** a tabela se ela não for mais usada. O painel de envio e a página
+Depois: **somar** a transportadora à lista `providers` do item FULFILLMENT em `medusa-config.ts`
+(sem mexer no `manual`, e sem tirar a tabela se as duas convivem), criar a shipping option no Admin
+com `price_type: "calculated"`, e **desligar** a tabela no Admin se ela não for mais usada. O painel de envio e a página
 `/rastreio` não mudam — `carrier` lá é texto livre, de propósito.
 
 ---

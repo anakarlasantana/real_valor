@@ -166,8 +166,8 @@ module.exports = defineConfig({
         ],
       },
     },
-    // Arquitetura Modular: Novos módulos de pagamento e frete (Mercado Pago, Melhor Envio, etc.)
-    // serão registrados aqui de forma plugável e independente.
+    // Arquitetura Modular: módulos de pagamento (Mercado Pago) e frete
+    // (transportadoras) entram aqui de forma plugável e independente.
     //
     // **Frete: o provider "tabela" (src/modules/fulfillment/tabela).**
     //
@@ -178,12 +178,43 @@ module.exports = defineConfig({
     // criando PAC e SEDEX com preço fixo, e as duas convivem — o carrinho
     // mostra só as opções que existem.
     //
-    // Quando houver transportadora, ela entra como **outro** provider aqui, ao
-    // lado deste, e nenhum consumidor (carrinho, checkout, painel de envio,
-    // página de rastreio) muda: todos leem `StoreCartShippingOption`, que é
-    // uniforme por definição.
+    // Quando houver transportadora, ela entra como **outro item** da lista
+    // `providers` abaixo, e nenhum consumidor (carrinho, checkout, painel de
+    // envio, página de rastreio) muda: todos leem `StoreCartShippingOption`,
+    // que é uniforme por definição.
+    //
+    // **Por que o módulo inteiro é re-declarado, e não só o provider.**
+    // `defineConfig` resolve os módulos num reduce que termina em
+    // `acc[serviceName] = moduleConfig` — o **último** registro do mesmo
+    // módulo vence. Então declarar `./src/modules/fulfillment/tabela` aqui
+    // não "soma" um provider: ele **substitui** a configuração padrão do
+    // FULFILLMENT, e o backend nem sobe (`defaultExport.service` é
+    // `undefined` num `ModuleProvider`, que não é um módulo).
+    //
+    // Por isso o item declara `@medusajs/medusa/fulfillment` — o mesmo
+    // `resolve` do padrão — com a lista `providers` **completa**.
+    //
+    // **O `manual` precisa continuar na lista, e esta é a parte que morde.**
+    // O loader do FULFILLMENT sincroniza o banco a cada boot: tudo que está
+    // na lista entra habilitado, e tudo que está no banco mas **fora** da
+    // lista é **DESABILITADO** (`providersToDisable`). Esquecer o `manual`
+    // aqui desligaria as PAC/SEDEX que o `seed` criou — a loja abriria sem
+    // nenhuma opção de frete. Um provider que some do cadastro silencioso,
+    // em um boot que não dá erro, é bem pior do que um boot que quebra.
     {
-      resolve: "./src/modules/fulfillment/tabela",
+      resolve: "@medusajs/medusa/fulfillment",
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/medusa/fulfillment-manual",
+            id: "manual",
+          },
+          {
+            resolve: "./src/modules/fulfillment/tabela",
+            id: "tabela",
+          },
+        ],
+      },
     },
     //
     // Módulo de conteúdo: guarda as seções da vitrine (home) editáveis

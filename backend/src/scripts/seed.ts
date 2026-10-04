@@ -314,78 +314,107 @@ export default async function seedDemoData({ container }: ExecArgs) {
     },
   });
 
-  await createShippingOptionsWorkflow(container).run({
-    input: [
-      {
-        name: "Entrega Econômica (PAC)",
-        price_type: "flat",
-        provider_id: "manual_manual",
-        service_zone_id: fulfillmentSet.service_zones[0].id,
-        shipping_profile_id: shippingProfile.id,
-        type: {
-          label: "Econômico",
-          description: "Prazo estimado de 5 a 8 dias úteis.",
-          code: "economico_pac",
+  // Idempotente, pelo mesmo motivo dos produtos: `createShippingOptionsWorkflow`
+  // não falha numa base já semeada — ele **duplica**. Cada `make seed` somava
+  // mais um PAC e mais um SEDEX, e o cliente via a lista de frete da loja com
+  // "Entrega Econômica (PAC)" repetida sete vezes, indistinguível, com o mesmo
+  // preço. Não dá erro, não quebra o checkout, e não aparece em nenhum log:
+  // a loja simplesmente mostra a mesma opção várias vezes.
+  //
+  // A chave é o par (nome, perfil de envio) do serviço de fulfillment, e não o
+  // id — o id muda a cada execução, então comparar por ele não encontraria a
+  // opção da rodada anterior.
+  const { data: existingShippingOptions } = await query.graph({
+    entity: "shipping_option",
+    fields: ["id", "name", "shipping_profile_id"],
+    filters: { shipping_profile_id: shippingProfile.id },
+  })
+
+  const opcoesExistentes = new Set(
+    (existingShippingOptions ?? []).map((o) => o.name)
+  )
+
+  if (
+    opcoesExistentes.has("Entrega Econômica (PAC)") &&
+    opcoesExistentes.has("Entrega Expressa (SEDEX)")
+  ) {
+    logger.info(
+      "[Real Valor] Opcoes de envio ja existem (PAC e SEDEX) — pulando."
+    )
+  } else {
+    await createShippingOptionsWorkflow(container).run({
+      input: [
+        {
+          name: "Entrega Econômica (PAC)",
+          price_type: "flat",
+          provider_id: "manual_manual",
+          service_zone_id: fulfillmentSet.service_zones[0].id,
+          shipping_profile_id: shippingProfile.id,
+          type: {
+            label: "Econômico",
+            description: "Prazo estimado de 5 a 8 dias úteis.",
+            code: "economico_pac",
+          },
+          prices: [
+            {
+              currency_code: "brl",
+              amount: 19.9,
+            },
+            {
+              region_id: region.id,
+              amount: 19.9,
+            },
+          ],
+          rules: [
+            {
+              attribute: "enabled_in_store",
+              value: "true",
+              operator: "eq",
+            },
+            {
+              attribute: "is_return",
+              value: "false",
+              operator: "eq",
+            },
+          ],
         },
-        prices: [
-          {
-            currency_code: "brl",
-            amount: 19.9,
+        {
+          name: "Entrega Expressa (SEDEX)",
+          price_type: "flat",
+          provider_id: "manual_manual",
+          service_zone_id: fulfillmentSet.service_zones[0].id,
+          shipping_profile_id: shippingProfile.id,
+          type: {
+            label: "Expresso",
+            description: "Prazo estimado de 1 a 3 dias úteis.",
+            code: "expresso_sedex",
           },
-          {
-            region_id: region.id,
-            amount: 19.9,
-          },
-        ],
-        rules: [
-          {
-            attribute: "enabled_in_store",
-            value: "true",
-            operator: "eq",
-          },
-          {
-            attribute: "is_return",
-            value: "false",
-            operator: "eq",
-          },
-        ],
-      },
-      {
-        name: "Entrega Expressa (SEDEX)",
-        price_type: "flat",
-        provider_id: "manual_manual",
-        service_zone_id: fulfillmentSet.service_zones[0].id,
-        shipping_profile_id: shippingProfile.id,
-        type: {
-          label: "Expresso",
-          description: "Prazo estimado de 1 a 3 dias úteis.",
-          code: "expresso_sedex",
+          prices: [
+            {
+              currency_code: "brl",
+              amount: 34.9,
+            },
+            {
+              region_id: region.id,
+              amount: 34.9,
+            },
+          ],
+          rules: [
+            {
+              attribute: "enabled_in_store",
+              value: "true",
+              operator: "eq",
+            },
+            {
+              attribute: "is_return",
+              value: "false",
+              operator: "eq",
+            },
+          ],
         },
-        prices: [
-          {
-            currency_code: "brl",
-            amount: 34.9,
-          },
-          {
-            region_id: region.id,
-            amount: 34.9,
-          },
-        ],
-        rules: [
-          {
-            attribute: "enabled_in_store",
-            value: "true",
-            operator: "eq",
-          },
-          {
-            attribute: "is_return",
-            value: "false",
-            operator: "eq",
-          },
-        ],
-      },
-    ],
-  });
+      ],
+    })
+  }
 
   await linkSalesChannelsToStockLocationWorkflow(container).run({
     input: {
