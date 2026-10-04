@@ -55,29 +55,23 @@ export default async function Footer({ content }: { content: FooterSection }) {
           <div className="flex flex-col gap-y-4 max-w-xs">
             <LocalizedClientLink
               href="/"
-              className="flex flex-col leading-none"
+              className="flex flex-row items-center gap-x-3 leading-none"
               aria-label="Real Valor — página inicial"
             >
-              <span className="rv-display text-2xl tracking-[0.3em] text-rv-preto">
-                REAL VALOR
-              </span>
-              <span className="rv-eyebrow mt-1 text-rv-rose">
-                Alfaiataria feminina
-              </span>
+              <img
+                src="/favicon.png"
+                alt="Real Valor"
+                className="h-20 w-20 shrink-0"
+              />
+              <div className="flex flex-col">
+                <span className="rv-display text-2xl tracking-[0.3em] text-rv-preto">
+                  REAL VALOR
+                </span>
+                <span className="rv-eyebrow mt-1 text-rv-rose">
+                  Alfaiataria feminina
+                </span>
+              </div>
             </LocalizedClientLink>
-
-            <Text className="rv-script text-3xl text-rv-rose">
-              Mais que roupas, é sobre você.
-            </Text>
-
-            <Text className="text-sm leading-relaxed text-rv-muted">
-              A alfaiataria que valoriza você, não o seu status.
-            </Text>
-
-            <span className="rv-eyebrow text-rv-dourado">
-              Alfaiataria para todas.
-            </span>
-
             <SocialLinks items={content.social ?? []} />
           </div>
 

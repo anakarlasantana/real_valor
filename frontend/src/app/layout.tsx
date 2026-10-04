@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     locale: "pt_BR",
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.png",
   },
 }
 
