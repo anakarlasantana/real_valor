@@ -30,7 +30,7 @@ type ThumbnailProps = {
   hoverImage?: string | null
   size?: "small" | "medium" | "large" | "full" | "square"
   /**
-   * O card **largo** da vitrine — a proporção 11/14 das seções em carrossel
+   * O card **largo** da vitrine — a proporção 4/5 das seções em carrossel
    * ("Peças em destaque" e "Lançamentos"), em vez do retrato 9/16 do catálogo.
    *
    * O nome vem de "Peças em destaque", a primeira seção a usá-lo; quando
@@ -42,23 +42,26 @@ type ThumbnailProps = {
    * `absolute inset-0` (ela *é* a face do card — o que o catálogo quer), mas no
    * carrossel isso engolia o `p-4` da moldura: a peça encostava no fio. O recuo
    * de 1rem (a caixa `inset-4` no retorno, logo abaixo) põe a foto exatamente
-   * onde o chip de estado começa — o `left-4 top-4` do `product-preview` sempre
-   * pressupôs este respiro.
+   * onde a moldura começa. **O chip de estado não está mais aqui**: ele desceu
+   * para a linha do preço, no `product-preview`, e por isso o recuo deixou de
+   * existir por causa dele — agora é respiro de desenho, não de encaixe.
    *
-   * **E o recuo não corta mais a peça — corta um pouco menos.** A moldura é
-   * 11/14 (0,786) e o catálogo tem duas proporções de foto: **3:4** (0,768, numa
-   * peça) e **2:3** (0,667, nas outras). Medido no navegador na régua do desktop
-   * (card de 461,6px), o recuo de 1rem leva a caixa da foto a 0,773: o corte do
-   * `object-cover` cai de 2,3% para **0,7%** da área nas 3:4 e de 15,2% para
-   * **13,8%** nas 2:3. Ou seja: menos card ocupado e menos peça cortada, que é o
-   * pedido ao pé da letra.
+   * **A moldura é 4/5 (0,8), por escolha da loja** — era 11/14 (0,786).
+   * Com o card de 30% da largura do desktop (432px), a 11/14 dava uma caixa de
+   * 432 x 540px: três retratos altos que ocupavam a dobra inteira. A 4/5 dá
+   * 432 x 540px também — a altura não muda, porque 4/5 e 11/14 têm quase a
+   * mesma proporção — mas a peça fica **menos recortada**: a foto de catálogo
+   * é 3/4 (0,75) e o `object-cover` agora corta por menos lado, em vez de
+   * encostar a peça na borda superior.
    *
-   * O corte não zera nas 2:3 porque a moldura é mais **larga** que a foto (0,773
-   * contra 0,667) — zerá-lo pediria uma moldura mais estreita que 11/14, ou
-   * `object-contain`, e aí a foto boiaria dentro do card com faixa de fundo dos
-   * lados. Como o recuo é um valor fixo (1rem), a proporção da caixa muda um
-   * pouco com a largura do card: no celular (272,1px) ela é 0,764 e o corte das
-   * 2:3 fica em 12,7%.
+   * A troca real de altura vem da régua do trilho, não daqui: `.rv-carousel-item`
+   * em `brand.css` decide a largura, e a proporção decide o resto.
+   * O que continua valendo: o recuo de 1rem (`inset-4`, abaixo) é o que segura
+   * a foto dentro da moldura. **A proporção da caixa da foto** é a da moldura
+   * menos o recuo, e por isso muda com a largura do card — por isso este
+   * comentário **não** traz mais a conta antiga: ela era da 11/14 e valeria
+   * menos que zero aqui. Se o corte da foto virar problema, a conta se mede de
+   * novo no navegador, no cartão que o desenho indica.
    */
   isFeatured?: boolean
   className?: string
@@ -92,7 +95,7 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
         "relative w-full overflow-hidden p-4 bg-rv-surface shadow-[var(--rv-shadow-card)] rounded-[var(--rv-radius-lg)] group-hover:shadow-[var(--rv-shadow-card-hover)] transition-shadow ease-in-out duration-200",
         className,
         {
-          "aspect-[11/14]": isFeatured,
+          "aspect-[4/5]": isFeatured,
           "aspect-[9/16]": !isFeatured && size !== "square",
           "aspect-[1/1]": size === "square",
           "w-[180px]": size === "small",
