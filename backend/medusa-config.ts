@@ -217,6 +217,56 @@ module.exports = defineConfig({
       },
     },
     //
+    // Módulo de PAGAMENTO: o Mercado Pago (Checkout Pro).
+    //
+    // **Por que o módulo INTEIRO é re-declarado, ao contrário do fulfillment.**
+    // Aqui é o oposto exato, e a diferença é do framework, não da config. O
+    // loader do FULFILLMENT **substitui** a lista de providers (por isso o
+    // `manual` tem de ser re-declarado lá); o loader do PAYMENT **soma**:
+    //
+    //   @medusajs/payment/dist/loaders/providers.js
+    //     registrationFn(SystemPaymentProvider, { id: "default" })   ← sempre
+    //     registrationFn(MedusaPaymentsProvider, ...)                ← se houver `cloud`
+    //     moduleProviderLoader({ providers: options?.providers })    ← as nossas
+    //
+    // Ou seja: `pp_system_default` continua registrado (e é **re-habilitado no
+    // banco a cada boot** por `registerProvidersInDb`), e os dois itens abaixo
+    // entram ao lado dele. Redeclarar o módulo é necessário porque
+    // `defineConfig` resolve `modules` num reduce em que o último `resolve` do
+    // mesmo módulo vence — declarar só o provider apagaria o resto da
+    // configuração do PAYMENT.
+    //
+    // ⚠️ **CONSEQUÊNCIA PARA PRODUÇÃO, e ela não é óbvia.** Como
+    // `registerProvidersInDb` força `is_enabled: true` em tudo que está na
+    // lista, `pp_system_default` **não pode ser desligado pelo Admin**: o
+    // próximo boot o reativa. Ele é um meio que "paga" sem cobrar nada, e aparece
+    // no checkout da loja como uma opção. Desligá-lo exige filtrar a lista de
+    // payment providers do lado do storefront (ou um middleware na rota
+    // `/store/payment-providers`). Está registrado em
+    // `src/modules/payment/mercadopago/README.md`, seção "Antes de ir para
+    // produção", e é o item mais importante daquela lista.
+    //
+    // **Dois providers, dois módulos.** O `id` da lista é metade do
+    // identificador que o Medusa monta (`` `pp_${identifier}_${id}` ``), e ele
+    // vem **do item**, não do service — dois services no mesmo `ModuleProvider`
+    // receberiam o mesmo `id`, e o segundo registro sobrescreveria o primeiro
+    // sem erro nenhum (a loja ficaria com um meio só). Um módulo por meio resolve
+    // isso, e o `registro.unit.spec.ts` prende os dois lados.
+    {
+      resolve: "@medusajs/medusa/payment",
+      options: {
+        providers: [
+          {
+            resolve: "./src/modules/payment/mercadopago/pix",
+            id: "pix",
+          },
+          {
+            resolve: "./src/modules/payment/mercadopago/cartao",
+            id: "cartao",
+          },
+        ],
+      },
+    },
     // Módulo de conteúdo: guarda as seções da vitrine (home) editáveis
     // pelo admin. Ver src/modules/content.
     {

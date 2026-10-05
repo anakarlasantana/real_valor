@@ -171,9 +171,25 @@ services:
       # `.env.example`: aquele prefixo INLINA a variavel no bundle do navegador.
       MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
       MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
-      MP_APP_ID: ${MP_APP_ID:-}
+      # O segredo do ambiente de TESTE, quando for outro. Os dois sao tentados
+      # na validacao da assinatura — ver o bloco no `.env.example`.
+      MP_WEBHOOK_SECRET_TEST: ${MP_WEBHOOK_SECRET_TEST:-}
+      # O ambiente DECLARADO (`teste`/`producao`). Vazio = `teste`, que e' o
+      # default do codigo. NAO e' decorativo: com `producao` e um token `TEST-`
+      # o provider RECUSA o pagamento e grita no boot — ver o bloco no
+      # `.env.example` e `divergenciaDeAmbiente` em mercadopago/credenciais.ts.
+      MP_AMBIENTE: ${MP_AMBIENTE:-}
       MP_NOTIFICATION_URL: ${MP_NOTIFICATION_URL:-}
       MP_BACK_URL: ${MP_BACK_URL:-}
+      # Segundos de tolerancia do `ts` na assinatura. Ausente (o default do
+      # codigo) = 1800. `0` desliga a checagem do relogio.
+      MP_WEBHOOK_TOLERANCIA_SEGUNDOS: ${MP_WEBHOOK_TOLERANCIA_SEGUNDOS:-}
+      # O segredo da chamada interna do storefront (`GET /internal/orders/
+      # by-cart`). Sem default DE PROPOSITO, pelo mesmo motivo dos outros dois:
+      # um valor padrao conhecido aqui deixaria qualquer um ler status de pedido
+      # alheio sabendo um `cart_id`. Vazio = a rota responde 404 indistinto, e a
+      # pagina de confirmacao mostra "aguardando" em vez do pedido.
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
     volumes:
       # Uploads do painel (`@medusajs/file-local`, ver medusa-config.ts): o que
       # o CRM envia fica no volume, e nao na camada de escrita do container —
@@ -242,6 +258,16 @@ services:
       # padrao conhecido aqui transformaria um purge autenticado em purge
       # publico (vetor de DoS trivial). Defina no `.env` da raiz para habilitar.
       REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
+      # O segredo que o storefront envia ao backend em `x-rv-internal` para
+      # perguntar "o pedido deste carrinho ja existe?". E' o MESMO valor do
+      # servico `backend` acima — o backend compara, o frontend envia, e os dois
+      # tem de concordar. Sem ele, a rota `/api/pedido/status` responde 503
+      # (fail-closed) e a pagina de confirmacao mostra "aguardando o pagamento".
+      #
+      # PROPOSITALMENTE NAO e' o `REVALIDATE_SECRET`: os dois protegem coisas de
+      # peso diferente, e um segredo por finalidade e' o que permite girar um sem
+      # tocar no outro. Ver o bloco no `.env.example`.
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
     ports:
       - "8000:8000"
     logging:

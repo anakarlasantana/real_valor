@@ -182,22 +182,42 @@ Pix (à vista e com desconto), cartão parcelado e boleto. Ele **não é Stripe-
 redirecionamento para uma *preference*, não tokenização de cartão no navegador. Por isso o adapter do
 MP tem `fulfillment: "redirect"` e o do Stripe não precisaria de `render` próprio.
 
-**Fluxo:**
+**Fluxo** *(✅ implementado — as três correções abaixo vêm do código que existe)*:
 
 ```
-1. Cliente escolhe "Pix com 5% de desconto" na tela de pagamento
-2. Frontend chama adapter.initiate() → POST /api/payment/mercadopago/preference
-3. Backend cria a preference na API do MP com o total do carrinho
-4. Backend devolve { init_point, preference_id } ao storefront
-5. Frontend redireciona (ou abre modal Pix com QR)
-6. Cliente paga no ambiente do MP
-7. MP chama o webhook → adapter.handleWebhook() → PaymentResult
-8. Backend captura o pagamento no Medusa (core-flows)
-9. Cliente volta a /order/[id]/confirmed
+1. Cliente escolhe "Pix" na tela de pagamento
+2. Checkout chama initiatePaymentSession(pp_mercadopago_pix)
+   ⚠️ NÃO existe "POST /api/payment/mercadopago/preference". O adapter do
+   storefront não inicia nada: o `init_point` chega em
+   `payment_session.data.init_point`, gravado pelo backend no passo 3.
+3. Backend (provider `initiatePayment`) cria a preference na API do MP
+   → POST /checkout/preferences, com external_reference = id da SESSÃO
+4. A sessão (com `init_point` no `data`) volta ao storefront no ato do passo 2
+5. O BOTÃO do meio faz `window.location.assign(init_point)` — é o
+   `adapter.ConfirmButton`, e não o botão comum, que chamaria `placeOrder()`
+⚠️ 6. NÃO há "cliente volta para /order/[id]/confirmed" ao voltar do MP: o
+   pedido ainda não existe. Ela cai em /pedido/confirmacao, que pergunta ao
+   backend e troca a URL quando o pedido aparecer.
+7. Cliente paga no ambiente do MP
+8. MP chama POST /webhooks/mercadopago → assinatura conferida → GET
+   /v1/payments/{id} → sessão resolvida pelo external_reference → valor
+   conferido → evento `payment.webhook_received` emitido
+9. O provider devolve SUCCESSFUL; o Medusa autoriza, captura e **cria o
+   pedido** (completeCartWorkflow) — o pedido nasce AQUI, e não no navegador
+10. A página de confirmação encontra o pedido e redireciona para
+    /order/[id]/confirmed
 ```
 
-**Arquivos propostos:**
-- `backend/src/modules/payment/mercadopago/provider.ts` *(proposto)*
+**Arquivos (✅ implementados):**
+- `backend/src/modules/payment/mercadopago/{service,webhook,preferencia,assinatura,credenciais,cliente,redigir,contexto}.ts`
+- `backend/src/modules/payment/mercadopago/{pix,cartao}/index.ts` *(dois módulos, porque o `id` do
+  registro vem do item do config: dois services num `ModuleProvider` sobrescreveriam um ao outro)*
+- `backend/src/api/webhooks/mercadopago/route.ts` (e `[metodo]/`)
+- `backend/src/api/hooks/payment/[provider]/route.ts` *(404 — substitui a rota nativa do Medusa)*
+- `backend/src/api/internal/orders/by-cart/route.ts` *(consulta interna, autenticada por segredo)*
+- `frontend/src/lib/payments/adapters/mercadopago/{index,payment-button}.tsx`
+- `frontend/src/app/api/pedido/status/route.ts` e
+  `frontend/src/app/[countryCode]/(main)/pedido/confirmacao/page.tsx`
 - `backend/src/modules/payment/mercadopago/service.ts` *(proposto)*
 - `backend/src/api/webhooks/mercadopago/route.ts` *(proposto)*
 - `frontend/src/lib/payments/adapters/mercadopago/index.ts` *(proposto)*
@@ -273,19 +293,38 @@ estoque. Um webhook forjado seria a forma mais direta de "confirmar" um pagament
 
 Não basta dizer "deduplica": é preciso dizer **onde**.
 
-| Aspecto | Decisão |
+> ⚠️ **Corrigido na implementação.** A versão anterior deste documento propunha
+> `order.metadata` como o lugar da idempotência. **Não funciona**: no caminho do
+> Mercado Pago o pedido **ainda não existe** quando o webhook chega — quem o cria
+> é o próprio webhook. Não se guarda estado num registro que não foi criado.
+>
+> A idempotência não foi implementada por nós: foi **verificada** no framework, e
+> não precisa de marca nenhuma. As três coisas que um reenvio tentaria fazer já
+> estão guardadas onde o estado real está:
+
+| O que um reenvio faria | O que impede, no código do Medusa |
 | :--- | :--- |
-| Chave | `payment_id` + `status` |
-| Onde persiste | `order.metadata` (`mp_payment_id`, `mp_processed_statuses`) |
-| Quando grava | **Antes** de qualquer efeito colateral |
-| Reenvio com status já processado | responde 200, não faz nada |
-| Estado novo (ex.: `in_process` → `approved`) | processa — a chave inclui o status |
+| Capturar o pagamento de novo | `capturePayment_`: `if (payment.captured_at) return` — sai antes de chamar o provedor |
+| Criar o pedido de novo | `completeCartAfterPaymentStep` é guardado por `!order` (o link `order_cart` já existe) |
+| Autorizar duas vezes | o ramo de autocapture é guardado por `!paymentData.length` |
 
-Gravar **antes** do efeito é o que torna o reenvio seguro: se o processo cair no meio, o reenvio é
-ignorado pelo estado, não duplicado.
+| Aspecto | Decisão (implementada) |
+| :--- | :--- |
+| Chave de correlação | `external_reference` = id da **payment session** |
+| Onde o pedido nasce | `processPaymentWorkflow` (webhook) → `completeCartWorkflow` |
+| Reenvio com o mesmo status | no-op pelas três guardas acima; o Mercado Pago recebe 200 |
+| Por que 200 e não "já processado" | o provedor não tem o que fazer com a informação, e um erro faria reentrega infinita |
+| `order.metadata.mp_*` | **proveniência e auditoria** — pós-fato, nunca fonte de decisão |
 
-**Regra de ouro:** o webhook **nunca** cria pedido sozinho. Ele atualiza um pagamento já registrado
-pelo `initiatePaymentSession`; o RV-042 transforma pagamento aprovado em pedido.
+**Por que não guardar uma marca nossa.** Uma segunda fonte de verdade para uma
+pergunta que o framework já responde é sempre a que fica desatualizada — e aqui
+ela custaria uma escrita a mais no caminho crítico, e um bug a mais quando o
+pedido for criado por outro caminho (admin, fluxo manual).
+
+**Regra de ouro (confirmada):** o webhook não confia no corpo. Ele pergunta ao
+provedor (`GET /v1/payments/{id}`) e confere o valor contra a **sessão gravada**,
+e é isso — e não a assinatura sozinha — que impede aplicar um pagamento de R$ 1
+num pedido de R$ 1.000.
 
 ### Comportamento visual
 - Na tela de pagamento, os meios ativos vêm de `capabilities` do adapter — o MP declara `pix`,

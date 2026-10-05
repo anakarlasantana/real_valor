@@ -19,6 +19,8 @@ import { createElement, type ReactNode } from "react"
 import { CreditCard } from "@medusajs/icons"
 import {
   MANUAL_PROVIDER_ID,
+  MERCADOPAGO_CARTAO_PROVIDER_ID,
+  MERCADOPAGO_PIX_PROVIDER_ID,
   STRIPE_PROVIDER_PREFIX,
 } from "@rv/contrato/payment"
 
@@ -29,7 +31,20 @@ export type PaymentLabel = {
 
 const cardIcon = createElement(CreditCard)
 
+/**
+ * Os rótulos, pela **chave exata** — e não pelo prefixo do Mercado Pago.
+ *
+ * O `paymentLabel` abaixo cai por `startsWith` quando não acha a chave exata, e
+ * uma chave `pp_mercadopago_` casaria com os dois meios: a página do pedido
+ * mostraria "Cartão de crédito" para um pedido pago por Pix. Duas chaves
+ * completas, e cada uma responde pelo seu.
+ */
 const labels: Record<string, PaymentLabel> = {
+  [MERCADOPAGO_PIX_PROVIDER_ID]: { title: "Pix", icon: null },
+  [MERCADOPAGO_CARTAO_PROVIDER_ID]: {
+    title: "Cartão de crédito",
+    icon: cardIcon,
+  },
   [MANUAL_PROVIDER_ID]: { title: "Pagamento manual", icon: cardIcon },
   [STRIPE_PROVIDER_PREFIX]: { title: "Cartão de crédito", icon: cardIcon },
 }

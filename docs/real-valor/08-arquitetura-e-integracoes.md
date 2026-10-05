@@ -246,11 +246,41 @@ conteúdo**. Três razões:
 
 | Item | Onde | Observação |
 | :--- | :--- | :--- |
-| `MP_ACCESS_TOKEN` | `.env` do backend | **Nunca** no `NEXT_PUBLIC_*` |
+| `MP_ACCESS_TOKEN` | `.env` do backend | **Nunca** no `NEXT_PUBLIC_*`. O prefixo decide **só** `init_point` vs `sandbox_init_point` — **não** diz se a conta é de teste |
+| `MP_AMBIENTE` | `.env` do backend | *(✅ acrescentado)* `teste`/`producao`. Ausente = `teste`. É **declarado**, não deduzido — ver o aviso abaixo |
 | `MP_WEBHOOK_SECRET` | `.env` do backend | Segredo da assinatura (Painel → Notificações) |
-| `MP_APP_ID` | `.env` do backend | Dados da aplicação |
-| `MP_NOTIFICATION_URL` | `.env` do backend | **URL pública com HTTPS** que o MP chama |
-| `MP_BACK_URL` | `.env` do backend | Retorno da cliente (aceita `{id}`) |
+| `MP_WEBHOOK_SECRET_TEST` | `.env` do backend | Quando o de teste for outro. Os dois são tentados |
+| `MP_WEBHOOK_TOLERANCIA_SEGUNDOS` | `.env` do backend | Janela do `ts` na assinatura. Padrão 1800; `0` desliga |
+| `MP_NOTIFICATION_URL` | `.env` do backend | **URL pública com HTTPS**, terminando em `/webhooks/mercadopago` |
+| `MP_BACK_URL` | `.env` do backend | Retorno da cliente. Aponta para `/pedido/confirmacao` |
+| `INTERNAL_API_SECRET` | `.env` dos **dois** serviços | *(✅ acrescentado)* Autentica `GET /internal/orders/by-cart`. **Não** reaproveita o `REVALIDATE_SECRET` |
+
+> ⚠️ **O prefixo do token NÃO diz se ele é de teste.** A documentação do Mercado
+> Pago é explícita: *"The test Access Token starts with the prefix **APP_USR**,
+> just like your production Access Token."* Ou seja, `APP_USR-` é o formato da
+> credencial de **teste** também — só `TEST-` (credencial antiga de aplicação) é
+> inequívoco, e a ausência dele **não** prova produção.
+>
+> Medido nesta conta: um token `APP_USR-` cujo `GET /users/me` devolve
+> `nickname: TESTUSER7358975069611479993` e `tags: [user_product_seller,
+> test_user, normal]`. O log de boot o anunciava como "produção".
+>
+> Por isso o ambiente é **declarado** em `MP_AMBIENTE`. O provider **recusa** a
+> combinação perigosa (`producao` + `TEST-` — a loja no ar sem cobrar ninguém), em
+> vez de só avisar; o caso espelhado (`teste` + `APP_USR-`) emite aviso e segue,
+> porque `APP_USR-` de conta de teste é legítimo. As duas decisões e o log de boot
+> estão em `backend/src/modules/payment/mercadopago/credenciais.ts`; a matriz de
+> casos, em `__tests__/credenciais.unit.spec.ts`.
+
+> ⚠️ **`MP_BACK_URL` não é `/order/[id]/confirmed`.** No Checkout Pro o `{id}` não
+> existe do lado do navegador no momento do retorno — o pedido é criado pelo
+> webhook. A cliente volta para `/pedido/confirmacao`, que consulta o backend
+> (`/api/pedido/status`, por cookie httpOnly) e só então troca a URL.
+
+> ⚠️ **Nunca aponte `MP_NOTIFICATION_URL` para `/hooks/payment/...`.** Aquela é a
+> rota nativa do Medusa, que **não valida assinatura nenhuma** (ela não conhece
+> provedor) e responde `400` com `err.message` no corpo. Este projeto devolve
+> `404` nela de propósito.
 
 **O que a modalidade escolhida (Point / Pro / Advanced) define:**
 - se há parcelamento sem juros e em quantas parcelas;
@@ -266,11 +296,51 @@ A preparação de ambiente **já foi executada** (sem código de aplicação):
 
 | Onde | O que foi feito |
 | :--- | :--- |
-| `.env.example` | Bloco "Pagamento — Mercado Pago" com as 5 chaves e a origem de cada uma |
+| `.env.example` | Bloco "Pagamento — Mercado Pago" com as **7** chaves e a origem de cada uma |
+| `.env.example` | Bloco novo de `INTERNAL_API_SECRET`, com o porquê de **não** ser o `REVALIDATE_SECRET` |
 | `.env.example` | Removida `NEXT_PUBLIC_STRIPE_KEY` (o Stripe saiu do escopo) |
-| `docker-compose.yml` | As 5 `MP_*` declaradas no `environment:` do backend, **sem default** |
+| `docker-compose.yml` | As `MP_*` declaradas no `environment:` do backend, **sem default** |
+| `docker-compose.yml` | `INTERNAL_API_SECRET` declarado nos **dois** serviços (o backend compara, o frontend envia) |
 | `docker-compose.yml` | Removida `NEXT_PUBLIC_STRIPE_KEY` dos `args` de build do frontend |
 | `.env` (local, ignorado pelo Git) | Chaves adicionadas, vazias |
+
+#### 8.4.1.1.1 O código — implementado
+
+| Arquivo | Papel | Puro? |
+| :--- | :--- | :--- |
+| `mercadopago/credenciais.ts` | leitura das variáveis; **nenhum default** | lê env |
+| `mercadopago/assinatura.ts` | HMAC-SHA256 do manifesto, `timingSafeEqual` | ✅ |
+| `mercadopago/redigir.ts` | o que pode sair de um pagamento (lista fechada, anti-PII) | ✅ |
+| `mercadopago/preferencia.ts` | o documento da preference | ✅ |
+| `mercadopago/contexto.ts` | o contrato rota ⇄ provider | ✅ |
+| `mercadopago/cliente.ts` | as duas chamadas HTTP (`preferences`, `payments`) | rede |
+| `mercadopago/service.ts` | o provider (`AbstractPaymentProvider`) | misto |
+| `mercadopago/webhook.ts` | o handler compartilhado pelas rotas | misto |
+| `mercadopago/{pix,cartao}/index.ts` | os dois `ModuleProvider` | ✅ |
+| `api/webhooks/mercadopago/{route.ts,[metodo]/route.ts}` | as rotas públicas | HTTP |
+| `api/hooks/payment/[provider]/route.ts` | **404** — desliga a rota nativa do Medusa | HTTP |
+| `api/internal/orders/by-cart/route.ts` | consulta interna autenticada por segredo | HTTP |
+| `lib/payments/adapters/mercadopago/*` | os dois adapters do storefront | ✅ |
+| `app/api/pedido/status/route.ts` | proxy cookie → segredo → backend | HTTP |
+| `app/[countryCode]/(main)/pedido/confirmacao/page.tsx` | espera o webhook e redireciona | cliente |
+
+**O que a implementação descobriu (e que não estava neste documento):**
+
+1. **O loader do `payment` SOMA os providers; o do `fulfillment` SUBSTITUI.** É a
+   diferença que decide se o `pp_system_default` precisa ser re-declarado (não
+   precisa) e por que a config do fulfillment re-declara o `manual` (precisa).
+2. **`pp_system_default` é re-habilitado a cada boot** por `registerProvidersInDb`.
+   Desligá-lo no Admin **não gruda** — e ele é um meio que cria pedido sem cobrar.
+   Está registrado como o item 1 da lista de produção do README do módulo.
+3. **O identificador é montado em runtime** pelo loader
+   (`` `pp_${identifier}${id ? `_${id}` : ""}` ``), com o `id` vindo do **item do
+   config**. Daí dois módulos, e daí o `registro.unit.spec.ts` comparar config ⇄
+   classe ⇄ contrato.
+4. **A rota nativa `/hooks/payment/:provider` existe e continua existindo** —
+   confirmada em `backend/node_modules/@medusajs/medusa/dist/api/hooks/`. Ela não
+   valida assinatura e responde `400` com `err.message`.
+5. **A idempotência não precisa de marca nossa** — as três guardas estão no
+   framework (ver 04-requisitos-funcionais.md).
 
 **Três decisões de segurança registradas na própria configuração:**
 
@@ -288,7 +358,7 @@ A preparação de ambiente **já foi executada** (sem código de aplicação):
 
 | # | Passo | Bloqueia |
 | :--- | :--- | :--- |
-| 1 | Preencher `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_APP_ID` | Teste da integração |
+| 1 | Preencher `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_AMBIENTE` | Teste da integração |
 | 2 | Implementar o provider (RV-002) | Venda |
 | 3 | Apontar `MP_NOTIFICATION_URL` para um túnel em dev | Teste do webhook |
 | 4 | Provider de e-mail transacional | Avisos de pedido (ver 8.4.4) |

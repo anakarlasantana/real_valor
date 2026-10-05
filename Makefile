@@ -66,11 +66,22 @@ help:
 # ---------------------------------------------------------------------------
 # Ciclo de vida
 # ---------------------------------------------------------------------------
+# `up` e `recreate` passam por `scripts/check-env-shadow.sh` ANTES de criar
+# containers. Ele falha (e explica) quando o SHELL tem uma variavel EXPORTADA e
+# VAZIA que o `.env` preenche — porque o Compose da precedencia ao ambiente do
+# shell sobre o arquivo, `${VAR:-}` nao distingue "vazia" de "ausente", e o
+# resultado e' um container mal configurado **sem nenhuma mensagem de erro**.
+# Caso medido nesta maquina: `MP_ACCESS_TOKEN` exportado e vazio fazia o backend
+# subir com o pagamento indisponivel enquanto o `.env` mostrava o token certo.
+# `down` e `restart` nao passam por ele: nao criam container, e nao ha env novo a
+# perder.
+#
 # Nao ha mais ORDEM obrigatoria de subida nem script `start.sh`/`stop.sh`: o
 # build do storefront deixou de consultar o backend (o `generateStaticParams`
 # foi removido em favor de ISR + `/api/revalidate`) e o Compose resolve a ordem
 # por `depends_on` + `healthcheck` (backend so sobe com Postgres/Redis saudaveis).
 up:
+	@scripts/check-env-shadow.sh
 	$(COMPOSE) up -d
 
 down:
@@ -103,6 +114,7 @@ restart:
 # que e' o suficiente para o bind do CRM (e mais barato: nao reinicia o
 # storefront). Sem ele, recria a stack inteira.
 recreate:
+	@scripts/check-env-shadow.sh
 	$(COMPOSE) up -d --force-recreate $(SERVICE)
 
 ps:

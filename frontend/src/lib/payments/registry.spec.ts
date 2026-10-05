@@ -16,6 +16,11 @@
 import { describe, expect, it } from "vitest"
 
 import { MANUAL_PROVIDER_ID, STRIPE_PROVIDER_PREFIX } from "@rv/contrato/payment"
+import {
+  MERCADOPAGO_CARTAO_PROVIDER_ID,
+  MERCADOPAGO_PIX_PROVIDER_ID,
+  MERCADOPAGO_PROVIDER_PREFIX,
+} from "@rv/contrato/payment"
 import { paymentLabel } from "@lib/payments/labels"
 import {
   __registerForTest,
@@ -133,6 +138,87 @@ describe("fulfillment decide o caminho, não o id", () => {
 
     expect(adapter.fulfillment).toBe("inline")
     expect(adapter.InlineUI).toBeDefined()
+  })
+})
+
+describe("o Mercado Pago — dois meios, um provedor", () => {
+  it("resolve o Pix e o cartão para adapters DIFERENTES", () => {
+    // ⚠️ A armadilha que este teste existe para pegar: registrar um adapter
+    // com o prefixo comum (`pp_mercadopago_`) "funcionaria" — e o `startsWith`
+    // faria o PRIMEIRO casar com os dois meios, deixando o segundo inalcançável.
+    // A cliente escolheria "Pix" e receberia o rótulo, as capacidades e a
+    // preferência do cartão.
+    const pix = resolvePayment(MERCADOPAGO_PIX_PROVIDER_ID)
+    const cartao = resolvePayment(MERCADOPAGO_CARTAO_PROVIDER_ID)
+
+    expect(pix.id).toBe(MERCADOPAGO_PIX_PROVIDER_ID)
+    expect(cartao.id).toBe(MERCADOPAGO_CARTAO_PROVIDER_ID)
+    expect(pix).not.toBe(cartao)
+    expect(pix.label).not.toBe(cartao.label)
+  })
+
+  it("nenhum dos dois responde pelo prefixo comum", () => {
+    // O prefixo é o que *identifica* a família; não é chave de ninguém. Se
+    // algum dos dois o declarasse como `id`, o `resolve` exato nunca casaria
+    // com os provedores reais e tudo cairia no mesmo adapter.
+    expect(resolvePayment(MERCADOPAGO_PROVIDER_PREFIX).id).not.toBe(
+      MERCADOPAGO_PIX_PROVIDER_ID
+    )
+    expect(resolvePayment(MERCADOPAGO_PROVIDER_PREFIX).id).not.toBe(
+      MERCADOPAGO_CARTAO_PROVIDER_ID
+    )
+  })
+
+  it("os dois são `redirect` — nenhum formulário na nossa página", () => {
+    // É a decisão do Checkout Pro, e é ela que faz `payment-button` não mudar:
+    // o Checkout Pro sai da loja, e quem cuida do formulário é o provedor.
+    for (const id of [
+      MERCADOPAGO_PIX_PROVIDER_ID,
+      MERCADOPAGO_CARTAO_PROVIDER_ID,
+    ]) {
+      const adapter = resolvePayment(id)
+
+      expect(adapter.fulfillment).toBe("redirect")
+      expect(adapter.InlineUI).toBeUndefined()
+    }
+  })
+
+  it("os dois trazem botão próprio, porque o comum chamaria placeOrder()", () => {
+    // ⚠️ Sem `ConfirmButton`, o checkout desenha o botão que completa o
+    // carrinho — e completar o carrinho antes de o pagamento existir é o que o
+    // provider recusa (e deve recusar). A cliente veria um erro em vez de ir
+    // para o checkout do Mercado Pago.
+    for (const id of [
+      MERCADOPAGO_PIX_PROVIDER_ID,
+      MERCADOPAGO_CARTAO_PROVIDER_ID,
+    ]) {
+      expect(resolvePayment(id).ConfirmButton).toBeDefined()
+    }
+  })
+
+  it("as capacidades dizem a verdade de cada meio", () => {
+    expect(resolvePayment(MERCADOPAGO_PIX_PROVIDER_ID).capabilities).toMatchObject(
+      { pix: true, cards: false, boleto: false }
+    )
+    expect(
+      resolvePayment(MERCADOPAGO_CARTAO_PROVIDER_ID).capabilities
+    ).toMatchObject({ pix: false, cards: true, boleto: false })
+  })
+
+  it("aparecem na lista de meios do checkout", () => {
+    const ids = listPaymentAdapters().map((a) => a.id)
+
+    expect(ids).toContain(MERCADOPAGO_PIX_PROVIDER_ID)
+    expect(ids).toContain(MERCADOPAGO_CARTAO_PROVIDER_ID)
+  })
+
+  it("o rótulo do pedido é por meio, e não pela família", () => {
+    // Uma chave de rótulo no prefixo comum faria a página do pedido dizer
+    // "Cartão de crédito" para um pedido pago por Pix.
+    expect(paymentLabel(MERCADOPAGO_PIX_PROVIDER_ID).title).toBe("Pix")
+    expect(paymentLabel(MERCADOPAGO_CARTAO_PROVIDER_ID).title).toBe(
+      "Cartão de crédito"
+    )
   })
 })
 

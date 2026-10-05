@@ -119,3 +119,26 @@ export const MANUAL_PROVIDER_ID = "pp_system_default"
  */
 export const STRIPE_PROVIDER_PREFIX = "pp_stripe_"
 export const MEDUSA_PAYMENTS_PROVIDER_PREFIX = "pp_medusa-"
+
+/**
+ * O prefixo dos provedores do Mercado Pago.
+ *
+ * **Ele NÃO é o id de um provedor.** Existe para responder "isto é do Mercado
+ * Pago?" — e é o que o registry do storefront usa para achar o adapter. Os
+ * provedores registrados de verdade são **dois**, logo abaixo, e cada um tem
+ * `provider_id` próprio porque o registry resolve por `startsWith`: um adapter
+ * registrado com o `id` deste prefixo casaria com os dois e o segundo nunca
+ * seria alcançado — a ordem da lista é que decidiria, e ninguém lê a ordem.
+ *
+ * A separação também é o que permite duas **preferências** diferentes (Pix e
+ * cartão têm regras de parcelamento e de meios excluídos distintas) sem que o
+ * storefront precise saber disso: ele pergunta pelo `provider_id` que o Medusa
+ * devolveu e o registry responde.
+ */
+export const MERCADOPAGO_PROVIDER_PREFIX = "pp_mercadopago_"
+
+/** O `provider_id` do checkout Pix. Ver `backend/src/modules/payment/mercadopago/pix`. */
+export const MERCADOPAGO_PIX_PROVIDER_ID = "pp_mercadopago_pix"
+
+/** O `provider_id` do checkout por cartão. Ver `.../mercadopago/cartao`. */
+export const MERCADOPAGO_CARTAO_PROVIDER_ID = "pp_mercadopago_cartao"

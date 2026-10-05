@@ -111,7 +111,7 @@ chargeback: a cliente paga, recebe o pedido e consegue acompanhar a entrega.
 | Questão | Bloqueia | Prazo |
 | :--- | :--- | :--- |
 | **Modalidade do Mercado Pago** | RV-002, RV-008 | **Imediato** |
-| **Credenciais do MP** (`MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_APP_ID`) | Teste da integração | Antes de M1 |
+| **Credenciais do MP** (`MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_AMBIENTE`) | Teste da integração | Antes de M1 |
 | **URL pública com HTTPS** para o webhook (`MP_NOTIFICATION_URL`) | Webhook em produção | Antes da inauguração |
 
 **Configuração de ambiente já preparada** (sem código de aplicação): as 5 chaves `MP_*` estão no

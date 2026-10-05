@@ -16,6 +16,10 @@
  */
 import type { PaymentAdapter } from "./types"
 
+import {
+  mercadoPagoCartaoAdapter,
+  mercadoPagoPixAdapter,
+} from "./adapters/mercadopago"
 import { manualAdapter } from "./adapters/manual"
 import { stripeAdapter } from "./adapters/stripe"
 import { unsupportedAdapter } from "./adapters/unsupported"
@@ -26,14 +30,33 @@ import { unsupportedAdapter } from "./adapters/unsupported"
  * O Stripe entra aqui **até o RV-048** remover o código dele. A ordem importa:
  * remover o adapter antes de o Mercado Pago existir deixaria o checkout sem
  * nenhum caminho de pagamento — cada etapa precisa ter um meio funcionando.
+ *
+ * ⚠️ **A ordem importa por outro motivo, e este é silencioso.** O `resolve`
+ * abaixo casa primeiro pelo id **exato** e só depois por `startsWith` — e é por
+ * isso que os dois adapters do Mercado Pago declaram o `provider_id` completo
+ * (`pp_mercadopago_pix`, `pp_mercadopago_cartao`) em vez do prefixo comum. Se
+ * algum deles declarasse `pp_mercadopago_`, ele casaria com os dois e o
+ * **segundo nunca seria alcançado**: o `for` para no primeiro que casa, e a
+ * ordem de um array é a coisa que ninguém lê numa revisão.
  */
 const adapters: PaymentAdapter[] = [
+  // Mercado Pago — os dois meios. Antes dos outros de propósito: são os meios
+  // reais da loja, e um `startsWith` de outro adapter não pode capturá-los.
+  mercadoPagoPixAdapter,
+  mercadoPagoCartaoAdapter,
   // Stripe — TEMPORÁRIO. Sai no RV-048, junto com os arquivos dele. Fica até
   // lá para que nenhuma etapa fique sem um caminho de pagamento funcionando.
   stripeAdapter,
   // Manual — o meio que sempre funciona: sem credencial, sem URL pública, sem
   // provedor externo. É o que mantém a loja atravessando um ambiente sem nada
   // configurado, e o que faz o checkout continuar testável.
+  //
+  // ⚠️ **E é o que precisa SAIR em produção.** O `pp_system_default` do Medusa
+  // é re-habilitado a cada boot pelo loader do módulo de pagamento (não dá para
+  // desligar no Admin), então ele **aparece** na lista de meios do checkout. Um
+  // meio que cria pedido sem cobrar nada, numa loja de verdade, é um pedido não
+  // pago por engano de clique. Ver a seção "Antes de ir para produção" do
+  // README do backend, item 1.
   manualAdapter,
   // Por último, porque é o que sobra: nenhum id serve, cai aqui.
   unsupportedAdapter,
