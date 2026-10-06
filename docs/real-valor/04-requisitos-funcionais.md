@@ -218,10 +218,12 @@ MP tem `fulfillment: "redirect"` e o do Stripe não precisaria de `render` próp
 - `frontend/src/lib/payments/adapters/mercadopago/{index,payment-button}.tsx`
 - `frontend/src/app/api/pedido/status/route.ts` e
   `frontend/src/app/[countryCode]/(main)/pedido/confirmacao/page.tsx`
-- `backend/src/modules/payment/mercadopago/service.ts` *(proposto)*
-- `backend/src/api/webhooks/mercadopago/route.ts` *(proposto)*
-- `frontend/src/lib/payments/adapters/mercadopago/index.ts` *(proposto)*
-- `frontend/src/lib/payments/adapters/mercadopago/pix-modal.tsx` *(proposto)*
+
+> **Dois nomes propostos que não existem.** O `provider.ts` da versão original é o `service.ts` (o
+> `AbstractPaymentProvider` do Medusa é um `service`), e o `pix-modal.tsx` nunca fez sentido: o
+> Checkout Pro é **redirecionamento**, então o Pix não abre modal — o botão do adapter faz
+> `window.location.assign(init_point)` e o QR aparece na tela do Mercado Pago. Nenhum dos dois
+> arquivos foi criado.
 
 ### Regras de negócio
 1. **O valor vem sempre do carrinho no backend.** O frontend envia apenas o `cart_id`; o backend lê
@@ -1271,7 +1273,7 @@ Registrados para que **não sejam reimplementados**:
 | Tema sazonal | `lib/theme.ts` + 4 `theme.json` |
 | CMS com upload e paleta | `admin/…/routes/content` |
 | Fontes self-hosted | `src/app/fonts/` + `scripts/vendor-fonts.mjs` |
-| Testes com CI | **463 testes** em 3 runners (257 backend · 52 CRM · 154 storefront) |
+| Testes com CI | **593 testes** em 3 runners (368 backend · 52 CRM · 173 storefront) |
 | Purge de cache | `POST /api/revalidate` com `REVALIDATE_SECRET` |
 
 **Conclusão:** nenhum destes entra em backlog. O backlog em `09-backlog-implementacao.md` cobre

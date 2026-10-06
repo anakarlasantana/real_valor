@@ -73,12 +73,17 @@ Conforme a seção 9 do briefing. Arquivos marcados *(proposto)* **não existem*
 - `backend/src/scripts/seed.ts:183` — `payment_providers` da região
 - `.env.example` — variáveis
 
-**Novos propostos:**
-- `backend/src/modules/payment/mercadopago/provider.ts` *(proposto)*
-- `backend/src/modules/payment/mercadopago/service.ts` *(proposto)*
-- `backend/src/api/webhooks/mercadopago/route.ts` *(proposto)*
-- `frontend/src/lib/payments/adapters/mercadopago/index.ts` *(proposto)*
-- `frontend/src/lib/payments/adapters/mercadopago/pix-modal.tsx` *(proposto)*
+**Novos (✅ implementados — lista completa em 8.4.1.1.1):**
+- `backend/src/modules/payment/mercadopago/{service,webhook,preferencia,assinatura,credenciais,cliente,redigir,contexto}.ts`
+- `backend/src/modules/payment/mercadopago/{pix,cartao}/index.ts` — **dois** módulos, porque o `id`
+  do registro vem do item do config
+- `backend/src/api/webhooks/mercadopago/route.ts` (+ `[metodo]/route.ts`)
+- `backend/src/api/internal/orders/by-cart/route.ts` — consulta interna autenticada por segredo
+- `frontend/src/lib/payments/adapters/mercadopago/{index,payment-button}.tsx`
+- `frontend/src/app/api/pedido/status/route.ts` + `app/[countryCode]/(main)/pedido/confirmacao/page.tsx`
+
+> Os nomes `provider.ts` e `pix-modal.tsx` desta lista original **não existem** — ver a nota em
+> `04-requisitos-funcionais.md`.
 
 **Dependências:** credenciais do MP; URL pública para o webhook; core-flows do Medusa.
 

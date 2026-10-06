@@ -140,34 +140,58 @@ tornaria a revisão mais difícil.
 **Aceite:** os 5 critérios da RV-003
 **Pré-requisito:** nenhum
 
-### ⛔ RV-002 · Adapter Mercado Pago — **NÃO INICIADO, bloqueado por credencial**
+### ✅ RV-002 · Adapter Mercado Pago — **FEITO** (`82a4738d42`)
 
-> **Estado verificado em 10/02/2026:** este item **está inteiro por fazer**. Três verificações
-> independentes confirmam:
+> **Estado verificado em 10/02/2026 — o inverso do que este item dizia.** As três verificações que
+> davam "Não" agora dão "Sim":
 >
-> | Verificação | Resultado |
-> | :--- | :--- |
-> | `backend/medusa-config.ts` registra módulo de pagamento? | **Não** — só `file` e `content` |
-> | `lib/payments/registry.ts` tem o adapter do MP? | **Não** — só `stripe`, `manual`, `unsupported` |
-> | Backend tem dependência do Mercado Pago? | **Não** |
+> | Verificação | Antes | Agora |
+> | :--- | :--- | :--- |
+> | `backend/medusa-config.ts` registra módulo de pagamento? | Não — só `file` e `content` | **Sim** — `@medusajs/medusa/payment` com `./modules/payment/mercadopago/{pix,cartao}` |
+> | `lib/payments/registry.ts` tem o adapter do MP? | Não — só `stripe`, `manual`, `unsupported` | **Sim** — os dois do MP, e **primeiro** na ordem do array |
+> | Backend tem dependência do Mercado Pago? | Não | **Sim** |
 >
-> **Por que ainda não foi feito (ver `10-roadmap.md`, seção 10.7):** o código pode ser escrito sem
-> chave, mas **não dá para validar** a Preference real, o redirect, o retorno, o webhook chegando, e
-> **a assinatura contra um caso verdadeiro** — que é exatamente o que quebra. Escrever sem conseguir
-> rodar produz uma falsa sensação de pronto, e em pagamento o custo de descobrir isso tarde é o mais
-> alto do projeto.
+> **O que a implementação descobriu** — e que mudou decisões deste documento — está em
+> `08-arquitetura-e-integracoes.md` 8.4.1.1.1 e no `README.md` do módulo. Os três que mais importam:
 >
-> **O que destrava, e depende de você (não do código):**
-> 1. Abertura/aprovação da conta de produção no Mercado Pago — o caminho crítico real.
-> 2. `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET`.
-> 3. URL pública com HTTPS para o webhook — o Compose não expõe proxy TLS.
+> 1. **A idempotência não precisou ser construída.** Este item previa uma marca nossa em
+>    `order.metadata`. Ela seria uma segunda fonte de verdade para uma pergunta que o Medusa já
+>    responde: `capturePayment_`, `completeCartAfterPaymentStep` e o ramo de autocapture já são
+>    guardados. A proposta anterior do `04` foi **corrigida**, não implementada.
+> 2. **O prefixo `APP_USR-` NÃO diz se o token é de teste.** Só `TEST-` é inequívoco, e a ausência
+>    dele **não** prova produção. Daí `MP_AMBIENTE` ser **declarado** em vez de deduzido, e o
+>    provider **recusar** a combinação perigosa (`producao` + `TEST-`) em vez de só avisar.
+> 3. **O loader do `payment` SOMA os providers; o do `fulfillment` SUBSTITUI.** É a diferença que
+>    decidiu a forma do `medusa-config.ts` — e o motivo de existirem **dois** módulos (`pix` e
+>    `cartao`): o `id` do registro vem do item do config, então dois services num só
+>    `ModuleProvider` sobrescreveriam um ao outro.
 >
-> **O que já está pronto para receber o MP:** o registry (RV-001) existe, a guarda de fronteira
-> (RV-014) roda em CI, e as chaves `MP_*` já estão no `.env.example` e no Compose **sem valor
-> padrão** (fail-closed). O adapter entra sem tocar em `modules/checkout/`.
+> **Uma armadilha silenciosa, que agora tem teste.** O `resolvePayment` casa primeiro pelo id
+> **exato** e só depois por `startsWith`. Por isso os dois adapters do MP declaram o `provider_id`
+> **completo** (`pp_mercadopago_pix`, `pp_mercadopago_cartao`): se um declarasse `pp_mercadopago_`,
+> capturaria os dois e o segundo nunca seria alcançado — o `for` para no primeiro que casa.
 >
-> **Sequência ao retomar:** RV-002 → RV-042 (captura e reserva), que é o que transforma pagamento
-> aprovado em pedido com estoque reservado.
+> **Verificação:** 368 testes unitários em 21 suítes (backend), 173 no storefront, `tsc --noEmit`
+> limpo nos dois runtimes, `check-boundaries` em dia.
+>
+> **O que NÃO está verificado — e é justamente o que este item dizia importar mais.** A assinatura é
+> testada contra o **algoritmo** do provedor (um helper assina o manifesto como o MP assina, nas duas
+> variantes, com e sem `request-id`), **não** contra uma notificação **real**: nenhuma chegou ainda.
+> Enquanto isso não acontecer, "a integração funciona" não tem prova — tem teste unitário. O roteiro
+> do teste real está em `11-ambiente-local.md` §11.6.
+>
+> **O que ainda depende de você (não do código):**
+> 1. `MP_NOTIFICATION_URL` → `https://<túnel>/webhooks/mercadopago`. Hoje aponta para `webhook.site`,
+>    que **captura a notificação e engole a venda** — o log de boot avisa, e é para avisar.
+> 2. `MP_BACK_URL` → `https://<túnel>/br/pedido/confirmacao`.
+> 3. `INTERNAL_API_SECRET` — **não é urgente**: vazio, a rota interna é fail-closed (404), e há teste
+>    que o prova. É o caso em que "não configurado" erra para o lado seguro.
+>
+> **Sequência agora:** **RV-042** (captura e reserva) é o próximo elo — mas **releia o item antes de
+> começar**: parte do que ele previa (um workflow `create-order-from-payment` e um subscriber que
+> cria o pedido) já não é o caminho, porque o pedido nasce no próprio webhook, em
+> `processPaymentWorkflow` → `completeCartWorkflow` (ver `04`). O **RV-048** (remover o Stripe) só
+> depois que o MP estiver valendo.
 
 **Descrição original:** provider do MP no backend com Pix, cartão parcelado e boleto; webhook com assinatura e
 idempotência; adapter no frontend.
@@ -515,15 +539,17 @@ Git, se o conteúdo ainda for válido.
 
 | Fase | Itens | CRÍTICA | ALTA | MÉDIA | BAIXA | **Feitos** |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| Fase 0 | 4 | 1 | 3 | 0 | 0 | **2** (RV-001, RV-014) |
-| Fase 1 | 15 | 3 | 9 | 3 | 0 | **2** (RV-003, RV-017) |
+| Fase 0 | 4 | 1 | 3 | 0 | 0 | **3** (RV-001, RV-006, RV-014) |
+| Fase 1 | 15 | 3 | 9 | 3 | 0 | **5** (RV-002, RV-003, RV-017, RV-043, RV-044) |
 | Fase 2 | 7 | 0 | 0 | 5 | 2 | 0 |
 | Fase 3 | 7 | 0 | 0 | 4 | 3 | 0 |
 | Fase 4 | 12 | 0 | 0 | 0 | 12 | 0 |
-| **Total** | **46** | **4** | **11** | **13** | **17** | **4** |
+| **Total** | **45** | **4** | **12** | **12** | **17** | **8** |
 
-> **Um item cancelado:** o RV-015 (stop-gap com Stripe) saiu do backlog — ver a seção dele. Total
-> efetivo: **44 itens**.
+> **Um item cancelado:** o RV-015 (stop-gap com Stripe) saiu do backlog — ver a seção dele. Ele
+> **não** está contado nas linhas acima: a linha "Fase 0" já reflete a lista publicada sem ele, e o
+> efetivo é **45 itens**, não 46. (Esta tabela estava somando errado antes do RV-002: dizia 2 feitos
+> na Fase 0, com o RV-006 também pronto, e 2 na Fase 1, com RV-043 e RV-044 prontos.)
 
 **Complexidade da Fase 0 + Fase 1 (entregável da inauguração):** 19 itens, sendo 4 de complexidade
 alta. É o escopo mínimo para abrir a loja vendendo, **com pagamento, reserva de estoque, envio e

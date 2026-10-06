@@ -253,7 +253,7 @@ falhou, mesmo com as cores certas.
 
 **Fundação sólida, venda impossibilitada.** Monorepo Medusa v2 + Next.js 15 com arquitetura acima da
 média: contrato compartilhado por 3 runtimes, CMS funcional que edita a vitrine sem deploy, design
-system derivado da marca (1125 linhas), **463 testes** em 3 runners com CI, e operação 100% em Docker com
+system derivado da marca (1125 linhas), **593 testes** em 3 runners com CI, e operação 100% em Docker com
 build offline. Home, header, footer, carrinho, conta, tema sazonal e pedido confirmado estão **prontos**.
 
 **O bloqueio:** `medusa-config.ts` não registra nenhum provedor de pagamento, e a região usa
@@ -305,7 +305,7 @@ busca, e metadados de SEO vazando "Medusa Store" com a descrição da PDP repeti
 
 ### Backlog priorizado
 
-**46 itens** em 4 fases: 4 CRÍTICA, 11 ALTA, 13 MÉDIA, 17 BAIXA. **Um item cancelado** (RV-015,
+**45 itens** em 5 fases (a 0 é a fundação modular): 4 CRÍTICA, 12 ALTA, 12 MÉDIA, 17 BAIXA. **Um item cancelado** (RV-015,
 stop-gap do Stripe — ver o backlog).
 
 ### Ordem recomendada de implementação
@@ -328,14 +328,14 @@ M4 Vitrine completa (inauguração).
 | Marco | Itens | Estado |
 | :--- | :--- | :--- |
 | **M0 — Fundação** | RV-003, RV-017, RV-001, RV-014 | ✅ **completo** |
-| **M1 — Venda real** | RV-002, RV-042 | ⬜ **BLOQUEADO** — ver 10.7 |
+| **M1 — Venda real** | RV-002, RV-042 | 🟨 **parcial** — RV-002 ✅ (`82a4738d42`); faltam o RV-042 e a conta de produção (ver 10.7) |
 | **M2 — Envio e rastreio** | RV-043, RV-044 | ✅ **completo** |
 | **M3 — Descoberta** | RV-004, RV-005, RV-007 | ⬜ independe do MP |
-| **M4 — Vitrine completa** | RV-009, RV-008, RV-016, RV-018, RV-006 | ⬜ RV-008 depende do MP |
+| **M4 — Vitrine completa** | RV-009, RV-008, RV-016, RV-018, RV-006 | ⬜ RV-008 **desbloqueado** — o adapter do MP existe (RV-002) |
 
 **M0 fechado é o que importa aqui:** o registry existe, a guarda que o protege roda em CI, e o
-Mercado Pago entra como *mais um adapter*. Nenhuma linha de `modules/checkout/` vai precisar ser
-tocada para isso.
+Mercado Pago entra como *mais um adapter* — **e entrou**, sem tocar uma linha de `modules/checkout/`
+(`82a4738d42`).
 
 **Sem stop-gap de Stripe:** o Stripe foi removido do escopo — não atende o parcelamento necessário e
 seu código de tokenização não serve para o MP, que é redirecionamento.
@@ -418,10 +418,10 @@ onde persiste e quando grava). Novo item **RV-048** para a remoção do código 
 | Tokens do design system (RV-017) | ✅ **FEITO** (`325dafa850`) |
 | Registry de pagamento (RV-001) | ✅ **FEITO** (`73ed719544`) |
 | Guarda de fronteira do pagamento (RV-014) | ✅ **FEITO** (`73ed719544`) |
-| Provider do MP, Preference API e webhook (RV-002) | **Não iniciado** |
+| Provider do MP, Preference API e webhook (RV-002) | ✅ **FEITO** (`82a4738d42`) |
 | Captura do pagamento e reserva (RV-042) | **Não iniciado** |
 | Remoção do código Stripe (RV-048) | **Não iniciado — depois do MP** |
-| `medusa-config.ts` lendo `MP_ACCESS_TOKEN` | **Não iniciado** |
+| Leitura/validação das `MP_*` | ✅ **FEITO** — em `modules/payment/mercadopago/credenciais.ts` (e **não** no `medusa-config.ts`), com aviso de boot |
 | Validação das `MP_*` no `scripts/doctor.sh` | **Não iniciado** |
 
 **Ambiente local:** as três armadilhas encontradas ao validar o RV-001 estão em
@@ -442,6 +442,11 @@ e da marca já presente, e sinalizou explicitamente essa lacuna — em vez de in
 não funcionais · `06` design system · `07` fluxos · `08` arquitetura · `09` backlog.
 
 ## 10.7 Decisão de sequência: por que M2 antes de M1
+
+> **Executada e encerrada.** A decisão abaixo foi tomada em 10/02/2026 e cumprida no mesmo dia: o
+> RV-043/044 saiu primeiro (`fa412d4471`), e o RV-002 depois (`82a4738d42`). O registro fica pelo
+> **motivo**, que continua valendo para o que falta — e a subseção final diz o que o RV-002 ainda
+> **não** prova. Leia-a antes de anunciar a integração como validada.
 
 **Decisão de 10/02/2026**, com o RV-002 pronto para começar e **sem as credenciais do
 Mercado Pago**.
@@ -470,28 +475,37 @@ A cliente consulta e vê vazio. O painel que grava esse dado não existe.
 Pago leva dias e é processo doMercado Pago, não deste repositório. Ela pode começar **antes** de o
 código existir.
 
-### O que isso NÃO é
+### Como terminou — a troca foi executada
 
-Não é o RV-002 descartado, nem adiado para depois da inauguração. A sequência volta a ser:
+Não foi o RV-002 descartado: as duas etapas trocaram de lugar e **as duas já foram feitas**, no mesmo
+dia. O que sobrou do M1 é só o que depende de credencial e de infraestrutura:
 
 ```
-M1  RV-002  Mercado Pago    → RV-042  captura e reserva     (assim que houver credencial)
-M2  RV-043  Painel de envio  → RV-044  Página de rastreio    (AGORA)
+FEITO  RV-043/044  Painel de envio → página de rastreio   (fa412d4471)
+FEITO  RV-002      Mercado Pago                           (82a4738d42)
+falta  RV-042      Captura e reserva → rever o escopo antes de começar
+falta  RV-048      Remoção do Stripe → só depois que o MP estiver valendo
 ```
 
 ### O que destrava em paralelo, sem depender de mim
 
-1. **Abrir/aprovar a conta de produção no Mercado Pago** — o caminho crítico real.
-2. **`MP_ACCESS_TOKEN`** e **`MP_WEBHOOK_SECRET`** (Painel → App → Notificações).
-3. **URL pública com HTTPS** para o webhook — o Compose não expõe proxy TLS, e é infraestrutura que
-   precisa ser decidida antes da inauguração.
+1. **Abrir/aprovar a conta de produção no Mercado Pago** — o caminho crítico real. O que existe hoje é
+   credencial de **usuário de teste** (`GET /users/me` devolve `TESTUSER…`).
+2. ✅ **`MP_ACCESS_TOKEN`**, **`MP_WEBHOOK_SECRET`** e **`MP_AMBIENTE`** — preenchidos. Como o token de
+   teste **também** começa com `APP_USR-`, o prefixo não distingue teste de produção — é para isso que
+   existe o `MP_AMBIENTE`. Ver `08`.
+3. **URL pública com HTTPS** para o webhook — o Compose não expõe proxy TLS. E `MP_BACK_URL` está
+   **vazia**: enquanto isso, `MP_NOTIFICATION_URL` aponta para o `webhook.site`, que **captura a
+   notificação e engole a venda**. O roteiro está em `11-ambiente-local.md` §11.6.
 
-### Como saber que o RV-002 está pendente
+### Como saber que o RV-002 está pronto — e o que ele NÃO prova
 
-- O backlog (documento 09) marca RV-002 como **não iniciado**, com a dependência explícita.
-- `medusa-config.ts` **não** registra nenhum módulo de pagamento — é o estado verificável, e é o
-  mesmo achado da auditoria que originou o RV-001.
-- A lista de meios em `lib/payments/registry.ts` **não** tem o adapter do MP.
+- O backlog (documento 09) marca RV-002 como **FEITO**, com o commit e a verificação.
+- `medusa-config.ts` registra `@medusajs/medusa/payment` com os dois módulos (`pix` e `cartao`).
+- A lista de meios em `lib/payments/registry.ts` tem os dois adapters do MP, **antes** dos outros.
+- **O que ele não prova:** a assinatura foi testada contra o **algoritmo** do provedor, não contra uma
+  notificação **real** — nenhuma chegou. Até o roteiro de `11-ambiente-local.md` §11.6 rodar, o que
+  existe é cobertura unitária, não integração validada.
 
 ---
 
@@ -616,7 +630,7 @@ quando houver transportadora.
 | Testes da regra | **17/17** |
 | `tsc` nos três runtimes | limpo |
 | Guarda de fronteiras | ok |
-| Suíte completa | **463** (257 · 52 · 154) |
+| Suíte completa | **463** (257 · 52 · 154) — o total daquele momento |
 
 O provider está **registrado mas inativo**: registrar não cria shipping option. As opções PAC e SEDEX
 com preço fixo do seed continuam valendo, e o README do módulo explica como criar a opção `Calculada`

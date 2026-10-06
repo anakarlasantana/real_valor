@@ -189,3 +189,60 @@ Estado medido depois do RV-001 (10/02/2026):
 | `next build` (NODE_ENV=production) | ✅ 17 rotas, `.next/standalone` gerado |
 | `vitest run` | ✅ **142 testes / 10 arquivos** |
 | `check-boundaries.mjs` | ✅ 2 verificações |
+
+Estado medido depois do RV-002 (10/02/2026):
+
+| Verificação | Resultado |
+| :--- | :--- |
+| `tsc --noEmit` (storefront) | ✅ exit 0 |
+| `tsc --noEmit` (backend) | ✅ exit 0 |
+| `vitest run` (storefront) | ✅ **173 testes** — eram 142 no RV-001 |
+| `jest` (backend, unit) | ✅ **368 testes / 21 suítes** |
+| `check-boundaries.mjs` | ✅ "Fronteira em dia." (2 verificações) |
+
+> O `next build` **não** foi repetido nesta rodada: o que mudou no storefront foram dois adapters e um
+> botão, cobertos pelo `tsc` e pelo `vitest`. Refaça-o antes de publicar.
+
+---
+
+## 11.6 O webhook do Mercado Pago não chega sem um túnel
+
+**O sintoma.** Você grava `MP_NOTIFICATION_URL=https://localhost:9000/webhooks/mercadopago` e nada
+chega: nenhum log de rota, nenhum erro. Não há o que depurar do nosso lado — o Mercado Pago recusa a
+URL, porque ela não é alcançável da internet e não tem TLS válido. A notificação **nunca sai de lá**.
+
+**Por que o Compose não resolve.** Ele publica portas no **host**, não na internet, e não termina
+TLS. Um `curl` de dentro da rede funciona; o Mercado Pago não é de dentro da rede.
+
+**O que resolve:** dois túneis com HTTPS, porque há **dois** destinos distintos — e trocá-los é o
+erro fácil:
+
+| Túnel | Serve | Aponta para |
+| :--- | :--- | :--- |
+| 1 — backend | `MP_NOTIFICATION_URL` (`/webhooks/mercadopago`) | `http://localhost:9000` |
+| 2 — storefront | `MP_BACK_URL` (`/br/pedido/confirmacao`) | `http://localhost:8000` |
+
+> ⚠️ **Um é URL de servidor, o outro é URL de navegador.** Apontar os dois para o túnel do backend
+> parece natural e quebra o retorno: a cliente voltaria para a API, e não para a página de
+> confirmação.
+
+**A ordem importa.** O túnel precisa estar no ar **antes** de gravar a URL da notificação: o painel
+valida a URL ao salvá-la, e uma URL morta é recusada — ou, pior, aceita e depois silenciosa.
+
+### O roteiro do teste real — **ainda não executado**
+
+Cada passo prova uma coisa, e o primeiro é o mais barato:
+
+1. `curl -X POST https://<túnel-backend>/webhooks/mercadopago` **sem** o header `x-signature` →
+   **401**. Se der **200**, a assinatura não está sendo conferida — pare aqui. Se der **404**, o
+   túnel está apontando para o serviço errado.
+2. Gravar `MP_NOTIFICATION_URL` e `MP_BACK_URL` com as duas URLs do túnel.
+3. `curl -X POST https://<túnel-backend>/webhooks/mercadopago/<algo-desconhecido>` → **404**. O
+   sufixo de meio é validado **antes** da assinatura, e existe justamente para uma URL digitada
+   errada aparecer no painel de webhooks — em vez de virar uma venda que não aparece.
+4. Compra com **cartão de teste** → aprovar.
+5. O webhook chegando com **200** no log do backend — e o log diz qual das *cinco checagens* passou.
+6. O pedido existindo, com `external_reference` apontando para a sessão.
+7. Repetir a **mesma** notificação → **200** e **nenhum** pedido novo. É a prova de que o reenvio é
+   absorvido pelas guardas do framework (ver `04-requisitos-funcionais.md`), e não por uma marca
+   nossa.

@@ -36,7 +36,7 @@ profissional) · **MÉDIA** (melhoria importante) · **BAIXA** (melhoria futura)
 | **Relacionados** | Componente existe | Ordenação por complementaridade | Pequeno | Ajustar critério | **MÉDIA** |
 | **Acessibilidade** | Contraste documentado; foco definido | AA completo, teclado em todos os controles | Média | Auditoria de foco e rótulos | **MÉDIA** |
 | **Newsletter** | Não existe na home | Captura de e-mail | Média | Bloco no rodapé (CMS) | **MÉDIA** |
-| **Pagamento → pedido** | `workflows/` não existe; nenhum pedido é criado | Pagamento aprovado gera pedido com estoque reservado | **Total** | Criar workflow + subscriber (RV-042) | **CRÍTICA** |
+| **Pagamento → pedido** | `workflows/` não existe, mas **o pedido já nasce no webhook** (RV-002 → `completeCartWorkflow`) | Pagamento aprovado gera pedido com estoque reservado | **Parcial** | Rever o escopo do RV-042 — ver `09-backlog-implementacao.md` | **CRÍTICA** |
 | **Registro de envio** | Ninguém grava `tracking_number`/`carrier` | Admin registra o código de rastreio | **Total** | Campo no Admin (RV-043) | **ALTA** |
 | **Rastreio (tela)** | Rota existe; **não há página** | Página pública sem login | **Total** | Tela `/rastreio` (RV-044) | **ALTA** |
 | **Aviso de envio** | Não existe | Cliente recebe o código por e-mail | **Total** | Subscriber de notificação (RV-045) | **MÉDIA** |

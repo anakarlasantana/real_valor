@@ -158,7 +158,7 @@ correto). Em produção, definir com `openssl rand -hex 32`.
 | CORS | `STORE_CORS`, `ADMIN_CORS`, `AUTH_CORS` no modelo | ✅ (a definir em prod) |
 | Autorização de `/painel` | `check-boundaries.mjs` cobre só imports | ⚠️ a verificar |
 | Sanitização do conteúdo do CMS | `backend/…/validation.ts` existe | ⚠️ a verificar cobertura |
-| Webhook do pagamento | **a implementar** — assinatura verificada (RV-002, regra 5) | ❌ |
+| Webhook do pagamento | assinatura HMAC-SHA256 conferida **antes** de qualquer consulta, sessão ou evento (`timingSafeEqual`); corpo sem `data.id` recusado no portão; rota nativa do Medusa desligada com 404 (RV-002, regra 5) | ✅ |
 | Rate limiting | **não verificado** | ❌ |
 | Validação de upload | Tipo e tamanho **não verificados** | ❌ |
 
