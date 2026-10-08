@@ -7,6 +7,7 @@ import ChevronDown from "@modules/common/icons/chevron-down"
 import X from "@modules/common/icons/x"
 
 import { getProductPrice } from "@lib/util/get-product-price"
+import { coresDoProduto } from "@lib/util/product-enrichment"
 import OptionSelect from "./option-select"
 import { HttpTypes } from "@medusajs/types"
 import { isSimpleProduct } from "@lib/util/product"
@@ -51,6 +52,11 @@ const MobileActions: React.FC<MobileActionsProps> = ({
   }, [price])
 
   const isSimple = isSimpleProduct(product)
+
+  // As cores da peça, para o seletor do modal desenhar amostras na opção de cor —
+  // a mesma função do card e a mesma conta do seletor do desktop
+  // (`product-actions/index.tsx`). O modal não pode mostrar outra coisa.
+  const cores = coresDoProduto(product)
 
   return (
     <>
@@ -111,7 +117,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   <span>
                     {variant
                       ? Object.values(options).join(" / ")
-                      : "Select Options"}
+                      : "Escolher opções"}
                   </span>
                   <ChevronDown />
                 </div>
@@ -182,6 +188,7 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                                 current={options[option.id]}
                                 updateOption={updateOptions}
                                 title={option.title ?? ""}
+                                cores={cores}
                                 disabled={optionsDisabled}
                               />
                             </div>

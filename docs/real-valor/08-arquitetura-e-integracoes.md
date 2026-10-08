@@ -70,7 +70,7 @@ Conforme a seção 9 do briefing. Arquivos marcados *(proposto)* **não existem*
 **Existentes:**
 - `backend/medusa-config.ts` — onde o provider é registrado
 - `backend/package.json` — onde entra a dependência
-- `backend/src/scripts/seed.ts:183` — `payment_providers` da região
+- `backend/src/scripts/seed.ts:212` — `payment_providers` da região
 - `.env.example` — variáveis
 
 **Novos (✅ implementados — lista completa em 8.4.1.1.1):**
@@ -124,7 +124,7 @@ Conforme a seção 9 do briefing. Arquivos marcados *(proposto)* **não existem*
 ### RV-006 — Frete
 
 **Existentes:**
-- `backend/src/scripts/seed.ts:247-259` — `fulfillment-manual`, shipping profile
+- `backend/src/scripts/seed.ts:295-309` — `fulfillment-manual`, shipping profile
 - `frontend/src/modules/checkout/components/shipping/`
 - `frontend/src/lib/data/fulfillment.ts`
 
@@ -379,7 +379,7 @@ produção, é decisão de infraestrutura a tomar antes da inauguração.
 ### 8.4.2 Frete — a definir
 
 **Não há integração externa ainda.** O `fulfillment-manual` está seedado com PAC e SEDEX
-(`seed.ts:247-259`).
+(`seed.ts:397-469`).
 
 Quando o transportador for escolhido, o adapter precisa de:
 - credenciais da transportadora (`.env` do backend);

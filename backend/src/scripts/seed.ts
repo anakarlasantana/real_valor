@@ -1,8 +1,33 @@
-import { CreateInventoryLevelInput, ExecArgs } from "@medusajs/framework/types";
+/**
+ * Bootstrap da loja — **não** é seed de catálogo.
+ * ------------------------------------------------
+ * O nome do arquivo e o alvo `make seed` ficaram (o `package.json` e o
+ * `Makefile` os chamam, e o README manda rodar isto para imprimir a chave do
+ * storefront). O que este script faz é preparar a loja para o lojista cadastrar:
+ *
+ *   1. os dois canais de venda (loja online e balcão);
+ *   2. a moeda da loja (BRL);
+ *   3. a região Brasil com a região fiscal (sem elas a Store API não calcula
+ *      preço nem frete — o storefront responde 500);
+ *   4. o centro de distribuição e o vínculo com o canal de venda (todo nível de
+ *      estoque é o par item × local: sem o local o lojista não lança estoque);
+ *   5. o perfil e as opções de frete;
+ *   6. a publishable key apontada para **um só** canal de venda, impressa no fim
+ *      para o `.env` do storefront.
+ *
+ * **Nenhuma peça, categoria ou nível de estoque sai daqui.** Eles saíram em
+ * 2026-10-08 (ver o comentário no fim do arquivo): o catálogo é do lojista, pelo
+ * painel — é o caminho que a loja de verdade usa, e era o único que ninguém
+ * exercitava enquanto as peças nasciam do código.
+ *
+ * Tudo aqui é idempotente: roda duas vezes sem duplicar canal, região, local,
+ * opção de frete nem chave. Os vínculos toleram o que já existe (`linkOnce`,
+ * abaixo).
+ */
+import { ExecArgs } from "@medusajs/framework/types";
 import {
   ContainerRegistrationKeys,
   Modules,
-  ProductStatus,
 } from "@medusajs/framework/utils";
 import {
   createWorkflow,
@@ -11,9 +36,6 @@ import {
 } from "@medusajs/framework/workflows-sdk";
 import {
   createApiKeysWorkflow,
-  createInventoryLevelsWorkflow,
-  createProductCategoriesWorkflow,
-  createProductsWorkflow,
   createRegionsWorkflow,
   createSalesChannelsWorkflow,
   createShippingOptionsWorkflow,
@@ -69,7 +91,12 @@ const updateStoreCurrencies = createWorkflow(
   }
 );
 
-export default async function seedDemoData({ container }: ExecArgs) {
+/**
+ * Bootstrap da loja. O nome `seed` (do arquivo e do alvo) ficou por causa do
+ * `package.json`, do `Makefile` e do README, que já o chamam assim; o que ele
+ * *faz* está no comentário de topo — e não inclui catálogo.
+ */
+export default async function seedStoreBootstrap({ container }: ExecArgs) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER);
   const link = container.resolve(ContainerRegistrationKeys.LINK);
   const query = container.resolve(ContainerRegistrationKeys.QUERY);
@@ -77,7 +104,9 @@ export default async function seedDemoData({ container }: ExecArgs) {
   const salesChannelModuleService = container.resolve(Modules.SALES_CHANNEL);
   const storeModuleService = container.resolve(Modules.STORE);
 
-  logger.info("[Real Valor] Iniciando seed de dados da loja de roupas femininas...");
+  logger.info(
+    "[Real Valor] Preparando a loja: canais, região, nível fiscal, frete e chave..."
+  );
 
   /**
    * Cria o vínculo, tolerando o que já existe.
@@ -509,351 +538,32 @@ export default async function seedDemoData({ container }: ExecArgs) {
       `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=${publishableApiKey.token}`
   );
 
-  // 8. Categorias de Moda Feminina
-  logger.info("[Real Valor] Cadastrando categorias femininas...");
-  // Idempotente: só entra o que falta. `createProductCategoriesWorkflow` falha
-  // com "Product category with handle: ..., already exists", e é o `categoryResult`
-  // que as variações do catálogo usam para casar o id da categoria.
-  const wantedCategories = [
-    { name: "Vestidos", handle: "vestidos" },
-    { name: "Blusas & Camisas", handle: "blusas-camisas" },
-    { name: "Calças & Alfaiataria", handle: "calcas-alfaiataria" },
-    { name: "Conjuntos", handle: "conjuntos" },
-  ]
-
-  const { data: existingCategories } = await query.graph({
-    entity: "product_category",
-    fields: ["id", "handle", "name"],
-  })
-
-  const existingHandles = new Set(
-    (existingCategories ?? []).map((category) => category.handle)
+  /**
+   * Aqui terminava o seed de catálogo: quatro categorias, três peças com
+   * variantes e `stocked_quantity: 50` para cada item de inventário. Ele saiu
+   * por inteiro, e o motivo não é economia de linhas.
+   *
+   * 1. **Era a única origem das peças.** Com o catálogo nascendo do código, a
+   *    vitrine só existia depois de `make seed` — e o caminho real, cadastrar
+   *    pelo painel, nunca era exercitado. Quem seguisse o roteiro deste repo
+   *    abria uma loja que o lojista não tinha como reproduzir nem manter.
+   * 2. **O estoque do seed mentia.** `stocked_quantity: 50` para todo item fazia
+   *    toda peça nascer em estoque, com o botão de comprar ligado, em cima de
+   *    uma quantidade que ninguém contou.
+   * 3. **O que sobra não é catálogo de demonstração.** Os passos 1 a 7 são
+   *    pré-requisito de a loja funcionar: sem região e região fiscal a Store API
+   *    não calcula preço nem frete; sem centro de distribuição o lojista não
+   *    consegue lançar estoque (todo nível é o par item × local); sem a
+   *    publishable key o storefront responde 400. Por isso o alvo `make seed`
+   *    continua existindo — fazendo só isso, e o texto dele passa a dizer isso.
+   *
+   * A consequência está escrita onde importa: a vitrine nasce **vazia**, com os
+   * estados vazios das seções (ver `docs/real-valor/12-script-enriquecimento-catalogo.md`).
+   * O `seed-content.ts` não mudou uma linha: ele não cita produto em lugar
+   * nenhum (medido), então nada aqui o alcança.
+   */
+  logger.info(
+    "[Real Valor] Loja preparada: canais, região, frete e chave. " +
+      "O catálogo é do lojista — cadastre a primeira peça no painel."
   )
-  const missingCategories = wantedCategories.filter(
-    (category) => !existingHandles.has(category.handle)
-  )
-
-  if (missingCategories.length) {
-    await createProductCategoriesWorkflow(container).run({
-      input: {
-        product_categories: missingCategories.map((category) => ({
-          ...category,
-          is_active: true,
-        })),
-      },
-    })
-  }
-
-  const { data: allCategories } = await query.graph({
-    entity: "product_category",
-    fields: ["id", "handle", "name"],
-  })
-  const categoryResult = allCategories ?? []
-
-  // 9. Produtos de Moda Feminina Real Valor com Metadados CRO
-  logger.info("[Real Valor] Cadastrando peças de moda feminina...");
-  const catVestidos = categoryResult.find((c) => c.name === "Vestidos")!.id;
-  const catBlusas = categoryResult.find((c) => c.name === "Blusas & Camisas")!.id;
-  const catCalcas = categoryResult.find((c) => c.name === "Calças & Alfaiataria")!.id;
-
-  // Idempotente: só entram as peças que ainda não existem. `createProductsWorkflow`
-  // falha com "Product with handle: ..., already exists" numa base já semeada, e o
-  // passo 10 (estoque) consulta os inventory items em vez de usar o retorno daqui —
-  // então pular as peças existentes não deixa nada pela metade.
-  // **Este seed não escreve mais `tag_status`.** Ele escrevia
-  // `tag_status: "Pronta Entrega"` em todo produto, e o chip da vitrine dava
-  // precedência a essa palavra sobre o estoque (`productStatus`,
-  // `lib/util/product-availability.ts`) — então uma peça sem estoque aparecia
-  // como "Pronta entrega", com o botão de comprar ligado.
-  //
-  // Duas coisas consertadas em conjunto, e as duas importam: a precedência foi
-  // invertida (o estoque tem a palavra final sobre "esgotado") e o seed parou
-  // de escrever a etiqueta. Se voltasse a escrever, não quebraria mais — o
-  // estoque venceria — mas continuaria mentindo sobre peça que existe, que é
-  // o que a etiqueta faz.
-  //
-  // O estado da peça agora vem da API e do que o lojista cadastrar no painel.
-  const wantedProducts = [
-        {
-          title: "Vestido Midi Linho Floral",
-          category_ids: [catVestidos],
-          description:
-            "Vestido midi confeccionado em puro linho misto com estampa floral exclusiva. Possui decote em V sutil, caimento fluido e faixa para amarração na cintura. Elegante e versátil para dias ensolarados e eventos sofisticados.",
-          handle: "vestido-midi-linho-floral",
-          weight: 350,
-          status: ProductStatus.PUBLISHED,
-          shipping_profile_id: shippingProfile.id,
-          metadata: {
-            size_guide: [
-              { size: "P", bust: "84-88 cm", waist: "66-70 cm", hip: "92-96 cm" },
-              { size: "M", bust: "89-94 cm", waist: "71-76 cm", hip: "97-102 cm" },
-              { size: "G", bust: "95-100 cm", waist: "77-82 cm", hip: "103-108 cm" },
-              { size: "GG", bust: "101-106 cm", waist: "83-88 cm", hip: "109-114 cm" },
-            ],
-            composition: "70% Linho, 30% Viscose",
-          },
-          images: [
-            {
-              url: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80",
-            },
-          ],
-          options: [
-            {
-              title: "Tamanho",
-              values: ["P", "M", "G", "GG"],
-            },
-            {
-              title: "Cor",
-              values: ["Floral Off-White", "Floral Terracota"],
-            },
-          ],
-          variants: [
-            {
-              title: "P / Floral Off-White",
-              sku: "VEST-LINHO-P-OFF",
-              options: {
-                Tamanho: "P",
-                Cor: "Floral Off-White",
-              },
-              prices: [{ amount: 249.9, currency_code: "brl" }],
-            },
-            {
-              title: "M / Floral Off-White",
-              sku: "VEST-LINHO-M-OFF",
-              options: {
-                Tamanho: "M",
-                Cor: "Floral Off-White",
-              },
-              prices: [{ amount: 249.9, currency_code: "brl" }],
-            },
-            {
-              title: "G / Floral Off-White",
-              sku: "VEST-LINHO-G-OFF",
-              options: {
-                Tamanho: "G",
-                Cor: "Floral Off-White",
-              },
-              prices: [{ amount: 249.9, currency_code: "brl" }],
-            },
-            {
-              title: "GG / Floral Off-White",
-              sku: "VEST-LINHO-GG-OFF",
-              options: {
-                Tamanho: "GG",
-                Cor: "Floral Off-White",
-              },
-              prices: [{ amount: 249.9, currency_code: "brl" }],
-            },
-          ],
-          sales_channels: [{ id: onlineSalesChannel[0].id }],
-        },
-        {
-          title: "Camisa Feminina em Alfaiataria Seda Pura",
-          category_ids: [catBlusas],
-          description:
-            "Camisa clássica com corte de alfaiataria fina, punhos alongados e fechamento com botões madre-pérola. Peça indispensável para composições elegantes.",
-          handle: "camisa-alfaiataria-seda-pura",
-          weight: 220,
-          status: ProductStatus.PUBLISHED,
-          shipping_profile_id: shippingProfile.id,
-          metadata: {
-            size_guide: [
-              { size: "P", bust: "86-90 cm", waist: "68-72 cm", length: "64 cm" },
-              { size: "M", bust: "91-96 cm", waist: "73-78 cm", length: "66 cm" },
-              { size: "G", bust: "97-102 cm", waist: "79-84 cm", length: "68 cm" },
-            ],
-            composition: "100% Seda",
-          },
-          images: [
-            {
-              url: "https://images.unsplash.com/photo-1598554747436-c9293d6a588f?auto=format&fit=crop&w=800&q=80",
-            },
-          ],
-          options: [
-            {
-              title: "Tamanho",
-              values: ["P", "M", "G"],
-            },
-            {
-              title: "Cor",
-              values: ["Branco Neve", "Rosa Quartz"],
-            },
-          ],
-          variants: [
-            {
-              title: "P / Branco Neve",
-              sku: "CAM-SEDA-P-BR",
-              options: {
-                Tamanho: "P",
-                Cor: "Branco Neve",
-              },
-              prices: [{ amount: 189.9, currency_code: "brl" }],
-            },
-            {
-              title: "M / Branco Neve",
-              sku: "CAM-SEDA-M-BR",
-              options: {
-                Tamanho: "M",
-                Cor: "Branco Neve",
-              },
-              prices: [{ amount: 189.9, currency_code: "brl" }],
-            },
-            {
-              title: "G / Branco Neve",
-              sku: "CAM-SEDA-G-BR",
-              options: {
-                Tamanho: "G",
-                Cor: "Branco Neve",
-              },
-              prices: [{ amount: 189.9, currency_code: "brl" }],
-            },
-          ],
-          sales_channels: [{ id: onlineSalesChannel[0].id }],
-        },
-        {
-          title: "Calça Pantalona Cintura Alta Alfaiataria",
-          category_ids: [catCalcas],
-          description:
-            "Pantalona com caimento impecável e cintura alta estruturada. Bolsos frontais em faca e detalhes de pregas sutis que alongam a silhueta com extremo conforto e sofisticação.",
-          handle: "calca-pantalona-cintura-alta",
-          weight: 420,
-          status: ProductStatus.PUBLISHED,
-          shipping_profile_id: shippingProfile.id,
-          metadata: {
-            size_guide: [
-              { size: "38 (P)", waist: "68-72 cm", hip: "96-100 cm", length: "110 cm" },
-              { size: "40 (M)", waist: "73-77 cm", hip: "101-105 cm", length: "112 cm" },
-              { size: "42 (G)", waist: "78-83 cm", hip: "106-111 cm", length: "114 cm" },
-            ],
-            composition: "95% Poliéster Premium, 5% Elastano",
-          },
-          images: [
-            {
-              url: "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=800&q=80",
-            },
-          ],
-          options: [
-            {
-              title: "Tamanho",
-              values: ["38 (P)", "40 (M)", "42 (G)"],
-            },
-            {
-              title: "Cor",
-              values: ["Preto Clássico", "Nude Areia"],
-            },
-          ],
-          variants: [
-            {
-              title: "38 (P) / Preto Clássico",
-              sku: "CALC-PAN-38-PR",
-              options: {
-                Tamanho: "38 (P)",
-                Cor: "Preto Clássico",
-              },
-              prices: [{ amount: 219.9, currency_code: "brl" }],
-            },
-            {
-              title: "40 (M) / Preto Clássico",
-              sku: "CALC-PAN-40-PR",
-              options: {
-                Tamanho: "40 (M)",
-                Cor: "Preto Clássico",
-              },
-              prices: [{ amount: 219.9, currency_code: "brl" }],
-            },
-            {
-              title: "42 (G) / Preto Clássico",
-              sku: "CALC-PAN-42-PR",
-              options: {
-                Tamanho: "42 (G)",
-                Cor: "Preto Clássico",
-              },
-              prices: [{ amount: 219.9, currency_code: "brl" }],
-            },
-          ],
-          sales_channels: [{ id: onlineSalesChannel[0].id }],
-        },
-  ]
-
-  const { data: existingProducts } = await query.graph({
-    entity: "product",
-    fields: ["id", "title"],
-  })
-
-  const existingTitles = new Set(
-    (existingProducts ?? []).map((product) => product.title)
-  )
-  const newProducts = wantedProducts.filter(
-    (product) => !existingTitles.has(product.title)
-  )
-
-  if (newProducts.length) {
-    await createProductsWorkflow(container).run({
-      input: {
-        products: newProducts,
-      },
-    })
-  }
-
-  // O vínculo ao canal de venda é **curado** a cada rodada, e não só criado
-  // junto com a peça. O `sales_channels` acima vale na criação: uma peça que já
-  // existia e perdeu o vínculo depois (o "remover" do painel do Medusa grava
-  // `deleted_at` na linha do vínculo) fica fora da loja — `/store/products` lê
-  // pelo canal, e a peça continua `published` no catálogo, sem nada acusar.
-  // Medido: o vestido midi ficou invisível na vitrine com o vínculo
-  // soft-deleted em 29/09/2026, e o `make seed` saía verde — a peça existia pelo
-  // título, então nem a criação passava por ela.
-  //
-  // O `link.create` **revive** a linha apagada (medido nesta base, Medusa 2.18:
-  // o vínculo reaparece no `query.graph` logo depois da chamada), então o
-  // conserto é o mesmo `linkOnce` dos outros vínculos. A leitura do gráfico já
-  // ignora vínculo apagado — é o que a loja vê —, e `wantedProducts` limita o
-  // conserto às peças do seed: uma peça que alguém criou e deixou fora do canal
-  // de propósito continua fora.
-  const { data: seededProducts } = await query.graph({
-    entity: "product",
-    fields: ["id", "title", "sales_channels.id"],
-  })
-
-  const seededTitles = new Set(wantedProducts.map((product) => product.title))
-  const withoutChannel = (seededProducts ?? []).filter(
-    (product) =>
-      seededTitles.has(product.title) &&
-      !(product.sales_channels ?? []).some(
-        (channel) => channel?.id === onlineSalesChannel[0].id
-      )
-  )
-
-  for (const product of withoutChannel) {
-    await linkOnce({
-      [Modules.PRODUCT]: { product_id: product.id },
-      [Modules.SALES_CHANNEL]: { sales_channel_id: onlineSalesChannel[0].id },
-    })
-    logger.info(`[Real Valor] Vínculo de canal restaurado: ${product.title}`)
-  }
-
-  // 10. Atualização de estoque para os novos produtos
-  logger.info("[Real Valor] Atualizando níveis de estoque...");
-  const { data: inventoryItems } = await query.graph({
-    entity: "inventory_item",
-    fields: ["id"],
-  });
-
-  const inventoryLevels: CreateInventoryLevelInput[] = [];
-  for (const inventoryItem of inventoryItems) {
-    const inventoryLevel = {
-      location_id: stockLocation.id,
-      stocked_quantity: 50,
-      inventory_item_id: inventoryItem.id,
-    };
-    inventoryLevels.push(inventoryLevel);
-  }
-
-  await createInventoryLevelsWorkflow(container).run({
-    input: {
-      inventory_levels: inventoryLevels,
-    },
-  });
-
-  logger.info("[Real Valor] Seed de dados concluído com sucesso!");
 }

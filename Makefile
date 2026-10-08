@@ -41,7 +41,7 @@ help:
 	@echo "  Build e dados"
 	@echo "    make build         - Reconstroi as imagens do backend e do frontend"
 	@echo "    make migrate       - Aplica as migracoes do Medusa v2"
-	@echo "    make seed          - Popula catalogo, o conteudo (vitrine e tema) e o schema do CRM"
+	@echo "    make seed          - Prepara a loja (canais, regiao, frete e a chave do storefront), o conteudo (vitrine e tema) e o schema do CRM"
 	@echo "    make clean-db      - APAGA os volumes do banco e reinicia do zero"
 	@echo ""
 	@echo "  Utilitarios"
@@ -173,9 +173,19 @@ build:
 migrate:
 	$(COMPOSE) exec -u root backend yarn medusa db:migrate
 
-# `seed` = comércio (`seed.ts`) + conteúdo (`seed-content.ts`) + registro do
-# schema (`seed-schema.ts`). Os três são idempotentes: rodar de novo numa base
-# já semeada não altera nada.
+# `seed` = bootstrap da loja (`seed.ts`) + conteúdo (`seed-content.ts`) +
+# registro do schema (`seed-schema.ts`).
+#
+# **Não há catálogo aqui.** O `seed.ts` não cria mais categoria, produto nem
+# nível de estoque (saiu em 2026-10-08): o catálogo é do lojista, pelo painel, e
+# uma base semeada nasce com a vitrine **vazia** (os estados vazios das seções
+# estão desenhados). O que ele cria é o que a loja precisa para funcionar —
+# canais de venda, moeda, região, nível fiscal, centro de distribuição, frete e a
+# publishable key, que ele imprime no fim para o `.env` do storefront. O porquê,
+# e o roteiro do que entra no lugar, em
+# `docs/real-valor/12-script-enriquecimento-catalogo.md`.
+#
+# Os três são idempotentes: rodar de novo numa base já semeada não altera nada.
 #
 # O `seed-content` popula as **duas** superfícies de conteúdo: as seções da
 # vitrine e as estações do tema (a mesma lista que o gerador escreve em
@@ -184,10 +194,25 @@ migrate:
 # O conteúdo entra aqui para uma base nova nascer montada sem ninguém precisar
 # abrir o painel — e é a MESMA regra do botão "Restaurar padrão" do CRM
 # (`backend/src/modules/content/restore.ts`): só cria o que falta.
+#
+# POR QUE EM CONTAINER AVULSO (`compose run`) E NAO `compose exec`: os tres
+# scripts precisam de mais heap do que o limite do servico em DEV. Medido em
+# 2026-10-06: com o limite de 2G do `docker-compose.override.yml`, o `seed` morria
+# com `make: *** [Makefile:188: seed] Error 137` — SIGKILL do cgroup, sem causa
+# aparente no log. O `medusa develop`, que ja roda dentro do MESMO container,
+# fica com ~1,2 GiB dos 2 GiB, e o seed nao tem onde crescer. O container do
+# `compose run` e proprio: mesmo limite, sem o dev server dentro — e' a MESMA
+# escolha, pelo MESMO motivo, do `build-admin` (ver o alvo).
+#
+# Os tres scripts num SO container: cada `compose run` cria um volume anonimo
+# novo para `/app/node_modules` (herdado da imagem), e tres `run` pagariam essa
+# copia tres vezes.
+#
+# `--max-old-space-size=1536`: com a heap limitada, um estouro vira
+# `FATAL ERROR: Reached heap limit` no log em vez de SIGKILL silencioso.
 seed:
-	$(COMPOSE) exec -u root backend yarn seed
-	$(COMPOSE) exec -u root backend yarn seed-content
-	$(COMPOSE) exec -u root backend yarn seed-schema
+	@test -n "$$($(COMPOSE) ps -q postgres)" || { echo "postgres nao esta rodando (rode 'make up')"; exit 1; }
+	@$(COMPOSE) run --rm -T -u root -e NODE_OPTIONS=--max-old-space-size=1536 backend sh -c 'yarn seed && yarn seed-content && yarn seed-schema'
 
 # O registro do schema do CRM no Postgres: o contrato e o bootstrap, o banco e
 # a fonte em runtime. Entra no `seed` porque um banco novo precisa dele para o
@@ -384,11 +409,36 @@ ADMIN_BUILD_LOG ?= /tmp/real-valor-build-admin.log
 # E' barato: nada em `/app/backend/node_modules` e' lido pelo build (so o `.vite`
 # mora la; as dependencies vem de `/app/node_modules`), entao mascarar o
 # diretorio nao muda resolucao nenhuma.
+#
+# A LINHA DE SUCESSO NAO BASTA: o log tambem tem de estar LIMPO (medido em
+# 2026-10-08). O `medusa build` sai **0** e imprime `Frontend build completed
+# successfully` mesmo quando o plugin do admin nao conseguiu processar um
+# arquivo. O caso medido foi o helper do widget em `.ts`: dentro de `widgets/` o
+# `getParserOptions` do plugin so habilita o parser de TypeScript para `.tsx`
+# (empilha `"jsx"` sempre e `"typescript"` so para `.tsx`) e a pasta e' varrida
+# **sem filtro de nome** (`crawl(source/widgets)`), ao contrario das rotas
+# (`crawl(source/routes, "page")`, que e' o que deixa os `.ts` auxiliares de
+# `routes/content` em paz). O log trouxe, duas vezes,
+#     [@medusajs/admin-vite-plugin] An error occurred while parsing the file.
+#     ... SyntaxError: Missing semicolon. (38:1)
+# seguido de `Backend build completed successfully` e `Frontend build completed
+# successfully (119.35s)` — exit 0. Um gate que so olhasse a linha de sucesso
+# diria verde com o arquivo rejeitado pelo plugin, que e' pior do que nao ter
+# gate. Por isso o alvo reprova a familia `An error occurred while` (as quatro
+# mensagens de arquivo do plugin: parsing, default export, traverse e widget id).
 
 build-admin:
 	@test -n "$$($(COMPOSE) ps -q postgres)" || { echo "postgres nao esta rodando (rode 'make up')"; exit 1; }
 	@$(COMPOSE) run --rm -T -v /app/backend/node_modules -e NODE_OPTIONS=--max-old-space-size=1536 backend yarn build 2>&1 | tee "$(ADMIN_BUILD_LOG)"
 	@grep -q "Frontend build completed successfully" "$(ADMIN_BUILD_LOG)" || { echo ""; echo "  O painel NAO compilou (procure 'Rollup failed to resolve' ou 'Build failed' no log acima)."; exit 1; }
+	@if grep -aq "An error occurred while" "$(ADMIN_BUILD_LOG)"; then \
+	  echo ""; \
+	  echo "  O plugin do admin NAO processou algum arquivo (e o build sai 0 mesmo assim):"; \
+	  grep -a "An error occurred while" "$(ADMIN_BUILD_LOG)" | tail -3; \
+	  echo ""; \
+	  echo "  Dentro de widgets/ o TypeScript so e' lido em .tsx (o getParserOptions do plugin so empilha 'typescript' para .tsx) e a pasta e' varrida sem filtro de nome: um helper .ts ali derruba o parse."; \
+	  exit 1; \
+	fi
 	@echo ""
 	@echo "  Painel compilado num GATE de compilacao: o container do 'run --rm' e' DESCARTADO, entao o bundle nao vai para o dev server."
 	@echo "  Em DEV o /painel e' servido pelo Vite; em PROD o bundle entra na imagem pelo 'yarn build' do Dockerfile. O cache do Vite do build fica num volume descartavel: o dev server do /painel nao foi tocado."

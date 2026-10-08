@@ -44,6 +44,21 @@ export default function PreviewPrice({ price }: { price: VariantPrice }) {
       >
         {price.calculated_price}
       </span>
+      {/*
+        O `-x%` no card. Ele existia só na página, e é no card que a cliente
+        compara: sem o número, "era 399, agora 249" ela faz de cabeça (e às vezes
+        não faz).
+
+        Duas guardas, e as duas são de dado real: o `-0%` de uma promoção que
+        igualou o preço (a `percentage_diff` é `"0"` quando não houve queda, e
+        "-0%" é pior do que nada) e o rótulo do próprio `.rv-price-sale`, que é a
+        cor de oferta que o `brand.css` mede.
+      */}
+      {onSale && price.percentage_diff !== "0" && (
+        <span className="rv-price-sale" data-testid="price-off">
+          -{price.percentage_diff}%
+        </span>
+      )}
     </span>
   )
 }

@@ -203,7 +203,7 @@ modules: [
 ]
 ```
 
-**Nenhum provedor de pagamento.** E `seed.ts:183` cria a região com
+**Nenhum provedor de pagamento.** E `seed.ts:212` cria a região com
 `payment_providers: ["pp_system_default"]` — provedor manual, que não processa.
 
 Resultado: o checkout renderiza, o formulário valida, mas **a finalização do pagamento não
@@ -218,7 +218,7 @@ provedor** — é exatamente o oposto de modular. Ver `08-arquitetura-e-integrac
 ### Backend — `implementado`
 
 - Medusa 2.18.0, PostgreSQL, Redis, módulo local `content`.
-- `seed.ts` **idempotente**: verifica região e tax region antes de criar (linhas 160–202).
+- `seed.ts` **idempotente**: verifica região e tax region antes de criar (linhas 189–231).
 - Rotas customizadas: `GET /store/content`, `GET/POST /api/admin/content`,
   `GET /api/admin/content/order`, `GET /api/admin/content/restore`, `GET /store/custom/checkout-info`,
   `GET /store/orders/track`.

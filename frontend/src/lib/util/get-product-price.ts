@@ -2,8 +2,21 @@ import { HttpTypes } from "@medusajs/types"
 import { getPercentageDiff } from "./get-percentage-diff"
 import { convertToLocale } from "./money"
 
+/**
+ * O preço calculado de uma variante, no formato que a loja desenha.
+ *
+ * **Preço zero é preço.** A guarda era `!variant?.calculated_price?.calculated_amount`,
+ * que trata `0` como ausência — e a loja tem peça de brinde/valor zero, que é
+ * vendida de verdade pelo carrinho. Com a guarda antiga, a vitrine mostrava a
+ * peça **sem preço** enquanto o checkout a fechava por R$ 0,00: duas telas
+ * discordando do mesmo dado, e a cliente descobrindo no fim.
+ *
+ * O que é ausência é o **bloco** de preço calculado não existir (variante sem
+ * preço na região) — e é só isso que devolve `null`, para a tela escolher entre o
+ * esqueleto e o convite.
+ */
 export const getPricesForVariant = (variant: any) => {
-  if (!variant?.calculated_price?.calculated_amount) {
+  if (!variant?.calculated_price) {
     return null
   }
 

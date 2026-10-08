@@ -18,7 +18,7 @@ texto, imagem, ordem e visibilidade da home sem deploy.
 | `order.ts` | A ordem das seções: as regras puras (as casas da faixa — `bandFor`, `reservedPositions` —, `nextPosition`, `positionAfter`, `positionFor`, `renumber`) **e** a única gravação que as aplica (`readOrderIds`, `orderErrors`, `applyOrder`) |
 | `restore.ts` | O "Restaurar padrão"/seed: quais blocos padrão faltam e com que posição cada um nasce — a lista sai da superfície (`defaultsFor`: o protótipo da vitrine ou as estações do tema) |
 | `payload.ts` | O `splitPayload` do corpo: o que é **coluna** × o que é `data` (e as referências `productIds`/`filters`) |
-| `revalidate.ts` | O aviso ao storefront (`notifyStorefront`), que invalida o cache do conteúdo depois de gravar |
+| `revalidate.ts` | O aviso ao storefront: o núcleo `revalidateStorefrontTag` (o `POST /api/revalidate?tag=…`), o `notifyStorefront`/`notifyStorefrontTag` sem `await` e o caso do conteúdo (`revalidateContent`). Quem o usa para o catálogo é [`../subscribers/catalog-revalidate.ts`](../subscribers/catalog-revalidate.ts) |
 | `schema.ts` | Montagem do schema (`buildSchema()`), `SCHEMA_VERSION` e `SCHEMA_KEY` |
 | `contract.ts` | O formato do conteúdo — **bootstrap** do schema. Carrega também a paleta do tema padrão (`THEME_COLOR_HEXES`) e as fontes (`THEME_FONTS`), que são a **origem** do `theme.json` e dos tokens do `brand.css` desde a R3-lite; e as **superfícies** (`CONTENT_SURFACES`), os **tipos editáveis** (`CONTENT_TYPES`) e os campos do tema (`THEME_FIELDS`), que são o tema como dado (R4) |
 | `defaults.ts` | Cópia do protótipo, usada pelo seed e como fallback |
@@ -665,6 +665,13 @@ Depois de qualquer escrita, o backend avisa o storefront para invalidar o cache
 (`modules/content/revalidate.ts`), e a loja reflete a edição na hora. Sem
 `FRONTEND_URL` e `REVALIDATE_SECRET` o aviso é pulado — nada quebra, a loja só
 espera a janela de 60s do ISR.
+
+O catálogo ganhou o mesmo caminho pelo subscriber
+[`../subscribers/catalog-revalidate.ts`](../subscribers/catalog-revalidate.ts):
+ele avisa `products` a cada gravação de produto ou variante, e
+`categories`/`collections` quando a categoria ou a coleção muda (o nome delas
+entra na listagem de produtos). É o que faz "publiquei no painel" chegar à
+vitrine sem `make revalidate`.
 
 O formulário não repete nada do contrato em React: `schema.fields` traz os
 campos de cada seção, `schema.itemFields` o sub-formulário de cada item de

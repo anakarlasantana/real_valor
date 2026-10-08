@@ -62,7 +62,7 @@ O `next build` do storefront **não consulta mais o backend**: o `generateStatic
 
 1. `docker compose build` funciona **offline** — não precisa do backend no ar.
 2. A ordem backend→frontend deixou de ser obrigatória; as dependências reais são resolvidas por `depends_on` + `healthcheck`.
-3. Publicar uma alteração de catálogo antes da janela de ISR expirar é feito com `make revalidate TAG=products` (veja [Comandos](#-comandos)).
+3. Publicar uma alteração de catálogo chega à loja sem passo manual: o backend avisa o storefront depois de cada gravação (`backend/src/subscribers/catalog-revalidate.ts`) e o data cache do catálogo tem janela de 60s como teto. Na mão, `make revalidate TAG=products` (veja [Comandos](#-comandos)).
 
 Ressalva: em DEV o `next dev` compila sob demanda e fala com o backend em runtime (SSR). Com o backend fora do ar, as páginas que dependem da Store API degradam conforme os fallbacks do código.
 
@@ -119,7 +119,7 @@ Tudo passa pelo `Makefile` (que nada mais é que um atalho para `docker compose`
 | `make ps` | Status dos containers da stack. |
 | `make build` | Reconstrói as imagens do backend e do frontend (offline). |
 | `make logs` / `make logs-all` | Logs do backend / de todos os serviços (follow). |
-| `make migrate` / `make seed` | `yarn medusa db:migrate` / `yarn seed` **dentro do container**. |
+| `make migrate` / `make seed` | `yarn medusa db:migrate` / **bootstrap da loja** (`seed.ts`: canais, região, frete e a chave do storefront) + conteúdo (vitrine e tema) + schema do CRM, em container avulso. **Não cria catálogo**: peça, preço e estoque entram pelo painel. |
 | `make clean-db` | Remove os volumes e reinicia Postgres/Redis — **APAGA O BANCO** (pede confirmação). |
 | `make shell-backend` / `make shell-frontend` | Shell dentro do container correspondente. |
 | `make health` | Checa `/health` do backend e a home da loja (`/br`). |
@@ -148,11 +148,13 @@ make recreate                           # a stack inteira
 # Reprocessar migrations manualmente (ex.: após um git pull com novas migrations)
 make migrate
 
-# Popular catálogo, conteúdo da vitrine e o registro do schema do CRM.
-# Idempotente: roda em cima de uma base já semeada sem duplicar nem quebrar
-# (o conteúdo só cria as seções que faltam — não encosta no que o CRM editou).
-# No fim imprime a chave do storefront — ponha no `.env` da raiz como
-# NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY.
+# Preparar a loja (o `seed.ts` NÃO cria catálogo) + o conteúdo da vitrine e o
+# registro do schema do CRM. Idempotente: roda em cima de uma base já semeada sem
+# duplicar nem quebrar (o conteúdo só cria as seções que faltam — não encosta no
+# que o CRM editou). No fim imprime a chave do storefront — ponha no `.env` da
+# raiz como NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY.
+# A vitrine nasce VAZIA: a primeira peça entra pelo painel (categoria, produto
+# com a cor da variante, preço e estoque no centro de distribuição).
 make seed
 
 # Publicar uma alteração de catálogo imediatamente (sem esperar a janela de ISR)
@@ -632,6 +634,11 @@ com o rótulo em `assets/index-FbnzdS_y.js`).
 make clean-db            # pede confirmação; depois suba de novo:
 make up && make migrate && make seed
 ```
+
+O `make seed` termina com a loja **montada e vazia**: ele não cria peça nenhuma
+(ver `docs/real-valor/12-script-enriquecimento-catalogo.md`). O catálogo entra
+pelo painel — categoria, produto, variante com a cor, preço e estoque — e cada
+seção da vitrine mostra o estado vazio até receber curadoria.
 
 ---
 

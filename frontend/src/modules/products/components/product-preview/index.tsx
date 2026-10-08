@@ -4,23 +4,28 @@ import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ProductStatusChip from "../product-status-chip"
 import Thumbnail from "../thumbnail"
+import ColorSwatches from "./color-swatches"
 import PreviewPrice from "./price"
 
 /**
  * O card de produto — a peça em todos os lugares em que a loja a lista (vitrine
  * da home, trilho de lançamentos, catálogo, relacionados).
  *
- * Duas coisas acontecem aqui além do título e do preço:
+ * Quatro coisas acontecem aqui além do título e do preço:
  *
- *   1. **O chip de estado** ("Pronta entrega", "Últimas peças"…) sobreposto à
+ *   1. **As cores da peça** (`./color-swatches.tsx`), abaixo do nome e antes do
+ *      preço. A lista sai da opção da peça e o hex de `variants[].metadata.hex`
+ *      (`lib/util/product-enrichment.ts`), e bolinha nenhuma é clicável — o card
+ *      inteiro continua sendo um link só.
+ *   2. **O chip de estado** ("Pronta entrega", "Últimas peças"…) sobreposto à
  *      foto. Quem decide qual é `productStatus`
  *      (`lib/util/product-availability.ts`), a mesma função que a página do
  *      produto usa — o card e a página não podem discordar.
- *   2. **A segunda foto no hover**, quando o produto tem mais de uma. O
+ *   3. **A segunda foto no hover**, quando o produto tem mais de uma. O
  *      catálogo hoje tem **uma imagem por produto** (medido na Store API),
  *      então na prática o card não troca nada; a peça está aqui e passa a
  *      funcionar sozinha quando o catálogo tiver galeria.
- *   3. **O convite, sempre visível — e com cara de convite.** O "Comprar" era
+ *   4. **O convite, sempre visível — e com cara de convite.** O "Comprar" era
  *      `opacity-0` até o ponteiro chegar, e no celular não existe hover: o
  *      caminho para a peça não existia para quem navega no toque — que é a
  *      maioria de quem abre a vitrine. Ele voltou a ser visível, mas ainda como
@@ -96,6 +101,13 @@ export default async function ProductPreview({
           >
             {product.title}
           </span>
+          {/*
+            As cores logo abaixo do nome, e **antes** do preço: é a segunda
+            pergunta de quem olha uma vitrine de roupa ("tem em preto?"), e ela
+            vem antes de "quanto custa". Peça sem cor cadastrada não desenha nada
+            aqui (`ColorSwatches` devolve `null`) — a linha não fica vazia.
+          */}
+          <ColorSwatches product={product} />
           {/*
             Preço e estado na **mesma linha**: os dois são sobre a peça, e o olho
             desce uma vez só. O `justify-between` põe o preço à esquerda e o chip

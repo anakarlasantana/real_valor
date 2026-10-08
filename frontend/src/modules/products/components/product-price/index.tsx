@@ -3,6 +3,18 @@ import { clx } from "@medusajs/ui"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
 
+/**
+ * O preço na página da peça: "A partir de" e o "De" do preço cheio, em pt-BR.
+ * -------------------------------------------------------------------------
+ * Os dois rótulos estavam em inglês ("From", "Original:") numa loja pt-BR — o
+ * mesmo defeito do RV-003, e no lugar mais visível da página. A palavra do
+ * "De/Por" que a cliente reconhece é "De", e é ela que fica ao lado do preço
+ * riscado; "A partir de" só aparece quando o preço é o da variante mais barata,
+ * e não de uma variante escolhida.
+ *
+ * O `-x%` continua aqui (na página), e o card passou a mostrá-lo também: é o
+ * mesmo `percentage_diff`, calculado uma vez em `get-product-price.ts`.
+ */
 export default function ProductPrice({
   product,
   variant,
@@ -28,7 +40,7 @@ export default function ProductPrice({
           "text-ui-fg-interactive": selectedPrice.price_type === "sale",
         })}
       >
-        {!variant && "From "}
+        {!variant && "A partir de "}
         <span
           data-testid="product-price"
           data-value={selectedPrice.calculated_price_number}
@@ -39,7 +51,7 @@ export default function ProductPrice({
       {selectedPrice.price_type === "sale" && (
         <>
           <p>
-            <span className="text-ui-fg-subtle">Original: </span>
+            <span className="text-ui-fg-subtle">De </span>
             <span
               className="line-through"
               data-testid="original-product-price"

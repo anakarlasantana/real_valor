@@ -3,6 +3,7 @@
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { variantIsAvailable } from "@lib/util/product-availability"
+import { coresDoProduto } from "@lib/util/product-enrichment"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
 import Divider from "@modules/common/components/divider"
@@ -109,6 +110,12 @@ export default function ProductActions({
 
   const inView = useIntersection(actionsRef, "0px")
 
+  // As cores da peça para o seletor — a MESMA função do card (`coresDoProduto`,
+  // que junta a opção com o `metadata.hex` da variante). Calculada uma vez e
+  // entregue a todas as opções: quem decide se desenha bolinha ou botão de texto
+  // é o `OptionSelect`, com a mesma `ehTituloDeCor` que o card usa.
+  const cores = coresDoProduto(product)
+
   // add the selected variant to the cart
   const handleAddToCart = async () => {
     if (!selectedVariant?.id) return null
@@ -138,6 +145,7 @@ export default function ProductActions({
                       current={options[option.id]}
                       updateOption={setOptionValue}
                       title={option.title ?? ""}
+                      cores={cores}
                       data-testid="product-options"
                       disabled={!!disabled || isAdding}
                     />

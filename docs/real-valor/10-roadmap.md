@@ -151,7 +151,7 @@ e isso não segura a loja.**
 para a transportadora de hoje, a decisão de amanhã obriga a refatorar o painel — e aí sim o bloqueio
 volta.
 
-**A salvaguarda prática:** o `fulfillment-manual` está seedado com PAC e SEDEX (`seed.ts:247-259`),
+**A salvaguarda prática:** o `fulfillment-manual` está seedado com PAC e SEDEX (`seed.ts:397-469`),
 então a loja vende com frete fixo enquanto a transportadora não é decidida. **RV-046 sai do caminho
 crítico e vai para a Fase 4.**
 

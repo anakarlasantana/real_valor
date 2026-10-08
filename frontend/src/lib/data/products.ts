@@ -5,6 +5,7 @@ import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { getAuthHeaders, getCatalogCacheOptions } from "./cookies"
+import { CAMPOS_DO_CATALOGO } from "./product-fields"
 import { getRegion, retrieveRegion } from "./regions"
 
 export const listProducts = async ({
@@ -60,8 +61,7 @@ export const listProducts = async ({
           limit,
           offset,
           region_id: region?.id,
-          fields:
-            "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,",
+          fields: CAMPOS_DO_CATALOGO,
           ...queryParams,
         },
         headers,

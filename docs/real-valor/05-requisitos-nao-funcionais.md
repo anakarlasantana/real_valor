@@ -107,7 +107,9 @@ Detalhado em RV-007. Situação verificada:
 
 **Positivo:**
 - Fontes self-hosted via `next/font/local` — sem requisição externa, sem CLS de fonte.
-- ISR com `revalidate = 60` (home) e `3600` (catálogo) — páginas servidas do cache.
+- ISR com `revalidate = 60` (home) e `3600` (catálogo) — páginas servidas do cache. O **data
+  cache** do catálogo tem janela própria de 60s: as páginas reusam as mesmas consultas, e a home
+  (`limit=8`) é servida pelo mesmo dado da listagem.
 - `next build` sem dependência do backend — build offline.
 - `Suspense` + skeletons em catálogo, PDP e carrinho.
 - `product-carousel` é uma **ilha** — reduz JS inicial.
@@ -128,7 +130,7 @@ Detalhado em RV-007. Situação verificada:
 | Recurso | Estratégia | Tag |
 | :--- | :--- | :--- |
 | Conteúdo do CMS | ISR 60s | `content` |
-| Catálogo | ISR 1h | `products`, `categories` |
+| Catálogo | ISR 1h (página) + data cache 60s (dado) | `products`, `categories` |
 | Carrinho | Sem cache (por cookie) | — |
 | `POST /api/revalidate` | Purge autenticado | — |
 
@@ -138,7 +140,10 @@ correto). Em produção, definir com `openssl rand -hex 32`.
 **Riscos operacionais:**
 1. As `NEXT_PUBLIC_*` são **inlinadas no bundle** em PROD. Alterar exige `make build && make restart`
    — documentado no README, mas é armadilha conhecida.
-2. Sem `REVALIDATE_SECRET`, alterações de catálogo só aparecem após a janela de ISR.
+2. Sem `REVALIDATE_SECRET` o aviso automático não sai (e o `make revalidate` falha), então as
+   alterações de catálogo esperam o teto da janela — **60s no data cache**, e não "para sempre":
+   era o que faltava, porque `force-cache` sem `revalidate` não expirava e publicar no painel
+   dependia de um passo manual (`make revalidate TAG=products`).
 
 **Critério de aceite:**
 1. LCP < 2,5s no 4G simulado, home e PDP.
