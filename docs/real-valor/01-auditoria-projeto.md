@@ -19,15 +19,15 @@ O que impede a venda hoje **não é a vitrine** — é a ausência de provedor d
 | Dimensão | Estado | Nota |
 | :--- | :--- | :--- |
 | Arquitetura | Sólida | Monorepo com contrato compartilhado entre os 3 runtimes |
-| Vitrine (home) | **Avançada** | Home 100% dirigida por CMS, 10 tipos de seção |
-| Design system | **Sólido** | 1125 linhas de `brand.css`, tokens derivados da marca |
-| Catálogo | **Parcial** | Listagem e ordenação prontas; **sem filtros e sem busca** |
-| Página de produto | **Boa** | Galeria, variantes, estoque, relacionados |
+| Vitrine (home) | **Avançada** | Home 100% dirigida por CMS, 11 tipos de seção |
+| Design system | **Sólido** | 4175 linhas de `brand.css`, tokens derivados da marca |
+| Catálogo | **Completo** | Listagem, ordenação, **5 facetas de filtro** e **busca** (`/search?q=`) |
+| Página de produto | **Boa** | Galeria, variantes, estoque, relacionados, frete por CEP |
 | Carrinho | **Pronto** | Itens, quantidades, cupom, frete |
-| Checkout | **Quebrado para venda** | UI completa, **mas nenhum provedor de pagamento registrado** |
+| Checkout | **Apto, não verificado** | UI completa e o adapter do Mercado Pago (RV-002) registrado; **falta a transação real** |
 | Backend | Sólido | Medusa v2, seed idempotente, módulo de conteúdo próprio |
 | CMS | **Sólido** | Painel em `/painel` edita vitrine e tema sem deploy |
-| Testes | **Forte** | 371 testes (210 backend + 142 storefront + 19 CRM) com CI |
+| Testes | **Forte** | 790 testes (386 backend + 334 storefront + 70 CRM) com CI |
 | i18n / pt-BR | **Falha** | Interface com textos em inglês |
 | SEO | **Falha** | Sem sitemap, robots ou dados estruturados |
 
@@ -81,13 +81,13 @@ de texto. Essa é a evolução do padrão que o briefing pede para o restante do
 
 ### Home — `implementado`
 
-**Arquivo-chave:** `frontend/src/app/[countryCode]/(main)/page.tsx` (198 linhas)
+**Arquivo-chave:** `frontend/src/app/[countryCode]/(main)/page.tsx` (199 linhas)
 
 A home **não tem JSX hardcoded**. Recebe uma lista ordenada de seções tipadas e mapeia cada uma
-para um componente num `switch` exaustivo com `assertNever` (linha 183) — se um tipo novo entrar
+para um componente num `switch` exaustivo com `assertNever` (linha 189) — se um tipo novo entrar
 no contrato sem tratamento, o build quebra em vez de a página quebrar em produção.
 
-**10 tipos de seção**, todos em `packages/contrato/src/defaults.ts`:
+**11 tipos de seção**, todos em `packages/contrato/src/defaults.ts`:
 
 | id | tipo | componente | Uso de comércio |
 | :--- | :--- | :--- | :--- |
@@ -97,10 +97,16 @@ no contrato sem tratamento, o build quebra em vez de a página quebrar em produ�
 | `benefits` | `benefits` | `benefits-bar` | faixa de benefícios |
 | `lancamentos` | `launches` | `launches-rail` | trilho de novidades |
 | `collections` | `collections` | `collection-highlights` | coleções |
+| `editorial` | `editorial` | `editorial-banner` | institucional (o manifesto) |
+| `banner` | `banner` | `editorial-callout` | **faixa de passagem** — foto de fundo + botão para o catálogo |
 | `featured` | `featured` | `featured-products` | produtos com filtro por categoria |
-| `editorial` | `editorial` | `editorial-banner` | institucional |
 | `instagram` | `instagram` | `instagram-grid` | social |
 | `footer` | `footer` | `layout/templates/footer` | chrome |
+
+> `editorial` e `banner` são **duas** seções, e não duas versões da mesma: no manifesto a foto é
+> uma coluna ao lado do texto (`imagePosition`); na faixa `banner` a foto **é** o fundo, e a seção
+> inteira é a cópia sobre ela. É a ordem da tela que as separa — o manifesto vem primeiro, a faixa
+> fecha o conteúdo.
 
 **Mecanismos notáveis:**
 - **Âncoras:** o `id` da seção no CMS **é** a âncora de scroll do menu (`page.tsx:108-116`).
@@ -115,37 +121,45 @@ no contrato sem tratamento, o build quebra em vez de a página quebrar em produ�
 
 ### Header e footer — `implementado`
 
-`frontend/src/modules/layout/templates/nav/index.tsx` (116 linhas)
-`frontend/src/modules/layout/templates/footer/index.tsx` (116 linhas)
+`frontend/src/modules/layout/templates/nav/index.tsx` (130 linhas)
+`frontend/src/modules/layout/templates/footer/index.tsx` (163 linhas)
 
-- Grid `1fr auto 1fr`: marca à esquerda, links centralizados, ações à direita.
+- Grid `grid-cols-[1fr_2fr_1fr]`: marca à esquerda, links centralizados, ações à direita.
 - Menu, rótulos, ordem e visibilidade vêm do CMS (bloco `nav`).
-- Wordmark em texto com `tracking-[0.28em]`, com comentário explícito no código (linha 48):
-  *"substituído quando o logo vetorial oficial estiver disponível"*.
+- Wordmark em texto — `.rv-brand-lockup`/`.rv-brand-lockup-name`, do `brand.css`: "REAL VALOR" com o
+  eyebrow "Alfaiataria feminina" abaixo. O comentário do código (linha 55) diz que ele é
+  *"replaced once the official vector logo is available"*.
 - Carrinho é a única ação com estado → vai por `CartButton` dentro de `Suspense`.
 - `sticky top-0 z-50` com altura fixa `h-20`.
 - `side-menu` é o drawer mobile.
 
-### Catálogo — `parcialmente implementado`
+### Catálogo — `implementado`
 
 **Arquivos:** `categories/[...category]/page.tsx`, `collections/[handle]/page.tsx`,
-`store/page.tsx`, `modules/store/templates/index.tsx`, `paginated-products.tsx`
+`store/page.tsx`, `modules/store/templates/index.tsx`, `paginated-products.tsx` (195 linhas)
 
 **Existe e funciona:**
-- Listagem em grade `grid-cols-2 small:grid-cols-3 medium:grid-cols-4`, 12 itens por página.
+- Listagem na grade `.rv-catalog-grid` — o desenho é do `brand.css`, não do `className` —, 12
+  itens por página.
 - Paginação real (`modules/store/components/pagination`).
-- Ordenação por 3 critérios — `created_at`, `price_asc`, `price_desc`.
+- Ordenação por 3 critérios — `created_at`, `price_asc`, `price_desc` —, agora **em português**
+  ("Mais recentes", "Menor preço", "Maior preço").
 - `Suspense` com `SkeletonProductGrid` durante o carregamento.
-- `revalidate = 3600` e ausência deliberada de `generateStaticParams` (explicado no código,
-  linhas 34–45: o build não pode depender do backend no ar).
+- `revalidate = 3600` e ausência deliberada de `generateStaticParams` (explicado no código: o build
+  não pode depender do backend no ar).
 
-**Falta (verificado):**
-- **Nenhum filtro.** `refinement-list/index.tsx:36` renderiza **apenas** `<SortProducts>`. O
-  componente tem 41 linhas e recebe só `sortBy` — não há faceta de cor, tamanho, preço nem
-  disponibilidade. A referência tem as quatro.
-- **Nenhuma busca.** Não existe componente de busca em `modules/layout/` nem rota de busca.
-  A única ocorrência de "search" no código é `searchParams` do Next.
-- Ordenação em inglês ("Latest Arrivals", "Price: Low -> High", "Sort by").
+**O que o redesenho acrescentou:**
+
+- **A barra de ferramentas** (`catalog-toolbar`): a contagem de peças, o painel de filtros e o
+  controle de ordenação. O `refinement-list/index.tsx` que existia aqui **saiu** — ele só embrulhava
+  o `<SortProducts>`, e o que sobrou dele (`refinement-list/sort-products/`) é renderizado dentro
+  da barra.
+- **Cinco facetas de filtro** (`filter-panel`, `filter-chips`, `clear-filters`): categoria, tamanho,
+  cor, faixa de preço e disponibilidade. Os valores **e as contagens** saem do catálogo que está na
+  tela — a regra é de `lib/util/catalog-filters.ts`, e uma faceta sem nenhum valor não é desenhada.
+- **A busca** — fora do catálogo, mas do mesmo assunto: `/search?q=…` (`modules/search/`), com faixa
+  de abertura, contagem e paginação, servida pela Store API (o `q` vai para o backend, que procura
+  no título, na descrição e no handle).
 
 ### Página de produto — `implementado`
 
@@ -258,26 +272,26 @@ schema (Postgres efêmero) e build do storefront **sem infra**.
 
 | Área | Status | Onde | Observação |
 | :--- | :--- | :--- | :--- |
-| Home / seções CMS | `implementado` | `(main)/page.tsx` | 10 tipos, switch exaustivo |
+| Home / seções CMS | `implementado` | `(main)/page.tsx` | 11 tipos, switch exaustivo |
 | Header | `implementado` | `layout/templates/nav` | conteúdo via CMS |
 | Footer | `implementado` | `layout/templates/footer` | conteúdo via CMS |
-| Design system | `implementado` | `styles/brand.css` | 1125 linhas |
+| Design system | `implementado` | `styles/brand.css` | 4175 linhas |
 | Tema sazonal | `implementado` | `lib/theme.ts` | swap por CSS vars |
 | Listagem de produtos | `implementado` | `store/templates` | grade + paginação |
-| Ordenação | `implementado` | `sort-products` | 3 critérios |
-| **Filtros** | `não implementado` | `refinement-list` | só ordenação |
-| **Busca** | `não implementado` | — | não existe |
+| Ordenação | `implementado` | `refinement-list/sort-products` | 3 critérios, em português |
+| **Filtros** | `implementado` | `catalog-toolbar` + `filter-panel` | **5 facetas**, com contagem do catálogo |
+| **Busca** | `implementado` | `modules/search` | `/search?q=…` |
 | PDP — galeria | `implementado` | `image-gallery` | — |
 | PDP — variantes | `implementado` | `product-actions` | via URL |
 | PDP — estoque | `implementado` | `product-availability` | regra única |
 | PDP — guia de medidas | `não implementado` | — | — |
-| PDP — frete na página | `não implementado` | — | — |
-| PDP — parcelamento/Pix | `não implementado` | — | — |
+| PDP — frete na página | `implementado` | `shipping-quote` | por CEP |
+| PDP — parcelamento/Pix | `montado e apagado` | `installment-info` | **sem dado do provedor nem regra do Pix** |
 | Carrinho | `implementado` | `modules/cart` | completo |
 | Cupom | `implementado` | `discount-code` | — |
 | Frete (opções) | `parcialmente implementado` | `seed.ts` | manual seedado |
 | **Checkout — UI** | `implementado` | `modules/checkout` | 20 arquivos |
-| **Checkout — pagamento** | `quebrado` | `medusa-config.ts` | **sem provedor** |
+| **Checkout — pagamento** | `implementado` | `modules/payment/mercadopago` | adapter do RV-002; **transação real não verificada** |
 | Frete via transportadora | `não implementado` | — | a definir |
 | Conta do cliente | `parcialmente implementado` | `modules/account` | sem troca de senha |
 | CMS / vitrine | `implementado` | `admin/…/routes/content` | — |
@@ -288,7 +302,7 @@ schema (Postgres efêmero) e build do storefront **sem infra**.
 | Acessibilidade | `parcialmente implementado` | — | contraste documentado |
 | **Documentação** | `quebrado` | `docs/` | vazio, README cita 6 arquivos |
 | Armazenamento de imagem | `parcialmente implementado` | `medusa-config.ts` | local, sem CDN |
-| Testes | `implementado` | 3 runners | **593 testes** (368 backend · 52 CRM · 173 storefront) — medido em 10/02/2026, depois do RV-002 |
+| Testes | `implementado` | 3 runners | **790 testes** (386 backend · 70 CRM · 334 storefront) — medido em 09/10/2026 |
 | Docker / operação | `implementado` | Compose + Makefile | 1 arquivo base |
 
 ## 1.5 Problemas técnicos encontrados

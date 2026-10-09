@@ -253,7 +253,7 @@ falhou, mesmo com as cores certas.
 
 **Fundação sólida, venda impossibilitada.** Monorepo Medusa v2 + Next.js 15 com arquitetura acima da
 média: contrato compartilhado por 3 runtimes, CMS funcional que edita a vitrine sem deploy, design
-system derivado da marca (1125 linhas), **593 testes** em 3 runners com CI, e operação 100% em Docker com
+system derivado da marca (4175 linhas), **790 testes** em 3 runners com CI, e operação 100% em Docker com
 build offline. Home, header, footer, carrinho, conta, tema sazonal e pedido confirmado estão **prontos**.
 
 **O bloqueio:** `medusa-config.ts` não registra nenhum provedor de pagamento, e a região usa

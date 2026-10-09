@@ -8,9 +8,9 @@ adicionado.
 - Paleta sazonal → `packages/contrato/src/contract.ts` (`THEME_COLOR_HEXES`) → gerada em
   `frontend/src/styles/tokens.generated.css` por `scripts/gen-content.mjs`
 - Tokens derivados, semânticos, tipografia, forma e movimento → `frontend/src/styles/brand.css`
-  (1125 linhas)
+  (4175 linhas)
 - Aplicação do tema em runtime → `frontend/src/lib/theme.ts` (`themeToCSSVariables`)
-- Configuração do Tailwind → `frontend/tailwind.config.js` (188 linhas)
+- Configuração do Tailwind → `frontend/tailwind.config.js` (194 linhas)
 
 > **Regra do repositório:** `tokens.generated.css` é **gerado** — "NÃO EDITE À MÃO". Alterar a paleta é
 > editar o contrato e rodar `node scripts/gen-content.mjs`. O `make check` e o hook de commit

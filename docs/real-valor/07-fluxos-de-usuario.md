@@ -13,7 +13,7 @@ Home → Categoria → Produto → Variante → Carrinho → Checkout → Pagame
 
 | # | Etapa | Onde no código | Estado verificado | Risco |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | **Home** | `(main)/page.tsx` | ✅ 10 seções via CMS | Baixo |
+| 1 | **Home** | `(main)/page.tsx` | ✅ 11 seções via CMS | Baixo |
 | 2 | **Categoria** | `categories/[...category]/page.tsx` | ⚠️ sem filtros | **Médio** |
 | 3 | **Produto** | `products/[handle]/page.tsx` | ✅ galeria, variantes, estoque | Baixo |
 | 4 | **Variante** | `product-actions` + `option-select` | ✅ seleção via URL | Baixo |

@@ -400,6 +400,35 @@ escrever o adapter, não redesenhar. **Não entra no caminho crítico da inaugur
 
 ## Fase 2 — Refinamento visual e UX
 
+### ✅ RV-047 · Redesenho da vitrine conforme a referência de layout — **FEITO** (`244910fa29`, `f2adfbe74c`, `eb542c13dc`)
+
+**Descrição:** portar o protótipo `Redesign clothing store UI.zip` como o desenho da loja — vitrine
+(capa, vantagens, trilho de lançamentos, coleções em degrau, manifesto e a faixa `banner`), o card de
+produto, o catálogo (barra de ferramentas + **5 facetas** de filtro), a PDP, o carrinho, o checkout, a
+conta e a **busca** (`/search?q=…`, que não existia).
+
+**Tipo:** UI **e** funcional — a busca e os filtros são entregas novas, não só desenho ·
+**Prioridade:** ALTA · **Complexidade:** alta
+
+**Entregue em três commits:**
+
+- `f2adfbe74c` — o **contrato**: o tipo `banner` (`BannerSection`), a nota da capa (`HeroSection.note`)
+  e o realce do título no `editorial` (`eyebrow`, `titleEmphasis`). A home vai a **11 tipos de seção**,
+  e o `switch` exaustivo da loja ganha o `case` que o `assertNever` já exigia;
+- `244910fa29` — o **storefront** (106 arquivos): `brand.css`, as bandas da home, o card
+  compartilhado (que aparece em 7 lugares, incluindo os três skeletons), as telas internas e a busca;
+- `eb542c13dc` — a **régua das duas seções editoriais**: o desenho sai do `className` e vira
+  `.rv-callout-*` / `.rv-manifesto-*`, com os dois testes novos do `ruler.spec.ts`.
+
+**Aceite:** `make check`, `make types`, `make test` (**790** testes: 386 backend · 70 CRM · 334
+storefront) e `next build` limpos. As seções foram medidas a 1440/768/390 contra a régua (altura da
+capa, véu, colunas, degrau do trilho e das coleções), e o refactor das duas seções editoriais sai
+**byte a byte idêntico** (`cmp`) nas capturas de antes e depois.
+
+**Ficou de fora, de propósito:** o coração de favorito e a linha de parcelamento **no card**. Não há
+lista de favoritos na loja, e a condição de parcelamento só chega pelo meio de pagamento — desenhar
+qualquer um dos dois seria a loja prometendo o que não tem.
+
 ### RV-010 · Calculadora de frete na PDP
 **Descrição:** campo de CEP com cálculo de custo e prazo na página de produto.
 **Tipo:** funcional · **Prioridade:** MÉDIA · **Complexidade:** baixa
@@ -541,14 +570,14 @@ Git, se o conteúdo ainda for válido.
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | Fase 0 | 4 | 1 | 3 | 0 | 0 | **3** (RV-001, RV-006, RV-014) |
 | Fase 1 | 15 | 3 | 9 | 3 | 0 | **5** (RV-002, RV-003, RV-017, RV-043, RV-044) |
-| Fase 2 | 7 | 0 | 0 | 5 | 2 | 0 |
+| Fase 2 | 8 | 0 | 1 | 5 | 2 | **1** (RV-047) |
 | Fase 3 | 7 | 0 | 0 | 4 | 3 | 0 |
 | Fase 4 | 12 | 0 | 0 | 0 | 12 | 0 |
-| **Total** | **45** | **4** | **12** | **12** | **17** | **8** |
+| **Total** | **46** | **4** | **13** | **12** | **17** | **9** |
 
 > **Um item cancelado:** o RV-015 (stop-gap com Stripe) saiu do backlog — ver a seção dele. Ele
 > **não** está contado nas linhas acima: a linha "Fase 0" já reflete a lista publicada sem ele, e o
-> efetivo é **45 itens**, não 46. (Esta tabela estava somando errado antes do RV-002: dizia 2 feitos
+> efetivo é **46 itens**, não 47. (Esta tabela estava somando errado antes do RV-002: dizia 2 feitos
 > na Fase 0, com o RV-006 também pronto, e 2 na Fase 1, com RV-043 e RV-044 prontos.)
 
 **Complexidade da Fase 0 + Fase 1 (entregável da inauguração):** 19 itens, sendo 4 de complexidade

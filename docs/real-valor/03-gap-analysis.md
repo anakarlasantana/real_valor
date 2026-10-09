@@ -17,14 +17,14 @@ profissional) · **MÉDIA** (melhoria importante) · **BAIXA** (melhoria futura)
 | **PDP — CTA** | "Add to cart" / "Out of stock" / "Select variant" | "Comprar" / "Esgotado" / "Selecione o tamanho" | Grande | Traduzir `product-actions` | **CRÍTICA** |
 | **Idioma (catálogo)** | "Sort by", "Latest Arrivals", "Price: Low -> High" | Rótulos pt-BR | Média | Traduzir `sort-products` | **ALTA** |
 | **Idioma (conta)** | "Sign in", "Orders", "Addresses", "Profile" | Rótulos pt-BR | Média | Traduzir `modules/account` + metadados | **ALTA** |
-| **Busca** | Não existe | Busca com sugestões na home e página de resultados | **Total** | Criar componente + rota | **ALTA** |
-| **Filtros** | Só ordenação (3 critérios) | Cor, tamanho, preço, disponibilidade — com contagem | **Total** | Implementar facetas em `refinement-list` | **ALTA** |
+| **Busca** | `/search?q=…` — faixa de abertura com campo, contagem e paginação | Busca com sugestões na home e página de resultados | **Fechado** | — (a sobreposição da referência virou página: sobreposição não tem URL) | ~~ALTA~~ — |
+| **Filtros** | **Cinco facetas** — categoria, tamanho, cor, faixa de preço e disponibilidade, com contagem lida do catálogo na tela | Cor, tamanho, preço, disponibilidade — com contagem | **Fechado** | — (faceta é regra: `lib/util/catalog-filters.ts`) | ~~ALTA~~ — |
 | **SEO — títulos** | `` `${title} | Medusa Store` `` vaza em produto, categoria e coleção | `%s | Real Valor` + descrição real | Média | Corrigir 3 `generateMetadata` | **ALTA** |
 | **SEO — cobertura** | Sem sitemap, sem robots, sem JSON-LD | Sitemap dinâmico + robots + Product/Offer schema | **Total** | Criar `sitemap.ts`, `robots.ts`, JSON-LD na PDP | **ALTA** |
 | **Frete — transportadora** | Opções manuais seedadas, preço fixo | Cálculo por peso × região ✅ | **Parcial** | Provider `tabela` feito; falta transportadora real (RV-046) | ~~ALTA~~ MÉDIA |
-| **PDP — parcelamento** | Não exibido | "6x de R$ X sem juros" e preço Pix | **Total** | Consumir a camada de pagamento | **ALTA** |
+| **PDP — parcelamento** | **Montado e apagado**: `installment-info` existe e a PDP já o alimenta — com `installments={null} pix={null}` | "6x de R$ X sem juros" e preço Pix | **Parcial** | Acender as duas pontas: o `describe()` do provedor e a regra de desconto do Pix (que a loja ainda não cadastrou) | **ALTA** |
 | **PDP — guia de medidas** | Não existe | Link ao lado do seletor de tamanho | **Total** | Modelar dado + criar página | **ALTA** |
-| **Home — vitrines** | 10 tipos de seção; `featured` com chips de categoria | Completa e editável | **Nenhum** | — | — |
+| **Home — vitrines** | 11 tipos de seção; `featured` com chips de categoria | Completa e editável | **Nenhum** | — | — |
 | **Header / Footer** | Conteúdo via CMS; drawer mobile | Completo | **Nenhum** | — | — |
 | **Carrinho** | Itens, quantidade, cupom, frete, mismatch banner, nudge | Completo | **Nenhum** | — | — |
 | **CMS** | Duas superfícies, upload, paleta, fontes, ordem | Completo | **Nenhum** | — | — |
