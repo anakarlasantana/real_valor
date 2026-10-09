@@ -48,10 +48,12 @@ describe("DEFAULT_HOME_SECTIONS", () => {
     expect(faltando).toEqual([])
   })
 
-  it("a home numera 1 a 10: o bloco ancorado em 1, 2, 3, 4 e 10, e a vitrine em 5 a 9", () => {
+  it("a home numera as casas ancoradas em 1, 2, 3, 4 e 10, e a vitrine nas livres (5 a 9 e 11)", () => {
     // É o desenho que o lojista lê no CRM: as fixas nas casas delas
     // (`FIXED_SECTION_POSITIONS`, no contrato) e as ordenáveis preenchendo as
-    // casas livres do meio, na ordem da página.
+    // casas livres, na ordem da página. A vitrine de hoje tem **seis**
+    // ordenáveis: a sexta (o Instagram) nasce em 11 porque a casa 10 é do
+    // rodapé, e a renumeração a pula (`order.ts`).
     expect(
       DEFAULT_HOME_SECTIONS.map(({ type, position }) => [type, position])
     ).toEqual([
@@ -61,10 +63,11 @@ describe("DEFAULT_HOME_SECTIONS", () => {
       ["benefits", 4],
       ["launches", 5],
       ["collections", 6],
-      ["featured", 7],
-      ["editorial", 8],
-      ["instagram", 9],
+      ["editorial", 7],
+      ["banner", 8],
+      ["featured", 9],
       ["footer", 10],
+      ["instagram", 11],
     ])
 
     for (const section of DEFAULT_HOME_SECTIONS) {

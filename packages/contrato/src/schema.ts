@@ -118,8 +118,22 @@ import {
  *      tira. A gravação que ainda mandar os campos velhos é recusada como campo
  *      desconhecido, e os que sobraram no `data` gravado são ignorados pela loja
  *      e caem fora na primeira gravação do formulário.
+ *
+ * v10 — a home ganhou a **faixa editorial** e a numeração mudou de tamanho. O
+ *      tipo novo é `banner` ("Banner editorial" no CRM): foto larga, eyebrow,
+ *      título com realce e botão para o catálogo — a última faixa do protótipo
+ *      redesenhado. Duas seções que já existiam ganharam os campos que a régua
+ *      pedia: o `hero` ganhou a `note` (a linha do canto da capa, uma por
+ *      faixa) e o `editorial` ganhou `eyebrow` e `titleEmphasis` (o realce do
+ *      título, desenhado em `<em>`). Com isso a vitrine passou a ter **seis**
+ *      seções ordenáveis, e a sexta nasce na **casa 11** — a casa 10 é do
+ *      rodapé, e a renumeração a pula (`FIXED_SECTION_POSITIONS`, e `order.ts`,
+ *      que é quem numera). Sem reescrever o registro (`make seed-schema`) o CRM
+ *      continua sem oferecer o tipo novo no diálogo de criação e a API admin
+ *      **recusa** os três campos novos como desconhecidos: quem valida é o
+ *      registro gravado, e não o contrato.
  */
-export const SCHEMA_VERSION = 9
+export const SCHEMA_VERSION = 10
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.

@@ -10,8 +10,8 @@
  *
  * As casas da home vêm do contrato (`FIXED_SECTION_POSITIONS`): 1 barra de
  * anúncio, 2 cabeçalho, 3 capa, 4 benefícios, 10 rodapé. As ordenáveis ficam nas
- * casas livres do meio — 5 a 9 com a vitrine de hoje — e a faixa completa (com
- * as ancoradas) é o que o CRM recebe no payload.
+ * casas livres — 5 a 9 e, a partir da sexta, 11, com a vitrine de hoje —, e a
+ * faixa completa (com as ancoradas) é o que o CRM recebe no payload.
  *
  * O segundo bloco é a porta por onde a ordem é publicada (R6.5): `readOrderIds`
  * (a forma do corpo), `orderErrors` (o que a lista do CRM tem de bater com o
@@ -85,9 +85,8 @@ describe("positionFor", () => {
   })
 
   it("pula a casa do rodapé: a sexta seção ordenável nasce em 11", () => {
-    // A casa 10 é do rodapé, e a renumeração não escreve nela — a numeração da
-    // home é 1 a 10 justamente porque as ordenáveis não passam por cima do
-    // bloco ancorado.
+    // A casa 10 é do rodapé, e a renumeração não escreve nela — é por isso que
+    // a faixa das ordenáveis a pula.
     expect(positionFor(5)).toBe(11)
     expect(positionFor(6)).toBe(12)
   })

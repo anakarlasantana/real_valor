@@ -256,7 +256,7 @@ describe("aparência por seção", () => {
  *
  * A posição de uma seção é a casa dela na página, e a faixa de casas é da
  * superfície (`CONTENT_SURFACES[i].order`). O que este bloco trava é o que dá
- * sentido a "1 a 10" na home: cada tipo do bloco ancorado tem uma casa, nenhuma
+ * sentido ao bloco ancorado da home: cada tipo dele tem uma casa, nenhuma
  * casa serve a dois tipos, e a faixa das seções ordenáveis **não começa** numa
  * casa ancorada — a renumeração as pula (`order.ts`), e uma faixa que começasse
  * na casa 1 escreveria em cima da barra de anúncio.

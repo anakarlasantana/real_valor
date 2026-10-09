@@ -2,8 +2,9 @@
  * A posição com que o "Restaurar padrão" cria cada seção que falta.
  *
  * O que este teste protege é a base que **já passou pelo CRM**: a numeração de
- * hoje é por **casas** (1 a 10, com o bloco ancorado em 1, 2, 3, 4 e 10), e uma
- * base antiga tem a vitrine em 100, 110, 120… (ou em 20, 30, 40…, antes disso).
+ * hoje é por **casas** (o bloco ancorado em 1, 2, 3, 4 e 10 e a vitrine nas
+ * livres — 5 a 9 e, a partir da sexta, 11), e uma base antiga tem a vitrine em
+ * 100, 110, 120… (ou em 20, 30, 40…, antes disso).
  * Copiar a posição do padrão ali fazia a seção nova nascer **antes da capa** — o
  * trilho de lançamentos apareceria acima da fotografia de abertura, e nada na
  * tela apontaria o motivo.
@@ -35,7 +36,7 @@ const order = (positions: { id: string; position: number }[]) =>
   [...positions].sort((a, b) => a.position - b.position).map(({ id }) => id)
 
 describe("planRestoredPositions", () => {
-  it("numa base migrada (casas 1 a 10), a seção que falta volta para a casa livre do vizinho", () => {
+  it("numa base migrada (casas por bloco), a seção que falta volta para a casa livre do vizinho", () => {
     // A base como a migration das casas a deixa — o bloco ancorado em 1, 2, 3, 4
     // e 10, e a vitrine nas casas livres —, sem o `lancamentos`: o lojista o
     // apagou, e a casa 5 (a dele no padrão) ficou vazia.
@@ -45,9 +46,10 @@ describe("planRestoredPositions", () => {
       { id: "hero", position: 3 },
       { id: "benefits", position: 4 },
       { id: "collections", position: 6 },
-      { id: "featured", position: 7 },
-      { id: "editorial", position: 8 },
-      { id: "instagram", position: 9 },
+      { id: "editorial", position: 7 },
+      { id: "banner", position: 8 },
+      { id: "featured", position: 9 },
+      { id: "instagram", position: 11 },
       { id: "footer", position: 10 },
     ]
 
@@ -63,10 +65,11 @@ describe("planRestoredPositions", () => {
       "benefits",
       "lancamentos",
       "collections",
-      "featured",
       "editorial",
-      "instagram",
+      "banner",
+      "featured",
       "footer",
+      "instagram",
     ])
   })
 
@@ -109,14 +112,15 @@ describe("planRestoredPositions", () => {
       "benefits",
       "lancamentos",
       "collections",
-      "featured",
       "editorial",
-      "instagram",
+      "banner",
+      "featured",
       "footer",
+      "instagram",
     ])
-    // As casas livres do meio, na ordem: nenhuma se repete, e nenhuma cai no
-    // bloco ancorado.
-    expect(positions).toEqual([5, 6, 7, 8, 9])
+    // As casas livres, na ordem: 5 a 9 e depois 11, porque a casa 10 é do
+    // rodapé — nenhuma se repete, e nenhuma cai no bloco ancorado.
+    expect(positions).toEqual([5, 6, 7, 8, 9, 11])
     expect(new Set(positions).size).toBe(positions.length)
   })
 

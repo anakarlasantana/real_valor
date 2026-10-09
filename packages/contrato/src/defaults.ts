@@ -103,6 +103,12 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
         ctaHref: "/store",
       },
     ],
+    /**
+     * A nota da capa — a linha do canto, a que o protótipo redesenhado escreve
+     * sobre a foto. É cópia nova (a capa não a tinha), e é **da faixa**: no
+     * carrossel ela não troca junto com a foto.
+     */
+    note: "Peças que acompanham quem você é — e quem está se tornando.",
   },
   /**
    * A faixa de benefícios. Fecha a **abertura da home** (casa 4) e nasce fixa,
@@ -113,26 +119,35 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     type: "benefits",
     enabled: true,
     position: 4,
+    /**
+     * Os **três** itens do protótipo redesenhado (a faixa nasceu com quatro).
+     *
+     * A cópia é a do protótipo, e é promessa comercial — frete grátis acima de
+     * R$ 499, 5% no Pix, dados protegidos. Fica gravada porque é ela que a régua
+     * desenha; quem confere se a loja cumpre (e troca a frase no CRM) é o
+     * lojista, como em qualquer outro texto do conteúdo padrão.
+     *
+     * As chaves de ícone são as que o registro da vitrine já tem: `delivery` é o
+     * caminhão, `price` a etiqueta e `quality` o selo de garantia. Um par
+     * `truck`/`sparkle`/`shield` novo exigiria chave nova no registro do
+     * storefront **e** no `ICON_LABELS` do contrato, que é a lista que o CRM
+     * oferece — três sinônimos para os mesmos desenhos.
+     */
     items: [
       {
-        icon: "quality",
-        title: "Qualidade",
-        subtitle: "que você sente",
+        icon: "delivery",
+        title: "Frete grátis",
+        subtitle: "Em compras acima de R$ 499",
       },
       {
         icon: "price",
-        title: "Preços acessíveis",
-        subtitle: "para a sua realidade",
+        title: "5% de desconto",
+        subtitle: "Para pagamentos via Pix",
       },
       {
-        icon: "sizes",
-        title: "Do PP ao GG",
-        subtitle: "sem limitações",
-      },
-      {
-        icon: "delivery",
-        title: "Entrega segura",
-        subtitle: "Para todo o Brasil",
+        icon: "quality",
+        title: "Compra segura",
+        subtitle: "Seus dados sempre protegidos",
       },
     ],
   },
@@ -187,24 +202,28 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
       },
     ],
   },
-  {
-    id: "featured",
-    type: "featured",
-    enabled: true,
-    position: 7,
-    eyebrow: "Shop",
-    title: "Peças em destaque",
-    subtitle:
-      "Uma vitrine editorial com navegação simples, foco no produto e preço sempre visível.",
-    viewAllLabel: "Ver todos os produtos",
-  },
+  /**
+   * A seção "Sobre" (o manifesto). Casa **7**: o protótipo redesenhado põe o
+   * manifesto logo antes da faixa editorial, e é essa a ordem que a loja lê.
+   */
   {
     id: "editorial",
     type: "editorial",
     enabled: true,
-    position: 8,
+    position: 7,
     script: "Vista o seu valor.",
-    title: "A alfaiataria que valoriza você, não o seu status.",
+    /**
+     * O eyebrow e o realce do título são os dois campos que a v10 acrescentou:
+     * com eles o título sai em duas vozes, como no protótipo ("Você não precisa
+     * provar nada." / "Só precisa se reconhecer.").
+     *
+     * A cópia do título continua sendo a da marca — o protótipo é a **régua do
+     * desenho**, e a frase com que a REAL VALOR se apresenta não é detalhe de
+     * layout. Quem a troca é o lojista, no CRM.
+     */
+    eyebrow: "NOSSA ESSÊNCIA",
+    title: "A alfaiataria que valoriza você,",
+    titleEmphasis: "não o seu status.",
     body: "A REAL VALOR acredita que elegância não é privilégio. É um direito. Criamos peças de alfaiataria feminina com estética sofisticada e preço acessível, para que mais mulheres possam se sentir bem vestidas na vida real.",
     ctaLabel: "Conheça a nossa história",
     ctaHref: "/store",
@@ -212,31 +231,47 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     imageAlt: "Detalhes de alfaiataria Real Valor",
     imagePosition: "left",
   },
+  /**
+   * A faixa editorial (`banner`, "Banner editorial" no CRM): a última faixa do
+   * protótipo redesenhado — a foto inteira, o eyebrow, o título em duas linhas
+   * e o botão para o catálogo. Casa **8**, logo depois do manifesto; os extras
+   * da loja (os destaques e o Instagram) ficam depois dela.
+   *
+   * A cópia é a do protótipo, palavra por palavra: aqui não havia cópia da
+   * marca para preservar — a seção é nova. A foto é a `/brand/story-2.jpg` (a
+   * outra do manifesto, que ainda não aparecia na home), e o destino do botão é
+   * `/store`, o mesmo das outras chamadas.
+   */
   {
-    id: "instagram",
-    type: "instagram",
+    id: "banner",
+    type: "banner",
+    enabled: true,
+    position: 8,
+    eyebrow: "REAL VALOR, REAL HISTÓRIA",
+    title: "Mais que roupa,",
+    titleEmphasis: "é sobre você.",
+    imageUrl: "/brand/story-2.jpg",
+    imageAlt: "Editorial Real Valor",
+    ctaLabel: "Descobrir a coleção",
+    ctaHref: "/store",
+  },
+  {
+    id: "featured",
+    type: "featured",
     enabled: true,
     position: 9,
-    handle: "@realvalor",
-    title: "Mais que roupas, é sobre você.",
-    images: [
-      { imageUrl: "/brand/story-1.jpg", imageAlt: "Real Valor no Instagram" },
-      { imageUrl: "/brand/story-2.jpg", imageAlt: "Real Valor no Instagram" },
-      {
-        imageUrl: "/brand/collection-1.jpg",
-        imageAlt: "Real Valor no Instagram",
-      },
-      {
-        imageUrl: "/brand/collection-2.jpg",
-        imageAlt: "Real Valor no Instagram",
-      },
-    ],
+    eyebrow: "Shop",
+    title: "Peças em destaque",
+    subtitle:
+      "Uma vitrine editorial com navegação simples, foco no produto e preço sempre visível.",
+    viewAllLabel: "Ver todos os produtos",
   },
   /**
    * Rodapé. Como o `nav`, não é uma seção da home: o layout o renderiza
-   * em todas as rotas. A casa dele é **10** — a última da numeração da home —,
-   * e é ela que fecha a faixa: as seções ordenáveis ocupam as casas livres do
-   * meio (5 a 9) e nunca nascem na 10 (`FIXED_SECTION_POSITIONS`, no contrato).
+   * em todas as rotas. A casa dele é **10** — a que fecha o bloco ancorado —, e
+   * é ela que a renumeração pula: as seções ordenáveis ocupam as casas livres
+   * (5 a 9 e, a partir da sexta, 11) e nunca nascem na 10
+   * (`FIXED_SECTION_POSITIONS`, no contrato).
    *
    * O fallback do storefront (`DEFAULT_FOOTER`) é derivado deste bloco pelo
    * gerador — não há segunda cópia.
@@ -274,6 +309,38 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
         icon: "instagram",
         label: "Instagram",
         href: "https://instagram.com/realvalor",
+      },
+    ],
+  },
+  /**
+   * O Instagram. É a **sexta seção ordenável** da vitrine, e por isso nasce na
+   * casa **11**: a casa 10 é do rodapé (`FIXED_SECTION_POSITIONS`), e a
+   * renumeração das ordenáveis a pula — 5, 6, 7, 8, 9 e 11. É também por isso
+   * que este bloco é o **último do arquivo**: a lista é escrita na ordem das
+   * casas, e a 11 vem depois da 10.
+   *
+   * O título deixou de ser "Mais que roupas, é sobre você.": essa linha passou a
+   * ser a da faixa editorial (`banner`), que é onde o protótipo a escreve. Duas
+   * faixas com o mesmo título na mesma página seriam repetição; o Instagram diz
+   * o que ele é — o convite para seguir o perfil.
+   */
+  {
+    id: "instagram",
+    type: "instagram",
+    enabled: true,
+    position: 11,
+    handle: "@realvalor",
+    title: "Siga a Real Valor",
+    images: [
+      { imageUrl: "/brand/story-1.jpg", imageAlt: "Real Valor no Instagram" },
+      { imageUrl: "/brand/story-2.jpg", imageAlt: "Real Valor no Instagram" },
+      {
+        imageUrl: "/brand/collection-1.jpg",
+        imageAlt: "Real Valor no Instagram",
+      },
+      {
+        imageUrl: "/brand/collection-2.jpg",
+        imageAlt: "Real Valor no Instagram",
       },
     ],
   },

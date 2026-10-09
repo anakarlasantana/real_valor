@@ -24,14 +24,14 @@
  *     3  capa (hero)       │ fixa mora sempre aqui, e nada a renumera
  *     4  benefícios        ┘
  *     5… 9  as seções ordenáveis — de 1 em 1, na ordem da tela
- *    10  rodapé            ← ancorada: fecha a numeração
+ *    10  rodapé            ← ancorada: fecha o bloco fixo
  *
- * Ou seja: a home inteira cabe em **1 a 10**, e o que o lojista ordena são as
- * casas livres do meio. A renumeração **pula** as casas ancoradas
- * (`reservedPositions`), então ela nunca colide com o bloco fixo: hoje as cinco
- * ordenáveis ficam em 5 a 9, e uma sexta nasceria em 11 — a casa 10 é do
- * rodapé. O tema, que não tem bloco fixo, numera de 10 em 10, como as estações
- * do `theme.json`.
+ * Ou seja: o bloco ancorado ocupa 1, 2, 3, 4 e 10, e o que o lojista ordena são
+ * as **casas livres** entre eles. A renumeração **pula** as casas ancoradas
+ * (`reservedPositions`), então ela nunca colide com o bloco fixo: hoje as seis
+ * ordenáveis da vitrine ficam em 5 a 9 e **11** — a casa 10 é do rodapé. O
+ * tema, que não tem bloco fixo, numera de 10 em 10, como as estações do
+ * `theme.json`.
  *
  * O que a regra protege é `position` repetida. A loja ordena por essa coluna
  * (`listSections`, com `order: { position: "ASC" }`), então duas seções com o
@@ -71,8 +71,8 @@ export const POSITION_STEP = 10
  * `reserved` são as casas ancoradas da superfície (as do bloco fixo, ver
  * `FIXED_SECTION_POSITIONS`): a numeração das seções ordenáveis as pula. Vai
  * junto porque o painel precisa prever o mesmo numeral que o servidor vai
- * gravar — com a home em 1 a 10, a sexta seção da vitrine recebe 11, e não a
- * casa 10, que é do rodapé.
+ * gravar — com o rodapé na casa 10, a sexta seção da vitrine recebe 11, e não a
+ * casa 10.
  */
 export type OrderFaixa = {
   first: number
@@ -201,7 +201,7 @@ export function nextPosition(
  * É o caso da seção do padrão que falta na base e volta pelo "Restaurar
  * padrão": o trilho de lançamentos entra depois da capa. A regra é a **casa
  * livre seguinte** da faixa — a que não é de ninguém, nem ancorada nem ocupada
- * por outra seção: com a home de 1 a 10 e a capa na casa 3, o trilho cai na 5
+ * por outra seção: com a capa na casa 3 e o rodapé na 10, o trilho cai na 5
  * (a 4 é da faixa de benefícios), se estiver livre.
  *
  * Não é "a posição do padrão": a numeração do padrão só vale numa base que

@@ -225,7 +225,7 @@ function creatableTypes(
  *
  * A faixa chega como dado (`order`, no payload) com as casas **ancoradas**
  * (`reserved`): na home, a casa 10 é do rodapé, e a renumeração a pula — as
- * cinco seções ordenáveis ficam em 5 a 9 e a sexta nasce em 11. O painel precisa
+ * ordenáveis ficam em 5 a 9 e, a partir da sexta, em 11. O painel precisa
  * pular as mesmas casas; se ele só multiplicasse `first + place * step`, o
  * numeral da tela seria um que a gravação não segue — e um numeral que discorda
  * da ordem visível é pior do que nenhum.

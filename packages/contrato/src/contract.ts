@@ -135,6 +135,17 @@ export type HeroSection = SectionBase & {
    * desenha capa: a seção some da página em vez de virar uma faixa vazia.
    */
   slides: HeroSlide[]
+  /**
+   * A nota da capa: a linha que a loja escreve no canto da faixa — o recado
+   * que fecha a foto, e não a cópia de um slide.
+   *
+   * Mora na **seção**, e não no slide (`HeroSlide`), porque é isso que ela é:
+   * a capa mostra uma nota só e, no carrossel, ela não troca junto com a foto.
+   * Não é o caso dos campos que a v9 tirou do `hero` (os que duplicavam a cópia
+   * do slide e não chegavam à loja): esta é a **única** forma de escrever a
+   * nota, e quem a desenha é a vitrine. Vazia, a nota não é desenhada.
+   */
+  note?: string
 }
 
 /**
@@ -288,13 +299,59 @@ export type EditorialSection = SectionBase &
     type: "editorial"
     /** Linha manuscrita em Allura. */
     script: string
+    /**
+     * O eyebrow acima do título (ex.: "NOSSA ESSÊNCIA") — a etiqueta que diz
+     * de que o bloco fala, no mesmo lugar em que as outras seções a têm.
+     */
+    eyebrow?: string
     title: string
+    /**
+     * O realce do título: a segunda linha dele, em itálico (`<em>`) — o jeito
+     * que o protótipo escreve o título em duas vozes ("Você não precisa provar
+     * nada." / "Só precisa se reconhecer."). Vazio, o título é uma linha só.
+     */
+    titleEmphasis?: string
     body: string
     ctaLabel: string
     ctaHref: string
     imageUrl: string
     imageAlt: string
     imagePosition: "left" | "right"
+  }
+
+/**
+ * A faixa editorial: uma foto larga com a cópia por cima e um botão que leva ao
+ * catálogo — a última faixa da home no protótipo redesenhado.
+ *
+ * **Não é uma segunda `editorial`** (a seção "Sobre"): aquela é o manifesto —
+ * a foto ao lado do texto (`imagePosition`), a frase manuscrita e o texto
+ * corrido da marca. Esta é uma faixa de passagem: a foto inteira, uma linha de
+ * eyebrow, o título em duas partes e o botão. Também não é o `hero`: a capa
+ * abre a página, e esta faixa fecha o conteúdo, depois do manifesto.
+ *
+ * A foto **é** o fundo da faixa (como no hero), então não há campo de posição
+ * de imagem nem trilho de fundo: o que a seção veste é o título.
+ */
+export type BannerSection = SectionBase &
+  SectionAppearance & {
+    type: "banner"
+    /**
+     * O eyebrow acima do título (ex.: "REAL VALOR, REAL HISTÓRIA"). É opcional
+     * como no `editorial`: em branco, a faixa desenha só o título — e o lojista
+     * pode tirá-lo sem trocar de seção.
+     */
+    eyebrow?: string
+    title: string
+    /**
+     * O realce do título: a segunda linha dele, em itálico (`<em>`) — a que o
+     * protótipo escreve depois da quebra ("Mais que roupa," / "é sobre você.").
+     * Vazio, o título é uma linha só.
+     */
+    titleEmphasis?: string
+    imageUrl: string
+    imageAlt: string
+    ctaLabel: string
+    ctaHref: string
   }
 
 export type InstagramSection = SectionBase &
@@ -435,6 +492,7 @@ export type HomeSection =
   | FeaturedSection
   | LaunchesSection
   | EditorialSection
+  | BannerSection
   | InstagramSection
   | NavSection
   | FooterSection
@@ -448,12 +506,15 @@ export const SECTION_TYPES = [
   // primeira casa livre da vitrine (5). A ordem deste array é a ordem do
   // seletor de tipo no CRM e a ordem em que as seções se leem na página — a
   // mesma das casas ancoradas (`FIXED_SECTION_POSITIONS`) e da faixa da
-  // vitrine (`order.ts`).
+  // vitrine (`order.ts`): 5 lançamentos, 6 coleções, 7 Sobre, 8 a faixa
+  // editorial, 9 os destaques e 11 o Instagram — a casa 10 é do rodapé, e a
+  // numeração das ordenáveis a pula.
   "benefits",
   "launches",
   "collections",
-  "featured",
   "editorial",
+  "banner",
+  "featured",
   "instagram",
   // Não é uma seção da home: é o cabeçalho da loja, renderizado pelo
   // layout em todas as rotas (como a barra de anúncio).
@@ -711,8 +772,10 @@ export function themeFontField(role: FontRole): string {
  *
  * A faixa de cada superfície (`CONTENT_SURFACES[i].order`) começa na primeira
  * casa livre depois do bloco do topo e **pula** as casas ancoradas (`order.ts`):
- * com a home de 1 a 10, as cinco seções ordenáveis ficam em 5 a 9, e a sexta
- * nasceria em 11 — a casa 10 é do rodapé, e nenhuma seção ordenável a ocupa.
+ * as ordenáveis caem nas casas livres em ordem — 5, 6, 7, 8, 9 e depois **11**,
+ * porque a casa 10 é do rodapé e nenhuma seção ordenável a ocupa. A vitrine de
+ * hoje usa as seis: lançamentos, coleções, Sobre, a faixa editorial e os
+ * destaques (5 a 9) e o Instagram (11).
  *
  * Mora **abaixo do bloco compartilhado** porque o storefront não precisa dela:
  * ele ordena por `position` e resolve o cromo por `type`
@@ -1051,6 +1114,15 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       kind: "list:hero-slide",
       help: "Um item por capa, na ordem em que aparecem. Um item só é a capa estática; dois ou mais viram carrossel automático. Sem nenhum item a capa não é desenhada.",
     },
+    // A nota da capa: é da faixa, não do slide — no carrossel ela não troca
+    // junto com a foto. Vem depois dos slides porque é o último recado da capa,
+    // não porque a posição mude o que a loja desenha.
+    {
+      name: "note",
+      label: "Nota da capa",
+      kind: "text",
+      help: 'A linha do canto da capa — o recado que fecha a foto, uma vez só, para a faixa inteira. Ex.: "Peças que acompanham quem você é — e quem está se tornando.". Em branco, a nota não é desenhada.',
+    },
   ],
   launches: [
     { name: "eyebrow", label: "Eyebrow", kind: "text" },
@@ -1149,8 +1221,20 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     // A frase manuscrita é o destaque do bloco (a seção "Sobre").
     { name: "script", label: "Frase manuscrita", kind: "text" },
     ...appearanceDetails("script"),
+    // O eyebrow entra **depois** do trilho de propósito: o `attachedTo` dele é
+    // o `script`, e a cor de detalhes vale para os dois (eyebrow, frase
+    // manuscrita e realce do título são o mesmo destaque na seção).
+    { name: "eyebrow", label: "Eyebrow", kind: "text" },
     { name: "title", label: "Título", kind: "text", required: true },
-    ...appearanceTitles("title"),
+    {
+      name: "titleEmphasis",
+      label: "Realce do título",
+      kind: "text",
+      help: "A segunda linha do título, em itálico — a que a loja desenha em <em>. Em branco, o título é uma linha só.",
+    },
+    // O trilho dos títulos veste os dois campos do título: fica abaixo do
+    // segundo, que é o último que ele muda.
+    ...appearanceTitles("titleEmphasis"),
     {
       name: "body",
       label: "Texto (conceito e história)",
@@ -1177,6 +1261,32 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     },
     // O fundo fecha a seção: é a única escolha que vale para o bloco todo.
     ...appearanceBackground("imagePosition"),
+  ],
+  banner: [
+    {
+      name: "imageUrl",
+      label: "Imagem",
+      kind: "image",
+      // A foto é o fundo inteiro da faixa: sem ela não há faixa nenhuma, e por
+      // isso ela é obrigatória — a API recusa salvar a seção sem foto.
+      required: true,
+      help: "A foto que ocupa a faixa inteira. Envie pelo botão, ou informe um caminho do site (ex.: /brand/story-2.jpg) ou uma URL.",
+    },
+    { name: "imageAlt", label: "Imagem (alt)", kind: "text" },
+    { name: "eyebrow", label: "Eyebrow", kind: "text" },
+    { name: "title", label: "Título", kind: "text", required: true },
+    {
+      name: "titleEmphasis",
+      label: "Realce do título",
+      kind: "text",
+      help: "A segunda linha do título, em itálico — a que a loja desenha em <em>. Em branco, o título é uma linha só.",
+    },
+    // Como no hero, o trilho veste a cópia sobre a foto: a fonte e a cor valem
+    // para o título inteiro (as duas linhas). Sem trilho de fundo e sem o de
+    // detalhes: o fundo é a fotografia, e o eyebrow é a única linha de detalhe.
+    ...appearanceTitles("titleEmphasis"),
+    { name: "ctaLabel", label: "Texto do botão", kind: "text" },
+    { name: "ctaHref", label: "Link do botão", kind: "text" },
   ],
   instagram: [
     { name: "handle", label: "Perfil", kind: "text" },
@@ -1264,6 +1374,7 @@ export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   collections: "Coleções em destaque",
   featured: "Peças em destaque",
   editorial: "Sobre",
+  banner: "Banner editorial",
   instagram: "Instagram",
   nav: "Cabeçalho",
   footer: "Rodapé",
@@ -1556,9 +1667,10 @@ export type ContentSurfaceSpec = {
    * A faixa da numeração da superfície: em que casa cai a primeira seção
    * ordenável e de quanto em quanto a renumeração do "Salvar ordem" anda.
    *
-   * A vitrine numera **de 1 em 1** — a home inteira cabe em 1 a 10: o bloco
-   * ancorado em 1, 2, 3, 4 e 10 (`FIXED_SECTION_POSITIONS`) e as seções
-   * ordenáveis em 5 a 9. O tema numera **de 10 em 10**, como as estações do
+   * A vitrine numera **de 1 em 1**: o bloco ancorado em 1, 2, 3, 4 e 10
+   * (`FIXED_SECTION_POSITIONS`) e as seções ordenáveis nas casas livres — 5 a
+   * 9, e a partir da sexta em 11, porque a casa 10 é do rodapé e a renumeração a
+   * pula (`order.ts`). O tema numera **de 10 em 10**, como as estações do
    * `theme.json` (`THEME_SECTIONS`, em `themes.ts`). A faixa de cada superfície
    * começa depois do bloco ancorado dela — o tema não tem bloco fixo nenhum,
    * então começa na própria folga (10).
@@ -1584,7 +1696,8 @@ export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
       "anúncio, o cabeçalho, a capa e a faixa de benefícios, que abrem a " +
       "página, mais o rodapé, que a fecha) não têm ordem: elas moram sempre " +
       "nas mesmas casas — 1, 2, 3, 4 e 10 —, e as seções ordenáveis ocupam as " +
-      "do meio, de 5 a 9. A aparência entra junto do " +
+      "casas livres do meio: 5 a 9 e, a partir da sexta, 11 (a casa 10 é do " +
+      "rodapé). A aparência entra junto do " +
       "campo que ela muda: em branco, a seção segue o tema da loja — inclusive " +
       "quando o tema é sazonal.",
     types: SECTION_TYPES,
