@@ -1,5 +1,5 @@
 import { Dialog, Transition } from "@headlessui/react"
-import { Button, clx } from "@medusajs/ui"
+import { clx } from "@medusajs/ui"
 import React, { Fragment, useMemo } from "react"
 
 import useToggleState from "@lib/hooks/use-toggle-state"
@@ -76,65 +76,67 @@ const MobileActions: React.FC<MobileActionsProps> = ({
           leaveTo="opacity-0"
         >
           <div
-            className="bg-white flex flex-col gap-y-3 justify-center items-center text-large-regular p-4 h-full w-full border-t border-gray-200"
+            className="flex h-full w-full flex-col items-center justify-center gap-y-3 border-t border-rv-border bg-rv-surface p-4 text-large-regular"
             data-testid="mobile-actions"
           >
             <div className="flex items-center gap-x-2">
               <span data-testid="mobile-title">{product.title}</span>
-              <span>—</span>
+              <span aria-hidden="true">—</span>
               {selectedPrice ? (
-                <div className="flex items-end gap-x-2 text-ui-fg-base">
+                <div className="flex items-end gap-x-2 text-rv-preto">
                   {selectedPrice.price_type === "sale" && (
-                    <p>
-                      <span className="line-through text-small-regular">
-                        {selectedPrice.original_price}
-                      </span>
-                    </p>
+                    <span className="rv-price-was">
+                      {selectedPrice.original_price}
+                    </span>
                   )}
                   <span
-                    className={clx({
-                      "text-ui-fg-interactive":
-                        selectedPrice.price_type === "sale",
+                    className={clx("rv-price-value", {
+                      "rv-price-sale": selectedPrice.price_type === "sale",
                     })}
                   >
                     {selectedPrice.calculated_price}
                   </span>
                 </div>
-              ) : (
-                <div></div>
-              )}
+              ) : null}
             </div>
-            <div className={clx("grid grid-cols-2 w-full gap-x-4", {
-              "!grid-cols-1": isSimple
-            })}>
-              {!isSimple && <Button
-                onClick={open}
-                variant="secondary"
-                className="w-full"
-                data-testid="mobile-actions-button"
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span>
-                    {variant
-                      ? Object.values(options).join(" / ")
-                      : "Escolher opções"}
+            <div
+              className={clx("grid w-full gap-x-4", {
+                "grid-cols-2": !isSimple,
+                "grid-cols-1": isSimple,
+              })}
+            >
+              {!isSimple && (
+                <button
+                  type="button"
+                  onClick={open}
+                  className="rv-btn rv-btn-secondary w-full"
+                  data-testid="mobile-actions-button"
+                >
+                  <span className="flex w-full items-center justify-between">
+                    <span>
+                      {variant
+                        ? Object.values(options).join(" / ")
+                        : "Escolher opções"}
+                    </span>
+                    <ChevronDown aria-hidden="true" focusable="false" />
                   </span>
-                  <ChevronDown />
-                </div>
-              </Button>}
-              <Button
+                </button>
+              )}
+              <button
+                type="button"
                 onClick={handleAddToCart}
-                disabled={!inStock || !variant}
-                className="w-full"
-                isLoading={isAdding}
+                disabled={!inStock || !variant || isAdding}
+                className="rv-btn rv-btn-primary w-full"
                 data-testid="mobile-cart-button"
               >
-                {!variant
-                  ? "Selecione o tamanho"
-                  : !inStock
-                  ? "Esgotado"
-                  : "Comprar"}
-              </Button>
+                {isAdding
+                  ? "Adicionando…"
+                  : !variant
+                    ? "Selecione o tamanho"
+                    : !inStock
+                      ? "Esgotado"
+                      : "Comprar"}
+              </button>
             </div>
           </div>
         </Transition>
@@ -171,13 +173,13 @@ const MobileActions: React.FC<MobileActionsProps> = ({
                   <div className="w-full flex justify-end pr-6">
                     <button
                       onClick={close}
-                      className="bg-white w-12 h-12 rounded-full text-ui-fg-base flex justify-center items-center"
+                      className="rv-icon-btn bg-rv-surface"
                       data-testid="close-modal-button"
                     >
                       <X />
                     </button>
                   </div>
-                  <div className="bg-white px-6 py-12">
+                  <div className="bg-rv-surface px-6 py-12">
                     {(product.variants?.length ?? 0) > 1 && (
                       <div className="flex flex-col gap-y-6">
                         {(product.options || []).map((option) => {

@@ -47,17 +47,19 @@ export default async function RelatedProducts({
   }
 
   return (
-    <div className="product-page-constraint">
-      <div className="flex flex-col items-center text-center mb-16">
-        <span className="text-base-regular text-gray-600 mb-6">
-          Related products
-        </span>
-        <p className="text-2xl-regular text-ui-fg-base max-w-lg">
-          You might also want to check out these products.
-        </p>
+    <div>
+      {/* O título da seção é o mesmo das seções da vitrine (eyebrow + display),
+          e a cópia é a da referência — "Complete o look / Escolhidos para você".
+          Era "Related products / You might also want to check out these
+          products.", em inglês, numa loja pt-BR. */}
+      <div className="mb-10 flex flex-col gap-y-2">
+        <p className="rv-eyebrow rv-section-accent">Complete o look</p>
+        <h2 className="rv-display rv-section-heading text-[28px] leading-tight small:text-[40px]">
+          Escolhidos para você
+        </h2>
       </div>
 
-      <ul className="grid grid-cols-2 small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-8">
+      <ul className="grid grid-cols-2 gap-x-6 gap-y-8 small:grid-cols-3 medium:grid-cols-4">
         {products.map((product) => (
           <li key={product.id}>
             <Product region={region} product={product} />

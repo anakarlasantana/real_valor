@@ -28,7 +28,7 @@ export type NavLinkProps = {
   label: string
   /**
    * `text` → só o rótulo (menu do desktop)
-   * `icon` → só o ícone, 40px, com contador opcional (cluster da direita)
+   * `icon` → só o ícone, no alvo de toque da casa (`.rv-icon-btn`)
    * `row`  → ícone + rótulo (menu mobile, onde não há tooltip)
    */
   variant?: "text" | "icon" | "row"
@@ -51,9 +51,19 @@ function anchorId(href: string): string | null {
   return HOME_ANCHOR.exec(href)?.[1] ?? null
 }
 
+/*
+ * A forma de cada variante mora em `brand.css`, não aqui.
+ *
+ * A variante `icon` era a exceção — uma dúzia de utilitários escritos na
+ * mão, com `focus-visible:outline-none` no meio. Isso desligava o anel de
+ * foco que o fim de `brand.css` garante a **todo** elemento focável da
+ * loja, e a regra de lá é explícita: nenhum componente escreve
+ * `outline: none`. Agora a variante só aponta para a classe da casa, e o
+ * foco volta a ser um só.
+ */
 const BASE_CLASSES: Record<NonNullable<NavLinkProps["variant"]>, string> = {
   text: "transition-colors hover:text-rv-rose",
-  icon: "relative inline-flex h-10 w-10 items-center justify-center rounded-full text-rv-grafite transition-colors hover:text-rv-rose focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rv-rose",
+  icon: "rv-icon-btn",
   row: "flex items-center gap-x-3 text-base text-rv-cacao transition-colors hover:text-rv-rose",
 }
 
@@ -114,7 +124,7 @@ export default function NavLink({
 
   // Nas variantes com ícone a chave pode chegar vazia (item recém-criado
   // no admin): o registro devolve o ícone padrão para o rótulo não vazar
-  // para dentro de um botão de 40px. `text` não desenha ícone nenhum.
+  // para dentro do alvo de toque. `text` não desenha ícone nenhum.
   const Icon = variant === "text" ? null : resolveIcon(icon ?? "")
 
   const content: ReactNode = !Icon ? (
@@ -132,9 +142,7 @@ export default function NavLink({
     <>
       <Icon className="h-5 w-5" aria-hidden="true" focusable="false" />
       {typeof count === "number" && count > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rv-rose px-1 text-[10px] font-semibold leading-none text-rv-offwhite">
-          {count}
-        </span>
+        <span className="rv-cart-badge">{count}</span>
       )}
     </>
   )

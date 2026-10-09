@@ -3,6 +3,7 @@ import { heroSlides, type HeroSlide } from "@lib/util/hero"
 import { resolveMediaUrl } from "@lib/util/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
+import { type CSSProperties } from "react"
 
 import HeroCarousel from "./carousel"
 
@@ -15,10 +16,12 @@ import HeroCarousel from "./carousel"
  * `benefits-bar`.
  *
  * O véu é o gradiente da esquerda para a direita: escuro atrás da cópia e
- * quase transparente em 75% da largura, então a foto continua visível enquanto
- * o texto branco mantém contraste. A força é a constante `SCRIM` abaixo — o tom
- * é um cacau translúcido para a capa ficar dentro da paleta da marca em vez de
- * preto puro.
+ * quase transparente antes de 3/4 da largura, então a foto continua visível
+ * enquanto o texto branco mantém contraste. A força é a constante `SCRIM` abaixo
+ * — o tom é um cacau translúcido para a capa ficar dentro da paleta da marca em
+ * vez de preto puro —, e o **desenho** do gradiente (onde cada degrau cai, e o
+ * fato de ele deitar no celular, onde a cópia desce para o pé da foto) está em
+ * `heroScrimVars` e em `brand.css`. A força é um número; a geometria é da régua.
  *
  * Era um campo do conteúdo (`overlay`, "Scrim (0 a 1)") até a v9, quando a capa
  * ficou só com a lista de slides: a força do véu é valor de **desenho**, e não
@@ -66,10 +69,37 @@ import HeroCarousel from "./carousel"
  * A força do véu escuro da capa, de 0 (foto limpa) a 1 (cacau sólido).
  *
  * Constante do render desde a v9 — era o campo `overlay` do conteúdo. 0.75 é o
- * valor que estava gravado quando o campo saiu do formulário; o protótipo usa
- * .72 caindo para .02 em 75% da largura (o gradiente abaixo).
+ * valor que estava gravado quando o campo saiu do formulário, e é o **único**
+ * número desta decisão: os degraus dos dois gradientes saem dele (ver
+ * `heroScrimVars`).
+ *
+ * São **dois** véus, e não um, porque a régua deita o gradiente quando a cópia
+ * muda de lugar: deitado no desktop (escuro na esquerda, onde o texto está, e
+ * dissolvendo antes de 3/4 da largura) e **em pé** no celular, onde a cópia passa
+ * a morar no pé da foto. Os dois saem daqui como variáveis CSS e quem escolhe
+ * qual vale é a media query do `.rv-hero-scrim` em `brand.css`.
  */
 const SCRIM = 0.75
+
+/**
+ * Os dois véus da capa, para o `style` do elemento.
+ *
+ * A régua escreve três pontos em cada um (`rgba(23,18,17,.76) → .35 em 48% →
+ * .04 em 72%`, e `.78 → .04 em 80%` no celular). O que chega aqui é o **mesmo
+ * desenho**, com o número da casa no lugar do dela: o meio a 46% da força (o .35
+ * da régua é 46% do .76 dela) e o pé do véu em pé três centésimos acima do topo
+ * do deitado (a régua: .78 contra .76) — porque lá embaixo o texto fica sobre a
+ * foto, sem o lado claro para escapar.
+ */
+function heroScrimVars(overlay: number): CSSProperties {
+  const mid = Number((overlay * 0.46).toFixed(3))
+  const foot = Number(Math.min(1, overlay + 0.03).toFixed(3))
+
+  return {
+    "--rv-hero-scrim-x": `linear-gradient(90deg, rgba(23,18,17,${overlay}) 0%, rgba(23,18,17,${mid}) 48%, rgba(23,18,17,0.02) 72%)`,
+    "--rv-hero-scrim-y": `linear-gradient(0deg, rgba(23,18,17,${foot}) 0%, rgba(23,18,17,0.04) 80%)`,
+  } as CSSProperties
+}
 
 export default function Hero({ section }: { section: HeroSection }) {
   const overlay = SCRIM
@@ -104,6 +134,15 @@ export default function Hero({ section }: { section: HeroSection }) {
       ) : (
         <HeroPane slide={slides[0]} overlay={overlay} priority />
       )}
+
+      {/*
+        A nota da capa: o recado do canto inferior direito, em itálico — o
+        mesmo lugar e o mesmo tom do protótipo. Fica **fora** do carrossel de
+        propósito: é da faixa, não do slide, então não rola junto com a foto.
+        Abaixo do ponto de quebra ela não é desenhada (o canto é onde a cópia
+        do slide termina no celular).
+      */}
+      {section.note && <p className="rv-display rv-hero-note">{section.note}</p>}
     </section>
   )
 }
@@ -117,6 +156,13 @@ function heroSlideId(index: number): string {
  * Uma capa: a foto, o véu e a cópia. É o mesmo bloco para a capa única e para
  * cada slide do carrossel — o que muda entre os dois casos é quem o envolve, e
  * é por isso que ele é um componente e não um trecho copiado duas vezes.
+ *
+ * **O desenho da capa mora em `brand.css`** (`.rv-hero` e a família `rv-hero-*`),
+ * e não em utilitários aqui: a régua da capa é uma só — altura, véu, enquadramento
+ * da foto, posição da cópia e tamanho do título —, e a media query do celular
+ * precisa virar três das cinco de uma vez (a cópia desce, o véu deita, o
+ * enquadramento muda). Em utilitário isso seria um `small:` atrás do outro no
+ * mesmo `className`, que é como o desenho fica impossível de ler.
  */
 function HeroPane({
   slide,
@@ -127,11 +173,10 @@ function HeroPane({
   overlay: number
   priority?: boolean
 }) {
-  const midOverlay = Number((overlay * 0.62).toFixed(3))
   const image = resolveMediaUrl(slide.imageUrl)
 
   return (
-    <div className="relative flex min-h-[560px] items-center small:min-h-[580px]">
+    <div className="rv-hero">
       {image && (
         <Image
           src={image}
@@ -139,54 +184,39 @@ function HeroPane({
           fill
           priority={priority}
           sizes="100vw"
-          className="object-cover object-center"
+          className="rv-hero-photo object-cover"
         />
       )}
 
-      {/* Scrim: cacao fading to transparent across the width. */}
+      {/* Os dois véus (deitado e em pé) chegam em variáveis: quem escolhe qual
+          vale é a media query, em `.rv-hero-scrim` — ver `heroScrimVars`. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(90deg, rgba(27,15,12,${overlay}) 0%, rgba(27,15,12,${midOverlay}) 35%, rgba(27,15,12,0.02) 75%)`,
-        }}
+        className="rv-hero-scrim"
+        style={heroScrimVars(overlay)}
       />
 
-      <div className="relative z-10 w-full">
-        <div className="rv-container">
-          <div className="rv-section-pad max-w-[620px]">
-            {slide.eyebrow && (
-              <p className="rv-eyebrow rv-section-text-inherit mb-5">
-                {slide.eyebrow}
-              </p>
-            )}
+      <div className="rv-hero-copy">
+        {slide.eyebrow && (
+          <p className="rv-eyebrow rv-hero-eyebrow">{slide.eyebrow}</p>
+        )}
 
-            <h1 className="rv-display rv-section-heading-onmedia text-[38px] leading-[1.08] small:text-[54px] xlarge:text-[68px]">
-              {slide.headline}{" "}
-              {slide.headlineEmphasis && (
-                <em className="rv-section-accent-onmedia italic">
-                  {slide.headlineEmphasis}
-                </em>
-              )}
-            </h1>
+        <h1 className="rv-display rv-hero-title">
+          {slide.headline}{" "}
+          {slide.headlineEmphasis && <em>{slide.headlineEmphasis}</em>}
+        </h1>
 
-            {slide.subtitle && (
-              <p className="rv-section-text-inherit mt-6 max-w-[440px] text-base leading-relaxed">
-                {slide.subtitle}
-              </p>
-            )}
+        {slide.subtitle && <p className="rv-hero-lede">{slide.subtitle}</p>}
 
-            {slide.ctaLabel && (
-              <LocalizedClientLink
-                href={slide.ctaHref}
-                className="rv-eyebrow rv-section-accent-fill mt-9 inline-flex items-center justify-center rounded-[var(--rv-radius)] px-8 py-4 transition-colors duration-200 ease-in hover:bg-rv-rose-strong"
-                data-testid="hero-cta"
-              >
-                {slide.ctaLabel}
-              </LocalizedClientLink>
-            )}
-          </div>
-        </div>
+        {slide.ctaLabel && (
+          <LocalizedClientLink
+            href={slide.ctaHref}
+            className="rv-eyebrow rv-section-accent-fill rv-hero-cta inline-flex items-center justify-center"
+            data-testid="hero-cta"
+          >
+            {slide.ctaLabel}
+          </LocalizedClientLink>
+        )}
       </div>
     </div>
   )

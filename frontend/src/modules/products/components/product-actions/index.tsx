@@ -5,14 +5,13 @@ import { useIntersection } from "@lib/hooks/use-in-view"
 import { variantIsAvailable } from "@lib/util/product-availability"
 import { coresDoProduto } from "@lib/util/product-enrichment"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@medusajs/ui"
-import Divider from "@modules/common/components/divider"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { isEqual } from "lodash"
 import { useParams, usePathname, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import ProductStatusChip from "../product-status-chip"
+import ShippingQuote from "../shipping-quote"
 import MobileActions from "./mobile-actions"
 import { useRouter } from "next/navigation"
 
@@ -132,72 +131,85 @@ export default function ProductActions({
   }
 
   return (
-    <>
-      <div className="flex flex-col gap-y-2" ref={actionsRef}>
-        <div>
-          {(product.variants?.length ?? 0) > 1 && (
-            <div className="flex flex-col gap-y-4">
-              {(product.options || []).map((option) => {
-                return (
-                  <div key={option.id}>
-                    <OptionSelect
-                      option={option}
-                      current={options[option.id]}
-                      updateOption={setOptionValue}
-                      title={option.title ?? ""}
-                      cores={cores}
-                      data-testid="product-options"
-                      disabled={!!disabled || isAdding}
-                    />
-                  </div>
-                )
-              })}
-              <Divider />
-            </div>
-          )}
-        </div>
+    <div className="flex flex-col" ref={actionsRef}>
+      {/* O preço abre o resumo, logo abaixo do título: é a primeira pergunta
+          depois de "que peça é essa". */}
+      <ProductPrice product={product} variant={selectedVariant} />
 
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <ProductPrice product={product} variant={selectedVariant} />
-          {/* O chip ao lado do preço: o estado da peça é a última informação
-              antes da decisão, e é aqui que ele responde "e se eu clicar?".
-              Ele é do produto (não do variant selecionado) — é o que o
-              lojista escreveu no catálogo, ou o que o estoque do produto diz. */}
-          <ProductStatusChip product={product} />
-        </div>
+      {/* O chip logo abaixo do preço: o estado da peça é a última informação
+          antes da decisão, e é aqui que ele responde "e se eu clicar?". Ele é do
+          produto (não do variant selecionado) — é o que o lojista escreveu no
+          catálogo, ou o que o estoque do produto diz. */}
+      <div className="mb-2 flex items-center">
+        <ProductStatusChip product={product} />
+      </div>
 
-        <Button
-          onClick={handleAddToCart}
-          disabled={
-            !inStock ||
-            !selectedVariant ||
-            !!disabled ||
-            isAdding ||
-            !isValidVariant
-          }
-          variant="primary"
-          className="w-full h-10"
-          isLoading={isAdding}
-          data-testid="add-product-button"
-        >
-          {!selectedVariant && !options
+      {/* Os seletores só aparecem quando há escolha a fazer: peça de variante
+          única já vem resolvida (o `useEffect` acima), e uma fileira de um botão
+          só é ruído entre o preço e o botão de comprar. */}
+      {(product.variants?.length ?? 0) > 1 && (
+        <div className="flex flex-col">
+          {(product.options || []).map((option) => (
+            <OptionSelect
+              key={option.id}
+              option={option}
+              current={options[option.id]}
+              updateOption={setOptionValue}
+              title={option.title ?? ""}
+              cores={cores}
+              data-testid="product-options"
+              disabled={!!disabled || isAdding}
+            />
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleAddToCart}
+        disabled={
+          !inStock || !selectedVariant || !!disabled || isAdding || !isValidVariant
+        }
+        className="rv-btn rv-btn-primary rv-add-button"
+        data-testid="add-product-button"
+      >
+        {isAdding
+          ? "Adicionando…"
+          : !selectedVariant && !options
             ? "Selecione o tamanho"
             : !inStock || !isValidVariant
-            ? "Esgotado"
-            : "Comprar"}
-        </Button>
-        <MobileActions
-          product={product}
-          variant={selectedVariant}
-          options={options}
-          updateOptions={setOptionValue}
-          inStock={inStock}
-          handleAddToCart={handleAddToCart}
-          isAdding={isAdding}
-          show={!inView}
-          optionsDisabled={!!disabled || isAdding}
-        />
-      </div>
-    </>
+              ? "Esgotado"
+              : "Comprar"}
+      </button>
+
+      {/*
+        O frete e o prazo, **abaixo do botão** — a última pergunta de quem decide
+        ("chega até mim?"), e a que não precisa de resposta para a compra
+        acontecer.
+
+        A referência desenha aqui um campo de CEP que responde "3 a 5 dias úteis,
+        grátis" para qualquer CEP digitado: não é cálculo, é promessa por escrito,
+        e é por isso que este bloco nunca foi portado. Ele agora está montado com o
+        contrato invertido — só aparece com **opção de entrega real** calculada
+        para o CEP (ver `shipping-quote`), e sem ela devolve `null`. O dado vem das
+        opções de frete da região, e o adapter que as calcula para o CEP é o
+        próximo lote; hoje o bloco nasce desligado, e o que a página diz sobre
+        entrega continua sendo o acordeão "Entrega e trocas", em pt-BR e sem pedir
+        dado nenhum à cliente.
+      */}
+      <ShippingQuote />
+
+      <MobileActions
+        product={product}
+        variant={selectedVariant}
+        options={options}
+        updateOptions={setOptionValue}
+        inStock={inStock}
+        handleAddToCart={handleAddToCart}
+        isAdding={isAdding}
+        show={!inView}
+        optionsDisabled={!!disabled || isAdding}
+      />
+    </div>
   )
 }

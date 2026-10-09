@@ -37,6 +37,10 @@ export default function EditorialBanner({
 
   const copy = (
     <div className="flex flex-col justify-center">
+      {section.eyebrow && (
+        <p className="rv-eyebrow rv-section-accent mb-4">{section.eyebrow}</p>
+      )}
+
       {section.script && (
         <p className="rv-script rv-section-accent text-[34px] leading-none small:text-[44px]">
           {section.script}
@@ -45,6 +49,12 @@ export default function EditorialBanner({
 
       <h2 className="rv-display rv-section-heading mt-5 text-[26px] leading-tight small:text-[36px]">
         {section.title}
+        {section.titleEmphasis && (
+          <>
+            <br />
+            <em className="italic">{section.titleEmphasis}</em>
+          </>
+        )}
       </h2>
 
       {section.body && (

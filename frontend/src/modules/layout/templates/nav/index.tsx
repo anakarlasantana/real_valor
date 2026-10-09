@@ -12,7 +12,7 @@ import SideMenu from "@modules/layout/components/side-menu"
 
 /**
  * Main navigation — matches the prototype: logo left, links centred,
- * actions right on a `1fr auto 1fr` grid.
+ * actions right on a `1fr 2fr 1fr` grid.
  *
  * The menu is content, not code: labels, destinations, order and
  * visibility come from the `nav` block of the CMS (edited at Admin →
@@ -22,6 +22,13 @@ import SideMenu from "@modules/layout/components/side-menu"
  *
  * The bag action is the exception: it is the only one with state, so it
  * delegates to `CartButton`.
+ *
+ * Sobre o fundo: o protótipo escreve `rgba(surface, .96)`, mas lá o
+ * cabeçalho não é fixo — o alfa não faz nada. Aqui ele é `sticky`, e
+ * neste caso o alfa apareceria como um vazamento do conteúdo por trás do
+ * texto; sem desfoque, isso se lê como falha de pintura, não como
+ * transparência. `bg-rv-surface` cheio é a tradução correta: mesma cor,
+ * sem o vazamento.
  */
 export default async function Nav({ header }: { header: NavSection }) {
   const [regions, locales, currentLocale] = await Promise.all([
@@ -32,8 +39,8 @@ export default async function Nav({ header }: { header: NavSection }) {
 
   return (
     <div className="sticky top-0 inset-x-0 z-50 group">
-      <header className="relative h-20 border-b bg-rv-offwhite border-rv-border">
-        <nav className="rv-container grid h-full grid-cols-[1fr_auto_1fr] items-center gap-4">
+      <header className="relative h-20 border-b bg-rv-surface border-rv-border">
+        <nav className="rv-container grid h-full grid-cols-[1fr_2fr_1fr] items-center gap-4">
           {/* Left — wordmark on desktop, drawer trigger on mobile. */}
           <div className="flex h-full items-center gap-4">
             <div className="h-full small:hidden">
@@ -48,22 +55,23 @@ export default async function Nav({ header }: { header: NavSection }) {
             {/* Wordmark — replaced once the official vector logo is available */}
             <LocalizedClientLink
               href="/"
-              className="flex flex-col leading-none"
+              className="rv-brand-lockup"
               data-testid="nav-store-link"
               aria-label="Real Valor — página inicial"
             >
-              <span className="rv-display text-lg tracking-[0.28em] text-rv-preto small:text-2xl">
-                REAL VALOR
-              </span>
+              <span className="rv-brand-lockup-name">REAL VALOR</span>
               <span className="rv-eyebrow mt-1 hidden text-rv-rose small:block">
                 Alfaiataria feminina
               </span>
             </LocalizedClientLink>
           </div>
 
-          {/* Centre — primary links, straight from the CMS. */}
+          {/* Centre — primary links, straight from the CMS. `justify-center`
+              é o que faz a coluna do meio parecer o centro da página: as
+              duas colunas laterais medem `1fr` cada, então centralizar
+              dentro da coluna central é centralizar no cabeçalho. */}
           {header.links.length > 0 && (
-            <ul className="hidden items-center gap-x-8 small:flex">
+            <ul className="hidden items-center justify-center gap-x-8 small:flex">
               {header.links.map((link) => (
                 <li key={`${link.label}-${link.href}`}>
                   <NavLink
@@ -78,8 +86,14 @@ export default async function Nav({ header }: { header: NavSection }) {
           )}
 
           {/* Right — action icons. `bag` is the cart: it is the only one
-              with state, so it renders through `CartButton`. */}
-          <div className="flex h-full items-center justify-end gap-x-2 small:gap-x-3">
+              with state, so it renders through `CartButton`.
+              O `col-start-3` não é decorativo: a lista de links é
+              `display: none` abaixo de `small`, e um item que não gera
+              caixa não ocupa trilho nenhum. Sem a âncora, as ações
+              escorregariam para o trilho do meio e a sacola ficaria a um
+              quarto da borda direita. Ancoradas no terceiro trilho, elas
+              encostam na direita em qualquer largura. */}
+          <div className="rv-header-actions col-start-3">
             {header.actions.map((action) =>
               action.icon === "bag" ? (
                 <Suspense

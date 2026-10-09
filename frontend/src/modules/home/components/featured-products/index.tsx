@@ -78,7 +78,14 @@ export default async function FeaturedProducts({
 
   const queryParams: HttpTypes.FindParams & HttpTypes.StoreProductListParams = {
     limit: 8,
-    fields: "*variants.calculated_price,+variants.images,+metadata,+tags",
+    /*
+     * **Sem `fields` próprio.** A lista de campos é a do catálogo
+     * (`data/product-fields.ts`), e uma lista menor aqui não é uma otimização: é
+     * um `fields` que **substitui** o da consulta, e com ele a seção perdia o
+     * estoque (a peça com 50 unidades aparecia como esgotada), o hex da cor e a
+     * categoria. O defeito inteiro está contado em `launches-rail`, que tinha a
+     * mesma linha; a guarda, em `product-enrichment.spec.ts`.
+     */
   }
 
   // O filtro é a **categoria**: `category_id` é o mesmo parâmetro da listagem da
@@ -121,20 +128,22 @@ export default async function FeaturedProducts({
   return (
     <section className="rv-bleed rv-section-pad w-full">
       <div className="rv-container">
-        <header className="mb-8 max-w-[620px] small:mb-10">
-          {section.eyebrow && (
-            <p className="rv-eyebrow rv-section-accent mb-4">
-              {section.eyebrow}
-            </p>
-          )}
-          <h2 className="rv-display rv-section-heading text-[28px] leading-tight small:text-[40px]">
-            {section.title}
-          </h2>
-          {section.subtitle && (
-            <p className="rv-section-text mt-4 text-base leading-relaxed">
-              {section.subtitle}
-            </p>
-          )}
+        <header className="rv-section-head">
+          <div>
+            {section.eyebrow && (
+              <p className="rv-eyebrow rv-section-eyebrow rv-section-accent">
+                {section.eyebrow}
+              </p>
+            )}
+            <h2 className="rv-display rv-section-heading rv-section-title">
+              {section.title}
+            </h2>
+            {section.subtitle && (
+              <p className="rv-section-text rv-section-subtitle">
+                {section.subtitle}
+              </p>
+            )}
+          </div>
         </header>
 
         {chips.length > 0 && (

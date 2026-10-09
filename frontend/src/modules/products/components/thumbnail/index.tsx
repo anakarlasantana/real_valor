@@ -30,38 +30,20 @@ type ThumbnailProps = {
   hoverImage?: string | null
   size?: "small" | "medium" | "large" | "full" | "square"
   /**
-   * O card **largo** da vitrine — a proporção 4/5 das seções em carrossel
-   * ("Peças em destaque" e "Lançamentos"), em vez do retrato 9/16 do catálogo.
+   * O card **do trilho** — e, depois do redesenho, este campo só escolhe o
+   * `sizes` da foto, não a proporção dela.
    *
-   * O nome vem de "Peças em destaque", a primeira seção a usá-lo; quando
-   * "Lançamentos" virou o mesmo carrossel, ela passou a pedir a mesma proporção —
-   * duas réguas de altura na mesma dobra era o que menos parecia intenção. O
-   * `isFeatured` do `product-preview` é o repasse deste campo.
+   * Ele nasceu decidindo a altura da caixa (4/5 no carrossel, 9/16 no catálogo),
+   * e a régua do redesenho acabou com a segunda régua: **a foto é 3/4 em todo
+   * lugar** em que a loja lista uma peça. O que continua valendo é a diferença de
+   * **largura**: no trilho o card tem 76% da tela no celular, 40% de 512px a
+   * 1023px e 30% de 1024px para cima (`.rv-carousel-item`, em `brand.css`), e no
+   * catálogo ele é uma coluna da grade. `sizes` existe para o `next/image` servir
+   * o arquivo do tamanho certo — mexer aqui sem mexer lá não quebra nada, só faz
+   * a foto vir pixelada ou cara, sem ninguém ver de onde vem.
    *
-   * E é ele também que faz a foto **recuar** para dentro da moldura. A imagem é
-   * `absolute inset-0` (ela *é* a face do card — o que o catálogo quer), mas no
-   * carrossel isso engolia o `p-4` da moldura: a peça encostava no fio. O recuo
-   * de 1rem (a caixa `inset-4` no retorno, logo abaixo) põe a foto exatamente
-   * onde a moldura começa. **O chip de estado não está mais aqui**: ele desceu
-   * para a linha do preço, no `product-preview`, e por isso o recuo deixou de
-   * existir por causa dele — agora é respiro de desenho, não de encaixe.
-   *
-   * **A moldura é 4/5 (0,8), por escolha da loja** — era 11/14 (0,786).
-   * Com o card de 30% da largura do desktop (432px), a 11/14 dava uma caixa de
-   * 432 x 540px: três retratos altos que ocupavam a dobra inteira. A 4/5 dá
-   * 432 x 540px também — a altura não muda, porque 4/5 e 11/14 têm quase a
-   * mesma proporção — mas a peça fica **menos recortada**: a foto de catálogo
-   * é 3/4 (0,75) e o `object-cover` agora corta por menos lado, em vez de
-   * encostar a peça na borda superior.
-   *
-   * A troca real de altura vem da régua do trilho, não daqui: `.rv-carousel-item`
-   * em `brand.css` decide a largura, e a proporção decide o resto.
-   * O que continua valendo: o recuo de 1rem (`inset-4`, abaixo) é o que segura
-   * a foto dentro da moldura. **A proporção da caixa da foto** é a da moldura
-   * menos o recuo, e por isso muda com a largura do card — por isso este
-   * comentário **não** traz mais a conta antiga: ela era da 11/14 e valeria
-   * menos que zero aqui. Se o corte da foto virar problema, a conta se mede de
-   * novo no navegador, no cartão que o desenho indica.
+   * O `isFeatured` do `product-preview` é o repasse deste campo: quem sabe que
+   * está num trilho é a seção ("Peças em destaque", "Lançamentos").
    */
   isFeatured?: boolean
   className?: string
@@ -91,13 +73,22 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
 
   return (
     <Container
+      /*
+       * A foto **sem moldura**. A classe `rv-thumb` existe para o card poder
+       * dizer, no `brand.css`, a proporção e o fundo da caixa dele (`.rv-card-media
+       * .rv-thumb`): a moldura que estava aqui — off-white da superfície, raio
+       * grande, sombra e 1rem de respiro — sumiu de todos os lugares em que a loja
+       * mostra uma peça, que é o que a régua do redesenho escreve (foto de borda a
+       * borda, 3/4 no card e 1/1 na sacola e no pedido, onde o `size="square"`
+       * manda). O que sobrou é o que a foto precisa em qualquer lugar: a caixa, o
+       * corte e o recorte de cantos.
+       */
       className={clx(
-        "relative w-full overflow-hidden p-4 bg-rv-surface shadow-[var(--rv-shadow-card)] rounded-[var(--rv-radius-lg)] group-hover:shadow-[var(--rv-shadow-card-hover)] transition-shadow ease-in-out duration-200",
+        "rv-thumb relative w-full overflow-hidden bg-rv-surface",
         className,
         {
-          "aspect-[4/5]": isFeatured,
-          "aspect-[9/16]": !isFeatured && size !== "square",
           "aspect-[1/1]": size === "square",
+          "aspect-[3/4]": size !== "square",
           "w-[180px]": size === "small",
           "w-[290px]": size === "medium",
           "w-[440px]": size === "large",
@@ -106,41 +97,13 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
       )}
       data-testid={dataTestid}
     >
-      {isFeatured ? (
-        /*
-         * O card do carrossel: a foto mora **dentro** do respiro da moldura.
-         *
-         * A caixa, e não um `inset-4` na imagem: o `next/image` com `fill`
-         * escreve `inset: 0` em **estilo inline**, e estilo inline ganha de
-         * classe — pedir o recuo na própria foto não muda um pixel (medido no
-         * navegador: a foto voltava a ocupar o card inteiro). Esta caixa é a
-         * única do caminho sem estilo inline nenhum, e é ela que segura o
-         * respiro.
-         *
-         * `inset-4` **é** o `p-4` da moldura, e não um valor de gosto: é o mesmo
-         * 1rem que o chip de estado usa para se afastar do canto.
-         */
-        <div className="absolute inset-4">
-          <ImageOrPlaceholder
-            image={initialImage}
-            size={size}
-            featured={isFeatured}
-          />
-          {resolvedHover && (
-            <HoverImage image={resolvedHover} featured={isFeatured} />
-          )}
-        </div>
-      ) : (
-        <>
-          <ImageOrPlaceholder
-            image={initialImage}
-            size={size}
-            featured={isFeatured}
-          />
-          {resolvedHover && (
-            <HoverImage image={resolvedHover} featured={isFeatured} />
-          )}
-        </>
+      <ImageOrPlaceholder
+        image={initialImage}
+        size={size}
+        featured={isFeatured}
+      />
+      {resolvedHover && (
+        <HoverImage image={resolvedHover} featured={isFeatured} />
       )}
     </Container>
   )

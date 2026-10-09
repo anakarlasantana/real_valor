@@ -2,6 +2,7 @@ import { type LaunchesSection } from "@lib/content/home-sections"
 import { listProducts } from "@lib/data/products"
 import { launchesLimit } from "@lib/util/launches"
 import { revealDelay } from "@lib/util/motion"
+import ArrowIcon from "@modules/common/components/arrow-icon"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Reveal from "@modules/common/components/reveal"
 import ProductPreview from "@modules/products/components/product-preview"
@@ -36,6 +37,14 @@ import { HttpTypes } from "@medusajs/types"
  *    (é ela quem mede a tela e decide se há página para trocar); com uma, a lista
  *    é desenhada parada — não há página nenhuma em tela nenhuma.
  *
+ * 4. **O cabeçalho é a linha da régua** (`.rv-section-head` e a família
+ *    `rv-section-*`, em `brand.css`): o título à esquerda e o "Ver tudo" à
+ *    direita, os dois alinhados pela base, o título em
+ *    `clamp(2rem, 3.5vw, 3.25rem)` e o link como texto herdado, de fio preto.
+ *    Era um utilitário atrás do outro no `className` (28px/40px,
+ *    `mb-8 small:mb-10`, 620px de largura) — e a régua é uma só, a mesma que
+ *    "Peças em destaque" usa logo abaixo na página.
+ *
  * `limit` passa por `launchesLimit`: a faixa é do contrato e a API já a
  * confere, mas o que está gravado pode ser anterior à faixa (ver
  * `lib/util/launches.ts`).
@@ -58,7 +67,17 @@ export default async function LaunchesRail({
       // "-created_at" é o "acabou de chegar" do banco, e não uma escolha de
       // ninguém: quem publica não precisa lembrar de incluir a peça no trilho.
       order: "-created_at",
-      fields: "*variants.calculated_price,+variants.images,+metadata,+tags",
+      /*
+       * **Sem `fields` próprio, e isso é a correção de um defeito silencioso.**
+       * A chamada pedia uma lista reduzida ("preço, imagem, metadata, tags") e um
+       * `fields` explícito **substitui** o da consulta (`products.ts`): sem
+       * estoque, o vestido com 50 unidades era lido como esgotado ("o estoque tem
+       * a palavra final", `product-availability.ts`); sem o hex da variante, as
+       * bolinhas de cor saíam como letras; e sem a categoria, o card ficava sem o
+       * eyebrow. O trilho dizia outra coisa sobre a mesma peça que o catálogo
+       * dizia — e é o próprio `data/product-fields.ts` que avisa que esse defeito
+       * não aparece como erro. A guarda está em `product-enrichment.spec.ts`.
+       */
     },
   })
 
@@ -83,18 +102,18 @@ export default async function LaunchesRail({
   return (
     <section className="rv-bleed rv-section-pad-tight w-full">
       <div className="rv-container">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-4 small:mb-10">
-          <div className="max-w-[620px]">
+        <header className="rv-section-head">
+          <div>
             {section.eyebrow && (
-              <p className="rv-eyebrow rv-section-accent mb-4">
+              <p className="rv-eyebrow rv-section-eyebrow rv-section-accent">
                 {section.eyebrow}
               </p>
             )}
-            <h2 className="rv-display rv-section-heading text-[28px] leading-tight small:text-[40px]">
+            <h2 className="rv-display rv-section-heading rv-section-title">
               {section.title}
             </h2>
             {section.subtitle && (
-              <p className="rv-section-text mt-4 text-base leading-relaxed">
+              <p className="rv-section-text rv-section-subtitle">
                 {section.subtitle}
               </p>
             )}
@@ -103,9 +122,10 @@ export default async function LaunchesRail({
           {section.viewAllLabel && (
             <LocalizedClientLink
               href={section.viewAllHref || "/store"}
-              className="rv-eyebrow whitespace-nowrap border-b border-rv-dourado pb-1 text-rv-rose transition-colors duration-200 ease-in hover:text-rv-grafite"
+              className="rv-section-link"
             >
-              {section.viewAllLabel}
+              {section.viewAllLabel}{" "}
+              <ArrowIcon className="rv-section-link-icon" />
             </LocalizedClientLink>
           )}
         </header>

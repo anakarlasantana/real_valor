@@ -1,42 +1,57 @@
 import React from "react"
 
-import UnderlineLink from "@modules/common/components/interactive-link"
+import { HttpTypes } from "@medusajs/types"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 import AccountNav from "../components/account-nav"
-import { HttpTypes } from "@medusajs/types"
 
 interface AccountLayoutProps {
   customer: HttpTypes.StoreCustomer | null
   children: React.ReactNode
 }
 
+/**
+ * A moldura da conta: a navegação à esquerda, o conteúdo à direita e o bloco de
+ * atendimento no pé.
+ *
+ * A caixa era `max-w-5xl` com fundo branco e 240px de coluna — o desenho do
+ * starter. Agora é o trilho da loja (`.rv-container`) com a coluna de 220px da
+ * referência: a conta é uma página interna como as outras, e não um painel à
+ * parte com fundo próprio.
+ *
+ * O bloco de atendimento ficou (é útil e a promessa é da loja), mas em pt-BR e nas
+ * classes da casa — e com o **destino certo**. Ele apontava para
+ * `/customer-service`, que não existe nesta loja (um 404 com cara de ajuda), e a
+ * primeira correção apontou para `/#contato`, que também não existe: o rodapé não
+ * tem seção com esse id. O que existe de verdade é `/rastreio` — a página de
+ * rastreio —, e é ela que responde à pergunta que se faz nesta tela.
+ */
 const AccountLayout: React.FC<AccountLayoutProps> = ({
   customer,
   children,
 }) => {
   return (
-    <div className="flex-1 small:py-12" data-testid="account-page">
-      <div className="flex-1 content-container h-full max-w-5xl mx-auto bg-white flex flex-col">
-        <div className="grid grid-cols-1  small:grid-cols-[240px_1fr] py-12">
-          <div>{customer && <AccountNav customer={customer} />}</div>
-          <div className="flex-1">{children}</div>
-        </div>
-        <div className="flex flex-col small:flex-row items-end justify-between small:border-t border-gray-200 py-12 gap-8">
-          <div>
-            <h3 className="text-xl-semi mb-4">Tem dúvidas?</h3>
-            <span className="txt-medium">
-              Encontre perguntas frequentes e respostas na nossa página de
-              atendimento.
-            </span>
-          </div>
-          <div>
-            <UnderlineLink href="/customer-service">
-              Atendimento
-            </UnderlineLink>
-          </div>
-        </div>
+    <main className="rv-container" data-testid="account-page">
+      <div className="rv-account-layout">
+        {customer && <AccountNav customer={customer} />}
+
+        <div>{children}</div>
       </div>
-    </div>
+
+      <div className="rv-account-help">
+        <div>
+          <h2 className="rv-display text-xl mb-3">Precisa de ajuda?</h2>
+          <p className="text-sm text-rv-muted">
+            Acompanhe a sua encomenda pelo código de rastreio — e, se algo não
+            bater, fale com a gente pelos canais do rodapé.
+          </p>
+        </div>
+
+        <LocalizedClientLink href="/rastreio" className="rv-btn rv-btn-secondary">
+          Acompanhar pedido
+        </LocalizedClientLink>
+      </div>
+    </main>
   )
 }
 

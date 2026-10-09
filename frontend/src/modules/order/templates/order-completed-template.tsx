@@ -1,4 +1,4 @@
-import { Heading } from "@medusajs/ui"
+import { ShieldCheck } from "@medusajs/icons"
 import { cookies as nextCookies } from "next/headers"
 
 import CartTotals from "@modules/common/components/cart-totals"
@@ -14,6 +14,26 @@ type OrderCompletedTemplateProps = {
   order: HttpTypes.StoreOrder
 }
 
+/**
+ * A página de pedido confirmado.
+ *
+ * Ela abria em "Obrigada! Seu pedido foi feito com sucesso." — duas linhas de
+ * `Heading` do design system, sem marca, sem hierarquia — e seguia com "Summary"
+ * (inglês) antes da lista do que foi comprado. Agora abre como a referência
+ * desenha o fecho da compra: a marca verde de "deu certo", o agradecimento no
+ * corpo de capa e, embaixo, o pedido de verdade — número, itens, totais, entrega
+ * e pagamento.
+ *
+ * **O que a referência desenha aqui e não entrou — e não é pendência de dado:**
+ * o cartão de "Próximo passo" ("Estamos preparando sua peça com todo cuidado." +
+ * "Previsão de entrega: 3 a 5 dias úteis") e o botão "Acompanhar meu pedido". O
+ * primeiro promete um prazo genérico quando o pedido **já tem** o prazo do frete
+ * escolhido — e é a `ShippingDetails` logo abaixo que o mostra, com o número real.
+ * O segundo levaria a `/account`, e o pedido está nesta página: um botão que leva
+ * para outro lugar é o que se põe quando não há mais nada a mostrar, e aqui há. Os
+ * dois ficam de fora por decisão de desenho, e não à espera de dado — ao contrário
+ * dos blocos de avaliação, frete e parcelas da página da peça.
+ */
 export default async function OrderCompletedTemplate({
   order,
 }: OrderCompletedTemplateProps) {
@@ -22,31 +42,43 @@ export default async function OrderCompletedTemplate({
   const isOnboarding = cookies.get("_medusa_onboarding")?.value === "true"
 
   return (
-    <div className="py-6 min-h-[calc(100vh-64px)]">
-      <div className="content-container flex flex-col justify-center items-center gap-y-10 max-w-4xl h-full w-full">
-        {isOnboarding && <OnboardingCta orderId={order.id} />}
-        <div
-          className="flex flex-col gap-4 max-w-4xl h-full bg-white w-full py-10"
-          data-testid="order-complete-container"
-        >
-          <Heading
-            level="h1"
-            className="flex flex-col gap-y-3 text-ui-fg-base text-3xl mb-4"
-          >
-            <span>Obrigada!</span>
-            <span>Seu pedido foi feito com sucesso.</span>
-          </Heading>
-          <OrderDetails order={order} />
-          <Heading level="h2" className="flex flex-row text-3xl-regular">
-            Summary
-          </Heading>
-          <Items order={order} />
-          <CartTotals totals={order} />
-          <ShippingDetails order={order} />
-          <PaymentDetails order={order} />
-          <Help />
+    <main data-testid="order-complete-container">
+      <div className="rv-confirmation">
+        <div className="rv-confirmation-mark">
+          <ShieldCheck aria-hidden="true" focusable="false" />
         </div>
+
+        <span className="rv-eyebrow text-rv-rose-strong">
+          Pedido confirmado
+        </span>
+
+        <h1>
+          Obrigada por escolher <em>o seu valor.</em>
+        </h1>
+
+        <p>
+          Seu pedido foi feito com sucesso. Enviamos todos os detalhes para o seu
+          e-mail.
+        </p>
+
+        {isOnboarding && <OnboardingCta orderId={order.id} />}
       </div>
-    </div>
+
+      <div className="rv-container">
+        <OrderDetails order={order} />
+
+        <h2 className="rv-page-heading mt-16">Seu pedido</h2>
+
+        <Items order={order} />
+
+        <CartTotals totals={order} />
+
+        <ShippingDetails order={order} />
+
+        <PaymentDetails order={order} />
+
+        <Help />
+      </div>
+    </main>
   )
 }

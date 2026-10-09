@@ -1,5 +1,6 @@
 import { type FooterSocial } from "@lib/content/home-sections"
 import { resolveSocialIcon } from "@lib/content/social-icons"
+import { clx } from "@medusajs/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 /**
@@ -15,16 +16,50 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
  * O ícone é a chave guardada no CMS (`SOCIAL_ICON_KEYS`, em
  * `lib/content/social-icons.tsx`); uma chave desconhecida cai no globo. O
  * nome acessível vem do rótulo, porque o glifo não tem texto visível.
+ *
+ * A fileira veste o fundo em que está (`tone`), pelo mesmo motivo do
+ * `footer-column`: `brand.css` perde para os utilitários, então a cor de
+ * cada fundo tem de ser escolha de quem monta. O realce do hover é o rosa
+ * da casa nos dois — sobre o preto ele dá 5,2:1 e passa no AA.
  */
 
 /** Protocolos que saem da loja e nunca levam o país — mesma regra (e
  *  mesmo motivo) do `nav-link`. */
 const EXTERNAL_PROTOCOL = /^(https?:|mailto:|tel:)/i
 
+/**
+ * A pastilha: 36px de alvo, borda de 1px, transição só de cor.
+ *
+ * O anel de foco **não** é escrito aqui de propósito. Esta linha tinha um
+ * `focus-visible:outline-none` acompanhado de um anel próprio, e isso
+ * desligava o anel que o fim de `brand.css` garante a todo elemento
+ * focável da loja — a regra de lá é explícita: nenhum componente escreve
+ * `outline: none`. O anel da casa (`--rv-focus-ring`, o rosa escuro) tem
+ * 3,7:1 contra o preto, que é o mínimo para um indicador de foco, então
+ * ele funciona também no rodapé.
+ */
 const LINK_CLASSES =
-  "inline-flex h-9 w-9 items-center justify-center rounded-full border border-rv-border text-rv-grafite transition-colors hover:border-rv-rose hover:text-rv-rose focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rv-rose"
+  "inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors"
 
-export default function SocialLinks({ items }: { items: FooterSocial[] }) {
+/** A cor da pastilha por fundo. */
+const TONE: Record<"light" | "dark", string> = {
+  light:
+    "border-rv-border text-rv-grafite hover:border-rv-rose hover:text-rv-rose",
+  /* No escuro a borda sobe para o token de **campo**, e não para o filete
+   * (`--rv-ondark-line`): a pastilha é um controle, não uma separação, e o
+   * limite dela precisa ser visível — o mesmo motivo do campo da
+   * newsletter. Ver os tokens em `brand.css`. */
+  dark: "border-rv-ondark-field text-rv-offwhite hover:border-rv-rose hover:text-rv-rose",
+}
+
+export default function SocialLinks({
+  items,
+  tone = "light",
+}: {
+  items: FooterSocial[]
+  /** O fundo em que a fileira está posta. O rodapé é preto: passa `dark`. */
+  tone?: "light" | "dark"
+}) {
   // Lista vazia é uma configuração legítima (o lojista apagou tudo): a
   // fileira some, sem deixar o espaço nem o título órfão.
   if (items.length === 0) {
@@ -43,7 +78,7 @@ export default function SocialLinks({ items }: { items: FooterSocial[] }) {
         const label = item.label || item.icon
 
         const shared = {
-          className: LINK_CLASSES,
+          className: clx(LINK_CLASSES, TONE[tone]),
           "aria-label": label,
           title: label,
           "data-testid": `footer-social-${item.icon}`,

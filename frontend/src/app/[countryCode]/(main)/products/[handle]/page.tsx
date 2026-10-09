@@ -91,11 +91,19 @@ export default async function ProductPage(props: Props) {
     queryParams: { handle: params.handle },
   }).then(({ response }) => response.products[0])
 
-  const images = getImagesForVariant(pricedProduct, selectedVariantId)
-
   if (!pricedProduct) {
     notFound()
   }
+
+  /*
+   * A ordem é esta de propósito: a imagem vem **depois** da existência do
+   * produto. Estava ao contrário, e um endereço com `handle` que não existe
+   * (`/products/qualquer-coisa`) não dava "não encontrado" — dava **HTTP 500**,
+   * com `Cannot read properties of undefined (reading 'images')`. Um endereço
+   * errado é um caso previsto da navegação; o 404 é a resposta, e a página de
+   * "não encontrado" da loja já existe.
+   */
+  const images = getImagesForVariant(pricedProduct, selectedVariantId)
 
   return (
     <ProductTemplate

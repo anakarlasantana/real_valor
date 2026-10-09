@@ -1,24 +1,30 @@
-import { Heading, Text } from "@medusajs/ui"
+import { ShoppingBag } from "@medusajs/icons"
 
-import InteractiveLink from "@modules/common/components/interactive-link"
+import EmptyState from "@modules/common/components/empty-state"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
+/**
+ * A sacola vazia — o estado que a referência desenha como o bloco de vazio da
+ * loja: ícone, título, uma frase e o caminho de volta para a vitrine.
+ *
+ * Era o texto do starter em inglês ("You don't have anything in your cart. Let's
+ * change that...") com um link sublinhado no meio do nada, alinhado à esquerda. A
+ * sacola vazia é o vazio mais provável da loja (quem clica na sacola antes de
+ * escolher algo chega aqui), e ele agora usa o mesmo componente do vazio da busca
+ * (`EmptyState`): uma forma só para "não tem nada aqui" em toda a loja.
+ */
 const EmptyCartMessage = () => {
   return (
-    <div className="py-48 px-2 flex flex-col justify-center items-start" data-testid="empty-cart-message">
-      <Heading
-        level="h1"
-        className="flex flex-row text-3xl-regular gap-x-2 items-baseline"
-      >
-        Cart
-      </Heading>
-      <Text className="text-base-regular mt-4 mb-6 max-w-[32rem]">
-        You don&apos;t have anything in your cart. Let&apos;s change that, use
-        the link below to start browsing our products.
-      </Text>
-      <div>
-        <InteractiveLink href="/store">Ver as peças</InteractiveLink>
-      </div>
-    </div>
+    <EmptyState
+      icon={<ShoppingBag aria-hidden="true" focusable="false" />}
+      title="Sua sacola está vazia"
+      text="Descubra peças criadas para acompanhar a sua história."
+      data-testid="empty-cart-message"
+    >
+      <LocalizedClientLink href="/store" className="rv-btn rv-btn-primary">
+        Explorar a coleção
+      </LocalizedClientLink>
+    </EmptyState>
   )
 }
 

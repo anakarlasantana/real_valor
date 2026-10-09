@@ -10,6 +10,7 @@ import { getRegion } from "@lib/data/regions"
 import BenefitsBar from "@modules/home/components/benefits-bar"
 import CollectionHighlights from "@modules/home/components/collection-highlights"
 import EditorialBanner from "@modules/home/components/editorial-banner"
+import EditorialCallout from "@modules/home/components/editorial-callout"
 import FeaturedProducts from "@modules/home/components/featured-products"
 import Hero from "@modules/home/components/hero"
 import InstagramGrid from "@modules/home/components/instagram-grid"
@@ -177,6 +178,11 @@ function renderSection(
       )
     case "editorial":
       return <EditorialBanner section={section} />
+    case "banner":
+      // A faixa editorial: a última faixa de conteúdo da home, depois do
+      // manifesto. Não depende de região nem de catálogo — é foto, cópia e um
+      // botão para `/store`, então nunca degrada por falta de dado.
+      return <EditorialCallout section={section} />
     case "instagram":
       return <InstagramGrid section={section} />
     default:

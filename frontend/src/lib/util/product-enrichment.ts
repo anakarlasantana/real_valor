@@ -26,6 +26,25 @@ import type { ProductColor, ProductEnrichment } from "types/global"
 /** O que este módulo lê do produto que a Store API devolve. */
 export type ProdutoComEnriquecimento = {
   metadata?: Record<string, unknown> | null
+  /**
+   * As categorias da peça, na ordem em que o catálogo as devolve.
+   *
+   * A lista chega porque o `fields` do catálogo pede `*categories` — sem isso a
+   * faceta "Categoria" do catálogo ficaria com um valor só (ver
+   * `data/product-fields.ts`), e o eyebrow do card, que é a **mesma** leitura,
+   * não teria de onde sair. Só o primeiro item é lido, como na página da peça.
+   *
+   * O item pode vir `null` na lista — é o que a Store API devolve quando a
+   * relação não é expandida, e é o mesmo formato que `catalog-filters.ts` declara
+   * em `ProdutoFiltravel`. O tipo aqui **não** é mais estreito do que o dado:
+   * um item nulo é recusado na leitura de `categoriaDaPeca`, não pelo compilador.
+   */
+  categories?:
+    | ({
+        name?: string | null
+        handle?: string | null
+      } | null)[]
+    | null
   options?:
     | {
         title?: string | null
@@ -217,6 +236,45 @@ export function bolinhasDoCard(
   }
 
   return { visiveis: cores.slice(0, maximo), restantes: cores.length - maximo }
+}
+
+/**
+ * A categoria da peça — o rótulo que o card escreve acima do nome.
+ * -------------------------------------------------------------------------
+ * A leitura é a **mesma** da página da peça (`product-info/index.tsx`, o
+ * caminho de volta do breadcrumb): a primeira categoria da lista, e o rótulo é
+ * o nome, com o `handle` como reserva. O que muda entre os dois é só o destino:
+ * lá o rótulo é um link para a categoria, aqui é **texto** — o card inteiro já é
+ * um link, e um `<a>` dentro de `<a>` é HTML inválido (o navegador desfaz o de
+ * dentro e o mesmo toque passa a ter dois destinos conforme o pixel). É o mesmo
+ * motivo pelo qual as bolinhas de cor não são clicáveis; ver
+ * `product-preview/color-swatches.tsx`.
+ *
+ * `null` quando não há categoria utilizável, e as recusas são de dado real: sem
+ * lista, lista vazia, ou item sem nome **e** sem handle. Categoria sem nome é
+ * dado pela metade no painel — e um `handle` cru (`blusas-e-camisas`) na tela é
+ * melhor do que nada, porque é o que a cliente clicou para chegar aqui. Espaço
+ * em branco não passa: `"   "` não é um rótulo, é um campo que alguém esvaziou,
+ * e reservar linha para ele empurraria o nome da peça para baixo em todo card.
+ */
+export function categoriaDaPeca(
+  produto: ProdutoComEnriquecimento
+): string | null {
+  const primeira = produto.categories?.[0]
+
+  if (!primeira) {
+    return null
+  }
+
+  for (const candidato of [primeira.name, primeira.handle]) {
+    const texto = candidato?.trim()
+
+    if (texto) {
+      return texto
+    }
+  }
+
+  return null
 }
 
 /**

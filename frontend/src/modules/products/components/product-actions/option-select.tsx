@@ -26,8 +26,12 @@ import type { ProductColor } from "types/global"
  * uma segunda conta feita na tela. `ehTituloDeCor` é a mesma função que o card
  * usa, então a página e o card não conseguem discordar sobre qual opção é a cor.
  *
- * O rótulo era `Select {title}` — inglês do template, num storefront que é pt-BR.
- * Virou o **título da opção**: "Cor", "Tamanho", que é o que o lojista escreveu.
+ * A forma agora é a do redesenho, e ela tem duas partes: o **cabeçalho** ("Cor:
+ * Cacau") e a fileira de controles. O cabeçalho existe porque a amostra sozinha
+ * não diz o que está escolhido — quem acabou de clicar na terceira bolinha
+ * precisa ler "Cacau" em algum lugar. E as duas fileiras são diferentes de
+ * propósito: cor é amostra redonda, tamanho é quadrado com o valor escrito. Um
+ * se olha, o outro se lê.
  */
 type OptionSelectProps = {
   option: HttpTypes.StoreProductOption
@@ -60,59 +64,47 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
   const ehCor = ehTituloDeCor(title)
 
   return (
-    <div className="flex flex-col gap-y-3">
-      <span className="text-sm">{title}</span>
+    <div className="rv-selector">
+      <p className="rv-selector-head">
+        <span>{title}</span>
+        {/* O valor escolhido, escrito: a bolinha mostra a cor, mas "Cacau" é o
+            que responde a quem quer conferir o que marcou. */}
+        {current && <strong>{current}</strong>}
+      </p>
+
       <div
-        className="flex flex-wrap items-center gap-2"
+        className={ehCor ? "rv-swatches" : "rv-sizes"}
         data-testid={dataTestId}
       >
         {filteredOptions.map((v) => {
           const selecionada = v === current
           const hex = cores.find((cor) => cor.name === v)?.hex ?? null
 
-          /*
-           * Sem hex a amostra não existe: a bolinha mostra a **inicial do
-           * nome**, como no card. Sumir diria à cliente que a peça tem menos
-           * cores do que tem, e é o mesmo desenho nas duas telas.
-           */
           return ehCor ? (
             <button
+              type="button"
               onClick={() => updateOption(option.id, v)}
               key={v}
               aria-pressed={selecionada}
               title={v}
-              className={clx(
-                "flex h-10 w-10 items-center justify-center rounded-circle border-2 bg-ui-bg-subtle transition-all ease-in-out duration-150",
-                {
-                  "border-ui-border-interactive": selecionada,
-                  "border-ui-border-base hover:border-ui-border-interactive":
-                    !selecionada,
-                }
-              )}
+              className={clx("rv-swatch", { active: selecionada })}
+              style={hex ? { backgroundColor: hex } : undefined}
               disabled={disabled}
               data-testid="option-button"
             >
-              <span
-                aria-hidden="true"
-                className="flex h-7 w-7 items-center justify-center rounded-circle border border-rv-border text-[0.5rem] leading-none"
-                style={hex ? { backgroundColor: hex } : undefined}
-              >
-                {hex ? null : v.charAt(0).toUpperCase()}
-              </span>
+              {/* Sem hex a amostra mostra a **inicial do nome**, como no card.
+                  Sumir diria à cliente que a peça tem menos cores do que tem, e
+                  é o mesmo desenho nas duas telas. */}
+              {hex ? null : <span aria-hidden="true">{v.charAt(0).toUpperCase()}</span>}
               <span className="sr-only">{v}</span>
             </button>
           ) : (
             <button
+              type="button"
               onClick={() => updateOption(option.id, v)}
               key={v}
-              className={clx(
-                "border-ui-border-base bg-ui-bg-subtle border text-small-regular h-10 rounded-rounded p-2 flex-1 ",
-                {
-                  "border-ui-border-interactive": v === current,
-                  "hover:shadow-elevation-card-rest transition-shadow ease-in-out duration-150":
-                    v !== current,
-                }
-              )}
+              aria-pressed={selecionada}
+              className={clx("rv-size", { active: selecionada })}
               disabled={disabled}
               data-testid="option-button"
             >
@@ -126,3 +118,4 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
 }
 
 export default OptionSelect
+

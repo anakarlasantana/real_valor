@@ -13,7 +13,10 @@ import { VariantPrice } from "types/global"
  * que sobra para este arquivo é a **ordem** e o que acontece quando a peça está
  * em oferta:
  *
- *   1. o preço de agora é o número (`.rv-price-value`: preto, 1.125rem, semibold);
+ *   1. o preço de agora é o número (`.rv-price-value`: preto, semibold — e, no
+ *      card, **13px**, pela regra `.rv-card-info .rv-price-value`, porque é o
+ *      **nome** da peça o maior texto do card; ver o bloco do card em
+ *      `brand.css`. Na página da peça o mesmo número continua com 1.125rem);
  *   2. o preço de antes, quando existe, vem **antes** dele e riscado
  *      (`.rv-price-was`, cinza): a leitura é "era 399, agora 249";
  *   3. em oferta o número de agora veste `--rv-rose-strong` — o rosa escuro da

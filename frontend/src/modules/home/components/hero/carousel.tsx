@@ -272,7 +272,7 @@ export default function HeroCarousel({
         {children}
       </div>
 
-      <ul className="rv-container absolute inset-x-0 bottom-8 z-20 flex items-center gap-x-3">
+      <ul className="rv-hero-dots">
         {Array.from({ length: count }, (_, dot) => (
           <li key={dot}>
             <button

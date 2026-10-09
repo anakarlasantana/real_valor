@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { getCategoryByHandle } from "@lib/data/categories"
+import { selecaoDaUrl } from "@lib/util/catalog-filters"
 import CategoryTemplate from "@modules/categories/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 
@@ -69,6 +70,7 @@ export default async function CategoryPage(props: Props) {
       sortBy={sortBy}
       page={page}
       countryCode={params.countryCode}
+      selecao={selecaoDaUrl(searchParams)}
     />
   )
 }

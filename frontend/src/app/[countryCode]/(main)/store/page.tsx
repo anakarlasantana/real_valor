@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 
+import { selecaoDaUrl } from "@lib/util/catalog-filters"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import StoreTemplate from "@modules/store/templates"
 
@@ -28,6 +29,12 @@ export default async function StorePage(props: Params) {
       sortBy={sortBy}
       page={page}
       countryCode={params.countryCode}
+      /*
+       * Os filtros são lidos da URL **aqui**, e não dentro do template: quem sabe
+       * o que chegou no endereço é a rota, e o que desce para a árvore é um objeto
+       * já limpo (`?cor=&page=` viram ausência, e não string vazia).
+       */
+      selecao={selecaoDaUrl(searchParams)}
     />
   )
 }

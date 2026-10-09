@@ -28,6 +28,13 @@ import { Locale } from "@lib/data/locales"
  * The menu itself comes from the header block (`NavSection`): the same
  * `links` as the desktop bar, plus the action icons as a labelled row —
  * on a touch screen there is no tooltip, so the drawer shows the text.
+ *
+ * Geometria: a gaveta deixou de ser uma faixa que desce do cabeçalho e
+ * passou a ser o trilho lateral do protótipo (`.rv-drawer`, em
+ * `brand.css`) — pela esquerda, `88vw` até 420px, topo e base colados na
+ * tela, rolagem própria. A classe é **compartilhada de propósito**: a
+ * gaveta de filtros do catálogo tem exatamente a mesma geometria, e as
+ * duas devem continuar iguais.
  */
 type SideMenuProps = {
   regions: HttpTypes.StoreRegion[] | null
@@ -55,7 +62,7 @@ const SideMenu = ({
                 <Popover.Button
                   data-testid="nav-menu-button"
                   aria-label="Abrir menu"
-                  className="rv-eyebrow relative flex h-full items-center gap-2 text-rv-grafite transition-colors duration-200 ease-out hover:text-rv-rose focus:outline-none"
+                  className="rv-eyebrow relative flex h-full items-center gap-2 text-rv-grafite transition-colors duration-200 ease-out hover:text-rv-rose"
                 >
                   {/* Hamburger — no icon dependency needed for two rules. */}
                   <span aria-hidden="true" className="flex flex-col gap-1">
@@ -68,7 +75,7 @@ const SideMenu = ({
 
               {open && (
                 <div
-                  className="pointer-events-auto fixed inset-0 z-[50] bg-rv-preto/30"
+                  className="rv-drawer-backdrop pointer-events-auto"
                   onClick={close}
                   data-testid="side-menu-backdrop"
                 />
@@ -77,44 +84,45 @@ const SideMenu = ({
               <Transition
                 show={open}
                 as={Fragment}
-                enter="transition ease-out duration-150"
-                enterFrom="opacity-0 -translate-y-2"
-                enterTo="opacity-100 translate-y-0"
+                enter="transition ease-out duration-200"
+                enterFrom="-translate-x-full"
+                enterTo="translate-x-0"
                 leave="transition ease-in duration-150"
-                leaveFrom="opacity-100 translate-y-0"
-                leaveTo="opacity-0 -translate-y-2"
+                leaveFrom="translate-x-0"
+                leaveTo="-translate-x-full"
               >
-                <PopoverPanel className="absolute inset-x-0 top-full z-[51] border-b border-rv-border bg-rv-offwhite shadow-[var(--rv-shadow-card-hover)]">
+                <PopoverPanel className="rv-drawer">
                   <div
                     data-testid="nav-menu-popup"
-                    className="flex flex-col gap-8 p-6"
+                    className="flex flex-col"
                   >
-                    <div className="flex justify-end">
+                    <div className="rv-drawer-head">
+                      <span className="rv-eyebrow text-rv-grafite">Menu</span>
                       <button
                         data-testid="close-menu-button"
                         onClick={close}
                         aria-label="Fechar menu"
-                        className="text-rv-grafite transition-colors duration-200 hover:text-rv-rose"
+                        className="rv-icon-btn"
                       >
-                        <XMark />
+                        <XMark aria-hidden="true" focusable="false" />
                       </button>
                     </div>
 
-                    <ul className="flex flex-col items-start gap-5">
+                    <ul className="rv-drawer-links">
                       {header.links.map((link) => (
                         <li key={`${link.label}-${link.href}`}>
                           <NavLink
                             href={link.href}
                             label={link.label}
                             onClick={close}
-                            className="rv-display text-2xl leading-none text-rv-grafite"
+                            className="rv-drawer-link"
                             data-testid={`${link.label.toLowerCase()}-link`}
                           />
                         </li>
                       ))}
                     </ul>
 
-                    <div className="flex flex-col gap-y-5 border-t border-rv-border pt-5">
+                    <div className="flex flex-col gap-y-5">
                       {header.actions.length > 0 && (
                         <ul className="flex flex-col items-start gap-4">
                           {header.actions.map((action) => (

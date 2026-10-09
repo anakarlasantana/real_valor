@@ -38,6 +38,7 @@ import { describe, expect, it } from "vitest"
 import {
   CHAVE_CUIDADOS,
   bolinhasDoCard,
+  categoriaDaPeca,
   coresDoProduto,
   ehTituloDeCor,
   enriquecimentoDoProduto,
@@ -218,6 +219,50 @@ describe("bolinhasDoCard", () => {
   })
 })
 
+describe("categoriaDaPeca", () => {
+  it("escreve o nome da primeira categoria", () => {
+    // A mesma leitura da página da peça: a primeira da lista, e não "a mais
+    // específica" — o card e a página não podem discordar sobre a peça.
+    expect(
+      categoriaDaPeca({
+        categories: [
+          { name: "Alfaiataria", handle: "alfaiataria" },
+          { name: "Blusas", handle: "blusas" },
+        ],
+      })
+    ).toBe("Alfaiataria")
+  })
+
+  it("sem nome, o handle é o rótulo", () => {
+    // Categoria pela metade no painel: o `handle` cru é o caminho por onde a
+    // cliente chegou, e é melhor do que a linha do card não existir.
+    expect(categoriaDaPeca({ categories: [{ handle: "blusas-e-camisas" }] })).toBe(
+      "blusas-e-camisas"
+    )
+  })
+
+  it("nome em branco não vira rótulo — cai para o handle", () => {
+    expect(
+      categoriaDaPeca({ categories: [{ name: "   ", handle: "vestidos" }] })
+    ).toBe("vestidos")
+  })
+
+  it("espaço em volta é apara, não rótulo", () => {
+    expect(categoriaDaPeca({ categories: [{ name: "  Vestidos  " }] })).toBe(
+      "Vestidos"
+    )
+  })
+
+  it("sem categoria utilizável, não há linha para reservar", () => {
+    // O card de uma peça sem categoria não pode ficar mais alto do que o das
+    // outras — mesma regra das bolinhas de cor.
+    expect(categoriaDaPeca({})).toBeNull()
+    expect(categoriaDaPeca({ categories: [] })).toBeNull()
+    expect(categoriaDaPeca({ categories: [{ name: "  " }] })).toBeNull()
+    expect(categoriaDaPeca({ categories: [{}] })).toBeNull()
+  })
+})
+
 describe("a fiação do catálogo", () => {
   it("o `fields` pede o hex da variante e as opções", () => {
     // Um `fields` explícito SUBSTITUI os defaults da Store API (medido em
@@ -251,6 +296,45 @@ describe("a fiação do catálogo", () => {
 
     expect(fonte).toContain("fields: CAMPOS_DO_CATALOGO")
   })
+
+  it("nenhuma tela que lista peças recria a lista de campos", () => {
+    /*
+     * A varredura é das **telas que listam**, e não de todo `fields` do projeto:
+     * `*orders`, `*products` de coleção e `id, email` são de outras consultas, e
+     * proibi-los seria proibir o que eles precisam. O que se procura é a linha que
+     * já custou caro — uma tela passando um `fields` próprio para `listProducts`,
+     * que **substitui** a lista do catálogo e faz a peça chegar sem estoque, sem
+     * hex de cor e sem categoria, sem erro nenhum (o defeito está contado em
+     * `data/product-fields.ts`).
+     */
+    const arquivos: string[] = []
+
+    const anda = (dir: string) => {
+      for (const entrada of readdirSync(dir, { withFileTypes: true })) {
+        const caminho = join(dir, entrada.name)
+
+        if (entrada.isDirectory()) {
+          anda(caminho)
+        } else if (/\.(ts|tsx)$/.test(entrada.name) && !/\.spec\./.test(entrada.name)) {
+          arquivos.push(caminho)
+        }
+      }
+    }
+
+    anda(join(__dirname, "..", "..", "modules"))
+
+    const listadores = arquivos.filter((caminho) =>
+      readFileSync(caminho, "utf8").includes("listProducts(")
+    )
+
+    // A guarda não pode passar por vácuo: se ninguém mais chama `listProducts`,
+    // ela deixou de guardar coisa alguma e quem tem de saber disso é este teste.
+    expect(listadores.length).toBeGreaterThan(0)
+
+    for (const caminho of listadores) {
+      expect(readFileSync(caminho, "utf8"), caminho).not.toMatch(/fields:\s*"/)
+    }
+  })
 })
 
 /**
@@ -270,12 +354,17 @@ describe("a cor no seletor da página da peça", () => {
 
   it("o rótulo visível é o título da opção, e o nome do valor só existe para quem lê", () => {
     // O rótulo era `Select {title}` (inglês do template) e cada botão escrevia o
-    // valor por extenso. Agora a opção de cor são amostras: o nome fica no
-    // `sr-only` (leitor de tela) e no `title` (ponteiro).
+    // valor por extenso. Agora o cabeçalho do seletor é o **título da opção**
+    // ("Cor") com o valor escolhido ao lado ("Cacau"), e a fileira de cores são
+    // amostras: o nome de cada uma fica no `sr-only` (leitor de tela) e no
+    // `title` (ponteiro). O que a guarda protege continua sendo o mesmo: a cor é
+    // mostrada, não soletrada.
     const fonte = fonteDoSeletor("option-select.tsx")
 
-    expect(fonte).toContain('<span className="text-sm">{title}</span>')
+    expect(fonte).toContain("<span>{title}</span>")
+    expect(fonte).toContain("{current && <strong>{current}</strong>}")
     expect(fonte).toContain('className="sr-only">{v}')
+    expect(fonte).toContain("title={v}")
   })
 
   it("as cores (opção + hex da variante) chegam ao seletor nas duas telas", () => {

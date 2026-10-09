@@ -37,19 +37,54 @@ import NavLink from "@modules/layout/components/nav-link"
  *  por natureza. */
 const MAX_CATALOG_ITEMS = 6
 
+/**
+ * As duas roupas de cor da coluna, uma por fundo.
+ *
+ * A coluna não declara cor nenhuma: ela **recebe** a sua, e é por isso
+ * que este mapa existe em vez de um `text-rv-muted` escrito direto. O
+ * problema não é gosto — `brand.css` não resolveria por escopo, porque é
+ * importado **antes** dos utilitários (`globals.css`) e um `text-rv-muted`
+ * deixado no elemento ganharia de qualquer regra de lá. Com o rodapé em
+ * preto e o corpo da loja em off-white, a cor precisa ser escolha de quem
+ * monta a coluna.
+ *
+ * O realce do hover **não** entra aqui: ele é `hover:text-rv-rose` nos
+ * dois fundos, o mesmo de todo link de texto da loja. O rosa sobre o
+ * preto dá 5,2:1, que passa no AA para texto normal — não há motivo para
+ * inventar um segundo realce.
+ */
+type FooterTone = "light" | "dark"
+
+/** O link de uma coluna. Igual nos dois fundos — ver a nota acima. */
 const LINK_CLASSES = "transition-colors duration-200 hover:text-rv-rose"
 
-/** Casca da coluna: título + o que vier dentro. */
+const COLUMN_TONE: Record<FooterTone, { title: string; body: string }> = {
+  /* No corpo da loja: título em grafite, texto em muted. */
+  light: {
+    title: "text-rv-grafite",
+    body: "text-rv-muted",
+  },
+  /* No rodapé preto: título em dourado, texto no off-white esmaecido. */
+  dark: {
+    title: "text-rv-dourado",
+    body: "text-rv-ondark-muted",
+  },
+}
+
+/** Casca da coluna: título + o que vier dentro, na cor do fundo. */
 function ColumnShell({
   title,
+  titleTone,
   children,
 }: {
   title: string
+  /** A classe de cor do título, já resolvida pelo mapa acima. */
+  titleTone: string
   children: React.ReactNode
 }) {
   return (
     <div className="flex min-w-[8.5rem] flex-col gap-y-2">
-      <span className="rv-eyebrow text-rv-grafite">{title}</span>
+      <span className={clx("rv-eyebrow", titleTone)}>{title}</span>
       {children}
     </div>
   )
@@ -59,13 +94,18 @@ export default function FooterColumn({
   column,
   categories,
   collections,
+  tone = "light",
 }: {
   column: FooterColumnContent
   /** Só as colunas de origem `categories` usam; as outras recebem vazio. */
   categories: HttpTypes.StoreProductCategory[]
   /** Só as colunas de origem `collections` usam; as outras recebem vazio. */
   collections: HttpTypes.StoreCollection[]
+  /** O fundo em que a coluna está posta. O rodapé é preto: passa `dark`. */
+  tone?: FooterTone
 }) {
+  const { title: titleTone, body: bodyTone } = COLUMN_TONE[tone]
+
   // Título é o rótulo da coluna: sem ele não há o que mostrar.
   if (!column.title) {
     return null
@@ -83,7 +123,7 @@ export default function FooterColumn({
     }
 
     return (
-      <ColumnShell title={column.title}>
+      <ColumnShell title={column.title} titleTone={titleTone}>
         <ul className="grid grid-cols-1 gap-2" data-testid="footer-categories">
           {items.map((category) => {
             const children =
@@ -95,7 +135,7 @@ export default function FooterColumn({
 
             return (
               <li
-                className="flex flex-col gap-2 text-rv-muted txt-small"
+                className={clx("flex flex-col gap-2 txt-small", bodyTone)}
                 key={category.id}
               >
                 <LocalizedClientLink
@@ -139,9 +179,9 @@ export default function FooterColumn({
     }
 
     return (
-      <ColumnShell title={column.title}>
+      <ColumnShell title={column.title} titleTone={titleTone}>
         <ul
-          className={clx("grid grid-cols-1 gap-2 text-rv-muted txt-small", {
+          className={clx("grid grid-cols-1 gap-2 txt-small", bodyTone, {
             // Título de coleção é curto: em duas colunas cabem mais sem
             // estourar a largura da linha.
             "grid-cols-2": items.length > 3,
@@ -169,8 +209,10 @@ export default function FooterColumn({
   }
 
   return (
-    <ColumnShell title={column.title}>
-      <ul className="grid grid-cols-1 gap-y-2 text-rv-muted txt-small">
+    <ColumnShell title={column.title} titleTone={titleTone}>
+      <ul
+        className={clx("grid grid-cols-1 gap-y-2 txt-small", bodyTone)}
+      >
         {links.map((link, index) => (
           <li key={`${link.href}-${index}`}>
             <NavLink

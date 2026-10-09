@@ -48,6 +48,25 @@
   --rv-border: #e5dacd; /* hairline dividers */
   --rv-muted: #6f6a66; /* secondary text, still AA on off-white */
 
+  /*
+   * Texto e traço sobre preto — o rodapé, e o que mais vier.
+   *
+   * O redesenho (a referência de layout) escrevia estes cinzas à mão em
+   * cada regra (`#aaa`, `#bbb`, `#777`) e usava `#555` na borda do campo.
+   * Não foram portados como estão, por dois motivos: cor solta não segue o
+   * tema sazonal, e o `#555` do protótipo dá 2,4:1 contra o preto — abaixo
+   * dos 3:1 que a WCAG pede para a borda de um componente.
+   *
+   *   --rv-ondark        off-white cheio: título e texto de leitura
+   *   --rv-ondark-muted  off-white a 68% sobre o preto → 8,0:1 (AA folgado)
+   *   --rv-ondark-line   filete interno das faixas do rodapé
+   *   --rv-ondark-field  borda de campo → 3,3:1, o mínimo legível
+   */
+  --rv-ondark: var(--rv-offwhite);
+  --rv-ondark-muted: #afaba5;
+  --rv-ondark-line: rgba(255, 255, 255, 0.14);
+  --rv-ondark-field: rgba(255, 255, 255, 0.35);
+
   /* --- Semantic mapping --- */
   --rv-bg: var(--rv-offwhite);
   --rv-fg: var(--rv-grafite);
@@ -137,6 +156,11 @@
     0 4px 12px rgba(48, 48, 51, 0.06);
   --rv-shadow-card-hover: 0 2px 4px rgba(48, 48, 51, 0.06),
     0 12px 28px rgba(48, 48, 51, 0.12);
+  /* O redesenho dá dois nomes à mesma profundidade (`--rv-shadow-card` e
+   * `--rv-shadow-hover`); os valores são idênticos aos de cima. O alias
+   * existe para o cromo novo não precisar escolher entre os dois nomes —
+   * a profundidade é uma só, os nomes é que eram dois. */
+  --rv-shadow-hover: var(--rv-shadow-card-hover);
 
   /*
    * Movimento
@@ -178,6 +202,19 @@
   --rv-section-space: 4rem;
   --rv-section-space-tight: 4rem;
 
+  /*
+   * O mesmo ritmo, um degrau mais largo — e só para as páginas internas
+   * (busca, catálogo, produto, sacola, conta).
+   *
+   * `--rv-section-space` acima é o respiro da **vitrine**, e os 4rem/6rem
+   * dele são o que a home já tem: mexer nele moveria a página inicial
+   * inteira. O redesenho usa um valor único, mais generoso
+   * (`clamp(4.5rem, 8vw, 8rem)`), nas telas que não são a home — que é
+   * exatamente o que este token é. Duas réguas de propósito: a vitrine é
+   * uma sequência de faixas, a página interna é um documento.
+   */
+  --rv-page-space: clamp(4.5rem, 8vw, 8rem);
+
   /* Anel de foco do teclado (ver a regra de `:focus-visible` no fim
    * deste arquivo). Rosa forte, e não o rosa de assinatura, porque o
    * anel precisa contrastar com o fundo claro **e** com a própria cor
@@ -185,8 +222,25 @@
   --rv-focus-ring: var(--rv-rose-strong);
 }
 
+/*
+ * O degrau de desktop do ritmo da vitrine.
+ *
+ * **O seletor repete o da base de propósito** — e é uma correção, não um
+ * capricho. O bloco de cima abre com `:root, :root[data-theme="default"]`, e o
+ * `data-theme` que o tema escreve no `<html>` faz a **segunda** metade da lista
+ * casar com o mesmo elemento: quem manda ali é a maior especificidade (0,2,0),
+ * não a ordem do arquivo. Com um `:root` sozinho aqui (0,1,0) esta media query
+ * perdia para a base **em qualquer largura**, e o ritmo de desktop nunca
+ * aconteceu: medido a 1440, `--rv-section-space` respondia 4rem e as seções da
+ * home tinham 64px de respiro onde o comentário acima promete 96px.
+ *
+ * Repetir a lista empata a especificidade (0,2,0) e devolve a decisão à ordem —
+ * que é a ordem certa: o degrau vale a partir de 1024px, no resto do arquivo e
+ * não no `:root` do tema.
+ */
 @media (min-width: 1024px) {
-  :root {
+  :root,
+  :root[data-theme="default"] {
     --rv-section-space: 6rem;
     --rv-section-space-tight: 5rem;
   }
@@ -246,13 +300,15 @@ body {
  * utilities in `globals.css`, so a leftover `text-rv-offwhite` would
  * beat the override.
  *
- * `currentColor` (in `.rv-section-text-inherit`) is the one fallback
- * that is not a token: `text-rv-offwhite/85` and friends do not exist
- * in the CSS at all (Tailwind does not emit the opacity modifier for a
- * colour declared as `var(...)`), so those elements inherit their
- * parent's colour today. The class inherits along, to keep it that way.
- * See `docs/DEBITO-TECNICO.md` — the inert class is a bug of its own,
- * fixed separately, not an invitation to change the storefront here.
+ * E não há mais fallback que **não** seja token: a `rv-section-text-inherit`
+ * (`currentColor`) saiu do arquivo com o último consumidor — a cópia da capa,
+ * que herdava o grafite do `body` sobre a foto. Ver o comentário na altura dela,
+ * mais abaixo.
+ *
+ * O que segue valendo daquela nota: `text-rv-offwhite/85` e parentes não existem
+ * no CSS (o Tailwind não emite o modificador de opacidade para uma cor declarada
+ * como `var(...)`), então quem pinta texto sobre foto o faz por classe —
+ * `.rv-section-text-onmedia`, ou a cor da própria faixa.
  */
 
 /* Background: the wrapper carries the section's own fill; a section
@@ -281,11 +337,9 @@ body {
   color: var(--rv-section-heading-color, var(--rv-offwhite));
 }
 
-/* Headings that are labels rather than titles (the benefits strip). */
-.rv-section-heading-sans {
-  font-family: var(--rv-section-heading-font, var(--rv-font-sans));
-  color: var(--rv-section-heading-color, var(--rv-fg));
-}
+/* Headings that are labels rather than titles — were the benefits strip's, and
+ * the strip is no longer a label: the ruler gives it the display face at 14px
+ * (see `.rv-benefit-title`). The class left the file with it. */
 
 /* Body copy, subtitles, empty states. */
 .rv-section-text {
@@ -299,12 +353,22 @@ body {
   color: var(--rv-section-text-color, var(--rv-offwhite));
 }
 
-/* Text whose default is the inherited colour — see the `currentColor`
- * note above: keeps today's rendering until the shopkeeper picks one. */
-.rv-section-text-inherit {
-  font-family: var(--rv-section-text-font, inherit);
-  color: var(--rv-section-text-color, currentColor);
-}
+/*
+ * Text whose default is the inherited colour — **removida na régua da home.**
+ *
+ * A `rv-section-text-inherit` (com `currentColor` no fallback, para uma seção
+ * que não pinta cor de texto) tinha um consumidor só: a cópia da capa. E era ele
+ * o defeito que abriu este lote — a faixa não declara cor, então o eyebrow e a
+ * linha de apoio herdavam o **grafite do `body`** e saíam escuros sobre a foto.
+ * A correção é na raiz (a faixa inteira é branca, ver `.rv-hero`), e a classe
+ * saiu do arquivo com o consumidor: um fallback `currentColor` em seção sem cor
+ * própria é uma armadilha, e não um recurso.
+ *
+ * O que **não** mudou é o motivo pelo qual ela existia: `text-rv-offwhite/85` e
+ * parentes não existem no CSS (o Tailwind não emite o modificador de opacidade
+ * para uma cor declarada como `var(...)`). Quem pinta texto sobre foto nesta
+ * casa o faz por classe — `.rv-section-text-onmedia`, ou a cor da faixa.
+ */
 
 /* Accents: eyebrows, icons, the handwritten line, item links. */
 .rv-section-accent {
@@ -880,9 +944,14 @@ body {
  *     texto off white sobre ele mede 4,42:1 — o rosa de assinatura daria 3,12:1
  *     e não serviria para um rótulo de 11px.
  *
- * O hover do botão é o **do card** (`.rv-card`, em `product-preview/index.tsx`):
- * apontar a peça acende o convite junto com o título, e o traço da seta anda —
- * o movimento é o que o ponteiro acrescenta, porque a palavra já está aqui.
+ * **O convite não troca de cor no ponteiro, e quem decide é o desenho novo.** Ele
+ * era acendido em `--rv-rose-strong` quando o ponteiro chegava no card, o que fazia
+ * sentido enquanto o botão estava **sempre visível** e a cor era o que respondia ao
+ * ponteiro. No card do redesenho o convite **nasce do hover** (ver o bloco do card,
+ * no fim deste arquivo): ele só existe enquanto o ponteiro está ali, e uma cor que
+ * muda no mesmo instante em que ele aparece seria sempre a mesma cor — a de hover —
+ * e o grafite da régua nunca apareceria. Quem responde ao ponteiro é o movimento: o
+ * zoom da foto e a chegada do convite.
  */
 .rv-price {
   display: flex;
@@ -925,11 +994,11 @@ body {
     border-color var(--rv-motion-fast) var(--rv-ease-out);
 }
 
-.rv-card:hover .rv-card-cta,
-.rv-card-cta:hover {
-  border-color: var(--rv-rose-strong);
-  background-color: var(--rv-rose-strong);
-}
+/*
+ * O convite não tem estado de hover próprio: a cor é a mesma em repouso e com o
+ * ponteiro em cima (a régua escreve a barra escura e pronto), e o que o ponteiro
+ * acrescenta é ele **aparecer** — ver o bloco do card, no fim deste arquivo.
+ */
 
 /*
  * Chip de estado da peça
@@ -1125,6 +1194,1771 @@ body {
 }
 
 /*
+ * A fundação do cromo novo
+ * ---------------------------------------------------------------
+ * O que segue veio do redesenho (a referência de layout) e é a
+ * **linguagem comum** do cabeçalho, do menu lateral, do rodapé e das
+ * páginas internas: botão, ação de ícone, contador da sacola, assinatura
+ * da marca, gaveta, respiro de página e a faixa de novidades.
+ *
+ * Duas regras de tradução valem para o bloco inteiro, e as duas são sobre
+ * o que **não** foi portado:
+ *
+ *   1. Nenhuma cor solta. Onde a referência escrevia o cinza à mão
+ *      (`#aaa`, `#bbb`, `#777`, `#555`), aqui entra um token — do bloco
+ *      "on-dark", lá em cima — para o tema sazonal recoloriar o rodapé
+ *      junto com a loja em vez de deixá-lo para trás. O valor do token
+ *      foi conferido contra o preto, coisa que o protótipo não fazia: o
+ *      `#555` dele dá 2,4:1 e reprova.
+ *
+ *   2. `var(--rv-motion)` é **duração** neste arquivo; na referência o
+ *      mesmo nome carrega a curva junto. Toda transição daqui escreve as
+ *      duas partes: `var(--rv-motion) var(--rv-ease-out)`.
+ *
+ * E vale a regra da casa que o resto do arquivo já repete: `brand.css` é
+ * importado **antes** dos utilitários (`globals.css`), então um `bg-*` ou
+ * `text-*` esquecido no elemento ganha destas classes. Quem adota uma
+ * classe daqui **remove** o utilitário equivalente — nunca soma os dois.
+ * A exceção é a cor de contexto, que é intencional: o mesmo
+ * `.rv-brand-lockup` veste o cabeçalho e o rodapé porque lá um
+ * `text-rv-offwhite` (utilitário, portanto posterior) assume a frente.
+ */
+
+/* --- Botão ------------------------------------------------------------- */
+
+/*
+ * `.rv-btn` é o corpo; as variantes, a roupa:
+ *
+ *   `.rv-btn-primary`    a ação de avançar (o rosa da marca, cheio)
+ *   `.rv-btn-secondary`  a ação de contorno, sobre fundo claro
+ *   `.rv-btn-ghost`      sem caixa nenhuma: continua um botão pelo
+ *   `.rv-btn-text`       comportamento e pelo foco, não pela forma
+ *
+ * `ghost` e `text` só diferem no corpo da letra — o `text` é o mais
+ * discreto, para o "Ver tudo" ao lado de um título. A caixa some nas
+ * duas, e é isso que as separa do par de cima.
+ *
+ * O `min-height: 3rem` não é estética: é o alvo de toque confortável e é
+ * o que mantém uma fileira de botões alinhada com o campo de formulário
+ * ao lado. O `gap` existe para o ícone, que nestes botões vem colado ao
+ * rótulo.
+ */
+.rv-btn {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding-inline: 1.6rem;
+  border: 0;
+  font-family: var(--rv-font-sans);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--rv-motion) var(--rv-ease-out),
+    background-color var(--rv-motion) var(--rv-ease-out),
+    border-color var(--rv-motion) var(--rv-ease-out),
+    transform var(--rv-motion) var(--rv-ease-out);
+}
+
+/*
+ * O erguer de 1px no hover. Com "menos movimento" pedido, a regra de
+ * `prefers-reduced-motion` do topo do arquivo zera a transição e o que
+ * sobra é um deslocamento instantâneo de 1px — um piscar, não uma
+ * animação. É o que a referência faz, e por isso ficou.
+ */
+.rv-btn:hover {
+  transform: translateY(-1px);
+}
+
+.rv-btn-primary {
+  background-color: var(--rv-primary);
+  color: var(--rv-primary-fg);
+}
+
+.rv-btn-primary:hover {
+  background-color: var(--rv-rose-strong);
+}
+
+/* A borda é declarada em `--rv-fg-strong` (e não `currentColor`) para o
+ * contorno continuar existindo no hover: com `currentColor` a borda
+ * viraria off-white sobre o preenchimento e sumiria. */
+.rv-btn-secondary {
+  border: 1px solid var(--rv-fg-strong);
+  background-color: transparent;
+  color: var(--rv-fg-strong);
+}
+
+.rv-btn-secondary:hover {
+  background-color: var(--rv-fg-strong);
+  color: var(--rv-offwhite);
+}
+
+.rv-btn-ghost,
+.rv-btn-text {
+  min-height: 2.5rem;
+  padding-inline: 0;
+  background-color: transparent;
+  color: inherit;
+}
+
+.rv-btn-text {
+  font-size: 0.5625rem;
+}
+
+.rv-btn-text:hover {
+  color: var(--rv-rose-strong);
+}
+
+/* --- Ação de ícone ----------------------------------------------------- */
+
+/*
+ * A ação sem rótulo — a lupa, a pessoa, a sacola. O quadrado de 42px é a
+ * área de toque; o glifo dentro fica com o tamanho que o componente
+ * escolher. O `position: relative` é o que ancora o contador abaixo.
+ *
+ * O anel de foco **não** é escrito aqui de propósito: a regra de
+ * `:focus-visible` do fim deste arquivo é a única da casa e vale para
+ * qualquer elemento focável — um `outline: none` local a anularia.
+ */
+.rv-icon-btn {
+  position: relative;
+  display: inline-flex;
+  width: 2.625rem;
+  height: 2.625rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: var(--rv-fg);
+  transition: color var(--rv-motion) var(--rv-ease-out);
+}
+
+.rv-icon-btn:hover {
+  color: var(--rv-rose);
+}
+
+/*
+ * O contador da sacola, ancorado no canto do alvo de 42px. O fundo é o
+ * rosa cheio — a única mancha de cor do cabeçalho.
+ *
+ * A letra de 8px é pequena de propósito e não é um problema de leitura: o
+ * número é reforço visual. O nome acessível do link já carrega a
+ * contagem ("Sacola (3)"), então quem ouve a página recebe o dado
+ * inteiro.
+ *
+ * `min-width` (e não `width`) para o terceiro dígito caber: com largura
+ * fixa, uma sacola de dez itens viraria um borrão fora do círculo.
+ */
+.rv-cart-badge {
+  position: absolute;
+  right: 0.125rem;
+  top: 0.125rem;
+  display: grid;
+  place-items: center;
+  min-width: 1.0625rem;
+  height: 1.0625rem;
+  padding-inline: 0.125rem;
+  border-radius: 9999px;
+  background-color: var(--rv-rose);
+  color: var(--rv-primary-fg);
+  font-size: 0.5rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* --- Assinatura da marca ---------------------------------------------- */
+
+/*
+ * O conjunto "REAL VALOR / Alfaiataria feminina", em coluna.
+ *
+ * O mesmo bloco aparece no cabeçalho e no rodapé, e é por isso que ele
+ * mora aqui: o que muda entre os dois é só a cor, que vem do contexto —
+ * o `cacao` desta regra no cabeçalho, o `text-rv-offwhite` do rodapé. O
+ * nome **não** declara cor nenhuma: ele herda do bloco, e é isso que faz
+ * a mesma classe servir ao fundo claro e ao escuro.
+ */
+.rv-brand-lockup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--rv-cacao);
+}
+
+.rv-brand-lockup-name {
+  font-family: var(--rv-font-display);
+  font-size: 1.125rem;
+  letter-spacing: 0.23em;
+  line-height: 1;
+}
+
+@media (min-width: 1024px) {
+  .rv-brand-lockup-name {
+    font-size: 1.5rem;
+  }
+}
+
+/*
+ * A fileira de ações do cabeçalho, encostada na direita da sua coluna. O
+ * `flex-wrap: nowrap` é o que impede a sacola de cair para a linha de
+ * baixo quando a marca ocupa toda a largura da coluna dela.
+ */
+.rv-header-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.125rem;
+}
+
+/* --- Gaveta ------------------------------------------------------------ */
+
+/*
+ * A gaveta lateral: o menu do celular agora e, adiante, os filtros do
+ * catálogo. As duas telas têm a **mesma** geometria no redesenho — trilho
+ * pela esquerda, `88vw` até 420px, topo e base colados na tela — e é por
+ * isso que a classe é uma só: quem quiser mudar a largura das duas muda
+ * um número, aqui.
+ *
+ * O `z-index` fica acima do cabeçalho (`z-50`): a gaveta nasce de um
+ * botão que mora dentro dele, então precisa cobri-lo.
+ *
+ * O `overflow-y: auto` não é detalhe. Um menu de oito itens num celular
+ * de 600px de altura passa da tela, e sem ele os últimos destinos
+ * ficariam inalcançáveis — no menu, um beco sem saída.
+ */
+.rv-drawer-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  background-color: rgba(23, 23, 23, 0.5);
+}
+
+.rv-drawer {
+  position: fixed;
+  z-index: 81;
+  inset-block: 0;
+  left: 0;
+  width: min(88vw, 420px);
+  overflow-y: auto;
+  padding: 1.5rem;
+  background-color: var(--rv-surface);
+  box-shadow: var(--rv-shadow-hover);
+}
+
+/* O topo da gaveta: o rótulo de um lado, o fechar do outro, e o filete
+ * embaixo separando o cabeçalho do conteúdo. */
+.rv-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rv-border);
+}
+
+/* A lista de destinos: um por linha, com o filete em cada um. */
+.rv-drawer-links {
+  display: flex;
+  flex-direction: column;
+  margin-block: 0.5rem 1.5rem;
+}
+
+/*
+ * A linha de destino. O `min-height` de 56px é o alvo de toque de um
+ * celular, e o filete embaixo é a única separação entre os itens — sem
+ * ele a lista vira um bloco de texto.
+ *
+ * A letra é a de display, 18px e **sem** caixa alta: aqui o item é um
+ * destino, não um rótulo, e a caixa alta brigaria com o nome da marca no
+ * topo da gaveta. A cor sai do token, não do `text-rv-grafite` que a
+ * marca usa nos títulos — sobre o fundo elevado, o cacao é o tom de
+ * leitura da casa.
+ *
+ * A transição e o realce do hover **não** estão aqui: eles vêm do
+ * `transition-colors hover:text-rv-rose` que o `nav-link` põe em todo
+ * link de texto. Repetir o par seria escrever a mesma coisa duas vezes, e
+ * a segunda perderia a disputa de qualquer jeito.
+ */
+.rv-drawer-link {
+  display: flex;
+  width: 100%;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--rv-border);
+  font-family: var(--rv-font-display);
+  font-size: 1.125rem;
+  color: var(--rv-cacao);
+}
+
+/* --- Respiro das páginas internas ------------------------------------- */
+
+/*
+ * A régua das telas que **não** são a home: busca, catálogo, produto,
+ * sacola, conta.
+ *
+ * Nada aqui é usado ainda. As classes entram agora, junto com o cromo,
+ * para que a etapa seguinte não invente um terceiro jeito de fazer o
+ * mesmo respiro — e para que os dois caminhos de layout (a vitrine, que é
+ * uma sequência de faixas, e a página interna, que é um documento) já
+ * estejam separados por nome.
+ */
+
+/* O respiro vertical, só: para quem já tem trilho. */
+.rv-page-pad {
+  padding-block: var(--rv-page-space);
+}
+
+/* A casca da página de texto, no trilho estreito do redesenho. */
+.rv-page-shell {
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-block: clamp(4rem, 7vw, 7rem) var(--rv-page-space);
+}
+
+/* O título de uma seção de página: display, no tamanho de um título. */
+.rv-page-heading {
+  font-family: var(--rv-font-display);
+  font-size: clamp(2rem, 3.5vw, 3.25rem);
+  line-height: 1.08;
+  color: var(--rv-fg-strong);
+}
+
+/*
+ * A abertura da página: faixa elevada, texto centralizado e o título
+ * grande o bastante para anunciar que a página começou. O `h1` e o
+ * parágrafo ficam limitados pela mesma régua de leitura, o que mantém o
+ * bloco alinhado pelo centro.
+ */
+.rv-page-intro {
+  padding-block: var(--rv-page-space);
+  background-color: var(--rv-surface);
+  text-align: center;
+}
+
+.rv-page-intro > * {
+  max-width: 37.5rem;
+  margin-inline: auto;
+}
+
+.rv-page-intro h1 {
+  margin-block: 1rem 1.4rem;
+  font-size: clamp(3rem, 5.5vw, 5.5rem);
+  line-height: 1;
+}
+
+/* O caminho de volta: discreto, em caixa alta, acima do título. */
+.rv-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--rv-muted);
+  font-size: 0.5625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/*
+ * A metade realçada do título da abertura. O `em` do navegador é só
+ * itálico; aqui ele também **colore**, e é o rosa de assinatura — a mesma
+ * escolha do redesenho.
+ *
+ * A regra de acessibilidade deste arquivo permite: o título de abertura
+ * mede de 3rem para cima, muito acima dos 24px em que o rosa passa a
+ * valer como cor de texto (a conta está no topo do arquivo). Num corpo de
+ * 11px o mesmo rosa reprovaria.
+ */
+.rv-page-intro h1 em {
+  color: var(--rv-rose);
+  font-style: italic;
+}
+
+/* --- Busca -------------------------------------------------------------- */
+
+/*
+ * O campo da busca: uma linha embaixo, larga e funda, com o ícone e a
+ * letra no corpo de display. É o único campo da loja que **não** tem
+ * caixa — de propósito, porque ele é o assunto da faixa em que mora, e
+ * não mais um dado de um formulário.
+ *
+ * O tamanho da letra é a metade do que a referência desenha
+ * (`clamp(1.6rem, 3vw, 2.5rem)`): lá o campo ocupa a tela inteira de uma
+ * sobreposição de 850px, aqui ele divide a faixa com um título de 5rem e
+ * para nos mesmos 600px da régua de leitura. Na escala da referência o
+ * campo ficaria maior do que o título.
+ *
+ * O `outline: 0` da referência **não** foi portado: a regra de
+ * `:focus-visible` do fim deste arquivo é a única da casa, e um campo de
+ * texto é justamente onde o foco precisa aparecer. O que a referência dava
+ * a entender com ele — "este elemento está aceso" — está no traço que
+ * muda de cor abaixo.
+ */
+.rv-search-field {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 4.5rem;
+  margin-top: 1rem;
+  border-bottom: 1px solid var(--rv-preto);
+}
+
+.rv-search-field svg {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--rv-muted);
+}
+
+.rv-search-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background-color: transparent;
+  color: var(--rv-preto);
+  font-family: var(--rv-font-display);
+  font-size: clamp(1.15rem, 2.2vw, 2rem);
+  /* A faixa centraliza tudo; o campo é a exceção, porque texto de campo
+   * alinhado ao centro muda de lugar a cada letra digitada. */
+  text-align: left;
+}
+
+/*
+ * O campo aceso. O traço é a única pista de que ali se digita, então ele
+ * engrossa para o rosa — cor de borda, uso permitido pela regra da casa —
+ * e a transição é a da casa, com as duas partes (`--rv-motion` é só a
+ * duração).
+ */
+.rv-search-field:focus-within {
+  border-bottom-color: var(--rv-rose);
+  transition: border-color var(--rv-motion) var(--rv-ease-out);
+}
+
+/*
+ * A linha de sugestões, no lugar em que a referência a desenha: logo
+ * abaixo do campo, miúda e em caixa alta.
+ *
+ * Uma diferença deliberada: na referência ela é **texto morto** ("Sugestões:
+ * blazer, vestido, alfaiataria"). Aqui cada termo é um link para a mesma
+ * busca já feita, porque uma sugestão que não se clica é uma promessa sem
+ * botão — e o sublinhado é o que separa a sugestão do resto da frase.
+ */
+.rv-search-suggestions {
+  margin-top: 1rem;
+  color: var(--rv-muted);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rv-search-suggestion {
+  color: var(--rv-cacao);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--rv-motion) var(--rv-ease-out);
+}
+
+.rv-search-suggestion:hover {
+  color: var(--rv-rose);
+}
+
+/* --- Vazio -------------------------------------------------------------- */
+
+/*
+ * O estado vazio — a resposta que a página dá quando não tem o que
+ * mostrar: a busca sem resultado, e (adiante) a sacola sem item.
+ *
+ * Ele é uma **faixa elevada**, e não um parágrafo solto. Um "nada
+ * encontrado" que se lê como nota de pé de página parece falha de
+ * carregamento; centralizado e com 400px de altura mínima, ele se
+ * apresenta como a resposta da página — que é o que ele é.
+ *
+ * As três partes são as da referência: o ícone (em rosa — ícone é um dos
+ * usos que a regra da casa permite), o título em display e a frase de
+ * apoio em `--rv-muted`. O peso 500 do título é declarado aqui porque, ao
+ * contrário da referência, o storefront não tem um `h2 { font-weight }`
+ * global: sem ele o navegador desenharia o negrito do `h2`.
+ */
+.rv-empty-state {
+  display: flex;
+  min-height: 25rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  background-color: var(--rv-surface);
+  text-align: center;
+}
+
+.rv-empty-state svg {
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--rv-rose);
+}
+
+.rv-empty-state h2 {
+  font-family: var(--rv-font-display);
+  font-size: var(--rv-text-3xl);
+  font-weight: 500;
+  color: var(--rv-fg-strong);
+}
+
+.rv-empty-state p {
+  max-width: 32rem;
+  color: var(--rv-muted);
+  line-height: 1.6;
+}
+
+/* --- Catálogo ----------------------------------------------------------- */
+
+/*
+ * A barra de abas de categoria. Como a faixa de abertura, ela é uma faixa
+ * inteira (fundo elevado) com a fileira dentro do mesmo trilho do resto da
+ * página — por isso o `rv-container` entra por dentro, no componente: sem ele, a
+ * última aba de uma tela larga ficaria fora do alinhamento da grade abaixo.
+ *
+ * A referência desenha o filete em cima **e** embaixo; aqui só embaixo. A faixa
+ * de abertura (que vem logo acima) tem o mesmo fundo elevado, e um filete entre
+ * duas faixas da mesma cor lê como costura, não como divisão.
+ */
+.rv-category-tabs {
+  background-color: var(--rv-surface);
+  border-bottom: 1px solid var(--rv-border);
+  padding-block: 0.8rem;
+  overflow-x: auto;
+}
+
+.rv-category-tabs .rv-btn-text {
+  min-height: 2.5rem;
+  border-bottom: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.rv-category-tabs .active {
+  color: var(--rv-rose-strong);
+  border-bottom-color: var(--rv-rose);
+}
+
+/*
+ * O respiro do miolo do catálogo. Ele é menor em cima do que o de uma página
+ * nova (`--rv-page-space`) porque a faixa de abertura já deu o respiro grande:
+ * o que vem depois dela é continuação, não começo. Embaixo, o respiro é o da
+ * seção — a grade precisa de ar antes do rodapé.
+ */
+.rv-catalog-pad {
+  padding-block: clamp(2rem, 4vw, 3rem) var(--rv-section-space);
+}
+
+/* --- Barra de ferramentas ---------------------------------------------- */
+
+.rv-catalog-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.rv-catalog-count {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+}
+
+/*
+ * O seletor de ordem. Ele é um `<select>` nativo de propósito: a lista suspensa
+ * do sistema é a que funciona no teclado, no leitor de tela e no celular sem uma
+ * linha de JavaScript — e a ordem tem três opções, que é o tamanho de lista em
+ * que um seletor nativo ganha de um menu próprio.
+ */
+.rv-sort {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--rv-muted);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rv-sort select {
+  border: 0;
+  border-bottom: 1px solid var(--rv-border);
+  padding: 0.6rem 1.6rem 0.6rem 0.4rem;
+  background-color: transparent;
+  color: var(--rv-preto);
+  font-size: var(--rv-text-eyebrow);
+  /* A caixa alta do rótulo não desce para o valor do seletor: "ORDENAR POR" é
+   * rótulo, "Menor preço" é o que está escolhido. */
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* --- Filtros e grade ---------------------------------------------------- */
+
+/*
+ * A coluna de filtros e a grade. No celular não há coluna: os filtros vivem na
+ * gaveta (o botão "Filtros (n)" da barra de ferramentas), e aqui o que sobra é
+ * uma coisa em cima da outra.
+ *
+ * `minmax(0, 1fr)` no lugar de `1fr`: a coluna da grade é a que pode encolher
+ * abaixo do conteúdo dela, e com `1fr` a largura mínima automática do grid
+ * empurraria a página para o lado quando o título de uma peça fosse comprido.
+ */
+.rv-catalog-layout {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .rv-catalog-layout {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 3rem;
+    align-items: start;
+  }
+}
+
+.rv-catalog-filters {
+  margin-bottom: 2.5rem;
+}
+
+/* A grade do catálogo: três colunas ao lado da barra de filtros, duas abaixo. */
+.rv-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.8rem, 1.6vw, 1.6rem);
+  row-gap: 3.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .rv-catalog-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* --- Filtros aplicados (os chips) --------------------------------------- */
+
+/*
+ * A fileira dos filtros que estão valendo, logo abaixo da barra de ferramentas.
+ *
+ * Cada chip é um **`.rv-chip`** — a mesma peça do estado da peça no card, e não
+ * uma segunda forma para "etiqueta" — com o título da faceta e o valor marcado
+ * ("Cor: Preto"). A fileira é a resposta curta para "por que esta grade tem 4
+ * peças?", e no celular, onde a barra lateral de filtros não existe, é a única
+ * coisa que lembra a cliente do que ela marcou.
+ *
+ * Ela **não é desenhada** sem filtro aplicado (o componente devolve `null`), e o
+ * chip ainda não é clicável: desfazer um filtro é escrever na URL, e esse passo é
+ * da ilha de cliente do próximo lote. Até lá a fileira informa — quem desfaz é o
+ * painel, que já está na página, com "Limpar filtros" no vazio.
+ */
+.rv-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* --- Painel de filtros -------------------------------------------------- */
+
+/*
+ * O acordeão — a **mesma** forma para os filtros do catálogo e para os detalhes
+ * da peça, como no desenho de referência: o `<details>` nativo guarda o estado de
+ * aberto (é teclado, é leitor de tela e é o "Ctrl+F" do navegador achando o texto
+ * dentro da seção fechada), o marcador nativo sai e o glifo do desenho é o `+`
+ * do próprio `summary`.
+ *
+ * Uma forma, dois donos — e é por isso que **os dois rótulos aparecem juntos em
+ * toda regra daqui**: os detalhes da peça raizam em `.rv-accordion` e o painel de
+ * filtros em `.rv-filter-panel` (o `filter-panel` é montado duas vezes na página e
+ * tem raiz própria), e um segundo estilo de acordeão na mesma loja seria a segunda
+ * gramática para a mesma pergunta ("o que tem aí dentro?").
+ */
+.rv-accordion details,
+.rv-filter-panel details {
+  border-bottom: 1px solid var(--rv-border);
+}
+
+.rv-accordion summary,
+.rv-filter-panel summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 1.2rem;
+  color: var(--rv-preto);
+  font-size: var(--rv-text-eyebrow);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.rv-accordion summary::-webkit-details-marker,
+.rv-filter-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+/* O `+` que vira `×` quando a seção abre: é a única pista de que ela fecha. */
+.rv-accordion .rv-accordion-icon,
+.rv-filter-panel .rv-filter-icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--rv-muted);
+  transition: transform var(--rv-motion) var(--rv-ease-out);
+}
+
+.rv-accordion details[open] .rv-accordion-icon,
+.rv-filter-panel details[open] .rv-filter-icon {
+  transform: rotate(45deg);
+}
+
+.rv-filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding-bottom: 1.2rem;
+}
+
+.rv-filter-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+  cursor: pointer;
+  transition: color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-filter-options label:hover {
+  color: var(--rv-rose-strong);
+}
+
+/* O rosa da marca como preenchimento do controle — uso permitido pela regra de
+ * acessibilidade deste arquivo: a caixa marcada é forma, não texto. */
+.rv-filter-options input {
+  flex: none;
+  accent-color: var(--rv-rose);
+}
+
+/*
+ * A opção que a combinação marcada não alcança. Ela fica no lugar, esmaecida e
+ * sem o realce do ponteiro: o rótulo diz "existe, não neste recorte", e o zero ao
+ * lado confirma.
+ */
+.rv-filter-options label[data-vazio] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rv-filter-options label[data-vazio]:hover {
+  color: var(--rv-muted);
+}
+
+/* No celular a ordem encosta na direita da barra; numa tela estreita de verdade
+ * ela ocupa a linha inteira, porque um seletor de doze caracteres ao lado de
+ * "Filtros (2)" não cabe. */
+@media (max-width: 1023px) {
+  .rv-sort {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 639px) {
+  .rv-sort {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* --- Página da peça ----------------------------------------------------- */
+
+/*
+ * A galeria à esquerda, o resumo à direita. É o desenho da referência, e a
+ * proporção (1,45 para a foto, 0,75 para o texto) é a que dá à imagem o peso de
+ * quem vende roupa — a coluna de texto não precisa de mais do que isso para
+ * caber título, preço, tamanhos e o botão.
+ *
+ * `minmax(0, ...)` nas duas colunas pelo mesmo motivo do catálogo: sem o zero, a
+ * largura mínima automática de um título comprido empurraria a página para o
+ * lado.
+ */
+.rv-product-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  padding-block: 1.5rem var(--rv-section-space);
+}
+
+@media (min-width: 1024px) {
+  .rv-product-detail {
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.75fr);
+    gap: clamp(2rem, 6vw, 6rem);
+  }
+}
+
+/*
+ * A galeria: a primeira foto ocupa a largura toda e as outras entram duas a
+ * duas. O fundo rosado é o mesmo do card (a cor que aparece enquanto a foto
+ * carrega), para a página da peça e a vitrine terem o mesmo "vazio".
+ */
+.rv-product-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-content: start;
+}
+
+.rv-product-gallery > * {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--rv-rose-soft);
+}
+
+.rv-gallery-main {
+  grid-column: 1 / -1;
+  height: min(78vh, 53rem);
+}
+
+.rv-gallery-item {
+  height: clamp(14rem, 26vw, 26rem);
+}
+
+/*
+ * O resumo. Ele **acompanha** a rolagem no desktop (`sticky`), porque a decisão
+ * de compra é tomada ao lado da foto e não depois dela: preço e tamanhos têm de
+ * estar à vista quando a cliente está olhando o caimento.
+ *
+ * O `top` é 6rem, e não os 2rem da referência: aqui o cabeçalho é `sticky` e mede
+ * 5rem — com 2rem de folga o título da peça entraria debaixo dele.
+ */
+.rv-product-summary {
+  align-self: start;
+  padding-top: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .rv-product-summary {
+    position: sticky;
+    top: 6rem;
+  }
+}
+
+/*
+ * As estrelas de avaliação, **acima do título** — a ordem da referência
+ * (estrelas → categoria → nome), e a que responde "esta peça é confiável?" antes
+ * de "que peça é esta?".
+ *
+ * **As estrelas são forma, o número é que informa.** O rosa da marca não serve
+ * para texto neste corpo (3,4:1 — a regra está no topo deste arquivo), então o
+ * glifo fica em rosa e a nota com a contagem vão em `--rv-muted`, o corpo de
+ * apoio da casa. Quem ouve a página lê a frase uma vez só: no componente as
+ * estrelas saem com `aria-hidden`, e é o texto que carrega a informação.
+ *
+ * O bloco inteiro **não existe** enquanto o catálogo não tiver avaliação — o
+ * componente devolve `null`. Nota inventada seria a loja afirmando o que ninguém
+ * disse, e é a primeira coisa que a cliente confere depois de comprar.
+ */
+.rv-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.4rem;
+  color: var(--rv-rose);
+  font-size: var(--rv-text-xs);
+  letter-spacing: 0.15em;
+}
+
+/* As cinco estrelas, encostadas uma na outra como um grupo de glifos. */
+.rv-rating-stars {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.rv-rating-star {
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+/* A estrela que a nota não alcançou: o rosa da marca em baixa ênfase, e não um
+ * cinza — o grupo continua sendo um só. */
+.rv-rating-star-vazia {
+  color: var(--rv-rose-soft);
+}
+
+.rv-rating-count {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+  letter-spacing: 0;
+}
+
+/* O título da peça, no corpo de display e no tamanho de capa. */
+.rv-product-title {
+  margin-block: 0.8rem 1rem;
+  font-family: var(--rv-font-display);
+  font-size: clamp(2rem, 3.6vw, 3.25rem);
+  line-height: 1.06;
+  color: var(--rv-fg-strong);
+}
+
+.rv-product-description {
+  color: var(--rv-muted);
+  line-height: 1.7;
+}
+
+/*
+ * O bloco do preço: uma faixa entre dois filetes, com o número à esquerda e o
+ * "De/Por" à direita.
+ *
+ * O número grande é da **display**, e não da sans do resto da interface: é o
+ * mesmo tratamento que a capa e o título dão ao que é importante, e é o que faz
+ * o preço ser lido antes de qualquer outra coisa na coluna.
+ */
+.rv-price-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  /* O respiro de baixo é menor que o de cima: logo abaixo vem o chip de estado,
+   * que é a continuação da mesma informação ("quanto custa" → "tem pronta
+   * entrega?"), e não um bloco novo. */
+  margin-block: 1.8rem 0.9rem;
+  padding-block: 1.4rem;
+  border-block: 1px solid var(--rv-border);
+}
+
+.rv-price-block > strong {
+  font-family: var(--rv-font-display);
+  font-size: 1.5625rem;
+  font-weight: 500;
+  color: var(--rv-fg-strong);
+}
+
+.rv-price-block small {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+  text-align: right;
+}
+
+/*
+ * O parcelamento e o Pix, dentro do bloco do preço.
+ *
+ * O `small` do bloco já era uma coluna (o "De/Por" empilhado); o que entra aqui
+ * são as duas linhas da referência, na mesma coluna e no mesmo corpo miúdo:
+ *
+ *   6x de R$ 124,90 sem juros
+ *   R$ 464,55 no Pix
+ *
+ * Quem escreve as duas é o `InstallmentInfo`, e **só com dado do provedor**: o
+ * Medusa não tem parcelamento (quem sabe é o meio de pagamento, no checkout) e o
+ * valor do Pix é regra de desconto que a loja ainda não cadastrou. Sem dado, o
+ * bloco do preço é exatamente o que sempre foi — ver o comentário do componente.
+ *
+ * O Pix é o único verde do bloco, e o verde é o de estado da casa (5,12:1 sobre o
+ * fundo claro): ele diz "esta é a melhor das condições do mesmo valor". O
+ * seletor vale também fora do bloco do preço porque o resumo da sacola monta a
+ * mesma linha na coluna dele.
+ */
+.rv-installments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+}
+
+.rv-price-block small b,
+.rv-installments b {
+  color: var(--rv-success);
+  font-weight: 600;
+}
+
+/*
+ * No celular o bloco empilha: o preço em cima, as condições embaixo, alinhadas à
+ * esquerda. É o desenho da referência em tela estreita, e é o que dá largura à
+ * linha de parcelas sem espremer o número do preço, que é a informação que a
+ * cliente veio buscar.
+ */
+@media (max-width: 639px) {
+  .rv-price-block {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rv-price-block small {
+    text-align: left;
+  }
+}
+
+/* --- Seletores (cor e tamanho) ----------------------------------------- */
+
+.rv-selector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block: 1.3rem 0.8rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+}
+
+.rv-selector-head strong {
+  color: var(--rv-fg-strong);
+  font-weight: 600;
+}
+
+.rv-swatches,
+.rv-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+/*
+ * A amostra de cor: o círculo cheio, com a borda na cor da superfície — que é o
+ * que cria o anel de folga entre a cor e o fundo — e o anel de 1px por fora. A
+ * selecionada troca o anel fino pelo rosa de 2px.
+ */
+.rv-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 4px solid var(--rv-surface);
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1px var(--rv-border);
+  font-size: 0.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rv-swatch.active {
+  box-shadow: 0 0 0 2px var(--rv-rose);
+}
+
+/* O tamanho: um quadrado de 44px, que é o alvo de toque mínimo confortável. */
+.rv-size {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.25rem;
+  height: 2.75rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-offwhite);
+  color: var(--rv-fg-strong);
+  font-size: var(--rv-text-eyebrow);
+  cursor: pointer;
+  transition: background-color var(--rv-motion-fast) var(--rv-ease-out),
+    color var(--rv-motion-fast) var(--rv-ease-out),
+    border-color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-size:hover {
+  border-color: var(--rv-fg-strong);
+}
+
+.rv-size.active {
+  border-color: var(--rv-preto);
+  background-color: var(--rv-preto);
+  color: var(--rv-offwhite);
+}
+
+/*
+ * O botão de comprar: a largura da coluna, e a única mancha de rosa cheio do
+ * resumo. O respiro de cima é maior do que o do resto do bloco de propósito —
+ * ele é o fim da decisão, e não mais uma linha de informação.
+ */
+.rv-add-button {
+  width: 100%;
+  margin-top: 1.7rem;
+}
+
+/* --- Frete e prazo (a caixa do CEP) ------------------------------------- */
+
+/*
+ * A caixa do frete, logo abaixo do botão de comprar: é a última pergunta de quem
+ * decide ("chega até mim?"), e ela vem **depois** do botão porque não é uma
+ * pergunta que a loja precise responder para vender.
+ *
+ * A caixa só existe com **opção de entrega real** — a lista calculada para o CEP
+ * informado. Sem ela o componente devolve `null`, e não uma caixa vazia: um campo
+ * que responde "3 a 5 dias úteis, grátis" para qualquer CEP digitado é a promessa
+ * por escrito que a página da peça já recusou uma vez (o registro está no
+ * `product-actions`).
+ *
+ * As classes do campo e da validação ficam prontas aqui porque são as do
+ * formulário da casa — borda `--rv-border`, e o campo aceso com a borda em rosa e
+ * o halo `--rv-rose-soft`, exatamente como o `form-grid` da referência. Quem as
+ * usa ao digitar é a ilha de cliente do próximo lote; a lista de opções, que é
+ * dado, é o que este componente desenha hoje.
+ */
+.rv-shipping-quote {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1.2rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-surface);
+}
+
+.rv-shipping-quote > svg {
+  flex: none;
+  color: var(--rv-rose);
+}
+
+.rv-shipping-quote-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.rv-shipping-quote-text > strong {
+  color: var(--rv-preto);
+  font-size: var(--rv-text-eyebrow);
+}
+
+.rv-shipping-quote-text > span {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+}
+
+/* Uma linha por modalidade calculada. O verde é o de "boa notícia" do resto do
+ * arquivo — e o mesmo da linha do Pix, que é a outra resposta de dinheiro. */
+.rv-shipping-quote-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.rv-shipping-quote-result {
+  color: var(--rv-success);
+  font-size: var(--rv-text-xs);
+}
+
+/* O par campo + botão do CEP. */
+.rv-shipping-quote-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/*
+ * O campo rebaixa para o off-white: a caixa é `--rv-surface`, que é **mais clara**
+ * que a página — um campo da cor da caixa sumiria dentro dela.
+ *
+ * O `min-height` de 44px é o alvo de toque da casa (o mesmo do seletor de
+ * tamanho), e ele alinha o campo com o botão ao lado, que desce dos 48px do
+ * `.rv-btn` para os mesmos 44px nesta linha.
+ */
+.rv-shipping-quote-row input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-offwhite);
+  color: var(--rv-preto);
+  font-family: var(--rv-font-sans);
+  font-size: var(--rv-text-sm);
+}
+
+.rv-shipping-quote-row .rv-btn {
+  min-height: 2.75rem;
+}
+
+/* O campo aceso. O anel de foco do teclado continua sendo o global (nenhuma
+ * regra local escreve `outline: none`); o que se acrescenta é o halo suave da
+ * referência, que também aparece para quem chegou de mouse. */
+.rv-shipping-quote-row:focus-within input {
+  border-color: var(--rv-rose);
+  box-shadow: 0 0 0 2px var(--rv-rose-soft);
+}
+
+/* O CEP que não é CEP: a mensagem de estado no mesmo lugar em que apareceria o
+ * resultado — a lista só troca de cor e de frase. */
+.rv-shipping-quote-validation {
+  color: var(--rv-danger);
+  font-size: var(--rv-text-xs);
+}
+
+/* --- Detalhes da peça (os acordeões) ------------------------------------ */
+
+/*
+ * O corpo do acordeão é texto de apoio — o mesmo corpo miúdo e quieto da
+ * referência —, porque aqui dentro mora composição, medidas e cuidados:
+ * informação para conferir, e não para ler de ponta a ponta.
+ */
+.rv-product-accordions {
+  margin-top: 1.2rem;
+}
+
+.rv-accordion-body {
+  padding-bottom: 1rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+  line-height: 1.7;
+}
+
+/* A ficha técnica é rótulo e valor, um por linha: `dt` em preto para o rótulo
+ * ser encontrado no meio do texto. */
+.rv-accordion-body dl {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.rv-accordion-body dt {
+  color: var(--rv-fg-strong);
+  font-weight: 600;
+}
+
+.rv-accordion-body a {
+  color: var(--rv-cacao);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rv-accordion-body a:hover {
+  color: var(--rv-rose);
+}
+
+/* --- Sacola e resumo ---------------------------------------------------- */
+
+/*
+ * O cabeçalho de uma página interna **sem faixa**: o título centralizado, no
+ * corpo de capa, com o respiro grande em cima e embaixo. A contagem dos itens vai
+ * dentro do `h1`, em `em`, num corpo menor e em cinza — ela é informação
+ * secundária, e o título continua sendo "Sacola".
+ */
+.rv-page-heading-block {
+  margin-bottom: 3.5rem;
+  text-align: center;
+}
+
+.rv-page-heading-block h1 {
+  margin-top: 0.8rem;
+  font-family: var(--rv-font-display);
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  line-height: 1.02;
+  color: var(--rv-fg-strong);
+}
+
+.rv-page-heading-block h1 em {
+  color: var(--rv-muted);
+  font-size: 0.42em;
+  font-style: normal;
+}
+
+/*
+ * A lista de itens e o resumo, lado a lado. O resumo é mais estreito do que a
+ * lista porque ele é curto — cinco linhas — e a lista carrega foto e nome; é a
+ * mesma proporção da referência (1,5 para 0,8).
+ */
+.rv-cart-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .rv-cart-layout {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.8fr);
+    gap: 4rem;
+  }
+}
+
+.rv-cart-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+}
+
+/*
+ * A linha da sacola: foto, informações e preço. No celular o preço desce para a
+ * coluna do texto (duas colunas em vez de três), porque a foto de 150px ao lado
+ * de duas colunas de texto não caberia em 360px de tela.
+ */
+.rv-cart-item {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 1rem;
+  padding-bottom: 1.8rem;
+  border-bottom: 1px solid var(--rv-border);
+}
+
+@media (min-width: 640px) {
+  .rv-cart-item {
+    grid-template-columns: 9.5rem minmax(0, 1fr) auto;
+    gap: 1.5rem;
+  }
+}
+
+.rv-cart-item-media {
+  display: block;
+}
+
+.rv-cart-item-info h3 {
+  margin-block: 0.5rem;
+  font-family: var(--rv-font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--rv-fg-strong);
+}
+
+.rv-cart-item-info p {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+}
+
+/*
+ * O passo da quantidade: dois botões com o número no meio, dentro de uma moldura
+ * de 1px. É o controle da referência e **é ele quem escreve no carrinho** — os
+ * dois botões chamam a mesma action que o seletor antigo chamava.
+ */
+.rv-cart-quantity {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  margin-top: 1.5rem;
+  border: 1px solid var(--rv-border);
+}
+
+.rv-cart-quantity button {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--rv-fg);
+  cursor: pointer;
+  transition: color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-cart-quantity button:hover:not(:disabled) {
+  color: var(--rv-rose);
+}
+
+.rv-cart-quantity button:disabled {
+  color: var(--rv-border);
+  cursor: not-allowed;
+}
+
+.rv-cart-quantity > span {
+  width: 2.125rem;
+  text-align: center;
+  font-size: var(--rv-text-sm);
+}
+
+.rv-cart-item-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  font-weight: 600;
+  color: var(--rv-fg-strong);
+}
+
+@media (max-width: 639px) {
+  .rv-cart-item-price {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+/* "Remover" é texto, e não um ícone de lixeira: a ação é destrutiva, e nomeá-la
+ * é o que impede o clique por engano. */
+.rv-cart-remove button {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-cart-remove button:hover {
+  color: var(--rv-rose-strong);
+}
+
+/*
+ * O resumo do pedido: uma caixa elevada, com o título separado por um filete e
+ * as linhas de valor embaixo. Ele **acompanha a rolagem** no desktop, para o
+ * botão de fechar a compra estar à vista enquanto a cliente confere a lista.
+ */
+.rv-order-summary {
+  padding: 2rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-surface);
+  box-shadow: var(--rv-shadow-card);
+}
+
+@media (min-width: 1024px) {
+  .rv-order-summary {
+    position: sticky;
+    top: 6rem;
+  }
+}
+
+.rv-order-summary h2,
+.rv-order-summary h3 {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rv-border);
+  font-family: var(--rv-font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--rv-fg-strong);
+}
+
+/* As linhas de valor: rótulo à esquerda, número à direita. */
+.rv-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.2rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+}
+
+.rv-summary-row .rv-success {
+  color: var(--rv-success);
+}
+
+.rv-summary-total {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rv-border);
+  color: var(--rv-fg);
+  font-size: var(--rv-text-sm);
+}
+
+.rv-summary-total strong {
+  font-family: var(--rv-font-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--rv-fg-strong);
+}
+
+/*
+ * O parcelamento e o Pix no resumo da sacola: **o mesmo componente** do bloco do
+ * preço (`InstallmentInfo`), na coluna que fica logo abaixo do total.
+ *
+ * A coluna se alinha pela ponta direita para ficar debaixo do número do total, e o
+ * corpo é o das linhas de valor acima (`.rv-summary-row`) — a linha do Pix continua
+ * sendo a única verde, pela regra compartilhada do `.rv-installments b`.
+ */
+.rv-order-summary > .rv-installments {
+  margin-top: 0.75rem;
+  align-items: flex-end;
+  font-size: var(--rv-text-eyebrow);
+}
+
+/* O aviso de compra segura, no pé do resumo. */
+.rv-secure-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+}
+
+/* --- Checkout ----------------------------------------------------------- */
+
+/*
+ * O checkout: o formulário à esquerda, o resumo à direita — a **mesma** caixa da
+ * sacola, porque é o mesmo objeto na mesma compra e ele não pode mudar de forma
+ * entre uma tela e a outra.
+ *
+ * Abaixo de 1024px o resumo **sobe para o topo** (`order: -1`, num trilho só):
+ * quem preenche endereço no celular precisa ver o que está comprando antes de
+ * digitar, e não depois de rolar a página inteira.
+ */
+.rv-checkout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+  padding-block: 3rem var(--rv-section-space);
+}
+
+@media (min-width: 1024px) {
+  .rv-checkout-layout {
+    grid-template-columns: minmax(0, 1fr) 26rem;
+    gap: 4rem;
+    align-items: start;
+  }
+}
+
+@media (max-width: 1023px) {
+  .rv-checkout-layout > .rv-order-summary {
+    order: -1;
+  }
+}
+
+/* --- Confirmação do pedido --------------------------------------------- */
+
+/*
+ * O fecho da compra: a única tela da loja em que a emoção vem antes do dado. Por
+ * isso ela é uma faixa elevada inteira, com a marca, o agradecimento e — só
+ * depois — o número do pedido e os dados da entrega.
+ *
+ * A marca é um círculo com o verde da loja (`--rv-success-bg` / `--rv-success`),
+ * e não o rosa: verde aqui não é decoração, é o sinal de "deu certo" que a
+ * cliente reconhece antes de ler qualquer palavra.
+ */
+.rv-confirmation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-block: clamp(3rem, 6vw, 5rem);
+  background-color: var(--rv-surface);
+  text-align: center;
+}
+
+.rv-confirmation-mark {
+  display: grid;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-bottom: 1.5rem;
+  place-items: center;
+  border-radius: 9999px;
+  background-color: var(--rv-success-bg);
+  color: var(--rv-success);
+}
+
+.rv-confirmation h1 {
+  margin-block: 1rem 1.3rem;
+  font-family: var(--rv-font-display);
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  line-height: 1.05;
+  color: var(--rv-fg-strong);
+}
+
+.rv-confirmation h1 em {
+  color: var(--rv-rose);
+  font-style: italic;
+}
+
+.rv-confirmation > p {
+  max-width: 32.5rem;
+  color: var(--rv-muted);
+  line-height: 1.7;
+}
+
+/* --- Minha conta -------------------------------------------------------- */
+
+/*
+ * A conta: a coluna de navegação à esquerda (220px) e o conteúdo à direita.
+ * Abaixo de 1024px a navegação **vai para o topo** e rola na horizontal — quatro
+ * destinos curtos numa linha são mais rápidos de alcançar do que uma lista
+ * vertical que empurra o conteúdo para fora da primeira tela.
+ */
+.rv-account-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  padding-block: clamp(2.5rem, 5vw, 4rem) var(--rv-section-space);
+}
+
+@media (min-width: 1024px) {
+  .rv-account-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 4rem;
+    align-items: start;
+  }
+}
+
+/*
+ * A navegação da conta. Cada destino é um botão de largura inteira, alinhado à
+ * esquerda, separado do próximo por um filete — e o ativo ganha o traço rosa na
+ * esquerda, que é como a referência marca onde se está.
+ */
+.rv-account-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow-x: auto;
+}
+
+.rv-account-nav .rv-btn {
+  min-height: 3rem;
+  justify-content: flex-start;
+  padding-inline: 1rem;
+  border-bottom: 1px solid var(--rv-border);
+  /* O traço do ativo é do mesmo lugar em todos os itens, e é por isso que ele
+   * existe desde o repouso (transparente): sem ele, o texto andaria 2px ao
+   * mudar de página. */
+  border-left: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.rv-account-nav .rv-btn.active {
+  color: var(--rv-rose-strong);
+  border-left-color: var(--rv-rose);
+}
+
+@media (max-width: 1023px) {
+  .rv-account-nav {
+    flex-direction: row;
+    gap: 0;
+  }
+}
+
+/* O bloco de atendimento, no pé da conta. */
+.rv-account-help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-top: 4rem;
+  padding-top: 3rem;
+  border-top: 1px solid var(--rv-border);
+}
+
+/* --- Novidades (a faixa do rodapé) ------------------------------------ */
+
+/*
+ * A faixa de newsletter é **decorativa por enquanto**, e isso é uma
+ * decisão, não um esquecimento: não existe destino para a inscrição (nem
+ * campo no CMS, nem rota). O formulário existe para a faixa ter a forma
+ * do redesenho, mas os campos nascem desabilitados e o botão diz o que
+ * está acontecendo. Um campo que aceita o e-mail da cliente e não vai a
+ * lugar nenhum seria pior do que um campo que se apresenta como fora do
+ * ar — silêncio depois de um clique é o que faz alguém desconfiar da
+ * loja.
+ *
+ * Quando existir um destino, o que muda é o atributo `disabled` e uma
+ * ação de envio. Nada daqui precisa mudar.
+ */
+.rv-newsletter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-block: clamp(3.5rem, 6vw, 6rem);
+  border-bottom: 1px solid var(--rv-ondark-line);
+  text-align: center;
+}
+
+.rv-newsletter h2 {
+  margin-block: 1rem 0.75rem;
+  font-family: var(--rv-font-display);
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  line-height: 1.15;
+  color: var(--rv-ondark);
+}
+
+/* A segunda metade da frase, em dourado — o realce da casa no escuro. */
+.rv-newsletter h2 em {
+  color: var(--rv-dourado);
+  font-style: italic;
+}
+
+.rv-newsletter > p {
+  max-width: 34rem;
+  color: var(--rv-ondark-muted);
+}
+
+/* O par campo + botão, lado a lado também no celular. */
+.rv-newsletter-form {
+  display: flex;
+  width: min(100%, 30rem);
+  margin-top: 2rem;
+}
+
+.rv-newsletter-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 3rem;
+  padding-inline: 1.2rem;
+  border: 1px solid var(--rv-ondark-field);
+  border-right: 0;
+  background-color: transparent;
+  color: var(--rv-ondark);
+  font-family: var(--rv-font-sans);
+  font-size: 0.75rem;
+}
+
+.rv-newsletter-input::placeholder {
+  color: var(--rv-ondark-muted);
+}
+
+/*
+ * Fora do ar: a borda apaga e o cursor avisa. O `disabled` do HTML já
+ * tira o controle da ordem de foco e o anuncia como indisponível — o que
+ * estas regras fazem é o resto, o que se vê.
+ */
+.rv-newsletter :disabled {
+  cursor: not-allowed;
+}
+
+.rv-newsletter-form :disabled {
+  border-color: var(--rv-ondark-line);
+}
+
+.rv-newsletter-note {
+  margin-top: 1rem;
+  color: var(--rv-ondark-muted);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --- Rodapé ----------------------------------------------------------- */
+
+/*
+ * As réguas verticais das faixas. A largura de todas elas vem do
+ * `rv-container` — o mesmo trilho da loja inteira —, para que a news,
+ * as colunas e a linha de direitos comecem e terminem na mesma coluna.
+ * O que fica aqui é só o respiro de cima e de baixo.
+ */
+.rv-footer-main {
+  padding-block: clamp(3.5rem, 6vw, 5rem);
+}
+
+/*
+ * A linha de direitos, em duas pontas: o copyright de um lado, os
+ * créditos do outro. No celular as pontas viram duas linhas — daí o
+ * `flex-wrap`, que sem ele espremeria as duas frases até virarem
+ * ilegíveis.
+ */
+.rv-footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding-block: 1.2rem;
+  border-top: 1px solid var(--rv-ondark-line);
+  color: var(--rv-ondark-muted);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/*
  * Foco de teclado
  * ---------------------------------------------------------------
  * Regra da casa, e não a do navegador: o anel padrão do Chrome/`outline:
@@ -1206,5 +3040,904 @@ body {
   .rv-hero-track,
   .rv-carousel-track {
     scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * O card de produto — a foto é a peça, e não um quadro
+ * ---------------------------------------------------------------
+ * O redesenho mexe em quatro coisas do card, e as quatro são a mesma ideia: o
+ * que estava entre a cliente e a peça sai da frente.
+ *
+ * O card vestia a foto com uma **moldura** — o `Container` do `@medusajs/ui`
+ * (off-white da superfície, raio grande, sombra e 1rem de respiro), com a foto
+ * recuada 1rem dentro dela. A vitrine parecia uma parede de quadros emoldurados,
+ * e o olho lia "cartão"; a peça ficava menor do que a caixa que a mostrava.
+ *
+ * O que entra no lugar é o que a régua escreve:
+ *
+ *   1. **A foto é 3/4 e vai de borda a borda da caixa** — sem moldura, sem
+ *      recuo, sem raio, sem sombra. É a **mesma** proporção em todos os lugares
+ *      em que a loja lista uma peça (vitrine, trilhos, catálogo, relacionados,
+ *      busca), porque a régua não tem uma segunda: o card de 4/5 do carrossel e
+ *      o retrato 9/16 do catálogo eram duas réguas de altura na mesma dobra.
+ *      Atrás da foto fica `--rv-rose-soft`: o retângulo nunca aparece branco
+ *      enquanto o arquivo chega, e foto com transparência não cai no vazio.
+ *
+ *      A caixa de fora é a do próprio `thumbnail` (a classe `rv-thumb`), e **o
+ *      recorte de 1rem sai daqui**: ele existia para a foto não encostar no fio
+ *      da moldura, e sem moldura o recorte não recorta nada — só encolhe a peça.
+ *
+ *   2. **O ponteiro dá o zoom** — 1,035 em 700ms. É o movimento que a referência
+ *      usa para dizer "esta foto responde" sem mexer em mais nada: nenhum texto
+ *      muda de cor, nenhuma sombra cresce. O tempo é longo de propósito (o
+ *      `--rv-motion-*` da casa é de interface, 180ms, e um zoom de foto nesse
+ *      compasso pareceria um pinote).
+ *
+ *   3. **O convite desce para o pé da foto** (`.rv-card-cta`), sobre a imagem e
+ *      escondido até o ponteiro chegar. E ele **só existe onde existe ponteiro**
+ *      (`@media (hover: hover)`): sem hover não há como revelá-lo, e uma caixa
+ *      invisível no rodapé da foto seria um alvo que ninguém vê. O convite nunca
+ *      foi o caminho para a peça — o **card inteiro** é um link, e no celular
+ *      toca-se a foto, o nome ou o preço, que é o gesto de sempre numa vitrine
+ *      de duas colunas. É a mesma leitura da referência, que esconde o quick-add
+ *      no toque.
+ *
+ *   4. **O estado da peça sobe para o canto da foto** (`.rv-card-tag`), que é
+ *      onde a referência põe a etiqueta. Ele era lido na linha do preço; sobre a
+ *      foto volta a ser selo, e o que sobra abaixo é a peça — categoria, nome,
+ *      cor e preço, com a hierarquia da régua (nome 18px, preço 13px em preto).
+ *
+ * **O chip continua escuro, e isso não é desenho novo.** A referência escreve a
+ * etiqueta em superfície clara com texto preto; aqui o chip é cacau com texto
+ * offwhite, e essa escolha já está feita e medida no bloco "Chip de estado"
+ * (acima): ele saiu do contorno claro **sobre a foto** justamente porque sobre a
+ * foto o fundo escuro é o que se lê. O que este bloco muda é a **posição** e a
+ * **escala** do chip no card: canto superior esquerdo, 8px, sem raio. Os quatro
+ * estados seguem se distinguindo pela borda, como lá.
+ *
+ * **O coração (favoritos) da referência não está aqui, e é decisão.** A régua põe
+ * um botão de favorito no canto direito da foto (`.favorite`); a loja não tem
+ * favoritos — não há lista, conta nem endpoint para guardá-los, e um coração que
+ * não guarda nada é pior do que coração nenhum. Ele entra quando a funcionalidade
+ * existir, no mesmo canto, e o lugar dele neste arquivo é ao lado do `.rv-card-tag`.
+ */
+
+.rv-card-media {
+  position: relative;
+}
+
+/*
+ * A caixa da foto dentro do card. A especificidade (`.rv-card-media .rv-thumb`,
+ * dois seletores de classe) é o que faz estas regras vencerem os utilitários do
+ * `Container` (`shadow-elevation-card-rest bg-ui-bg-base rounded-lg px-6 py-4`) e
+ * os do próprio `thumbnail` (`aspect-[9/16]`, o `p-4`): o `brand.css` é
+ * importado antes deles em `globals.css`, e ordem se resolve por especificidade.
+ */
+.rv-card-media .rv-thumb {
+  aspect-ratio: 3 / 4;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: var(--rv-rose-soft);
+}
+
+.rv-card-media .rv-thumb img {
+  /*
+   * As **duas** transições, e não só a do zoom: a troca da capa pela segunda foto
+   * (`HoverImage`, no `thumbnail`) também é `transition`, da propriedade
+   * `opacity`, e um `transition` declarado aqui **reescreve a linha inteira** do
+   * utilitário que a pedia — a troca de foto passaria a ser um corte seco.
+   */
+  transition: transform 700ms var(--rv-ease-out),
+    opacity 500ms var(--rv-ease-out);
+}
+
+.rv-card:hover .rv-card-media .rv-thumb img {
+  transform: scale(1.035);
+}
+
+/*
+ * A etiqueta da peça sobre a foto — o chip do estado, na posição e na escala da
+ * régua. O raio vai a zero com a caixa: a etiqueta da referência é reta, e o
+ * `::after` do pulso (o halo de "últimas peças") acompanha, senão o anel
+ * arredondava num canto e ficava reto no outro.
+ */
+.rv-card-tag {
+  position: absolute;
+  z-index: 3;
+  left: 12px;
+  top: 12px;
+  border-radius: 0;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+}
+
+.rv-card-tag.rv-chip-pulse::after {
+  border-radius: 0;
+}
+
+/*
+ * O convite (`.rv-card-cta`, acima) na posição da régua: pé da foto, de 12px a
+ * 12px. Ele nasce **fora de cena** e o ponteiro o traz — e só há ponteiro onde há
+ * hover. O `display` é o que separa os dois mundos; dentro do `hover: hover` a
+ * caixa existe e o movimento é a revelação, no compasso da casa
+ * (`--rv-motion-fast`, um convite, não um zoom de foto).
+ */
+.rv-card-media .rv-card-cta {
+  display: none;
+}
+
+@media (hover: hover) {
+  .rv-card-media .rv-card-cta {
+    display: inline-flex;
+    position: absolute;
+    z-index: 5;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: calc(100% - 24px);
+    margin-top: 0;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity var(--rv-motion-fast) var(--rv-ease-out),
+      transform var(--rv-motion-fast) var(--rv-ease-out),
+      background-color var(--rv-motion-fast) var(--rv-ease-out);
+  }
+
+  .rv-card:hover .rv-card-media .rv-card-cta {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * A informação da peça, na ordem em que a régua a escreve
+ * ---------------------------------------------------------------
+ * Categoria (8px, o eyebrow), nome da peça (18px) com as cores ao lado do nome,
+ * e o preço (13px em preto). Nada mais: o convite mora na foto, e o estado da
+ * peça é a etiqueta do canto dela.
+ *
+ * **A hierarquia inverte em relação ao card antigo.** O preço era o maior peso
+ * do bloco (1.125rem semibold) porque era o que a vitrine escondia — cinza,
+ * espremido entre o título e o botão. Aqui ele é o **terceiro** tamanho da lista,
+ * e isso é a régua: o nome da peça identifica, o preço confirma. O preço continua
+ * em `--rv-fg-strong` (16:1 sobre o off-white da página) — o tamanho cai, o
+ * contraste não.
+ *
+ * O `.rv-price-value` da casa **continua** com 1.125rem: é o do bloco de preço
+ * da página da peça, onde o número é a decisão da tela. O do card é este, por
+ * esta regra — dois seletores de classe vencem o da casa sem que ninguém precise
+ * mexer lá.
+ *
+ * **A linha de parcelamento não está aqui, e é dado que falta, não desenho.** A
+ * régua escreve "ou 6x de R$ 81,50 sem juros" abaixo do preço; esse número não
+ * existe no Medusa — ele é do meio de pagamento, e é por compra. A página da peça
+ * já tem o bloco pronto (`InstallmentInfo`) e passa `null` nos dois lados pelo
+ * mesmo motivo, com o comentário que o explica em `product-price/index.tsx`: uma
+ * condição de pagamento inventada logo abaixo do preço é a pior promessa
+ * possível. No card seria pior: uma linha por peça listada, e o servidor teria de
+ * consultar o provedor para cada card da dobra. No dia em que o dado subir para o
+ * servidor, a linha entra aqui — o lugar dela está reservado por este comentário.
+ */
+.rv-card-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 1rem 0.1rem 0;
+}
+
+/* A categoria, em letra miúda: é o contexto da peça, não o nome dela. */
+.rv-card-category {
+  font-size: 0.5rem;
+}
+
+/*
+ * Nome e cores na **mesma linha**, com as cores encostadas na direita — é onde a
+ * régua as põe, e o nome (comprido: "Camisa Feminina em Alfaiataria Seda Pura")
+ * ganha a largura que sobra.
+ *
+ * `flex-wrap` porque a peça pode ter **seis** bolinhas (`+n` incluído) e o card
+ * tem 167px no celular: sem a quebra, as bolinhas comeriam o nome até ele virar
+ * uma coluna de sílabas. Com ela, quando não cabe, a linha das cores desce
+ * sozinha — que é exatamente o card antigo, para quem tem pouco espaço.
+ */
+.rv-card-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 1rem;
+  row-gap: 0.35rem;
+  width: 100%;
+}
+
+/* As bolinhas não encolhem: quem desce de linha é a lista inteira, não a cor. */
+.rv-card-colors {
+  flex: none;
+}
+
+/*
+ * O nome da peça. O `rv-display` (a serifa da marca) já vem do componente; o que
+ * a régua acrescenta é o tamanho — 18px, o maior texto do card.
+ *
+ * **Não há mais hover de cor no nome.** Ele era `group-hover:text-rv-rose`, e o
+ * rosa da marca dá 3,1:1 sobre o off-white da página: a regra de acessibilidade
+ * deste arquivo só o permite em texto grande (≥24px), e o nome tem 18. Quem
+ * responde ao ponteiro é o **movimento** — o zoom da foto e o convite que sobe —
+ * e nenhum dos dois é cor de texto.
+ */
+.rv-card-title {
+  font-size: 1.125rem;
+  line-height: 1.3;
+  color: var(--rv-fg-strong);
+}
+
+.rv-card-info .rv-price-value {
+  font-size: 0.8125rem;
+}
+
+/*
+ * O "+n" das cores que não couberam no card. Ele é a **continuação** da lista de
+ * bolinhas, e por isso não pode ser maior do que elas: o `rv-eyebrow` da casa
+ * (11px) ao lado de bolinhas de 12px ficaria do tamanho das cores — e o resumo
+ * pesaria mais do que a informação que ele resume.
+ */
+.rv-card-count {
+  font-size: 0.5625rem;
+  color: var(--rv-muted);
+}
+
+/*
+ * A bolinha de cor do card — 12px, com um anel de superfície e um fio de borda.
+ *
+ * O anel é `--rv-surface` (o off-white elevado da casa, o mais perto do branco
+ * que a paleta tem), e não branco puro: a cor da bolinha é dado do lojista e pode
+ * ser o próprio off-white da página — sem o anel, uma peça "Cru" sumiria. O fio
+ * por fora é o que fica para a cor **sem hex**: o painel aceita a cor sem
+ * enriquecimento, e a bolinha continua ali, com a inicial do nome dentro. A
+ * inicial é pista, não legenda (a 6px não se lê uma palavra, e lê-la não é o
+ * trabalho dela): o nome inteiro está no `title` da bolinha, no `sr-only` ao lado
+ * dela e no rótulo da lista.
+ */
+.rv-card-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--rv-surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--rv-border);
+  font-size: 0.375rem;
+  line-height: 1;
+}
+
+/*
+ * Telas pequenas: o nome e a etiqueta encolhem um degrau, como na régua. Nada
+ * mais muda — a foto é a mesma proporção e a informação é a mesma lista.
+ */
+@media (max-width: 639px) {
+  .rv-card-title {
+    font-size: 0.9375rem;
+  }
+
+  .rv-card-tag {
+    left: 7px;
+    top: 7px;
+    padding: 0.4rem;
+    font-size: 0.4375rem;
+  }
+}
+
+/*
+ * A abertura da home — a capa e a faixa de benefícios
+ * ---------------------------------------------------------------
+ * As duas seções que abrem a página, na régua do redesenho. O que muda é o que
+ * a régua mede — a estrutura (foto, véu, cópia) é a que já estava no ar:
+ *
+ *   1. **a capa passa a ter altura de capa**: `min(77vh, 760px)` com piso de
+ *      610px, contra os 580px fixos de antes. A foto era um quadro da largura da
+ *      tela com a altura de um painel; agora ela ocupa a primeira dobra, que é o
+ *      que uma capa faz. No celular a régua pede `72vh` com piso de 570px: a
+ *      mesma ideia, um degrau menor.
+ *
+ *   2. **a cópia da capa é branca** — e este era um defeito visível, e não um
+ *      ajuste de desenho: o eyebrow e a linha de apoio usavam
+ *      `rv-section-text-inherit` (a cor herdada) e a faixa não tinha cor
+ *      própria, então o que chegava era o **grafite do `body`**: texto escuro
+ *      sobre foto escura, quase ilegível na primeira dobra. A régua escreve
+ *      `color: white` na faixa inteira, e é o que `.rv-hero` faz abaixo: a cópia
+ *      herda o branco — inclusive o `em` do título, que sobre foto é branco na
+ *      régua e era o dourado das outras seções.
+ *
+ *   3. **a cópia desencosta do container.** O bloco de texto era filho do
+ *      `.rv-container` (o respiro de 3rem da página) com um `rv-section-pad` em
+ *      volta. A régua ancora a cópia em `clamp(1.5rem, 8vw, 8.5rem)` — 8.5rem a
+ *      1440 — e a centra na vertical da faixa: a capa não é uma seção da coluna
+ *      de conteúdo, é uma faixa, e a cópia dela não anda na mesma régua lateral
+ *      das outras.
+ *
+ *   4. **no celular a cópia desce para o pé da foto**, com o véu deitado de
+ *      baixo para cima, e a nota do canto some — ela mora exatamente onde o
+ *      botão passa a terminar.
+ *
+ * O véu continua sendo a constante `SCRIM` do componente, e não um campo do CRM
+ * (a força é valor de desenho, ver o cabeçalho de `hero/index.tsx`). O que a
+ * classe `.rv-hero-scrim` faz é escolher **qual dos dois gradientes** — o deitado
+ * do desktop, o em pé do celular — o número do componente pinta: os dois chegam
+ * inline, em variáveis, e a media query decide qual vale. Sem isso, ou o celular
+ * ficaria com o texto sobre o lado claro da foto, ou o número da força viraria
+ * dois.
+ */
+.rv-hero {
+  position: relative;
+  height: min(77vh, 760px);
+  min-height: 610px;
+  overflow: hidden;
+  background-color: var(--rv-cacao);
+  /* A faixa inteira é branca: é daqui que a cópia herda (ver o item 2). */
+  color: #fff;
+}
+
+/*
+ * O recorte da foto: alto, com o enquadramento acima do meio (`center 34%`) —
+ * é onde o rosto de um retrato de moda está, e é o que a régua enquadra.
+ */
+.rv-hero-photo {
+  object-position: center 34%;
+}
+
+/* O véu: os dois gradientes chegam inline (`--rv-hero-scrim-x` e `-y`), porque
+ * quem tem o número da força é o componente. */
+.rv-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background-image: var(--rv-hero-scrim-x);
+}
+
+/* A cópia: encostada à esquerda, centrada na vertical da faixa. */
+.rv-hero-copy {
+  position: absolute;
+  left: clamp(1.5rem, 8vw, 8.5rem);
+  right: 1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 680px;
+}
+
+/* O eyebrow: dourado e um degrau menor que o `.rv-eyebrow` da casa — 10px
+ * contra 11px, com peso de rótulo. A régua chama esta cor de "light". */
+.rv-hero-eyebrow {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--rv-dourado);
+}
+
+/*
+ * O título: `clamp(3.1rem, 6vw, 5.8rem)` — 86px a 1440, contra os 54px de antes.
+ * Entrelinha .98 e `letter-spacing` fechado: em tamanho de cartaz, as duas linhas
+ * quase se tocam, que é o desenho da régua.
+ */
+.rv-hero-title {
+  margin: 1.25rem 0 1.35rem;
+  font-size: clamp(3.1rem, 6vw, 5.8rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  color: #fff;
+}
+
+.rv-hero-title em {
+  color: #fff;
+  font-style: italic;
+}
+
+/* A linha de apoio: na display, e não na sans — a régua põe a serifa também
+ * aqui, em `clamp(1rem, 1.5vw, 1.25rem)`. */
+.rv-hero-lede {
+  max-width: 500px;
+  font-family: var(--rv-font-display);
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  line-height: 1.6;
+  color: #fff;
+}
+
+/*
+ * O botão da capa: o `.button--primary` da régua — 3rem de altura, 1.6rem de
+ * respiro lateral, caixa alta de 10px com .11em, **sem raio** (a régua não tem
+ * raio em botão nenhum) e o rosa forte no hover.
+ */
+.rv-hero-cta {
+  margin-top: 2.4rem;
+  min-height: 3rem;
+  padding-inline: 1.6rem;
+  border-radius: 0;
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  transition: background-color var(--rv-duration) var(--rv-ease-out);
+}
+
+.rv-hero-cta:hover {
+  background-color: var(--rv-rose-strong);
+}
+
+/* A nota do canto: 13px em itálico, alinhada à direita, a 3rem da borda. */
+.rv-hero-note {
+  position: absolute;
+  right: 3rem;
+  bottom: 2rem;
+  z-index: 10;
+  display: none;
+  max-width: 260px;
+  text-align: right;
+  font-family: var(--rv-font-display);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
+  color: #fff;
+}
+
+/* Os pontos do carrossel andam na régua da cópia (o mesmo 8vw da faixa). */
+.rv-hero-dots {
+  position: absolute;
+  left: clamp(1.5rem, 8vw, 8.5rem);
+  right: 1.5rem;
+  bottom: 2rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  /* A nota só existe onde há canto sobrando — a régua a esconde abaixo de 900px;
+   * aqui o degrau da casa é o `small` (1024px). */
+  .rv-hero-note {
+    display: block;
+  }
+}
+
+@media (max-width: 1023px) {
+  .rv-hero {
+    height: 72vh;
+    min-height: 570px;
+  }
+
+  .rv-hero-photo {
+    object-position: 60% center;
+  }
+
+  /* O véu deita: a cópia está no pé da foto e precisa do escuro embaixo. */
+  .rv-hero-scrim {
+    background-image: var(--rv-hero-scrim-y);
+  }
+
+  .rv-hero-copy {
+    left: 1.5rem;
+    right: 1.5rem;
+    top: auto;
+    bottom: 3rem;
+    transform: none;
+    max-width: none;
+  }
+
+  .rv-hero-title {
+    font-size: clamp(2.8rem, 12vw, 4.6rem);
+  }
+
+  .rv-hero-lede {
+    max-width: 380px;
+    font-size: 0.875rem;
+  }
+
+  /* Os pontos sobem para o alto da faixa: no celular a cópia mora no pé (a régua
+   * a mudou de lugar) e o rodapé da foto é dela. A coluna é a mesma da cópia —
+   * 1.5rem, e não os 8vw do desktop, que aqui valem 31px e desalinhariam os dois. */
+  .rv-hero-dots {
+    left: 1.5rem;
+    right: 1.5rem;
+    top: 1.25rem;
+    bottom: auto;
+  }
+}
+
+@media (max-width: 559px) {
+  /* A régua: no polegar, o botão da capa é a largura inteira. */
+  .rv-hero-cta {
+    width: 100%;
+  }
+}
+
+/*
+ * A faixa de benefícios
+ * ---------------------------------------------------------------
+ * A régua desenha a faixa como **tarja de três colunas iguais**, com o ícone
+ * **ao lado** do texto (e não acima dele) e o texto encostado à esquerda:
+ *
+ *   - `min-height: 6.25rem` (100px) e `padding: 1.2rem clamp(1.25rem, 8vw, 8.5rem)`
+ *     — a faixa respira o mesmo 8vw da capa, então o ícone do primeiro item nasce
+ *     na coluna em que o título da capa nasce;
+ *   - o item é uma linha flex, com 1rem entre o ícone e o bloco de texto, o título
+ *     em **display 14px** sobre o detalhe de 9px;
+ *   - no celular cada item ocupa a linha inteira (a régua: uma coluna), com o
+ *     conteúdo à esquerda — era centralizado com o ícone em cima.
+ *
+ * O que **não** vem da régua é o número de colunas: ela tem três itens fixos no
+ * código, e aqui a lista é do CRM (`BenefitsSection.items`), de um a nove. As
+ * divisórias continuam sendo o `gap` de 1px com o fio aparecendo — o mecanismo
+ * que já estava no lugar e que segue correto em qualquer contagem, nos dois
+ * eixos, depois que a linha quebra (ver o cabeçalho do componente). O que a
+ * régua dá é a **largura**: com três itens, cada um leva um terço da faixa, como
+ * no protótipo, e a partir de quatro a linha quebra mantendo o mesmo critério.
+ *
+ * O fundo do item lê `--rv-section-bg`: o lojista que escolheu uma cor de fundo
+ * para a seção no CRM continua mandando, e o fio da divisória continua sendo a
+ * borda do tema — é o que o `rv-section-bg-surface` do item fazia.
+ */
+.rv-benefits {
+  min-height: 6.25rem;
+  padding: 1.2rem clamp(1.25rem, 8vw, 8.5rem);
+  border-bottom: 1px solid var(--rv-border);
+}
+
+.rv-benefits-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background-color: var(--rv-border);
+}
+
+/* O fio da faixa é o fundo da lista aparecendo no `gap`: o item pinta o
+ * próprio fundo (o da seção, quando houve escolha). */
+.rv-benefit {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  padding: 1.2rem 0;
+  background-color: var(--rv-section-bg, var(--rv-surface));
+  text-align: left;
+}
+
+/* O ícone da vantagem: 20px, o mesmo tamanho do ícone da régua, e sem encolher
+ * quando o texto do item é comprido. */
+.rv-benefit-icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.rv-benefit-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/*
+ * Título e detalhe pedem as **mesmas variáveis** das classes `.rv-section-*`,
+ * com o valor da régua no fallback: a escolha de fonte e de cor que o lojista
+ * fez no CRM para esta seção continua valendo, e quem não escolheu nada vê o que
+ * a régua escreve (display 14px em preto, detalhe de 9px no cinza da casa).
+ */
+.rv-benefit-title {
+  font-family: var(--rv-section-heading-font, var(--rv-font-display));
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--rv-section-heading-color, var(--rv-preto));
+}
+
+.rv-benefit-detail {
+  font-family: var(--rv-section-text-font, var(--rv-font-sans));
+  font-size: 0.5625rem;
+  color: var(--rv-section-text-color, var(--rv-muted));
+}
+
+@media (min-width: 1024px) {
+  /* Três colunas iguais: o `grow` divide o que sobra depois da base de 11rem —
+   * com os três itens da régua, um terço da faixa para cada um. */
+  .rv-benefit {
+    flex-basis: 11rem;
+    justify-content: center;
+    padding: 0 0.75rem;
+  }
+}
+
+/*
+ * O cabeçalho de uma seção da vitrine
+ * ---------------------------------------------------------------
+ * A linha que a régua usa em "Chegou agora" — e em toda seção de vitrine com
+ * chamada à direita: o título ancorado à esquerda, o link "Ver tudo" à direita,
+ * os dois **alinhados pela base** (`align-items: flex-end`) e 2.6rem de respiro
+ * até o conteúdo.
+ *
+ * O tamanho do título é o da régua: `clamp(2rem, 3.5vw, 3.25rem)` — 50px a 1440,
+ * contra os 40px de antes —, com o `.7rem` entre o eyebrow e o título e o
+ * `.75rem` entre o título e a linha de apoio (eram 1rem e 1rem). Nada aqui é
+ * família nem cor: quem dá as duas ao título e ao texto continua sendo
+ * `.rv-section-heading` / `.rv-section-text`, e com elas o que o lojista
+ * escolheu no CRM.
+ *
+ * **O `max-width` do bloco de texto saiu.** Ele era 620px e a régua não tem
+ * nenhum: quem limita a largura é a própria linha do cabeçalho, que reserva o
+ * lugar do link e deixa o resto para o título e o subtítulo. É por isso que os
+ * dois cabem numa linha só em 1440. (O limite de 620px continua certo onde o
+ * texto **é** a coluna, como na capa e na faixa editorial.)
+ */
+.rv-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-bottom: 2.6rem;
+}
+
+.rv-section-title {
+  margin-top: 0.7rem;
+  font-size: clamp(2rem, 3.5vw, 3.25rem);
+  line-height: 1.08;
+}
+
+.rv-section-subtitle {
+  margin-top: 0.75rem;
+  line-height: 1.6;
+}
+
+/* O eyebrow da vitrine: 10px, .2em e peso de rótulo — o `.eyebrow` da régua. */
+.rv-section-eyebrow {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+/*
+ * O "Ver tudo" da vitrine — o `.button--text` da régua: caixa alta de 9px, o fio
+ * preto embaixo e o rosa forte no hover, com a seta ao lado.
+ *
+ * A cor é **herdada** (`inherit`), como na régua: este link não é acento, é a
+ * continuação do título. Ele era rosa com fio dourado — dois acentos para o
+ * mesmo gesto, e o rosa da casa dá 3,1:1 sobre o off-white, que é o limite para
+ * texto pequeno (a régua de contraste deste arquivo só libera o rosa em texto
+ * grande).
+ */
+.rv-section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.5rem;
+  border-bottom: 1px solid var(--rv-preto);
+  color: inherit;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color var(--rv-duration) var(--rv-ease-out),
+    transform var(--rv-duration) var(--rv-ease-out);
+}
+
+.rv-section-link:hover {
+  color: var(--rv-rose-strong);
+  transform: translateY(-1px);
+}
+
+/* O traço da seta: fino, no `currentColor` do texto ao lado — o mesmo desenho do
+ * ícone "arrow" da régua, e o mesmo do chevron do carrossel. */
+.rv-section-link-icon,
+.rv-collection-cta-icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/*
+ * Coleções — a grade editorial em degrau
+ * ---------------------------------------------------------------
+ * A régua desenha a faixa "Para cada versão de você" como uma **grade em
+ * degrau**, e o degrau é o que a separa de uma parede de três fotos:
+ *
+ *   1. **o título é centrado** (`text-align: center` na régua), com os mesmos
+ *      2.6rem até a grade; era alinhado à esquerda, dentro de 620px.
+ *
+ *   2. **as três colunas não são iguais**: 1,1fr / 0,9fr / 1,1fr — a do meio é a
+ *      mais estreita — **e a do meio desce 4rem**. A grade era 3×1fr, com as
+ *      três fotos na mesma linha de base; o degrau é o desenho.
+ *
+ *   3. **a altura do cartão é da faixa, não da foto**: `clamp(430px, 49vw, 650px)`
+ *      (650px a 1440), com a foto **preenchendo** a caixa. O cartão era 3/4 e
+ *      media 576px; a régua dá a mesma altura aos três quadros e pendura número e
+ *      legenda neles — é isso que permite o degrau sem a grade parecer torta.
+ *
+ *   4. **a legenda trocou de ordem**: o rótulo miúdo em caixa alta (9px, .13em)
+ *      vem **acima** do nome da coleção, e o nome é o `h3` da régua —
+ *      `clamp(2rem, 3vw, 3rem)` em branco. Era o inverso: nome em 24px com o
+ *      subtítulo embaixo, em texto corrido.
+ *
+ *   5. **o número do cartão** ("01", "02", "03") mora no canto superior esquerdo,
+ *      na display. Ele **não é conteúdo**: é a posição do item na lista, então o
+ *      componente o deriva do índice — reordenar a lista no CRM renumera a faixa,
+ *      como na régua, onde a ordem é o que dá o número.
+ *
+ *   6. **a chamada é texto branco em caixa alta com a seta ao lado** — era uma
+ *      linha dourada com fio embaixo, que é o desenho do "Ver tudo" das outras
+ *      seções. Sobre a foto, a régua usa o gesto miúdo.
+ *
+ * O véu do pé da foto é o da régua (`rgba(23,23,23,.75)` dissolvendo em 55%) e o
+ * zoom do ponteiro também: 1,04 em 800ms — mais lento que o do card de produto
+ * (1,035 em 700ms) porque o quadro é muito maior, e o mesmo gesto em compasso
+ * maior lê como outra coisa.
+ *
+ * O formato `banners` (o campo `layout` do contrato) é a segunda régua de quadro
+ * largo, e o que ele muda é só a caixa: duas colunas iguais, sem degrau, 4/3 no
+ * celular e 16/9 no desktop.
+ */
+.rv-collections {
+  /* A régua soma 2rem ao respiro da seção antes do título. */
+  padding-top: calc(var(--rv-section-space) + 2rem);
+}
+
+/*
+ * O cabeçalho centrado. O limite de 46rem é da casa e não da régua: o parágrafo
+ * do subtítulo é uma frase comprida, e centralizada na largura inteira da página
+ * ela viraria uma linha de 1200px. É o mesmo remédio que a abertura de página já
+ * usa (`.rv-page-intro > *`), e o título não depende dele para centralizar.
+ */
+.rv-collections-head {
+  max-width: 46rem;
+  margin: 0 auto 2.6rem;
+  text-align: center;
+}
+
+.rv-collection-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+/*
+ * O quadro: foto preenchendo a caixa, `--rv-rose-soft` atrás enquanto o arquivo
+ * chega — o mesmo retângulo do card de produto, pelo mesmo motivo.
+ *
+ * A cor do texto sai da variável de texto da seção (com o branco da régua no
+ * fallback): a legenda mora sobre a foto, e é a régua de contraste que manda
+ * nela — o lojista que escolheu uma cor de texto para esta seção continua
+ * mandando, e quem não escolheu nada vê o branco do protótipo.
+ */
+.rv-collection-card {
+  position: relative;
+  height: 520px;
+  overflow: hidden;
+  background-color: var(--rv-rose-soft);
+  color: var(--rv-section-text-color, #fff);
+}
+
+.rv-collection-photo {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  transition: transform 800ms ease;
+}
+
+.rv-collection-card:hover .rv-collection-photo {
+  transform: scale(1.04);
+}
+
+.rv-collection-shade {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    0deg,
+    rgba(23, 23, 23, 0.75),
+    transparent 55%
+  );
+}
+
+/*
+ * O número da faixa: display, no canto, em 14px — o tamanho do corpo na régua
+ * (o `span` dela não declara tamanho e herda os 14px da página; aqui o corpo é
+ * 16px, então o número declara o da régua).
+ */
+.rv-collection-number {
+  position: absolute;
+  left: 1.5rem;
+  top: 1.5rem;
+  font-family: var(--rv-font-display);
+  font-size: 0.875rem;
+}
+
+.rv-collection-copy {
+  position: absolute;
+  left: 1.5rem;
+  right: 1.5rem;
+  bottom: 1.5rem;
+}
+
+.rv-collection-label {
+  font-size: 0.5625rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+/*
+ * O nome da coleção. A régua não declara entrelinha neste `h3` (o corpo dela é
+ * `normal`, o compasso natural da display); aqui a página herda 1.5, que abriria
+ * a legenda para cima e afastaria o nome do rótulo. 1.2 é o compasso de título.
+ */
+.rv-collection-title {
+  margin: 0.4rem 0 0.6rem;
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1.2;
+  color: var(--rv-section-heading-color, #fff);
+}
+
+/* A chamada: texto **herdado** do quadro, como o `.button--text` da régua — ela
+ * não é acento nem link próprio (o cartão inteiro é o link). */
+.rv-collection-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.5rem;
+  color: inherit;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  transition: color var(--rv-duration) var(--rv-ease-out);
+}
+
+.rv-collection-card:hover .rv-collection-cta {
+  color: var(--rv-rose-strong);
+}
+
+/* O celular da régua: um cartão por linha e um degrau menor de altura. */
+@media (max-width: 559px) {
+  .rv-collection-card {
+    height: 450px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .rv-collection-card {
+    height: clamp(430px, 49vw, 650px);
+  }
+
+  /*
+   * O degrau. O `3n + 2` mantém a régua **por linha**: com mais de três itens no
+   * CRM, a quarta peça abre linha nova e a do meio dela desce como as outras —
+   * um `:nth-child(2)` solto deixaria a segunda linha inteira alinhada.
+   */
+  .rv-collection-grid:not(.rv-collection-grid-wide) {
+    grid-template-columns: 1.1fr 0.9fr 1.1fr;
+  }
+
+  .rv-collection-grid:not(.rv-collection-grid-wide) > *:nth-child(3n + 2) {
+    margin-top: 4rem;
+  }
+}
+
+/* O formato `banners`: dois quadros largos, sem degrau. */
+.rv-collection-grid-wide {
+  grid-template-columns: 1fr;
+}
+
+.rv-collection-card-wide {
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+
+@media (min-width: 1024px) {
+  .rv-collection-grid-wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rv-collection-card-wide {
+    aspect-ratio: 16 / 9;
   }
 }

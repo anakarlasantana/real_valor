@@ -49,6 +49,12 @@ module.exports = {
           surface: "var(--rv-surface)",
           border: "var(--rv-border)",
           muted: "var(--rv-muted)",
+          /* Texto e traço sobre o preto (o rodapé). Ver o bloco "on-dark"
+           * dos tokens, em src/styles/brand.css. */
+          ondark: "var(--rv-ondark)",
+          "ondark-muted": "var(--rv-ondark-muted)",
+          "ondark-line": "var(--rv-ondark-line)",
+          "ondark-field": "var(--rv-ondark-field)",
         },
       },
       borderRadius: {

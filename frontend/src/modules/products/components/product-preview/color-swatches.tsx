@@ -21,9 +21,11 @@ import {
  * Sumir diria à cliente que a peça tem menos cores do que tem. O nome inteiro
  * fica no `sr-only`, e o `title` o mostra no ponteiro — cor nenhuma é só mancha.
  *
- * A aparência (tamanho, borda, o `+n`) é de utilitário e das classes `rv-*` que o
- * `brand.css` já define; a única coisa que vem por `style` é o hex, porque valor
- * que só existe em tempo de execução não vira classe.
+ * A aparência é do `brand.css` (`.rv-card-dot`, `.rv-card-count`): a bolinha de
+ * 12px com o anel de superfície e o `+n` em letra miúda são a régua do redesenho,
+ * e ela também explica por que o fio de borda continua ali para a cor sem hex. A
+ * única coisa que vem por `style` é o hex, porque valor que só existe em tempo de
+ * execução não vira classe.
  */
 export default function ColorSwatches({
   product,
@@ -42,7 +44,7 @@ export default function ColorSwatches({
 
   return (
     <ul
-      className="flex items-center gap-x-2"
+      className="rv-card-colors flex items-center gap-x-2"
       data-testid="color-swatches"
       // O nome de **todas** as cores vai no rótulo da lista: o `+n` é resumo
       // visual, e quem usa leitor de tela não pode receber menos informação do que
@@ -53,7 +55,7 @@ export default function ColorSwatches({
         <li key={cor.name} className="flex items-center" title={cor.name}>
           <span
             aria-hidden="true"
-            className="flex h-4 w-4 items-center justify-center rounded-circle border border-rv-border text-[0.5rem] leading-none"
+            className="rv-card-dot"
             style={cor.hex ? { backgroundColor: cor.hex } : undefined}
           >
             {cor.hex ? null : cor.name.charAt(0).toUpperCase()}
@@ -63,7 +65,7 @@ export default function ColorSwatches({
       ))}
 
       {restantes > 0 && (
-        <li className="rv-eyebrow text-rv-muted" aria-hidden="true">
+        <li className="rv-eyebrow rv-card-count" aria-hidden="true">
           +{restantes}
         </li>
       )}

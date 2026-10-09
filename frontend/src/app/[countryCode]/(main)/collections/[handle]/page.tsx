@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { getCollectionByHandle } from "@lib/data/collections"
+import { selecaoDaUrl } from "@lib/util/catalog-filters"
 import { StoreCollection } from "@medusajs/types"
 import CollectionTemplate from "@modules/collections/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
@@ -65,6 +66,7 @@ export default async function CollectionPage(props: Props) {
       page={page}
       sortBy={sortBy}
       countryCode={params.countryCode}
+      selecao={selecaoDaUrl(searchParams)}
     />
   )
 }
