@@ -1,15 +1,22 @@
 /**
- * A régua das quatro seções da abertura — e os defeitos que ela escondia
+ * A régua das seções da home — e os defeitos que ela escondia
  * -------------------------------------------------------------------------
- * O desenho da capa, da faixa de vantagens, do trilho de lançamentos e da grade
- * de coleções mora em **um lugar só**: `brand.css`. O que este arquivo protege
- * são as três formas de a tela mentir sem erro nenhum:
+ * O desenho da capa, da faixa de vantagens, do trilho de lançamentos, da grade
+ * de coleções, do manifesto (`editorial`) e da faixa editorial (`banner`) mora
+ * em **um lugar só**: `brand.css`. O que este arquivo protege são as três
+ * formas de a tela mentir sem erro nenhum:
  *
  *   1. **a segunda régua.** O componente escreve a classe (`rv-hero-title`), e
  *      não o valor (`text-[54px]`). No dia em que os dois conviverem, o
  *      utilitário ganha do `brand.css` (ele é importado depois) e a régua passa a
  *      ter duas fontes — a que alguém lembra de atualizar e a que está no ar.
  *      Por isso as conferências são de **fonte**, e não de unidade.
+ *
+ *      As duas seções editoriais reabriram exatamente este defeito: os tamanhos
+ *      do manifesto e da faixa `banner` moravam no `className` e o `brand.css`
+ *      não tinha `.rv-manifesto` nem `.rv-callout` nenhum — a régua dessas duas
+ *      faixas **era** o Tailwind. Os dois testes do fim do arquivo prendem as
+ *      famílias novas no lugar, e são a razão de elas existirem.
  *
  *   2. **a cor que não chega.** O eyebrow e a linha de apoio da capa usavam a
  *      classe de cor **herdada** e a faixa não tinha cor própria: o que chegava
@@ -119,6 +126,39 @@ describe("a régua das seções da abertura", () => {
     expect(colecoes).not.toContain("aspect-")
     // O número do cartão é a posição na lista, e não um campo do conteúdo.
     expect(colecoes).toContain("collectionNumber(index)")
+  })
+
+  it("a faixa editorial escreve o desenho em classe, e não em utilitário", () => {
+    const faixa = semComentarios(componente("editorial-callout"))
+
+    expect(faixa).toContain('"rv-callout"')
+    expect(faixa).toContain("rv-callout-title")
+    expect(faixa).toContain("rv-callout-cta")
+    // A altura da faixa e os dois degraus do título são do `brand.css`: era
+    // este o par que os escrevia aqui, e o utilitário ganha da régua.
+    expect(faixa).not.toContain("min-h-[")
+    expect(faixa).not.toContain("text-[44px]")
+    expect(faixa).not.toContain("small:text-[72px]")
+    // O véu é a única coisa que sobra inline (a força é do componente, como o
+    // `SCRIM` da capa) — e chega em variável, para a classe só aplicá-la.
+    expect(faixa).toContain("--rv-callout-veil")
+  })
+
+  it("o manifesto escreve o desenho em classe, e não em utilitário", () => {
+    const manifesto = semComentarios(componente("editorial-banner"))
+
+    expect(manifesto).toContain("rv-manifesto-grid")
+    expect(manifesto).toContain("rv-manifesto-media")
+    expect(manifesto).toContain("rv-manifesto-title")
+    expect(manifesto).toContain("rv-manifesto-cta")
+    // A proporção da foto, o tamanho da linha manuscrita e a grade de duas
+    // colunas são da régua — estes três eram a segunda fonte do mesmo desenho.
+    expect(manifesto).not.toContain("aspect-")
+    expect(manifesto).not.toContain("text-[34px]")
+    expect(manifesto).not.toContain("grid-cols-2")
+    // A ordem das colunas continua sendo do componente: é o `imagePosition` do
+    // CMS, e trocar a foto de lado é estrutura, não desenho.
+    expect(manifesto).toContain("imageFirst")
   })
 
   it("o degrau de desktop do ritmo vence a base do tema", () => {

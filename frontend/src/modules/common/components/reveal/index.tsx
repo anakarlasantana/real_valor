@@ -76,8 +76,11 @@ export default function Reveal({
     <div
       ref={node}
       className={clx("rv-reveal", shown && "rv-reveal-in")}
-      // O atraso vai inline porque é do compasso do índice, e não uma classe: o
-      // Tailwind não gera `delay-[Nms]` para um número que só existe em runtime.
+      // O atraso vai inline porque é do compasso do índice, e não uma classe:
+      // o Tailwind não gera a utilidade de atraso para um número que só existe
+      // em runtime — e o scanner lê este comentário como marcação, então
+      // escrever a utilidade por extenso aqui só rendia aviso e CSS morto no
+      // build (foi o caso até esta linha).
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
     >
       {children}

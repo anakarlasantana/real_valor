@@ -3941,3 +3941,235 @@ body {
     aspect-ratio: 16 / 9;
   }
 }
+
+/*
+ * A faixa editorial (o tipo `banner`)
+ * ---------------------------------------------------------------
+ * A última faixa da home, e a única seção da vitrine em que a foto **é** o
+ * fundo: como no hero, a cópia mora sobre ela, e é por isso que o título e o
+ * eyebrow usam a família `-onmedia` (o off-white e o dourado que a casa já usa
+ * sobre fotografia).
+ *
+ * É o par `rv-callout-*` do `editorial-callout/`, e ele existe por um motivo
+ * específico: esta faixa era a **segunda régua**. Os tamanhos dela moravam no
+ * `className` do componente (`min-h-[520px]`, `text-[44px] small:text-[72px]`,
+ * `px-8 py-4`) e o `brand.css` não tinha um `rv-callout` — de modo que ajustar a
+ * faixa exigia abrir o componente, e um utilitário do Tailwind (emitido depois
+ * do `brand.css`) vencia qualquer tentativa de acertar o desenho por aqui. É
+ * exatamente o defeito que o cabeçalho do `ruler.spec.ts` descreve, e o teste
+ * novo de lá prende esta família no lugar.
+ *
+ * O véu continua sendo a constante `VEIL` do componente, e não um campo do CRM:
+ * como o `SCRIM` da capa, a força do gradiente é valor de **desenho** — o
+ * lojista escolhe a foto e o texto, não a opacidade. Ela chega inline, em
+ * `--rv-callout-veil`, e esta classe só a aplica.
+ */
+.rv-callout {
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  /* O chão da faixa antes (e atrás) da foto. */
+  min-height: 520px;
+  background-color: var(--rv-cacao);
+}
+
+/* A foto: recorte alto e o enquadramento acima do meio (`center 28%`), onde o
+ * rosto está, e o véu por cima — mesma decisão do `.rv-hero-photo`. O `opacity`
+ * é do desenho (a foto entra apagada para o texto vencer), e não um campo. */
+.rv-callout-photo {
+  object-fit: cover;
+  object-position: center 28%;
+  opacity: 0.6;
+}
+
+/* O véu: o gradiente chega inline (`--rv-callout-veil`), porque quem tem o
+ * número da força é o componente. */
+.rv-callout-veil {
+  position: absolute;
+  inset: 0;
+  background-image: var(--rv-callout-veil);
+}
+
+.rv-callout-body {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+}
+
+/* A largura da cópia: a faixa é larga, o texto não. */
+.rv-callout-copy {
+  max-width: 880px;
+}
+
+.rv-callout-eyebrow {
+  margin-bottom: 1rem;
+}
+
+/*
+ * O título, e o degrau dele. Os dois números são da régua (44px até 1023,
+ * 72px a partir de 1024) e o `0.96` de entrelinha é o que faz as duas linhas
+ * quase se tocarem em tamanho de cartaz — a mesma escolha da capa.
+ */
+.rv-callout-title {
+  font-size: 44px;
+  line-height: 0.96;
+}
+
+/* O realce do título — a segunda linha, em itálico. Sem o utilitário `italic`
+ * no `className`: o desenho é daqui, como no `.rv-hero-title em` da capa. */
+.rv-callout-title em {
+  font-style: italic;
+}
+
+/* O botão: contorno no off-white, sem raio (a régua não tem raio em botão
+ * nenhum) e o preenchimento invertido no hover — `.rv-hero-cta` ao contrário. */
+.rv-callout-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2.25rem;
+  padding: 1rem 2rem;
+  border: 1px solid var(--rv-offwhite);
+  color: var(--rv-offwhite);
+  transition: background-color var(--rv-duration) var(--rv-ease-out),
+    color var(--rv-duration) var(--rv-ease-out);
+}
+
+.rv-callout-cta:hover {
+  background-color: var(--rv-offwhite);
+  color: var(--rv-cacao);
+}
+
+@media (min-width: 1024px) {
+  .rv-callout {
+    min-height: 600px;
+  }
+
+  .rv-callout-title {
+    font-size: 72px;
+  }
+}
+
+/*
+ * O manifesto (a seção `editorial`)
+ * ---------------------------------------------------------------
+ * A foto **ao lado** do texto — o oposto da faixa acima, e é essa a diferença
+ * entre as duas seções que o contrato separa. A casa da foto é o campo
+ * `imagePosition` do CMS, e quem troca a ordem é o componente (é estrutura, não
+ * desenho): o que estas classes desenham é a grade de duas colunas e o degrau
+ * de uma só.
+ *
+ * Como o `rv-callout-*`, esta família existe porque **não existia**: os tamanhos
+ * do manifesto moravam no `className` (`aspect-[4/5]`, `text-[34px]`, `gap-10`,
+ * `grid-cols-2`) e o `brand.css` não tinha um `rv-manifesto`. A régua passava a
+ * ter duas fontes — a de lá e a daqui —, e a de lá ganhava.
+ *
+ * O fundo atrás da foto é o dourado a 20% (o mesmo papel do `--rv-rose-soft` no
+ * card: o retângulo nunca aparece branco enquanto o arquivo chega). Em `color-mix`
+ * e não num hex, porque o chão da seção é uma escolha do lojista
+ * (`--rv-section-bg`): a cor precisa **compor** por cima dele, e um hex fixo
+ * apareceria errado sobre qualquer fundo que não o da casa.
+ */
+.rv-manifesto-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+/* A caixa da foto: proporção própria (4/5 no celular, 5/6 no desktop) e o
+ * dourado atrás enquanto o arquivo chega. */
+.rv-manifesto-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background-color: color-mix(in srgb, var(--rv-dourado) 20%, transparent);
+}
+
+.rv-manifesto-photo {
+  object-fit: cover;
+  object-position: center;
+}
+
+/* A cópia, centrada na vertical da foto — as duas colunas se olham pelo meio. */
+.rv-manifesto-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.rv-manifesto-eyebrow {
+  margin-bottom: 1rem;
+}
+
+/*
+ * A linha manuscrita: `.rv-script` traz a face (Allura) e o `1.5em` dela; aqui
+ * a régua escreve o tamanho absoluto — 34px até 1023, 44px a partir de 1024 —
+ * senão a frase manuscrita seguiria o corpo do texto.
+ */
+.rv-manifesto-script {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.rv-manifesto-title {
+  margin-top: 1.25rem;
+  font-size: 26px;
+  line-height: 1.25;
+}
+
+/* O realce do título, como no `.rv-callout-title em`: o itálico é desenho, e
+ * não um utilitário no `className`. */
+.rv-manifesto-title em {
+  font-style: italic;
+}
+
+/* O corpo: a largura de 460px é da régua — uma linha de texto de 1100px não se
+ * lê, e o parágrafo do manifesto é comprido. */
+.rv-manifesto-body {
+  margin-top: 1.25rem;
+  max-width: 460px;
+  font-size: 1rem;
+  line-height: 1.625;
+}
+
+/* O botão: contorno no grafite e o preenchimento invertido no hover — o par
+ * claro do `.rv-callout-cta`, que é sobre foto. */
+.rv-manifesto-cta {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2rem;
+  padding: 0.75rem 1.75rem;
+  border: 1px solid var(--rv-grafite);
+  color: var(--rv-grafite);
+  transition: background-color var(--rv-duration) var(--rv-ease-out),
+    color var(--rv-duration) var(--rv-ease-out);
+}
+
+.rv-manifesto-cta:hover {
+  background-color: var(--rv-grafite);
+  color: var(--rv-offwhite);
+}
+
+@media (min-width: 1024px) {
+  .rv-manifesto-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4rem;
+  }
+
+  .rv-manifesto-media {
+    aspect-ratio: 5 / 6;
+  }
+
+  .rv-manifesto-script {
+    font-size: 44px;
+  }
+
+  .rv-manifesto-title {
+    font-size: 36px;
+  }
+}

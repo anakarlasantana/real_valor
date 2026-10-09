@@ -2,6 +2,7 @@ import { type BannerSection } from "@lib/content/home-sections"
 import { resolveMediaUrl } from "@lib/util/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
+import { type CSSProperties } from "react"
 
 /**
  * A faixa editorial (o tipo `banner`): a foto inteira, o véu, o eyebrow, o
@@ -14,11 +15,20 @@ import Image from "next/image"
  * ela, e é por isso que o título e o eyebrow usam as classes `-onmedia` (o
  * off white e o dourado que a loja já usa sobre fotografia).
  *
+ * **O desenho mora em `brand.css`** (a família `.rv-callout-*`), e não em
+ * utilitários aqui. Era o defeito que o `ruler.spec.ts` descreve como "a
+ * segunda régua": os tamanhos da faixa (`min-h-[520px] text-[44px]
+ * small:text-[72px]`) estavam no `className`, o `brand.css` não tinha um
+ * `rv-callout` — e um utilitário do Tailwind, emitido **depois** do `brand.css`,
+ * venceria qualquer ajuste feito por lá. Agora o componente escreve a classe e
+ * a régua é uma só; o teste novo de `home/components/ruler.spec.ts` prende isso.
+ *
  * O véu é a constante `VEIL`, e não um campo do CRM: como o `SCRIM` da capa, a
  * força do gradiente é valor de **desenho** — o lojista escolhe a foto e o
  * texto, não a opacidade do véu. O tom é o do protótipo (grafite a 75% na
  * esquerda, dissolvendo antes de 70% da largura) para a foto continuar visível
- * onde não há texto.
+ * onde não há texto. Ela chega inline, em `--rv-callout-veil`, e a classe
+ * `.rv-callout-veil` só a aplica — mesma arquitetura dos dois véus da capa.
  *
  * A foto passa por `resolveMediaUrl` (ver `lib/util/media.ts`): a imagem
  * enviada pelo CRM chega como chave do provider e é traduzida aqui, como no
@@ -35,38 +45,37 @@ export default function EditorialCallout({
   const image = resolveMediaUrl(section.imageUrl)
 
   return (
-    <section className="relative flex min-h-[520px] items-center overflow-hidden bg-rv-cacao small:min-h-[600px]">
+    <section
+      className="rv-callout"
+      style={{ "--rv-callout-veil": VEIL } as CSSProperties}
+    >
       {image && (
         <Image
           src={image}
           alt={section.imageAlt}
           fill
           sizes="100vw"
-          className="object-cover object-[center_28%] opacity-60"
+          className="rv-callout-photo"
         />
       )}
 
-      <div
-        aria-hidden="true"
-        className="absolute inset-0"
-        style={{ background: VEIL }}
-      />
+      <div aria-hidden="true" className="rv-callout-veil" />
 
-      <div className="relative z-10 w-full">
+      <div className="rv-callout-body">
         <div className="rv-container">
-          <div className="rv-section-pad max-w-[880px]">
+          <div className="rv-section-pad rv-callout-copy">
             {section.eyebrow && (
-              <p className="rv-eyebrow rv-section-accent-onmedia mb-4">
+              <p className="rv-eyebrow rv-section-accent-onmedia rv-callout-eyebrow">
                 {section.eyebrow}
               </p>
             )}
 
-            <h2 className="rv-display rv-section-heading-onmedia text-[44px] leading-[0.96] small:text-[72px]">
+            <h2 className="rv-display rv-section-heading-onmedia rv-callout-title">
               {section.title}
               {section.titleEmphasis && (
                 <>
                   <br />
-                  <em className="italic">{section.titleEmphasis}</em>
+                  <em>{section.titleEmphasis}</em>
                 </>
               )}
             </h2>
@@ -74,7 +83,7 @@ export default function EditorialCallout({
             {section.ctaLabel && (
               <LocalizedClientLink
                 href={section.ctaHref}
-                className="rv-eyebrow mt-9 inline-flex items-center justify-center border border-rv-offwhite px-8 py-4 text-rv-offwhite transition-colors duration-200 ease-in hover:bg-rv-offwhite hover:text-rv-cacao"
+                className="rv-eyebrow rv-callout-cta"
                 data-testid="banner-cta"
               >
                 {section.ctaLabel}
