@@ -2717,6 +2717,645 @@ body {
   }
 }
 
+/*
+ * A abertura do formulário: o rótulo e o título, na coluna do formulário (o
+ * resumo tem o seu próprio). É o mesmo par da sacola — o `rv-eyebrow` da casa e o
+ * corpo de capa da serifa —, e não um `Heading` do design system trazendo o azul
+ * da Medusa para a última tela antes do dinheiro.
+ */
+.rv-checkout-title {
+  margin-block: 2rem 2.5rem;
+}
+
+.rv-checkout-title h1 {
+  margin-top: 0.7rem;
+  font-family: var(--rv-font-display);
+  font-size: clamp(2.25rem, 4.5vw, 2.8125rem);
+  line-height: 1.05;
+  color: var(--rv-fg-strong);
+}
+
+/*
+ * O formulário do checkout: uma coluna de passos.
+ *
+ * Cada passo é um `<fieldset>` — e é `<fieldset>` de verdade, e não uma `div`
+ * com cara de caixa: os passos são **grupos de campos relacionados**, e o
+ * `<legend>` é o rótulo que o leitor de tela anuncia ao entrar no grupo. Foi o
+ * `Heading` do design system que saiu; a semântica de grupo ficou.
+ *
+ * A moldura é a mesma caixa do resumo ao lado (`--rv-surface` sobre o off-white
+ * da página, filete de 1px) porque é o mesmo formulário: o que a cliente
+ * preenche e o que ela confere não podem parecer telas diferentes.
+ */
+.rv-checkout-form {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.rv-fieldset {
+  position: relative;
+  margin: 0 0 1.5rem;
+  padding: 1.7rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-surface);
+}
+
+/* O número do passo num círculo rosa, como na referência. Ele não é enfeite: é a
+ * resposta à pergunta "quantos passos faltam?", que a cliente faz em silêncio
+ * antes de começar a digitar. */
+.rv-fieldset legend {
+  padding-inline: 0.8rem;
+  color: var(--rv-fg-strong);
+  font-family: var(--rv-font-display);
+  font-size: 1.25rem;
+}
+
+.rv-fieldset legend span {
+  display: inline-grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-right: 0.5rem;
+  place-items: center;
+  border-radius: 9999px;
+  background-color: var(--rv-rose);
+  color: var(--rv-primary-fg);
+  font-family: var(--rv-font-sans);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+/* O visto do passo já preenchido — verde, e não rosa: o mesmo sinal de "deu
+ * certo" da tela de confirmação. */
+.rv-fieldset legend svg {
+  margin-left: 0.5rem;
+  color: var(--rv-success);
+  vertical-align: -0.15em;
+}
+
+/*
+ * O "Editar" do passo já preenchido. Ele vive no início do **conteúdo** do
+ * campo, alinhado à direita, e não dentro do `<legend>`: um `<legend>` de largura
+ * inteira cortaria o filete de cima da caixa na linha toda, e o recorte do filete
+ * em volta do rótulo é justamente o que dá a ler "este é o passo".
+ */
+.rv-fieldset-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.rv-form-action {
+  color: var(--rv-muted);
+  font-family: var(--rv-font-sans);
+  font-size: var(--rv-text-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-form-action:hover {
+  color: var(--rv-rose-strong);
+}
+
+/* O resumo de um passo fechado: as colunas de dado já informado. `auto-fit` (e
+ * não um número fixo de colunas) porque o passo 1 tem três blocos de texto e o
+ * passo 2 tem um; com a largura da caixa decidindo, os dois caem bem. */
+.rv-fieldset-summary {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 640px) {
+  .rv-fieldset-summary {
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  }
+}
+
+.rv-fieldset-summary p {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-sm);
+  line-height: 1.6;
+}
+
+.rv-fieldset-summary p:empty {
+  display: none;
+}
+
+.rv-fieldset-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--rv-fg-strong);
+  font-family: var(--rv-font-sans);
+  font-size: var(--rv-text-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/*
+ * A frase de apoio do passo ("como você quer receber o seu pedido"), antes das
+ * opções. O corpo é o do texto secundário da casa; o negrito, o do rótulo.
+ */
+.rv-fieldset-note {
+  margin-bottom: 0.5rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-sm);
+}
+
+.rv-fieldset-note strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--rv-fg);
+  font-weight: 600;
+}
+
+/* O subtítulo de um bloco dentro do passo — o endereço de cobrança, que só existe
+ * quando a cliente desmarca a caixa de "igual ao de entrega". Ele é da serifa e um
+ * degrau maior que os rótulos dos campos: é um assunto novo dentro do passo, e não
+ * mais um campo. */
+.rv-fieldset-subhead {
+  margin-block: 2rem 1rem;
+  color: var(--rv-fg);
+  font-family: var(--rv-font-display);
+  font-size: 1.125rem;
+}
+
+/*
+ * A grade de campos do formulário, e o campo em si.
+ *
+ * As medidas são as da referência — 48px de altura, filete de 1px, halo rosa de
+ * 2px no foco — e são **as mesmas** que a caixa do CEP do `product-actions` já
+ * tinha escrito para si (ver `.rv-shipping-quote-row`): um formulário da casa,
+ * com uma régua só, em vez de cada tela reinventando a altura do campo.
+ *
+ * Duas diferenças deliberadas em relação à referência, e as duas são de leitura:
+ *
+ *  - o rótulo é `--rv-text-eyebrow` (11px), e não os 9px do protótipo — 9px fica
+ *    abaixo do que a WCAG recomenda para texto de rótulo, e o token da casa já
+ *    existe;
+ *  - o campo é `--rv-offwhite`, e não branco: a caixa é `--rv-surface`, que é
+ *    **mais clara** que a página, e um campo da cor da caixa sumiria dentro dela
+ *    (é o mesmo raciocínio já escrito no `.rv-shipping-quote-row`).
+ */
+.rv-form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 640px) {
+  .rv-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* O botão de avançar do passo, depois dos campos e das opções. Ele desce 1.5rem do
+ * último controle em vez de depender de uma classe de espaçamento no componente: o
+ * respiro do botão é do formulário, e não de cada tela que o usa. */
+.rv-fieldset .rv-btn {
+  margin-top: 1.5rem;
+}
+
+/* O campo de largura inteira (e-mail, endereço): a linha toda da grade. */
+.rv-full {
+  grid-column: 1 / -1;
+}
+
+.rv-form-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--rv-muted);
+  font-family: var(--rv-font-sans);
+  font-size: var(--rv-text-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* `input` e `select` juntos: no checkout os dois são o mesmo campo aos olhos de
+ * quem preenche, e o seletor de país não pode parecer outro componente. */
+.rv-form-field input,
+.rv-form-field select {
+  width: 100%;
+  height: 3rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-offwhite);
+  color: var(--rv-fg-strong);
+  font-family: var(--rv-font-sans);
+  font-size: var(--rv-text-sm);
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  transition: border-color var(--rv-motion-fast) var(--rv-ease-out),
+    box-shadow var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-form-field input::placeholder {
+  color: var(--rv-muted);
+}
+
+/*
+ * O campo do cartão do provedor. O `CardElement` do Stripe é um `iframe` de
+ * terceiro: ele não aceita as nossas classes por dentro, então o que se veste é a
+ * moldura em volta — a mesma medida dos outros campos (48px, filete de 1px,
+ * `--rv-offwhite`), para o cartão não parecer um controle de outro formulário.
+ */
+.rv-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-block: 1rem;
+}
+
+.rv-card-field > span {
+  color: var(--rv-muted);
+  font-family: var(--rv-font-sans);
+  font-size: var(--rv-text-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rv-card-input {
+  display: block;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-offwhite);
+  transition: border-color var(--rv-motion-fast) var(--rv-ease-out),
+    box-shadow var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-card-field:focus-within .rv-card-input {
+  border-color: var(--rv-rose);
+  box-shadow: 0 0 0 2px var(--rv-rose-soft);
+}
+
+/* O campo aceso. O anel de foco do teclado continua sendo o global (nenhuma regra
+ * local escreve `outline: none`); o que se acrescenta é o halo rosa da referência,
+ * que também aparece para quem chegou de mouse — o mesmo par do CEP. */
+.rv-form-field input:focus,
+.rv-form-field select:focus {
+  border-color: var(--rv-rose);
+  box-shadow: 0 0 0 2px var(--rv-rose-soft);
+}
+
+/*
+ * O seletor de país: o `select` nativo, com a seta desenhada por cima. O nativo
+ * fica de propósito — é o único que abre a lista do sistema no celular, e é o
+ * que uma lista de países precisa.
+ */
+.rv-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rv-select select {
+  appearance: none;
+  padding-right: 2.75rem;
+}
+
+.rv-select > svg {
+  position: absolute;
+  right: 1rem;
+  color: var(--rv-muted);
+  pointer-events: none;
+}
+
+/*
+ * A caixa de endereços salvos, no passo 1. Ela é `--rv-offwhite` sobre a caixa
+ * `--rv-surface` — um degrau abaixo, para não competir com os campos abaixo dela.
+ */
+.rv-saved-addresses {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-offwhite);
+}
+
+.rv-saved-addresses > p {
+  margin-bottom: 0.75rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+}
+
+/* O seletor de endereços salvos: o botão é um campo, a lista é uma caixa. */
+.rv-address-select {
+  position: relative;
+}
+
+.rv-address-select-button {
+  display: flex;
+  width: 100%;
+  height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-surface);
+  color: var(--rv-fg);
+  font-family: var(--rv-font-sans);
+  font-size: var(--rv-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rv-address-select-button > svg {
+  flex: none;
+  color: var(--rv-muted);
+  transition: transform var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-address-select-button > svg[data-open] {
+  transform: rotate(180deg);
+}
+
+.rv-address-options {
+  position: absolute;
+  z-index: 20;
+  width: 100%;
+  max-height: 15rem;
+  overflow-y: auto;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-surface);
+  box-shadow: var(--rv-shadow-card);
+}
+
+.rv-address-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--rv-border);
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+  cursor: pointer;
+}
+
+.rv-address-option:last-child {
+  border-bottom: 0;
+}
+
+.rv-address-option:hover {
+  background-color: var(--rv-offwhite);
+}
+
+.rv-address-option-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.rv-address-option-body strong {
+  margin-bottom: 0.2rem;
+  color: var(--rv-fg-strong);
+  font-size: var(--rv-text-sm);
+  font-weight: 500;
+}
+
+.rv-address-option-body p,
+.rv-address-option-body span {
+  font-size: var(--rv-text-xs);
+  line-height: 1.5;
+}
+
+/*
+ * A linha de opção do frete e a do pagamento — **o mesmo cartão** com o preenchido
+ * trocando de dono.
+ *
+ * Ele é um alvo inteiro clicável, e é o cartão rosa na borda que diz qual está
+ * escolhido: o ponto à esquerda sozinho é um alvo pequeno demais para responder
+ * "é este?" numa lista de três.
+ */
+.rv-shipping-option,
+.rv-payment-option {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-offwhite);
+  cursor: pointer;
+  transition: border-color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+/* O frete é **uma linha**; o pagamento é uma linha e o que vier embaixo dela — o
+ * formulário do cartão, quando o meio precisa dele. Daí o `column` no pagamento e
+ * o `.rv-option-row` dentro: a linha de cima é a mesma das duas. */
+.rv-shipping-option {
+  align-items: center;
+}
+
+.rv-payment-option {
+  flex-direction: column;
+}
+
+.rv-option-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 1rem;
+}
+
+.rv-shipping-option + .rv-shipping-option,
+.rv-payment-option + .rv-payment-option {
+  margin-top: 0.6rem;
+}
+
+.rv-shipping-option.rv-option-selected,
+.rv-payment-option.rv-option-selected {
+  border-color: var(--rv-rose);
+}
+
+.rv-shipping-option.rv-option-disabled,
+.rv-payment-option.rv-option-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* O ponto da escolha. Ele é decorativo (`aria-hidden`) de propósito: quem carrega
+ * o papel de rádio é o elemento do grupo, e um segundo controle focável dentro
+ * dele faria a cliente parar duas vezes em cada opção com o Tab. */
+.rv-choice {
+  display: grid;
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  place-items: center;
+  border: 1px solid var(--rv-muted);
+  border-radius: 9999px;
+  background-color: var(--rv-surface);
+}
+
+.rv-choice::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--rv-rose);
+  opacity: 0;
+  transition: opacity var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-option-selected .rv-choice {
+  border-color: var(--rv-rose);
+}
+
+.rv-option-selected .rv-choice::after {
+  opacity: 1;
+}
+
+.rv-option-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.rv-option-body strong {
+  color: var(--rv-fg);
+  font-size: var(--rv-text-sm);
+  font-weight: 500;
+}
+
+.rv-option-body small {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+}
+
+/* O valor, na ponta direita da linha — e o único verde quando ele é zero: "grátis"
+ * é a boa notícia, e o verde é o mesmo do frete grátis do resumo. */
+.rv-option-price {
+  flex: none;
+  color: var(--rv-fg-strong);
+  font-size: var(--rv-text-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.rv-option-price-free {
+  color: var(--rv-success);
+}
+
+/*
+ * O aviso de erro do formulário. Ele usa o `--rv-danger` da casa (o `text-rose-500`
+ * do starter era a cor de uma paleta que não é a da loja) e fica *abaixo* do botão
+ * do passo: é ali que o olho está depois do clique que não deu certo.
+ */
+.rv-form-error {
+  margin-top: 0.75rem;
+  color: var(--rv-danger);
+  font-size: var(--rv-text-xs);
+  line-height: 1.6;
+}
+
+/* O aviso do meio de pagamento de teste, que só existe em desenvolvimento. Ele é
+ * uma linha de texto e não um selo colorido: quem o lê é quem está desenvolvendo, e
+ * não a cliente. */
+.rv-dev-note {
+  color: var(--rv-danger);
+  font-size: var(--rv-text-xs);
+}
+
+/*
+ * O checkbox do "endereço de cobrança igual ao de entrega". `accent-color` tinge o
+ * controle nativo do rosa da marca — é o único ponto do formulário em que o
+ * desenho é do sistema, e é de propósito: no celular ninguém desenha melhor.
+ */
+.rv-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-block: 1.5rem;
+  color: var(--rv-fg);
+  font-size: var(--rv-text-sm);
+  cursor: pointer;
+}
+
+.rv-checkbox input {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--rv-rose);
+}
+
+/* A nota de aceite, acima do botão de fechar o pedido. É o texto menos lido e o
+ * mais importante da tela; por isso ele é pequeno, curto e está *antes* do botão —
+ * o único lugar em que ele é lido antes do clique, e não depois. */
+.rv-checkout-terms {
+  max-width: 34rem;
+  margin-bottom: 1.5rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+  line-height: 1.7;
+}
+
+/* O "Finalizar pedido": largura inteira, como na referência — é a única ação da
+ * tela que gasta dinheiro, e ela não divide a linha com nada. */
+.rv-finish-button {
+  width: 100%;
+}
+
+/* --- Cupom (dentro do resumo) ------------------------------------------- */
+
+/*
+ * O cupom mora no resumo, e não no formulário: ele muda o total, e não o pedido.
+ * O convite é um botão de texto; ao abrir, o campo e o "Aplicar" entram na mesma
+ * linha, com o campo alinhado pela base do botão.
+ */
+.rv-coupon {
+  margin-top: 1.5rem;
+}
+
+.rv-coupon-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.rv-coupon-row .rv-form-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.rv-coupon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.rv-coupon-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+}
+
+.rv-coupon-item b {
+  color: var(--rv-fg-strong);
+  font-weight: 600;
+}
+
 /* --- Confirmação do pedido --------------------------------------------- */
 
 /*

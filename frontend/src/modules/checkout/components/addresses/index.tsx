@@ -1,19 +1,40 @@
 "use client"
 
-import { setAddresses } from "@lib/data/cart"
-import compareAddresses from "@lib/util/compare-addresses"
 import { CheckCircleSolid } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
-import { Heading, Text, useToggleState } from "@medusajs/ui"
-import Divider from "@modules/common/components/divider"
-import Spinner from "@modules/common/icons/spinner"
+import { useToggleState } from "@medusajs/ui"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useActionState } from "react"
+
+import { setAddresses } from "@lib/data/cart"
+import compareAddresses from "@lib/util/compare-addresses"
+import Spinner from "@modules/common/icons/spinner"
+
 import BillingAddress from "../billing_address"
 import ErrorMessage from "../error-message"
 import ShippingAddress from "../shipping-address"
 import { SubmitButton } from "../submit-button"
 
+/**
+ * O passo 1 do checkout — "Seus dados".
+ *
+ * Ele era o bloco "Shipping Address" do starter: um `Heading` com um lápis de
+ * "Edit" (em inglês), os campos do design system e um `Divider` no fim. Agora é o
+ * primeiro dos três `<fieldset>` numerados da referência: o número 1 no círculo
+ * rosa, "Seus dados" no rótulo, o visto verde quando o passo está preenchido, e o
+ * conteúdo ou o resumo do que já foi respondido.
+ *
+ * **O que não mudou, e não pode mudar:** o `useActionState(setAddresses)`, o
+ * `name` de cada campo do formulário (é por eles que o `setAddresses` monta o
+ * payload), o `data-testid` de cada coisa e a ordem dos passos. O que mudou é a
+ * roupa — e a língua.
+ *
+ * Sobre o nome do passo: a referência separa "Seus dados" (contato) de "Entrega"
+ * (endereço **e** frete). Aqui o endereço vive no passo 1, porque é o mesmo
+ * formulário que o `setAddresses` envia de uma vez — separá-lo em dois passos
+ * significaria dois envios para o mesmo dado, e um estado intermediário de
+ * endereço pela metade. O rótulo é o da referência; o corte é o do Medusa.
+ */
 const Addresses = ({
   cart,
   customer,
@@ -40,144 +61,103 @@ const Addresses = ({
   const [message, formAction] = useActionState(setAddresses, null)
 
   return (
-    <div className="bg-white">
-      <div className="flex flex-row items-center justify-between mb-6">
-        <Heading
-          level="h2"
-          className="flex flex-row text-3xl-regular gap-x-2 items-baseline"
-        >
-          Shipping Address
-          {!isOpen && <CheckCircleSolid />}
-        </Heading>
-        {!isOpen && cart?.shipping_address && (
-          <Text>
-            <button
-              onClick={handleEdit}
-              className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
-              data-testid="edit-address-button"
-            >
-              Edit
-            </button>
-          </Text>
-        )}
-      </div>
+    <fieldset className="rv-fieldset">
+      <legend>
+        <span>1</span>
+        Seus dados
+        {!isOpen && <CheckCircleSolid aria-hidden="true" focusable="false" />}
+      </legend>
+
       {isOpen ? (
         <form action={formAction}>
-          <div className="pb-8">
-            <ShippingAddress
-              customer={customer}
-              checked={sameAsBilling}
-              onChange={toggleSameAsBilling}
-              cart={cart}
-            />
+          <ShippingAddress
+            customer={customer}
+            checked={sameAsBilling}
+            onChange={toggleSameAsBilling}
+            cart={cart}
+          />
 
-            {!sameAsBilling && (
-              <div>
-                <Heading
-                  level="h2"
-                  className="text-3xl-regular gap-x-4 pb-6 pt-8"
-                >
-                  Billing address
-                </Heading>
+          {!sameAsBilling && (
+            <div>
+              <h3 className="rv-fieldset-subhead">Endereço de cobrança</h3>
+              <BillingAddress cart={cart} />
+            </div>
+          )}
 
-                <BillingAddress cart={cart} />
-              </div>
-            )}
-            <SubmitButton className="mt-6" data-testid="submit-address-button">
-              Continue to delivery
-            </SubmitButton>
-            <ErrorMessage error={message} data-testid="address-error-message" />
-          </div>
+          <SubmitButton data-testid="submit-address-button">
+            Continuar para a entrega
+          </SubmitButton>
+          <ErrorMessage error={message} data-testid="address-error-message" />
         </form>
       ) : (
-        <div>
-          <div className="text-small-regular">
-            {cart && cart.shipping_address ? (
-              <div className="flex items-start gap-x-8">
-                <div className="flex items-start gap-x-1 w-full">
-                  <div
-                    className="flex flex-col w-1/3"
-                    data-testid="shipping-address-summary"
-                  >
-                    <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                      Shipping Address
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.first_name}{" "}
-                      {cart.shipping_address.last_name}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.address_1}{" "}
-                      {cart.shipping_address.address_2}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.postal_code},{" "}
-                      {cart.shipping_address.city}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.country_code?.toUpperCase()}
-                    </Text>
-                  </div>
+        <>
+          {cart?.shipping_address && (
+            <div className="rv-fieldset-action">
+              <button
+                type="button"
+                onClick={handleEdit}
+                className="rv-form-action"
+                data-testid="edit-address-button"
+              >
+                Editar
+              </button>
+            </div>
+          )}
 
-                  <div
-                    className="flex flex-col w-1/3 "
-                    data-testid="shipping-contact-summary"
-                  >
-                    <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                      Contact
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.shipping_address.phone}
-                    </Text>
-                    <Text className="txt-medium text-ui-fg-subtle">
-                      {cart.email}
-                    </Text>
-                  </div>
-
-                  <div
-                    className="flex flex-col w-1/3"
-                    data-testid="billing-address-summary"
-                  >
-                    <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                      Billing Address
-                    </Text>
-
-                    {sameAsBilling ? (
-                      <Text className="txt-medium text-ui-fg-subtle">
-                        Billing and delivery address are the same.
-                      </Text>
-                    ) : (
-                      <>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.first_name}{" "}
-                          {cart.billing_address?.last_name}
-                        </Text>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.address_1}{" "}
-                          {cart.billing_address?.address_2}
-                        </Text>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.postal_code},{" "}
-                          {cart.billing_address?.city}
-                        </Text>
-                        <Text className="txt-medium text-ui-fg-subtle">
-                          {cart.billing_address?.country_code?.toUpperCase()}
-                        </Text>
-                      </>
-                    )}
-                  </div>
-                </div>
+          {cart?.shipping_address ? (
+            <div className="rv-fieldset-summary">
+              <div data-testid="shipping-address-summary">
+                <span className="rv-fieldset-label">Entrega</span>
+                <p>
+                  {cart.shipping_address.first_name}{" "}
+                  {cart.shipping_address.last_name}
+                </p>
+                <p>
+                  {cart.shipping_address.address_1}{" "}
+                  {cart.shipping_address.address_2}
+                </p>
+                <p>
+                  {cart.shipping_address.postal_code},{" "}
+                  {cart.shipping_address.city}
+                </p>
+                <p>{cart.shipping_address.country_code?.toUpperCase()}</p>
               </div>
-            ) : (
-              <div>
-                <Spinner />
+
+              <div data-testid="shipping-contact-summary">
+                <span className="rv-fieldset-label">Contato</span>
+                <p>{cart.shipping_address.phone}</p>
+                <p>{cart.email}</p>
               </div>
-            )}
-          </div>
-        </div>
+
+              <div data-testid="billing-address-summary">
+                <span className="rv-fieldset-label">Cobrança</span>
+                {sameAsBilling ? (
+                  <p>Igual ao endereço de entrega.</p>
+                ) : (
+                  <>
+                    <p>
+                      {cart.billing_address?.first_name}{" "}
+                      {cart.billing_address?.last_name}
+                    </p>
+                    <p>
+                      {cart.billing_address?.address_1}{" "}
+                      {cart.billing_address?.address_2}
+                    </p>
+                    <p>
+                      {cart.billing_address?.postal_code},{" "}
+                      {cart.billing_address?.city}
+                    </p>
+                    <p>{cart.billing_address?.country_code?.toUpperCase()}</p>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            <Spinner />
+          )}
+        </>
       )}
-      <Divider className="mt-8" />
-    </div>
+    </fieldset>
   )
 }
 

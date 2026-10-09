@@ -1,12 +1,33 @@
 import { HttpTypes } from "@medusajs/types"
-import { Container } from "@medusajs/ui"
-import Checkbox from "@modules/common/components/checkbox"
-import Input from "@modules/common/components/input"
 import { mapKeys } from "lodash"
 import React, { useEffect, useMemo, useState } from "react"
 import AddressSelect from "../address-select"
 import CountrySelect from "../country-select"
 
+/**
+ * Os campos do passo 1 — os dados da cliente e o endereço de entrega.
+ *
+ * Eram os `Input` do `@modules/common/components/input` (o campo de rótulo
+ * flutuante do starter, com as classes do design system) e viraram marcação nossa
+ * dentro do `.rv-form-grid`: o rótulo **acima** do campo, 48px de altura, o halo
+ * rosa no foco, a mesma medida da caixa do CEP da página da peça. O `Input`
+ * compartilhado continua existindo (a conta o usa), mas o checkout não depende mais
+ * dele para ter a cara da loja.
+ *
+ * Três observações sobre o que mudou:
+ *
+ *  - os campos ganharam `placeholder`. O campo do starter precisava do rótulo
+ *    *dentro* dele para o texto flutuante funcionar, e por isso o `placeholder` era
+ *    um espaço; agora o rótulo está fora, e o exemplo pode ser exemplo de verdade
+ *    ("Rua, avenida…", "00000-000").
+ *  - **entrou o complemento.** A referência separa "Endereço" de "Número" e
+ *    "Complemento", e o Medusa tem os dois campos (`address_1` e `address_2`); o
+ *    formulário antigo simplesmente não pedia o complemento e gravava
+ *    `address_2: ""` (ver `setAddresses`). Quem entrega precisa dele.
+ *  - **CPF não entrou**, embora a referência o tenha. O `StoreCartAddress` do
+ *    Medusa não tem esse campo: pedi-lo e não gravá-lo seria pedir um dado à toa.
+ *    Ele é assunto do cadastro de cliente, não do endereço de entrega.
+ */
 const ShippingAddress = ({
   customer,
   cart,
@@ -22,6 +43,7 @@ const ShippingAddress = ({
     "shipping_address.first_name": cart?.shipping_address?.first_name || "",
     "shipping_address.last_name": cart?.shipping_address?.last_name || "",
     "shipping_address.address_1": cart?.shipping_address?.address_1 || "",
+    "shipping_address.address_2": cart?.shipping_address?.address_2 || "",
     "shipping_address.company": cart?.shipping_address?.company || "",
     "shipping_address.postal_code": cart?.shipping_address?.postal_code || "",
     "shipping_address.city": cart?.shipping_address?.city || "",
@@ -55,6 +77,7 @@ const ShippingAddress = ({
         "shipping_address.first_name": address?.first_name || "",
         "shipping_address.last_name": address?.last_name || "",
         "shipping_address.address_1": address?.address_1 || "",
+        "shipping_address.address_2": address?.address_2 || "",
         "shipping_address.company": address?.company || "",
         "shipping_address.postal_code": address?.postal_code || "",
         "shipping_address.city": address?.city || "",
@@ -95,9 +118,9 @@ const ShippingAddress = ({
   return (
     <>
       {customer && (addressesInRegion?.length || 0) > 0 && (
-        <Container className="mb-6 flex flex-col gap-y-4 p-5">
-          <p className="text-small-regular">
-            {`Hi ${customer.first_name}, do you want to use one of your saved addresses?`}
+        <div className="rv-saved-addresses">
+          <p>
+            {`Olá, ${customer.first_name}. Quer usar um dos seus endereços salvos?`}
           </p>
           <AddressSelect
             addresses={customer.addresses}
@@ -108,110 +131,149 @@ const ShippingAddress = ({
             }
             onSelect={setFormAddress}
           />
-        </Container>
+        </div>
       )}
-      <div className="grid grid-cols-2 gap-4">
-        <Input
-          label="Nome"
-          name="shipping_address.first_name"
-          autoComplete="given-name"
-          value={formData["shipping_address.first_name"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-first-name-input"
-        />
-        <Input
-          label="Sobrenome"
-          name="shipping_address.last_name"
-          autoComplete="family-name"
-          value={formData["shipping_address.last_name"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-last-name-input"
-        />
-        <Input
-          label="Endereço"
-          name="shipping_address.address_1"
-          autoComplete="address-line1"
-          value={formData["shipping_address.address_1"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-address-input"
-        />
-        <Input
-          label="Empresa"
-          name="shipping_address.company"
-          value={formData["shipping_address.company"]}
-          onChange={handleChange}
-          autoComplete="organization"
-          data-testid="shipping-company-input"
-        />
-        <Input
-          label="CEP"
-          name="shipping_address.postal_code"
-          autoComplete="postal-code"
-          value={formData["shipping_address.postal_code"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-postal-code-input"
-        />
-        <Input
-          label="Cidade"
-          name="shipping_address.city"
-          autoComplete="address-level2"
-          value={formData["shipping_address.city"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-city-input"
-        />
-        <CountrySelect
-          name="shipping_address.country_code"
-          autoComplete="country"
-          region={cart?.region}
-          value={formData["shipping_address.country_code"]}
-          onChange={handleChange}
-          required
-          data-testid="shipping-country-select"
-        />
-        <Input
-          label="State / Province"
-          name="shipping_address.province"
-          autoComplete="address-level1"
-          value={formData["shipping_address.province"]}
-          onChange={handleChange}
-          data-testid="shipping-province-input"
-        />
+      <div className="rv-form-grid">
+        <label className="rv-form-field rv-full">
+          E-mail
+          <input
+            name="email"
+            type="email"
+            autoComplete="email"
+            placeholder="voce@email.com"
+            value={formData.email}
+            onChange={handleChange}
+            required
+            data-testid="shipping-email-input"
+          />
+        </label>
+        <label className="rv-form-field">
+          Nome
+          <input
+            name="shipping_address.first_name"
+            autoComplete="given-name"
+            placeholder="Seu nome"
+            value={formData["shipping_address.first_name"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-first-name-input"
+          />
+        </label>
+        <label className="rv-form-field">
+          Sobrenome
+          <input
+            name="shipping_address.last_name"
+            autoComplete="family-name"
+            placeholder="Seu sobrenome"
+            value={formData["shipping_address.last_name"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-last-name-input"
+          />
+        </label>
+        <label className="rv-form-field">
+          Telefone
+          <input
+            name="shipping_address.phone"
+            autoComplete="tel"
+            placeholder="(00) 00000-0000"
+            value={formData["shipping_address.phone"]}
+            onChange={handleChange}
+            data-testid="shipping-phone-input"
+          />
+        </label>
+        <label className="rv-form-field">
+          CEP
+          <input
+            name="shipping_address.postal_code"
+            autoComplete="postal-code"
+            placeholder="00000-000"
+            value={formData["shipping_address.postal_code"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-postal-code-input"
+          />
+        </label>
+        <label className="rv-form-field rv-full">
+          Endereço
+          <input
+            name="shipping_address.address_1"
+            autoComplete="address-line1"
+            placeholder="Rua, avenida…"
+            value={formData["shipping_address.address_1"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-address-input"
+          />
+        </label>
+        <label className="rv-form-field">
+          Complemento
+          <input
+            name="shipping_address.address_2"
+            autoComplete="address-line2"
+            placeholder="Apto, bloco… (opcional)"
+            value={formData["shipping_address.address_2"]}
+            onChange={handleChange}
+            data-testid="shipping-address-2-input"
+          />
+        </label>
+        <label className="rv-form-field">
+          Cidade
+          <input
+            name="shipping_address.city"
+            autoComplete="address-level2"
+            placeholder="Sua cidade"
+            value={formData["shipping_address.city"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-city-input"
+          />
+        </label>
+        <label className="rv-form-field">
+          Estado
+          <input
+            name="shipping_address.province"
+            autoComplete="address-level1"
+            placeholder="UF"
+            value={formData["shipping_address.province"]}
+            onChange={handleChange}
+            data-testid="shipping-province-input"
+          />
+        </label>
+        <label className="rv-form-field">
+          País
+          <CountrySelect
+            name="shipping_address.country_code"
+            autoComplete="country"
+            region={cart?.region}
+            value={formData["shipping_address.country_code"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-country-select"
+          />
+        </label>
+        <label className="rv-form-field rv-full">
+          Empresa
+          <input
+            name="shipping_address.company"
+            autoComplete="organization"
+            placeholder="Opcional"
+            value={formData["shipping_address.company"]}
+            onChange={handleChange}
+            data-testid="shipping-company-input"
+          />
+        </label>
       </div>
-      <div className="my-8">
-        <Checkbox
-          label="Billing address same as shipping address"
+      <label className="rv-checkbox">
+        <input
+          type="checkbox"
           name="same_as_billing"
           checked={checked}
           onChange={onChange}
           data-testid="billing-address-checkbox"
         />
-      </div>
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <Input
-          label="E-mail"
-          name="email"
-          type="email"
-          title="Informe um e-mail válido."
-          autoComplete="email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-          data-testid="shipping-email-input"
-        />
-        <Input
-          label="Telefone"
-          name="shipping_address.phone"
-          autoComplete="tel"
-          value={formData["shipping_address.phone"]}
-          onChange={handleChange}
-          data-testid="shipping-phone-input"
-        />
-      </div>
+        Endereço de cobrança igual ao de entrega
+      </label>
     </>
   )
 }

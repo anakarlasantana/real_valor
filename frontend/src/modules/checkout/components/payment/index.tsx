@@ -1,15 +1,14 @@
 "use client"
 
 import { RadioGroup } from "@headlessui/react"
-import { resolvePayment } from "@lib/payments/registry"
-import { initiatePaymentSession } from "@lib/data/cart"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
-import { Button, Container, Heading, Text, clx } from "@medusajs/ui"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { Fragment, useCallback, useEffect, useState } from "react"
+
+import { initiatePaymentSession } from "@lib/data/cart"
+import { resolvePayment } from "@lib/payments/registry"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PaymentContainer from "@modules/checkout/components/payment-container"
-import Divider from "@modules/common/components/divider"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
 
 /**
  * Este meio precisa de formulário na NOSSA página?
@@ -23,6 +22,23 @@ import { useCallback, useEffect, useState } from "react"
 const needsInlineInput = (providerId?: string | null) =>
   resolvePayment(providerId).fulfillment === "inline"
 
+/**
+ * O passo 3 do checkout — "Pagamento".
+ *
+ * Ele era o bloco "Payment" do starter: `Heading` do design system, um link
+ * "Editar" solto e as opções numa caixa com o azul da Medusa. Agora é o terceiro
+ * `<fieldset>` numerado, com as opções no cartão `.rv-payment-option` — o mesmo do
+ * frete, com o formulário do cartão (quando o meio precisa dele) logo abaixo da
+ * linha.
+ *
+ * **O que não mudou:** o `RadioGroup` do headlessui, o `initiatePaymentSession`, o
+ * `resolvePayment` do registry (é o adapter que decide como o meio se completa) e
+ * todos os `data-testid`.
+ *
+ * O `paidByGiftcard` continua com o caminho próprio: com o carrinho inteiro pago
+ * por vale-presente não há meio a escolher, e o passo mostra o resumo em vez da
+ * lista.
+ */
 const Payment = ({
   cart,
   availablePaymentMethods,
@@ -121,170 +137,139 @@ const Payment = ({
     setError(null)
   }, [isOpen])
 
-  return (
-    <div className="bg-white">
-      <div className="flex flex-row items-center justify-between mb-6">
-        <Heading
-          level="h2"
-          className={clx(
-            "flex flex-row text-3xl-regular gap-x-2 items-baseline",
-            {
-              "opacity-50 pointer-events-none select-none":
-                !isOpen && !paymentReady,
-            }
-          )}
-        >
-          Payment
-          {!isOpen && paymentReady && <CheckCircleSolid />}
-        </Heading>
-        {!isOpen && paymentReady && (
-          <Text>
-            <button
-              onClick={handleEdit}
-              className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
-              data-testid="edit-payment-button"
-            >
-              Editar
-            </button>
-          </Text>
-        )}
-      </div>
+  const resumoDoPagamento = (
+    <div className="rv-fieldset-summary">
       <div>
-        <div className={isOpen ? "block" : "hidden"}>
+        <span className="rv-fieldset-label">Forma de pagamento</span>
+        <p data-testid="payment-method-summary">Cartão-presente</p>
+      </div>
+    </div>
+  )
+
+  return (
+    <fieldset className="rv-fieldset">
+      <legend>
+        <span>3</span>
+        Pagamento
+        {!isOpen && paymentReady && (
+          <CheckCircleSolid aria-hidden="true" focusable="false" />
+        )}
+      </legend>
+
+      {isOpen ? (
+        <>
           {!paidByGiftcard && availablePaymentMethods?.length && (
-            <>
-              <RadioGroup
-                value={selectedPaymentMethod}
-                onChange={(value: string) => setPaymentMethod(value)}
-              >
-                {availablePaymentMethods.map((paymentMethod) => {
-                  // O meio `inline` traz a própria UI; os outros, só a linha de
-                  // seleção. Quem decide é o ADAPTER — o checkout não compara
-                  // id, não conhece provedor e não importa adapter.
-                  const adapter = resolvePayment(paymentMethod.id)
-                  const { InlineUI } = adapter
-                  const selected = selectedPaymentMethod === paymentMethod.id
+            <RadioGroup
+              value={selectedPaymentMethod}
+              onChange={(value: string) => setPaymentMethod(value)}
+            >
+              {availablePaymentMethods.map((paymentMethod) => {
+                // O meio `inline` traz a própria UI; os outros, só a linha de
+                // seleção. Quem decide é o ADAPTER — o checkout não compara
+                // id, não conhece provedor e não importa adapter.
+                const adapter = resolvePayment(paymentMethod.id)
+                const { InlineUI } = adapter
+                const selected = selectedPaymentMethod === paymentMethod.id
 
-                  return (
-                    <div key={paymentMethod.id}>
-                      {adapter.fulfillment === "inline" && InlineUI ? (
-                        <PaymentContainer
-                          paymentProviderId={paymentMethod.id}
-                          selectedPaymentOptionId={selectedPaymentMethod}
-                        >
-                          <InlineUI
-                            selected={selected}
-                            onStatus={(status) => {
-                              setCardComplete(status.complete ?? false)
-                              if (status.brand) {
-                                setCardBrand(status.brand)
-                              }
-                              setError(status.error ?? null)
-                            }}
-                          />
-                        </PaymentContainer>
-                      ) : (
-                        <PaymentContainer
-                          paymentProviderId={paymentMethod.id}
-                          selectedPaymentOptionId={selectedPaymentMethod}
+                return (
+                  <Fragment key={paymentMethod.id}>
+                    {adapter.fulfillment === "inline" && InlineUI ? (
+                      <PaymentContainer
+                        paymentProviderId={paymentMethod.id}
+                        selectedPaymentOptionId={selectedPaymentMethod}
+                      >
+                        <InlineUI
+                          selected={selected}
+                          onStatus={(status) => {
+                            setCardComplete(status.complete ?? false)
+                            if (status.brand) {
+                              setCardBrand(status.brand)
+                            }
+                            setError(status.error ?? null)
+                          }}
                         />
-                      )}
-                    </div>
-                  )
-                })}
-              </RadioGroup>
-            </>
+                      </PaymentContainer>
+                    ) : (
+                      <PaymentContainer
+                        paymentProviderId={paymentMethod.id}
+                        selectedPaymentOptionId={selectedPaymentMethod}
+                      />
+                    )}
+                  </Fragment>
+                )
+              })}
+            </RadioGroup>
           )}
 
-          {paidByGiftcard && (
-            <div className="flex flex-col w-1/3">
-              <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                Forma de pagamento
-              </Text>
-              <Text
-                className="txt-medium text-ui-fg-subtle"
-                data-testid="payment-method-summary"
-              >
-                Cartão-presente
-              </Text>
-            </div>
-          )}
+          {paidByGiftcard && resumoDoPagamento}
 
           <ErrorMessage
             error={error}
             data-testid="payment-method-error-message"
           />
 
-          <Button
-            size="large"
-            className="mt-6"
+          <button
+            type="button"
+            className="rv-btn rv-btn-primary"
             onClick={handleSubmit}
-            isLoading={isLoading}
             disabled={
-              (needsInlineInput(selectedPaymentMethod) &&
-                !cardComplete) ||
+              isLoading ||
+              (needsInlineInput(selectedPaymentMethod) && !cardComplete) ||
               (!selectedPaymentMethod && !paidByGiftcard)
             }
             data-testid="submit-payment-button"
           >
             {needsInlineInput(selectedPaymentMethod)
-              ? " Informar os dados do cartão"
+              ? "Informar os dados do cartão"
               : "Continuar para a revisão"}
-          </Button>
-        </div>
-
-        <div className={isOpen ? "hidden" : "block"}>
+          </button>
+        </>
+      ) : (
+        <>
           {cart && paymentReady && activeSession ? (
-            <div className="flex items-start gap-x-1 w-full">
-              <div className="flex flex-col w-1/3">
-                <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                  Forma de pagamento
-                </Text>
-                <Text
-                  className="txt-medium text-ui-fg-subtle"
-                  data-testid="payment-method-summary"
+            <>
+              <div className="rv-fieldset-action">
+                <button
+                  type="button"
+                  onClick={handleEdit}
+                  className="rv-form-action"
+                  data-testid="edit-payment-button"
                 >
-                  {resolvePayment(activeSession?.provider_id).label}
-                </Text>
+                  Editar
+                </button>
               </div>
-              <div className="flex flex-col w-1/3">
-                <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                  Detalhes do pagamento
-                </Text>
-                <div
-                  className="flex gap-2 txt-medium text-ui-fg-subtle items-center"
-                  data-testid="payment-details-summary"
-                >
-                  <Container className="flex items-center h-7 w-fit p-2 bg-ui-button-neutral-hover">
+              <div className="rv-fieldset-summary">
+                <div>
+                  <span className="rv-fieldset-label">Forma de pagamento</span>
+                  <p data-testid="payment-method-summary">
+                    {resolvePayment(activeSession?.provider_id).label}
+                  </p>
+                </div>
+                <div>
+                  <span className="rv-fieldset-label">
+                    Detalhes do pagamento
+                  </span>
+                  <p data-testid="payment-details-summary">
                     {resolvePayment(selectedPaymentMethod).icon || (
-                      <CreditCard />
-                    )}
-                  </Container>
-                  <Text>
+                      <CreditCard aria-hidden="true" focusable="false" />
+                    )}{" "}
                     {needsInlineInput(selectedPaymentMethod) && cardBrand
                       ? cardBrand
                       : "O próximo passo aparece aqui"}
-                  </Text>
+                  </p>
                 </div>
               </div>
-            </div>
+            </>
           ) : paidByGiftcard ? (
-            <div className="flex flex-col w-1/3">
-              <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                Forma de pagamento
-              </Text>
-              <Text
-                className="txt-medium text-ui-fg-subtle"
-                data-testid="payment-method-summary"
-              >
-                Cartão-presente
-              </Text>
-            </div>
-          ) : null}
-        </div>
-      </div>
-      <Divider className="mt-8" />
-    </div>
+            resumoDoPagamento
+          ) : (
+            <p className="rv-fieldset-note">
+              Escolha a forma de entrega acima para ver as formas de pagamento.
+            </p>
+          )}
+        </>
+      )}
+    </fieldset>
   )
 }
 

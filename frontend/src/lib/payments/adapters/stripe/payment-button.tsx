@@ -20,7 +20,6 @@
 import { placeOrder } from "@lib/data/cart"
 import type { HttpTypes } from "@medusajs/types"
 import { useStripeElements } from "./index"
-import { Button } from "@medusajs/ui"
 import { useState } from "react"
 import ErrorMessage from "@modules/checkout/components/error-message"
 
@@ -116,15 +115,16 @@ export const StripePaymentButton = ({
 
   return (
     <>
-      <Button
-        disabled={disabled || notReady}
+      <button
+        type="button"
+        className="rv-btn rv-btn-primary rv-finish-button"
+        disabled={disabled || notReady || submitting}
+        aria-busy={submitting}
         onClick={handlePayment}
-        size="large"
-        isLoading={submitting}
         data-testid={dataTestId}
       >
-        Finalizar pedido
-      </Button>
+        {submitting ? "Finalizando…" : "Finalizar pedido"}
+      </button>
       <ErrorMessage
         error={errorMessage}
         data-testid="stripe-payment-error-message"

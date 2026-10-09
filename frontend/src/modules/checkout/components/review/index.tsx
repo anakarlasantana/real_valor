@@ -1,10 +1,24 @@
 "use client"
 
-import { Heading, Text, clx } from "@medusajs/ui"
-
-import PaymentButton from "../payment-button"
 import { useSearchParams } from "next/navigation"
 
+import PaymentButton from "../payment-button"
+
+/**
+ * O fecho do checkout — o aceite e o botão de finalizar.
+ *
+ * Ele não é um quarto passo numerado, e essa é a decisão de desenho: na referência
+ * o "Finalizar pedido" é o **último elemento do formulário**, de largura inteira,
+ * depois dos três campos. Aqui ele é o mesmo — a nota de aceite e o botão, abaixo
+ * do passo 3 —, e continua aparecendo só quando o passo de revisão está aberto e os
+ * passos anteriores estão completos (é o `?step=review` que a etapa de pagamento
+ * empurra).
+ *
+ * O texto do aceite saiu do inglês ("By clicking the Place Order button… Medusa
+ * Store's Privacy Policy") e virou português — e ele deixou de citar a Medusa, que
+ * não é a loja com quem a cliente está contratando. Ele continua **antes** do
+ * botão, e não depois: é o último lugar em que ele é lido antes do clique.
+ */
 const Review = ({ cart }: { cart: any }) => {
   const searchParams = useSearchParams()
 
@@ -18,37 +32,19 @@ const Review = ({ cart }: { cart: any }) => {
     cart.shipping_methods.length > 0 &&
     (cart.payment_collection || paidByGiftcard)
 
+  if (!(isOpen && previousStepsCompleted)) {
+    return null
+  }
+
   return (
-    <div className="bg-white">
-      <div className="flex flex-row items-center justify-between mb-6">
-        <Heading
-          level="h2"
-          className={clx(
-            "flex flex-row text-3xl-regular gap-x-2 items-baseline",
-            {
-              "opacity-50 pointer-events-none select-none": !isOpen,
-            }
-          )}
-        >
-          Review
-        </Heading>
-      </div>
-      {isOpen && previousStepsCompleted && (
-        <>
-          <div className="flex items-start gap-x-1 w-full mb-6">
-            <div className="w-full">
-              <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                By clicking the Place Order button, you confirm that you have
-                read, understand and accept our Terms of Use, Terms of Sale and
-                Returns Policy and acknowledge that you have read Medusa
-                Store&apos;s Privacy Policy.
-              </Text>
-            </div>
-          </div>
-          <PaymentButton cart={cart} data-testid="submit-order-button" />
-        </>
-      )}
-    </div>
+    <>
+      <p className="rv-checkout-terms">
+        Ao clicar em Finalizar pedido, você confirma que leu e aceita os Termos de
+        Uso, os Termos de Venda e a Política de Trocas e Devoluções, e declara ter
+        lido a Política de Privacidade da Real Valor.
+      </p>
+      <PaymentButton cart={cart} data-testid="submit-order-button" />
+    </>
   )
 }
 

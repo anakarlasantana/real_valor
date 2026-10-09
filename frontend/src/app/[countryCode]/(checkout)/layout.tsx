@@ -1,6 +1,19 @@
+import { ShieldCheck } from "@medusajs/icons"
+
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ChevronDown from "@modules/common/icons/chevron-down"
 
+/**
+ * A moldura do checkout: a barra do topo, o trilho e o aviso do pé.
+ *
+ * A barra é curta de propósito — a navegação da loja inteira some enquanto a
+ * cliente preenche, e o que sobra é só a saída ("Voltar para a sacola") e a marca.
+ * Do lado direito entra o escudo com "Checkout seguro": é o mesmo par que a
+ * referência escreve na barra do checkout e o mesmo aviso que o resumo repete no
+ * pé, e ele diz a única coisa que importa nesta tela antes de o formulário
+ * aparecer. No celular, o escudo fica e a palavra sai — a barra não tem largura
+ * para os três itens.
+ */
 export default function CheckoutLayout({
   children,
 }: {
@@ -33,10 +46,22 @@ export default function CheckoutLayout({
               REAL VALOR
             </span>
           </LocalizedClientLink>
-          <div className="flex-1 basis-0" />
+          <div className="flex flex-1 basis-0 items-center justify-end gap-x-2 text-rv-muted">
+            <ShieldCheck
+              aria-hidden="true"
+              focusable="false"
+              width={16}
+              height={16}
+            />
+            <span className="rv-eyebrow hidden small:block">
+              Checkout seguro
+            </span>
+          </div>
         </nav>
       </div>
-      <div className="relative" data-testid="checkout-container">{children}</div>
+      <div className="relative" data-testid="checkout-container">
+        {children}
+      </div>
       <div className="py-8 w-full flex items-center justify-center">
         <span className="rv-eyebrow text-rv-muted">
           Compra segura · Real Valor

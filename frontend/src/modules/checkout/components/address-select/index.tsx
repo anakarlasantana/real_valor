@@ -1,11 +1,12 @@
-import { Listbox, Transition } from "@headlessui/react"
-import { ChevronUpDown } from "@medusajs/icons"
-import { clx } from "@medusajs/ui"
-import { Fragment, useMemo } from "react"
+"use client"
 
-import Radio from "@modules/common/components/radio"
-import compareAddresses from "@lib/util/compare-addresses"
+import { Listbox } from "@headlessui/react"
+import { ChevronUpDown } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
+import { clx } from "@medusajs/ui"
+import { useMemo } from "react"
+
+import compareAddresses from "@lib/util/compare-addresses"
 
 type AddressSelectProps = {
   addresses: HttpTypes.StoreCustomerAddress[]
@@ -16,6 +17,23 @@ type AddressSelectProps = {
   ) => void
 }
 
+/**
+ * A lista de endereços salvos da cliente, no passo 1 do checkout.
+ *
+ * É um `<Listbox>` do headlessui — teclado, `aria-*` e foco são dele —, e o que
+ * mudou foi só a roupa: o botão virou um campo (`.rv-address-select-button`), a
+ * lista virou uma caixa (`.rv-address-options`) e o ponto de seleção é o
+ * `.rv-choice` do resto do checkout, no lugar do rádio do design system.
+ *
+ * Duas coisas saíram junto com as classes antigas: o anel de foco escrito à mão
+ * (`focus-visible:ring-…`, que é uma **segunda** régua de foco — a casa tem uma, no
+ * fim do `brand.css`) e a animação de entrada/saída da lista, que era feita com
+ * quatro classes de utilitário. A lista abre e fecha; se um dia ela precisar de
+ * animação, ela vem escrita no `brand.css`, junto das outras.
+ *
+ * O texto em inglês ("Choose an address") saiu: a cliente lê "Selecione um
+ * endereço".
+ */
 const AddressSelect = ({
   addresses,
   addressInput,
@@ -34,83 +52,72 @@ const AddressSelect = ({
 
   return (
     <Listbox onChange={handleSelect} value={selectedAddress?.id}>
-      <div className="relative">
+      <div className="rv-address-select">
         <Listbox.Button
-          className="relative w-full flex justify-between items-center px-4 py-[10px] text-left bg-white cursor-default focus:outline-none border rounded-rounded focus-visible:ring-2 focus-visible:ring-opacity-75 focus-visible:ring-white focus-visible:ring-offset-gray-300 focus-visible:ring-offset-2 focus-visible:border-gray-300 text-base-regular"
+          className="rv-address-select-button"
           data-testid="shipping-address-select"
         >
           {({ open }) => (
             <>
-              <span className="block truncate">
+              <span className="truncate">
                 {selectedAddress
                   ? selectedAddress.address_1
-                  : "Choose an address"}
+                  : "Selecione um endereço"}
               </span>
               <ChevronUpDown
-                className={clx("transition-rotate duration-200", {
-                  "transform rotate-180": open,
-                })}
+                aria-hidden="true"
+                focusable="false"
+                data-open={open ? "" : undefined}
               />
             </>
           )}
         </Listbox.Button>
-        <Transition
-          as={Fragment}
-          leave="transition ease-in duration-100"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
+        <Listbox.Options
+          className="rv-address-options"
+          data-testid="shipping-address-options"
         >
-          <Listbox.Options
-            className="absolute z-20 w-full overflow-auto text-small-regular bg-white border border-top-0 max-h-60 focus:outline-none sm:text-sm"
-            data-testid="shipping-address-options"
-          >
-            {addresses.map((address) => {
-              return (
-                <Listbox.Option
-                  key={address.id}
-                  value={address.id}
-                  className="cursor-default select-none relative pl-6 pr-10 hover:bg-gray-50 py-4"
-                  data-testid="shipping-address-option"
-                >
-                  <div className="flex gap-x-4 items-start">
-                    <Radio
-                      checked={selectedAddress?.id === address.id}
-                      data-testid="shipping-address-radio"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-left text-base-semi">
-                        {address.first_name} {address.last_name}
-                      </span>
-                      {address.company && (
-                        <span className="text-small-regular text-ui-fg-base">
-                          {address.company}
-                        </span>
-                      )}
-                      <div className="flex flex-col text-left text-base-regular mt-2">
-                        <span>
-                          {address.address_1}
-                          {address.address_2 && (
-                            <span>, {address.address_2}</span>
-                          )}
-                        </span>
-                        <span>
-                          {address.postal_code}, {address.city}
-                        </span>
-                        <span>
-                          {address.province && `${address.province}, `}
-                          {address.country_code?.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Listbox.Option>
-              )
-            })}
-          </Listbox.Options>
-        </Transition>
+          {addresses.map((address) => {
+            const selected = selectedAddress?.id === address.id
+
+            return (
+              <Listbox.Option
+                key={address.id}
+                value={address.id}
+                className={clx("rv-address-option", {
+                  "rv-option-selected": selected,
+                })}
+                data-testid="shipping-address-option"
+              >
+                <span
+                  className="rv-choice"
+                  aria-hidden="true"
+                  data-testid="shipping-address-radio"
+                />
+                <div className="rv-address-option-body">
+                  <strong>
+                    {address.first_name} {address.last_name}
+                  </strong>
+                  {address.company && <span>{address.company}</span>}
+                  <p>
+                    {address.address_1}
+                    {address.address_2 && `, ${address.address_2}`}
+                  </p>
+                  <p>
+                    {address.postal_code}, {address.city}
+                  </p>
+                  <p>
+                    {address.province && `${address.province}, `}
+                    {address.country_code?.toUpperCase()}
+                  </p>
+                </div>
+              </Listbox.Option>
+            )
+          })}
+        </Listbox.Options>
       </div>
     </Listbox>
   )
 }
 
 export default AddressSelect
+

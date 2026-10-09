@@ -1,12 +1,12 @@
 "use client"
 
-import { Badge, Heading, Input, Label, Text } from "@medusajs/ui"
 import React from "react"
 
 import { applyPromotions } from "@lib/data/cart"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import Trash from "@modules/common/icons/trash"
+
 import ErrorMessage from "../error-message"
 import { SubmitButton } from "../submit-button"
 
@@ -16,6 +16,26 @@ type DiscountCodeProps = {
   }
 }
 
+/**
+ * O cupom, no pé do resumo do pedido.
+ *
+ * Ele era a última coisa em inglês do checkout — "Add Promotion Code(s)",
+ * "Apply", "Promotion(s) applied:", "Remove discount code from order" —, com o
+ * `Input`/`Badge`/`Heading` do design system e uma árvore de `div` para posicionar
+ * duas palavras. Agora é o `.rv-coupon` do `brand.css`: o convite é um botão de
+ * texto, o campo entra na linha do "Aplicar", e o cupom aplicado é uma linha com o
+ * código à esquerda e o "Remover" à direita.
+ *
+ * **O comportamento é o mesmo, linha por linha**: o `applyPromotions`, o input
+ * achado por `getElementById("promotion-input")` (é ele que o formulário limpa
+ * depois de aplicar), os mesmos `data-testid` e a mesma regra de não deixar remover
+ * um cupom automático — o automático não foi a cliente que colocou, e tirá-lo daria
+ * a ela a impressão de ter mexido numa regra da loja.
+ *
+ * A bolinha verde do código promocional saiu: o verde aqui é de "boa notícia de
+ * dinheiro" (o frete grátis, o Pix), e não de "esta etiqueta é automática". O
+ * código continua legível em negrito, e o valor entre parênteses continua ao lado.
+ */
 const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   const [isOpen, setIsOpen] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState("")
@@ -56,122 +76,98 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   }
 
   return (
-    <div className="w-full bg-white flex flex-col">
-      <div className="txt-medium">
-        <form action={(a) => addPromotionCode(a)} className="w-full mb-5">
-          <Label className="flex gap-x-1 my-2 items-center">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              type="button"
-              className="txt-medium text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
-              data-testid="add-discount-button"
-            >
-              Add Promotion Code(s)
-            </button>
+    <div className="rv-coupon">
+      <form action={(a) => addPromotionCode(a)}>
+        <button
+          type="button"
+          className="rv-btn rv-btn-text"
+          onClick={() => setIsOpen(!isOpen)}
+          data-testid="add-discount-button"
+        >
+          {isOpen ? "Fechar o cupom" : "Adicionar cupom"}
+        </button>
 
-            {/* <Tooltip content="You can add multiple promotion codes">
-              <InformationCircleSolid color="var(--fg-muted)" />
-            </Tooltip> */}
-          </Label>
-
-          {isOpen && (
-            <>
-              <div className="flex w-full gap-x-2">
-                <Input
-                  className="size-full"
+        {isOpen && (
+          <>
+            <div className="rv-coupon-row">
+              <label className="rv-form-field">
+                Cupom
+                <input
                   id="promotion-input"
                   name="code"
                   type="text"
                   autoFocus={false}
                   data-testid="discount-input"
                 />
-                <SubmitButton
-                  variant="secondary"
-                  data-testid="discount-apply-button"
-                >
-                  Apply
-                </SubmitButton>
-              </div>
-
-              <ErrorMessage
-                error={errorMessage}
-                data-testid="discount-error-message"
-              />
-            </>
-          )}
-        </form>
-
-        {promotions.length > 0 && (
-          <div className="w-full flex items-center">
-            <div className="flex flex-col w-full">
-              <Heading className="txt-medium mb-2">
-                Promotion(s) applied:
-              </Heading>
-
-              {promotions.map((promotion) => {
-                return (
-                  <div
-                    key={promotion.id}
-                    className="flex items-center justify-between w-full max-w-full mb-2"
-                    data-testid="discount-row"
-                  >
-                    <Text className="flex gap-x-1 items-baseline txt-small-plus w-4/5 pr-1">
-                      <span className="truncate" data-testid="discount-code">
-                        <Badge
-                          color={promotion.is_automatic ? "green" : "grey"}
-                          size="small"
-                        >
-                          {promotion.code}
-                        </Badge>{" "}
-                        (
-                        {promotion.application_method?.value !== undefined &&
-                          promotion.application_method.currency_code !==
-                            undefined && (
-                            <>
-                              {promotion.application_method.type ===
-                              "percentage"
-                                ? `${promotion.application_method.value}%`
-                                : convertToLocale({
-                                    amount: +promotion.application_method.value,
-                                    currency_code:
-                                      promotion.application_method
-                                        .currency_code,
-                                  })}
-                            </>
-                          )}
-                        )
-                        {/* {promotion.is_automatic && (
-                          <Tooltip content="This promotion is automatically applied">
-                            <InformationCircleSolid className="inline text-zinc-400" />
-                          </Tooltip>
-                        )} */}
-                      </span>
-                    </Text>
-                    {!promotion.is_automatic && (
-                      <button
-                        className="flex items-center"
-                        onClick={() => {
-                          if (!promotion.code) {
-                            return
-                          }
-
-                          removePromotionCode(promotion.code)
-                        }}
-                        data-testid="remove-discount-button"
-                      >
-                        <Trash size={14} />
-                        <span className="sr-only">
-                          Remove discount code from order
-                        </span>
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
+              </label>
+              <SubmitButton
+                variant="secondary"
+                data-testid="discount-apply-button"
+              >
+                Aplicar
+              </SubmitButton>
             </div>
-          </div>
+
+            <ErrorMessage
+              error={errorMessage}
+              data-testid="discount-error-message"
+            />
+          </>
         )}
-      </div>
+      </form>
+
+      {promotions.length > 0 && (
+        <div className="rv-coupon-list">
+          <span className="rv-fieldset-label">Cupom aplicado</span>
+
+          {promotions.map((promotion) => {
+            const metodo = promotion.application_method
+
+            return (
+              <div
+                key={promotion.id}
+                className="rv-coupon-item"
+                data-testid="discount-row"
+              >
+                <span data-testid="discount-code">
+                  <b>{promotion.code}</b>{" "}
+                  {metodo?.value !== undefined &&
+                    metodo.currency_code !== undefined && (
+                      <>
+                        (
+                        {metodo.type === "percentage"
+                          ? `${metodo.value}%`
+                          : convertToLocale({
+                              amount: +metodo.value,
+                              currency_code: metodo.currency_code,
+                            })}
+                        )
+                      </>
+                    )}
+                </span>
+
+                {!promotion.is_automatic && (
+                  <button
+                    type="button"
+                    className="rv-btn rv-btn-text"
+                    onClick={() => {
+                      if (!promotion.code) {
+                        return
+                      }
+
+                      removePromotionCode(promotion.code)
+                    }}
+                    data-testid="remove-discount-button"
+                  >
+                    <Trash size={14} />
+                    <span className="sr-only">Remover o cupom do pedido</span>
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

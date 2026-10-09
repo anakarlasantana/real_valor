@@ -3,7 +3,6 @@
 import { resolvePayment } from "@lib/payments/registry"
 import { placeOrder } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@medusajs/ui"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
 
@@ -96,15 +95,16 @@ const ManualTestPaymentButton = ({
 
   return (
     <>
-      <Button
-        disabled={notReady}
-        isLoading={submitting}
+      <button
+        type="button"
+        className="rv-btn rv-btn-primary rv-finish-button"
+        disabled={notReady || submitting}
+        aria-busy={submitting}
         onClick={handlePayment}
-        size="large"
         data-testid={dataTestId}
       >
-        Finalizar pedido
-      </Button>
+        {submitting ? "Finalizando…" : "Finalizar pedido"}
+      </button>
       <ErrorMessage
         error={errorMessage}
         data-testid="manual-payment-error-message"

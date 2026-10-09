@@ -13,7 +13,6 @@
  * vira "apagar o diretório `adapters/stripe/`" em vez de editar arquivos
  * espalhados por três pastas.
  */
-import { Text } from "@medusajs/ui"
 import { useMemo } from "react"
 import { CardElement } from "@stripe/react-stripe-js"
 import type { StripeCardElementOptions } from "@stripe/stripe-js"
@@ -33,6 +32,13 @@ import { useStripeContext } from "./index"
  * diferença que importa: o checkout não sabe que este formulário é de cartão,
  * e não sabe que ele é do Stripe. Quando o Checkout API entrar, ele declara o
  * próprio `InlineUI` e o checkout continua igual.
+ *
+ * O que vestimos aqui é a **moldura**, porque o `CardElement` é um `iframe` de
+ * terceiro e não aceita classe nossa por dentro: `classes.base` recebe o
+ * `.rv-card-input` (48px, filete de 1px, `--rv-offwhite`), e o rótulo acima usa o
+ * `.rv-card-field` do `brand.css` — as mesmas medidas dos outros campos. O
+ * `style.base` do Stripe continua mandando na tipografia e na cor de dentro, que é
+ * onde ele é dono e nós não somos.
  */
 export const StripeCardContainer = ({
   selected,
@@ -44,15 +50,16 @@ export const StripeCardContainer = ({
     return {
       style: {
         base: {
-          fontFamily: "Inter, sans-serif",
-          color: "#424270",
+          fontFamily: "Montserrat, system-ui, sans-serif",
+          fontSize: "14px",
+          color: "#171717",
           "::placeholder": {
-            color: "rgb(107 114 128)",
+            color: "#6f6a66",
           },
         },
       },
       classes: {
-        base: "pt-3 pb-1 block w-full h-11 px-4 mt-0 bg-ui-bg-field border rounded-md appearance-none focus:outline-none focus:ring-0 focus:shadow-borders-interactive-with-active border-ui-border-base hover:bg-ui-bg-field-hover transition-all duration-300 ease-in-out",
+        base: "rv-card-input",
       },
     }
   }, [])
@@ -66,26 +73,24 @@ export const StripeCardContainer = ({
   return (
     <div className="w-full">
       {stripeReady ? (
-          <div className="my-4 transition-all duration-150 ease-in-out">
-            <Text className="txt-medium-plus text-ui-fg-base mb-1">
-              Dados do cartão
-            </Text>
-            <CardElement
-              options={useOptions}
-              onChange={(e) =>
-                onStatus({
-                  brand:
-                    e.brand &&
-                    e.brand.charAt(0).toUpperCase() + e.brand.slice(1),
-                  error: e.error?.message || null,
-                  complete: e.complete,
-                })
-              }
-            />
-          </div>
-        ) : (
-          <SkeletonCardDetails />
-        )}
+        <div className="rv-card-field">
+          <span>Dados do cartão</span>
+          <CardElement
+            options={useOptions}
+            onChange={(e) =>
+              onStatus({
+                brand:
+                  e.brand &&
+                  e.brand.charAt(0).toUpperCase() + e.brand.slice(1),
+                error: e.error?.message || null,
+                complete: e.complete,
+              })
+            }
+          />
+        </div>
+      ) : (
+        <SkeletonCardDetails />
+      )}
     </div>
   )
 }
