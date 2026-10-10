@@ -158,8 +158,22 @@ import {
  *      texto. Sem reescrever o registro (`make seed-schema`) o CRM continua sem
  *      os dois campos e a API admin os **recusa** como desconhecidos; a loja
  *      ignora o que não conhece, então uma página antiga segue no ar.
+ *
+ * v13 — as **perguntas frequentes**. Nasce o tipo de seção `faq` ("Perguntas
+ *      frequentes" no CRM) com `title` e `items` (`list:faqItem`: `question`,
+ *      texto simples, e `answer`, `markdown` — o **mesmo** campo da v11, pelo
+ *      mesmo motivo). Não há campo de tipo novo: o que o PR4 estreia é o
+ *      **render** (`<details>/<summary>` nativo, acessível por teclado, sem
+ *      JavaScript e com o conteúdo fechado **indexado**), e a resposta reusa o
+ *      parser e as marcas do texto longo — é por isso que o `faq` vem depois do
+ *      `prose` e não junto. Sem reescrever o registro (`make seed-schema`) o CRM
+ *      continua sem oferecer "Perguntas frequentes" no diálogo de criação, e a
+ *      API admin **recusa** o `type` `faq` como desconhecido — a mensagem lista
+ *      os tipos que o registro conhece (`Campo "type" deve ser um de: …`), e não
+ *      o contrato. A loja ignora o tipo que não conhece, então a vitrine segue
+ *      de pé.
  */
-export const SCHEMA_VERSION = 12
+export const SCHEMA_VERSION = 13
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.

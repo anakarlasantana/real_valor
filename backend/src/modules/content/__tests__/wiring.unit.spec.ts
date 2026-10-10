@@ -214,8 +214,9 @@ describe("o que o render lê, o CRM edita", () => {
     ),
   ]
 
-  const camposDe = (type: "footer" | "launches" | "featured" | "prose"): string[] =>
-    (SECTION_FIELDS[type] ?? []).map((field) => field.name)
+  const camposDe = (
+    type: "footer" | "launches" | "featured" | "prose" | "faq"
+  ): string[] => (SECTION_FIELDS[type] ?? []).map((field) => field.name)
 
   const semEditor = (reads: string[], editaveis: string[]): string[] =>
     reads.filter((name) => !editaveis.includes(name))
@@ -274,23 +275,32 @@ describe("o que o render lê, o CRM edita", () => {
     expect(semEditor(reads, camposDe("featured"))).toEqual([])
   })
 
-  it("os campos do `prose` são exatamente os que a página lê", () => {
-    // Aqui os **dois** sentidos, e não só um: a seção de texto longo é a única
-    // cujo desenho inteiro mora num arquivo só (`modules/content/prose.tsx`),
-    // então dá para comparar as duas listas de igual para igual. Campo declarado
-    // que a página ignora é escolha que não faz nada — o lojista preenche o
-    // rótulo do anexo e o botão continua com o texto genérico; e campo que a
-    // página lê sem estar declarado fica sem editor, que é o defeito que os
-    // testes acima prendem.
-    const fonte = read("frontend", "src", "modules", "content", "prose.tsx")
-    const lidos2 = [
-      ...new Set(
-        [...fonte.matchAll(/\bsection\.([A-Za-z_$][\w$]*)/g)].map(
-          (match) => match[1]
-        )
-      ),
-    ]
+  /**
+   * As seções cujo desenho inteiro mora num arquivo só — hoje **as duas**, o
+   * `prose` e o `faq`, que são o par de 14.6.2. Só nelas dá para comparar as
+   * duas listas de igual para igual (o desenho das outras se espalha por
+   * componente, rodapé e layout, e a leitura de arquivo não alcança o todo); e é
+   * nelas que os **dois** sentidos importam: campo declarado que a página ignora
+   * é escolha que não faz nada — o lojista digita o rótulo do anexo e o botão
+   * continua com o texto genérico, ou escreve a pergunta e ela não sai —, e
+   * campo que a página lê sem estar declarado fica **sem editor**, que é o
+   * defeito que os três testes acima prendem.
+   */
+  for (const [type, arquivo] of [
+    ["prose", "prose.tsx"],
+    ["faq", "faq.tsx"],
+  ] as const) {
+    it(`os campos do \`${type}\` são exatamente os que a página lê`, () => {
+      const fonte = read("frontend", "src", "modules", "content", arquivo)
+      const lidos2 = [
+        ...new Set(
+          [...fonte.matchAll(/\bsection\.([A-Za-z_$][\w$]*)/g)].map(
+            (match) => match[1]
+          )
+        ),
+      ]
 
-    expect(lidos2.sort()).toEqual(camposDe("prose").sort())
-  })
+      expect(lidos2.sort()).toEqual(camposDe(type).sort())
+    })
+  }
 })

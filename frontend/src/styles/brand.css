@@ -4906,6 +4906,72 @@ body {
   text-transform: uppercase;
 }
 
+/*
+ * Perguntas frequentes (`faq`) — o par do texto longo
+ * ---------------------------------------------------------------
+ * A mesma régua de coluna do `prose` (68ch, centrada) pelo mesmo motivo: é
+ * texto que se **lê**, e a linha longa é o que faz o olho perder o lugar. O que
+ * muda é o ritmo: aqui cada pergunta é uma faixa fechada, e o que separa uma da
+ * outra é o **fio**, não o espaço — uma lista de perguntas sem fio vira um
+ * bloco de linhas soltas, e a cliente não vê onde uma começa e a outra acaba.
+ *
+ *   1. **O fio é um só, e é o de cima de cada item** (o último fecha a lista com
+ *      o de baixo). Fio em cima e embaixo de cada item desenharia linha dupla
+ *      entre dois vizinhos — o defeito clássico de `border` nos dois lados.
+ *   2. **O `<summary>` é a pergunta inteira**: ele carrega o padding, e é ele
+ *      que o cursor vira mão. O triângulo do navegador fica — ele é a
+ *      **affordance**: tirar o marcador nativo para desenhar um `+` exigiria
+ *      JavaScript para trocar o sinal, e este projeto não usa script onde o
+ *      navegador já resolve (é a mesma razão de o anexo ser um `<a download>`).
+ *   3. **A resposta recua para debaixo do texto da pergunta**, não da borda do
+ *      item: o `<summary>` começa depois do marcador, e sem o recuo a resposta
+ *      nasceria desalinhada para a esquerda por ~1,25rem.
+ *
+ * Nada de cor de fundo própria: a faixa da seção é a do tema (`rv-section`), e
+ * quem dá cor e fonte ao título e ao texto são `.rv-section-heading` /
+ * `.rv-section-text`, com o que o lojista escolheu.
+ */
+.rv-faq-body {
+  max-width: 68ch;
+  margin-inline: auto;
+}
+
+.rv-faq-title {
+  margin-bottom: 1.6rem;
+  font-size: var(--rv-text-3xl);
+  line-height: 1.15;
+}
+
+.rv-faq-item {
+  border-top: 1px solid var(--rv-preto);
+}
+
+.rv-faq-item:last-child {
+  border-bottom: 1px solid var(--rv-preto);
+}
+
+.rv-faq-question {
+  padding-block: 1.1rem;
+  font-size: var(--rv-text-lg);
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.rv-faq-answer {
+  padding-left: 1.25rem;
+  padding-bottom: 1.1rem;
+  font-size: var(--rv-text-base);
+  line-height: 1.75;
+}
+
+/* O link precisa de regra pelo mesmo motivo do texto longo: o sublinhado é o que
+ * diz que a palavra é clicável no meio de um texto corrido. */
+.rv-faq-answer a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 @media (min-width: 1024px) {
   .rv-prose-title {
     font-size: 40px;
@@ -4913,5 +4979,13 @@ body {
 
   .rv-prose-subtitle {
     font-size: 22px;
+  }
+
+  .rv-faq-title {
+    font-size: 40px;
+  }
+
+  .rv-faq-question {
+    font-size: var(--rv-text-xl);
   }
 }

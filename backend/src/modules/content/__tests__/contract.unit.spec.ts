@@ -358,6 +358,7 @@ describe("ITEM_FIELDS ⇔ o tipo do item", () => {
     "list:column": "FooterColumn",
     "list:social": "FooterSocial",
     "list:proseBlock": "ProseBlock",
+    "list:faqItem": "FaqItem",
   }
 
   for (const [kind, typeName] of Object.entries(ITEM_TYPES)) {

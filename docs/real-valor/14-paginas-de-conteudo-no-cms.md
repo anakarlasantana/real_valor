@@ -567,7 +567,7 @@ uma página que outro ainda não sabe desenhar.
 | **PR2 — F1 rodapé** | colunas "Institucional" e "Atendimento" no padrão do rodapé (dado) — ✅ **executado**, ver 14.16 | precisa do PR1: antes dele, as colunas apontariam para 404 — a promessa continuaria vazia, agora com aparência de corrigida |
 | **PR3 — F2 texto longo** | o tipo `prose`, o formato (`markdown` + `MARKDOWN_MARKS` + `renderInline` com spec) e o editor do campo no CRM | é o que destrava Privacidade, Termos, Cuidados e Frete; vem antes do FAQ porque tem quatro páginas esperando — e é o PR em que o negrito passa a funcionar de ponta a ponta — ✅ **executado**, ver 14.17 |
 | **PR3b — F2 anexo** | o `kind` `document` (upload que já existe, chave gravada, `resolveMediaUrl` no render) | separado do formato porque não depende dele: o anexo é campo, não texto — e "página + PDF assinado" é o par que a LGPD pede (14.6.3) — ✅ **executado**, ver 14.18 |
-| **PR4 — F2 FAQ** | o tipo `faq` e o render (`<details>/<summary>`) | uma página só, e ela é a que mais se beneficia do tipo anterior (resposta longa) |
+| **PR4 — F2 FAQ** | o tipo `faq` e o render (`<details>/<summary>`) | uma página só, e ela é a que mais se beneficia do tipo anterior (resposta longa) — ✅ **executado**, ver 14.19 |
 | **PR5 — F3a destinos** | a lista de rotas conhecidas + o seletor nos campos de href do CRM | **é este PR que resolve a causa-raiz do doc 13** — os nove botões param de ter `/store` como única alternativa |
 | **PR6 — F3a tela "Páginas"** | lista das páginas declaradas, com publicada/despublicada e atalho para os blocos | trabalho de painel, e o único item que devolve autonomia sem abrir a entidade (F3b) |
 | **PR7 — F3a descoberta** | as páginas no rodapé, no índice público e na sugestão do 404 | fecha o ciclo: a página passa a ser **encontrável**, não só existente |
@@ -730,7 +730,7 @@ ok (artefato e fronteira); `make build-admin` ok (`Frontend build completed succ
 | Colunas "Institucional" e "Atendimento" no rodapé | PR2 | ✅ **feito em 14.16** — o padrão traz as duas colunas; o que se publica segue a régua de lá |
 | `prose` (texto longo), `MARKDOWN_MARKS` e o editor do campo | PR3 | ✅ **feito em 14.17** — e a decisão 8 que o travava saiu em "barra de marcas": o tipo, o campo `markdown` com o editor, a barra no CRM e a paridade entre a barra e o parser |
 | `document` (anexo) | PR3b | ✅ **feito em 14.18** — o campo, o editor (com o teto da decisão 10) e o botão de baixar na página |
-| `faq` | PR4 | Uma página só, e depende do `prose` |
+| `faq` | PR4 | ✅ **feito em 14.19** — o tipo, o item (`question` `text` + `answer` `markdown`) e o `<details>/<summary>` nativo, que reusa o parser e a barra do `prose` |
 | Lista de destinos no CRM, tela "Páginas", a página no índice e no 404 | PR5–PR7 | Devolvem autonomia; a F1 não as exige. O **PR5** é o que fecha a causa-raiz do doc 13 |
 | A **copy** das seis páginas | conteúdo | Decisão 7: o padrão é vazio e a página vazia responde 404. Quem escreve é o lojista, no CRM — a aba está lá, com os seis tipos de página disponíveis |
 
@@ -987,4 +987,111 @@ grande não é o arquivo, é o processo que o recebe.
 **O que este PR mudou na fila:** com o anexo no ar, a **decisão 9** deixa de ser pergunta de cronograma — o
 campo existe, e subir o PDF é conteúdo. O **PR5** (a lista de destinos no CRM) segue sendo o que fecha a
 causa-raiz do doc 13.
+
+---
+
+## 14.19 O PR4 executado: as perguntas frequentes (2026-10-09)
+
+O **PR4** de 14.13 era o tipo `faq` e o render (`<details>/<summary>`) — a última peça da F2 e a que
+**fecha o par** anunciado em 14.6.2: `prose` e `faq` são os dois tipos que só existem em página, e a
+resposta de cada pergunta reusa o parser, o campo `markdown` e a barra de marcas que o PR3 trouxe. É por
+isso que ele vem **depois** do `prose` e não junto: o que o PR4 estreia não é um formato, é uma forma de
+leitura.
+
+Não havia decisão pendente para ele. O PR4 não reabre a **4** (Contato é `prose` + `mailto:`/`tel:` até
+doer), não toca a **7** (a copy segue sendo do negócio: o padrão da seção nova é vazio e a página vazia
+responde 404) e não precisa de PR de dependência — a barra de marcas do PR3 já tinha respondido a **8**.
+O que 14.13 exigia e foi cumprido: **PR3 e PR4 não entram juntos** (cada tipo novo mexe na mesma lista de
+lugares e no `SCHEMA_VERSION`; dois bumps no mesmo commit esconderiam qual deles quebrou a tolerância da
+loja).
+
+| Arquivo | O que entrou |
+| :--- | :--- |
+| `packages/contrato/src/contract.ts` | o tipo `faq` em `SECTION_TYPES` ("Perguntas frequentes" em `SECTION_TYPE_LABELS`), `FaqSection`/`FaqItem` no bloco compartilhado e no `HomeSection`, e o `list:faqItem` em `ITEM_FIELDS` (`question` `text` + `answer` `markdown`) |
+| `packages/contrato/src/defaults.ts` | o padrão da seção nova (14.6.2): título vazio e **um** item em branco — o formulário pronto para escrever |
+| `packages/contrato/src/schema.ts` | `SCHEMA_VERSION` **12 → 13**, com o bloco da v13 explicando que não há campo de tipo novo |
+| `frontend/src/modules/content/faq.tsx` | o render: `<details>/<summary>` nativo, o par completo e o recuo da resposta |
+| `frontend/src/modules/content/render-section.tsx` | o ramo `faq` no registro de blocos (é o `assertNever` que cobra o ramo) |
+| `frontend/src/lib/content/page-seo.ts` | o `faq` entra no conjunto dos que **abrem** a página — ver "uma correção ao desenho" abaixo |
+| `frontend/src/styles/brand.css` | a família `.rv-faq-*`: a mesma coluna de 68ch do `prose`, o fio entre as perguntas e o recuo da resposta |
+| `backend/.../wiring.unit.spec.ts` | a guarda do PR3b passa a valer para **o par**: campos do `prose` **e** do `faq` ⇔ o que a página lê, nos dois sentidos |
+| as specs de dado | `faq.spec.tsx` (novo), e o que os tipos novos arrastam em `defaults` (a lista de exceções da vitrine) e em `contract` (o item ⇔ o tipo `FaqItem`) |
+
+**O CRM não precisou de uma linha — e isso é o resultado, não a sorte.** O aviso de 14.6.2 ("cada tipo novo
+não é um componente") vale para a lista de nove lugares, e o painel não é um deles desde a R2: o editor
+desenha `list:${string}` num ramo genérico, alimentado pelo `itemFields` que chega no payload, e o campo
+`markdown` já existia do PR3. O que **prova** que não há buraco é a declaração de exaustividade do painel
+(`HandledKind`/`UNHANDLED_KINDS`): um `kind` novo sem ramo é erro de `tsc` com o nome do `kind` na
+mensagem, e o `make types` está verde. A contrapartida é honesta e está medida: **o item pode carregar
+chave que o contrato não declara** (a validação da API confere as chaves do **topo** do `data`, não as de
+dentro do item) — é limite anterior a este PR, e o efeito é o mesmo da imagem: a loja ignora o que não lê.
+
+**As decisões do render.**
+
+- **`<details>`/`<summary>` nativo, e não um acordeão.** É a decisão que o tipo existe para tomar, e ela é
+  medida em três frentes: o `<summary>` já é focável e o Enter abre (**teclado sem `aria-expanded`**), não
+  há JavaScript nenhum (nem estado, nem efeito, nem listener), e a resposta **está no HTML** com o item
+  fechado — para o buscador, para o leitor de tela e para o `Ctrl+F` (medido: `0` ocorrências de
+  `<details open` e as quatro respostas no documento).
+- **A pergunta é `text` e a resposta é `markdown`** — a assimetria é declarada no tipo. A pergunta é a linha
+  que a cliente lê para escolher o que abrir; a resposta é o texto longo, e passa por `renderInline`, o
+  mesmo parser do `prose`. Medido: `**` digitado na pergunta sai literal, e na resposta vira `<strong>`.
+- **Só o par completo desenha.** Pergunta em branco é um `<summary>` que não diz o que abre; resposta em
+  branco é pior — o botão abre e não mostra nada, e quem clicasse concluiria que a página está quebrada. O
+  item recém-criado no CRM nasce com os dois campos vazios, e a seção que só tem ele devolve `null` (a
+  página vazia segue respondendo 404, critério 3 de 14.11).
+- **A seção não tem trilho de aparência**, como o `prose`: a página segue o tema da loja inteira, e quem dá
+  cor e fonte ao título e ao texto são as classes `.rv-section-*` (critério 10 de 14.11).
+
+### Uma correção ao desenho, e dois limites declarados
+
+- **O `faq` passa a nomear a página.** É a única mudança fora do par `contrato`+`render`, e ela é
+  pequena: `page-seo.ts` já tinha um conjunto de tipos que **abrem** uma página (`editorial`, `banner`,
+  `prose`), e o `faq` entrou nele. Sem isso, `/perguntas-frequentes` sairia na busca como "Perguntas
+  frequentes" (o `label` da superfície) mesmo com o lojista tendo escrito um título — e o `<h2>` da página
+  diria outra coisa. Como o PR4 é o **último** tipo da F2, foi a hora de fechar essa ponta; medido:
+  `<title>Dúvidas sobre o seu tamanho | Real Valor</title>`.
+- ⚠️ **A resposta não é a descrição da página.** A descrição do `pageSeo` continua vindo do `editorial` ou
+  do primeiro parágrafo do `prose`: fora do par pergunta ⇔ resposta, uma resposta é uma frase solta sobre
+  um assunto qualquer. Medido: a página serve o `<meta name="description">` **do layout** ("A alfaiataria
+  que valoriza você…") quando não há `prose` — o comportamento de "o `<meta>` que não existe deixa o
+  layout falar", e não uma frase inventada a partir da resposta.
+- **A dica da superfície estava velha, e foi corrigida.** O texto que o CRM mostra em
+  `perguntas-frequentes` dizia *"o bloco de perguntas e respostas é o da fase seguinte"* — verdade no PR1,
+  mentira a partir deste PR. A dica passou a descrever o presente ("as dúvidas em pares de pergunta e
+  resposta, abertos no clique"), e o registro foi regravado com `make seed-schema`. Texto que envelhece é
+  defeito, mesmo quando ninguém quebra.
+
+### Medido na stack local (loja `:8000`, backend `:9000`)
+
+| Medição | Resultado |
+| :--- | :--- |
+| `make types` / `make test` | **0** / verde: backend **409** (2 novos), CRM **81**, loja **408** (12 novos — 9 do `faq.spec`, 3 do `page-seo`) |
+| `make check` / `make check-schema` | **0** / **0** — *"Registro do schema em dia (chave \"content\", versão 13)"* |
+| `make seed-schema` | *"Schema gravado (chave \"content\", versão 13, 14 tipo(s) de seção). Era v12."* |
+| `make build-admin` / `make seed` | **0** / **0** — o painel compila sem uma linha nova nele (*"Frontend build completed successfully"*), e o `seed` é idempotente: *"Já existem 0 seção(ões) em \"perguntas-frequentes\" — nenhuma faltando. Nada foi alterado."* |
+| o payload do CRM (`GET /admin/content?surface=perguntas-frequentes`) | `schemaVersion: 13`, `schemaSource: db`; `faq` em `types`; `typeLabels.faq` = "Perguntas frequentes"; `fields.faq` = `title`, `items`; `itemFields["list:faqItem"]` = `question` (texto simples), `answer` (`markdown`); `markdownMarks` com as **4** marcas do PR3; e `faq` na lista de tipos que a aba da página oferece |
+| `POST /admin/content` (o `faq` com cinco itens) | **201**, e o `data` no Postgres guarda a **string crua** (`Você tem **30 dias** para trocar…`), nunca HTML |
+| `/br/perguntas-frequentes` com o `faq` publicado | **200** — 404 → 200, como a régua de 14.16 |
+| o HTML servido | **4** `<details class="rv-faq-item">` e **4** `<summary>` para **5** itens: o item sem resposta não é desenhado. **0** `<details open` — e as quatro respostas estão no documento (a indexação que o tipo existe para garantir) |
+| as marcas na resposta | `<strong>30 dias</strong>`, `<em>atendimento</em>`, `<s>O frete é grátis</s>` e `<a href="/rastreio">rastreio</a>` — o mesmo parser do `prose` |
+| o texto cru | `<script>alert(1)</script>` sai **escapado** (a sequência crua não existe no documento), `[clique](javascript:alert(1))` sai **literal**, `__negrito__` sai literal e `[catálogo](/store)` vira `<a href="/store">` — sem HTML no banco e sem `dangerouslySetInnerHTML` |
+| a pergunta com marca | `**mesmo**` na pergunta sai **literal**: o campo é `text`, e o que a loja não desenha ela não esconde |
+| o `<title>` da página | `<title>Dúvidas sobre o seu tamanho | Real Valor</title>` — o `faq` nomeou a página (o `title` da seção, não o `label`) |
+| as guardas do registro | campo desconhecido no **topo** do `data` → **400** *"Campo desconhecido para \"faq\": \"documentUrl\"."*; tipo fora do registro → **400** com a lista dos **14** tipos. ⚠️ chave **dentro** de um item passa (limite declarado acima) |
+| a seção removida no fim da medição | **200** no `DELETE` das duas, **0** linhas `faq` no Postgres, e a página volta a **404** — a medição não deixou rastro |
+| a vitrine não mudou (critério 10 de 14.11, medido de novo) | `/br` com **25** `href` distintos e `/br/store` com **30** `href=` — antes e depois —, e **nenhum** `rv-faq` na home: o `faq` só aparece em página |
+
+**O que continua fora, e o que este PR mudou na fila**
+
+- **O `faq` não entra no padrão da vitrine** — como o `prose`. A lista de exceções do
+  `defaults.unit.spec.ts` passou a ser explícita com os dois (`["prose", "faq"]`): um tipo novo entra ali de
+  propósito, e entrar por engano faria dele um bloco de fábrica da home.
+- **Não há contagem de itens nem paginação.** A FAQ é uma lista curta (uma dúvida é uma dúvida); se ela
+  crescer a ponto de precisar de índice, o gatilho é de conteúdo, não de código.
+- **O PR5 (a lista de destinos no CRM) é o próximo da fila** — e ele não depende de nada disto: é o que
+  fecha a causa-raiz do doc 13 (nove botões apontando para `/store` porque o painel não oferecia
+  alternativa). Depois dele vêm o PR6 (a tela "Páginas") e o PR7 (a página no índice e no 404).
+- Com o PR4, **a F2 está fechada**: os dois blocos que faltavam existem, e cada um tem o render, o editor
+  no CRM e a spec que prende a promessa.
 

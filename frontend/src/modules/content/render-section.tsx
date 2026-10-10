@@ -34,6 +34,7 @@
  */
 import { appearanceVars } from "@lib/content/appearance"
 import type { HomeSection } from "@lib/content/home-sections"
+import Faq from "@modules/content/faq"
 import Prose from "@modules/content/prose"
 import BenefitsBar from "@modules/home/components/benefits-bar"
 import CollectionHighlights from "@modules/home/components/collection-highlights"
@@ -123,8 +124,13 @@ export function renderSection(
       // O texto longo: subtítulo, parágrafo e lista, com as marcas inline
       // interpretadas por `renderInline`. Também não depende de região nem de
       // catálogo — é o bloco das páginas institucionais (Privacidade, Termos,
-      // Trocas), e por isso o único que não aparece na vitrine de fábrica.
+      // Trocas), e um dos dois que não aparecem na vitrine de fábrica.
       return <Prose section={section} />
+    case "faq":
+      // As perguntas frequentes: o par do `prose`, e o segundo tipo que só mora
+      // em página. O render é `<details>/<summary>` nativo — sem JavaScript, sem
+      // região e sem catálogo, como o texto longo, de quem ele herda o parser.
+      return <Faq section={section} />
     case "instagram":
       return <InstagramGrid section={section} />
     default:

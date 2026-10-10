@@ -432,11 +432,12 @@ export const DEFAULT_FEATURED_FILTERS = [
  * colunas do bloco (`id`, `enabled`, `position`) — quem decide as três é a
  * rota, e a posição da seção nova vai para o fim da lista.
  *
- * O `prose` não sai da vitrine: é o primeiro tipo que **só existe em página**
- * (a home não tem texto longo de fábrica), e por isso o padrão dele vem da
- * tabela ao lado. O que a regra exige continua valendo para ele: uma seção nova
- * nasce com conteúdo que a loja **sabe desenhar** — um bloco de parágrafo
- * vazio, pronto para o lojista escrever —, e não com um formulário em branco.
+ * O `prose` e o `faq` não saem da vitrine: são os dois tipos que **só existem em
+ * página** (a home não tem texto longo nem perguntas frequentes de fábrica), e
+ * por isso o padrão deles vem da tabela ao lado. O que a regra exige continua
+ * valendo para os dois: uma seção nova nasce com conteúdo que a loja **sabe
+ * desenhar** — um bloco de parágrafo vazio, um item de pergunta em branco, ambos
+ * prontos para o lojista escrever —, e não com um formulário em branco.
  * Toda entrada de `SECTION_TYPES` tem a sua aqui; o `defaults.unit.spec.ts`
  * cobra isso.
  */
@@ -451,6 +452,14 @@ const DEFAULT_PAGE_SECTION_DATA: Record<string, Record<string, unknown>> = {
     // a seção nova não tem nenhum (14.6.3, critério 7).
     documentUrl: "",
     documentLabel: "",
+  },
+  faq: {
+    // Como o `prose`: sem título (a página já se chama pelo `label` dela) e com
+    // **um** item em branco, que é o formulário pronto para o lojista escrever.
+    // O item nasce vazio nos dois campos, e por isso a seção nova não desenha
+    // nada: um par incompleto não é pergunta frequente (ver `faq.tsx`).
+    title: "",
+    items: [{ question: "", answer: "" }],
   },
 }
 

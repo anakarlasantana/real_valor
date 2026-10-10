@@ -15,6 +15,7 @@
 import type {
   BannerSection,
   EditorialSection,
+  FaqSection,
   HomeSection,
   ProseSection,
 } from "@lib/content/home-sections"
@@ -41,8 +42,12 @@ export type PageSeo = {
  */
 export const SEO_DESCRIPTION_LIMIT = 160
 
-/** Os três tipos que **abrem** uma página: os únicos com título próprio. */
-type OpeningSection = EditorialSection | BannerSection | ProseSection
+/** Os quatro tipos que **abrem** uma página: os únicos com título próprio. */
+type OpeningSection =
+  | EditorialSection
+  | BannerSection
+  | ProseSection
+  | FaqSection
 
 /**
  * O título e a descrição de uma página.
@@ -73,7 +78,8 @@ function isOpening(section: HomeSection): section is OpeningSection {
   return (
     section.type === "editorial" ||
     section.type === "banner" ||
-    section.type === "prose"
+    section.type === "prose" ||
+    section.type === "faq"
   )
 }
 
@@ -85,12 +91,13 @@ function isOpening(section: HomeSection): section is OpeningSection {
  * `<em>`, então os dois viram uma frase só, com um espaço. Sem juntar, o título
  * na busca sairia cortado na metade que dá o sentido ("A alfaiataria que").
  *
- * O `prose` é uma exceção de propósito: ele tem `title` e mais nada — os
- * subtítulos dele são **blocos** (conteúdo do texto), e o primeiro parágrafo não
- * é nome de página. Quem não tem título de abertura cai no `label`.
+ * O `prose` e o `faq` são a exceção de propósito: os dois têm `title` e mais
+ * nada — os subtítulos do `prose` são **blocos**, e as perguntas do `faq` são
+ * itens da lista, não nomes de página. É o `title` da seção, e só ele, que nomeia
+ * a página; sem título, o nome é o `label` da superfície.
  */
 function openingTitle(section: OpeningSection): string {
-  if (section.type === "prose") {
+  if (section.type === "prose" || section.type === "faq") {
     return text(section.title)
   }
 
@@ -113,6 +120,12 @@ function joinTitle(title: string, emphasis: string): string {
  *
  * Só o `paragraph` serve: um subtítulo é um rótulo de seção, e uma lista vira
  * itens sem contexto ("· o prazo é de 30 dias") — nenhum dos dois é uma frase.
+ *
+ * A resposta de uma pergunta frequente também **não** entra, e a ausência é
+ * deliberada: a resposta responde a uma pergunta que a busca não fez, e fora do
+ * par pergunta⇔resposta ela é uma frase solta sobre um assunto qualquer. Quando a
+ * página do FAQ precisa de descrição, quem a dá é o `prose` de abertura — que é
+ * o par natural dele na página.
  */
 function openingText(sections: HomeSection[]): string {
   const editorial = sections.find(

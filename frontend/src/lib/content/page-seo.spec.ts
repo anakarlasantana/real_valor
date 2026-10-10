@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   DEFAULT_HOME_SECTIONS,
+  type FaqSection,
   type HomeSection,
   type ProseSection,
 } from "@rv/contrato"
@@ -206,6 +207,42 @@ describe("pageSeo", () => {
     expect(seo.title).toBe("Política de privacidade")
     expect("description" in seo).toBe(false)
   })
+
+  it("o `faq` abre a página pelo título dele", () => {
+    // O FAQ é o segundo tipo que só mora em página, e a página dele pode não ter
+    // nenhum outro bloco: sem isto, `/perguntas-frequentes` sairia na busca como
+    // "Perguntas frequentes" (o `label` da superfície) mesmo com o lojista tendo
+    // escrito um título — e o `<h2>` da página diria outra coisa.
+    const seo = pageSeo(
+      [faqs({ title: "Dúvidas sobre o seu tamanho" })],
+      "Perguntas frequentes"
+    )
+
+    expect(seo.title).toBe("Dúvidas sobre o seu tamanho")
+  })
+
+  it("o `faq` sem título cai no nome da página", () => {
+    expect(pageSeo([faqs()], "Perguntas frequentes").title).toBe(
+      "Perguntas frequentes"
+    )
+  })
+
+  it("a resposta do `faq` não vira descrição — ela responde o que ninguém perguntou", () => {
+    // Fora do par pergunta ⇔ resposta, a resposta é uma frase solta sobre um
+    // assunto qualquer, e a busca a mostraria como se fosse a apresentação da
+    // página. Quem dá a descrição é o `prose` de abertura, quando existe.
+    const seo = pageSeo(
+      [
+        faqs({
+          title: "Perguntas frequentes",
+          items: [{ question: "Qual o prazo?", answer: "Trinta dias." }],
+        }),
+      ],
+      "Perguntas frequentes"
+    )
+
+    expect("description" in seo).toBe(false)
+  })
 })
 
 /**
@@ -226,6 +263,23 @@ function prosa(over: Partial<ProseSection> = {}): ProseSection {
     blocks: [],
     documentUrl: "",
     documentLabel: "",
+    ...over,
+  }
+}
+
+/**
+ * Uma seção de perguntas frequentes (`faq`), escrita à mão — pelo mesmo motivo do
+ * `prosa()` acima: ela também não está no conteúdo padrão da vitrine, então o
+ * `bloco()`, que lê o padrão, não a alcança.
+ */
+function faqs(over: Partial<FaqSection> = {}): FaqSection {
+  return {
+    id: "faq",
+    type: "faq",
+    enabled: true,
+    position: 20,
+    title: "",
+    items: [],
     ...over,
   }
 }

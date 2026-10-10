@@ -441,6 +441,50 @@ export type ProseSection = SectionBase & {
   documentLabel: string
 }
 
+/**
+ * Uma pergunta frequente: a pergunta que a cliente clica e a resposta que ela
+ * abre (14.6.2 do doc 14).
+ *
+ * Os dois campos são o par inteiro, e o par é a razão do tipo: pergunta sem
+ * resposta é item em construção, e quem desenha publica só o par completo (ver
+ * `frontend/src/modules/content/faq.tsx`).
+ *
+ * **A assimetria entre os dois tipos é deliberada.** A pergunta é `text` — uma
+ * linha que a cliente lê para escolher o que abrir —, e a resposta é `markdown`,
+ * o mesmo campo do texto longo, pelo mesmo motivo de 14.6.3: o que é texto
+ * chega à página como texto, e quem interpreta as marcas é `renderInline`. Quem
+ * escrever `**negrito**` na pergunta verá os asteriscos: marca não é o que o
+ * campo promete, e o que a loja não desenha ela também não esconde.
+ */
+export type FaqItem = {
+  /** A linha clicável — o texto do `<summary>`. */
+  question: string
+  /** A resposta, com as marcas inline do `prose`. */
+  answer: string
+}
+
+/**
+ * As perguntas frequentes (`faq`) — a página da dúvida, que é página de
+ * conversão: é onde mora a objeção (14.6.2 do doc 14).
+ *
+ * **Por que `<details>/<summary>`.** O elemento nativo é acessível por teclado,
+ * funciona **sem JavaScript**, e o conteúdo fechado **é indexado** — diferente
+ * de abas e de acordeões feitos à mão, que escondem a resposta do buscador e do
+ * leitor de tela. E é a resposta longa o que a cliente procura: por isso o `faq`
+ * é o par do `prose`, e reusa o parser e as marcas que o texto longo trouxe.
+ *
+ * Sem trilho de aparência, como o `prose`: a página segue o tema da loja
+ * inteira, e o que ela pode vestir é decisão do negócio (14.17/14.19 do doc 14).
+ * Quem desenha é `frontend/src/modules/content/faq.tsx`.
+ */
+export type FaqSection = SectionBase & {
+  type: "faq"
+  /** O `<h2>` da seção. Em branco, a lista começa direto nas perguntas. */
+  title: string
+  /** As perguntas, na ordem em que elas se leem. */
+  items: FaqItem[]
+}
+
 export type InstagramSection = SectionBase &
   SectionAppearance & {
     type: "instagram"
@@ -581,6 +625,7 @@ export type HomeSection =
   | EditorialSection
   | BannerSection
   | ProseSection
+  | FaqSection
   | InstagramSection
   | NavSection
   | FooterSection
@@ -610,6 +655,12 @@ export const SECTION_TYPES = [
   // ordem **das seções na página** é a `position` que vem do banco, e a
   // numeração da vitrine continua saindo de `order.ts`.
   "prose",
+  // As perguntas frequentes (o PR4 da mesma fase): o **segundo** tipo que só
+  // existe em página, e o par do `prose` — a resposta de cada pergunta reusa o
+  // mesmo parser e as mesmas marcas. Vem logo depois dele no array pela mesma
+  // razão que o `prose` vem depois do `banner`: é onde o seletor do CRM deixa os
+  // dois lado a lado. A ordem **na página** continua sendo a `position` do banco.
+  "faq",
   "featured",
   "instagram",
   // Não é uma seção da home: é o cabeçalho da loja, renderizado pelo
@@ -1117,6 +1168,11 @@ export type FieldKind =
   // linhas da lista — o único `list:*` cujo item tem, ele mesmo, uma lista de
   // textos formatados dentro (`list:markdown`).
   | "list:proseBlock"
+  // A pergunta frequente (`faq.items`): a pergunta (texto simples e clicável) e a
+  // resposta (`markdown`, o mesmo campo do texto longo). Sub-formulário de dois
+  // campos e **sem** lista dentro — o editor genérico dos `list:*` o desenha
+  // sem uma linha nova no painel, e o tipo que ele espelha é o `FaqItem`.
+  | "list:faqItem"
   // Item com sub-lista dentro (`links`): o editor do admin desenha os
   // níveis internos recursivamente.
   | "list:column"
@@ -1441,6 +1497,20 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       help: 'O que o botão de baixar diz (ex.: "Baixar o aviso assinado (PDF)"). Em branco, o botão diz "Baixar o documento (PDF)".',
     },
   ],
+  faq: [
+    {
+      name: "title",
+      label: "Título",
+      kind: "text",
+      help: "O título da seção, desenhado em <h2>. Em branco, a lista começa direto nas perguntas.",
+    },
+    {
+      name: "items",
+      label: "Perguntas",
+      kind: "list:faqItem",
+      help: "Ordem da lista = ordem na página. Cada item é uma pergunta e a resposta que ela abre; a resposta aceita negrito, itálico, riscado e link pela barra acima da caixa. Item sem pergunta ou sem resposta não aparece na loja.",
+    },
+  ],
   instagram: [
     { name: "handle", label: "Perfil", kind: "text" },
     // O @ do perfil sai em destaque, não como texto corrido.
@@ -1531,6 +1601,7 @@ export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   editorial: "Sobre",
   banner: "Banner editorial",
   prose: "Texto longo",
+  faq: "Perguntas frequentes",
   instagram: "Instagram",
   nav: "Cabeçalho",
   footer: "Rodapé",
@@ -1769,6 +1840,25 @@ export const ITEM_FIELDS: ItemFields = {
       help: "Só a lista usa: cada linha é um item. Ignoradas no subtítulo e no parágrafo.",
     },
   ],
+  // A pergunta frequente (`faq.items`): a pergunta, que é a linha clicável, e a
+  // resposta, que é o texto que abre. A resposta é `markdown` — o **mesmo** campo
+  // do texto longo, pela razão de 14.6.3 (as marcas viajam como texto e quem as
+  // interpreta é o render) —, e por isso a barra de marcas do formulário de
+  // seção aparece aqui dentro sem trabalho nenhum. Sem lista dentro do item: o
+  // sub-formulário são dois campos, e o editor genérico do painel o desenha.
+  "list:faqItem": [
+    {
+      name: "question",
+      label: "Pergunta",
+      help: "A linha que a cliente clica para abrir a resposta. Sem pergunta não há o que clicar — e o item não aparece na loja.",
+    },
+    {
+      name: "answer",
+      label: "Resposta",
+      kind: "markdown",
+      help: "A resposta que abre no clique, com o negrito, o itálico, o riscado e o link da barra acima. Item sem resposta não aparece na loja: um botão que não abre nada é pior do que um item a menos.",
+    },
+  ],
   // Coluna do rodapé: título, a origem dos itens e — quando a origem é
   // "links" — os links dela, que são uma lista dentro do item.
   "list:column": [
@@ -1985,8 +2075,10 @@ export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
   // antes dela — e o numeral é o que o lojista lê na tela.
   //
   // A ordem da lista é a da fila do negócio (14.3): o que já tem quem peça,
-  // primeiro. `perguntas-frequentes` é a última porque depende do bloco de Q&A
-  // (F2); até lá ela é uma página de texto, montada com `editorial`.
+  // primeiro. `perguntas-frequentes` é a última porque era a que dependia do
+  // bloco de Q&A — que chegou no PR4 (`faq`, ver 14.19); até lá ela se montava
+  // com `editorial`, e a dica da superfície dizia isso. Agora o par de blocos
+  // existe, e a dica fala do presente.
   // ---------------------------------------------------------------------------
   {
     id: "sobre",
@@ -2065,9 +2157,10 @@ export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
     enabledLabel: "Publicada",
     blockLabel: "seção",
     hint:
-      "Esta página monta o /perguntas-frequentes. Hoje ela é montada com " +
-      "blocos de texto (`editorial`); o bloco de perguntas e respostas é o da " +
-      "fase seguinte. Sem nenhuma seção publicada, o endereço responde 404.",
+      "Esta página monta o /perguntas-frequentes — as dúvidas da cliente, em " +
+      "pares de pergunta e resposta, abertos no clique. O texto de abertura " +
+      "vem dos blocos de texto (`prose`). Sem nenhuma seção publicada, o " +
+      "endereço responde 404.",
     types: PAGE_SECTION_TYPES,
     order: { first: 1, step: 1 },
   },
