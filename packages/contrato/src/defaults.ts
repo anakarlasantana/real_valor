@@ -447,6 +447,10 @@ const DEFAULT_PAGE_SECTION_DATA: Record<string, Record<string, unknown>> = {
     // regra que faz o padrão das páginas ser vazio (`DEFAULT_PAGE_SECTIONS`).
     title: "",
     blocks: [{ kind: "paragraph", text: "", items: [] }],
+    // Sem anexo e sem rótulo: o botão de baixar só existe quando há arquivo, e
+    // a seção nova não tem nenhum (14.6.3, critério 7).
+    documentUrl: "",
+    documentLabel: "",
   },
 }
 

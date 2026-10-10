@@ -214,7 +214,7 @@ describe("o que o render lê, o CRM edita", () => {
     ),
   ]
 
-  const camposDe = (type: "footer" | "launches" | "featured"): string[] =>
+  const camposDe = (type: "footer" | "launches" | "featured" | "prose"): string[] =>
     (SECTION_FIELDS[type] ?? []).map((field) => field.name)
 
   const semEditor = (reads: string[], editaveis: string[]): string[] =>
@@ -272,5 +272,25 @@ describe("o que o render lê, o CRM edita", () => {
 
     expect(reads.length).toBeGreaterThan(0)
     expect(semEditor(reads, camposDe("featured"))).toEqual([])
+  })
+
+  it("os campos do `prose` são exatamente os que a página lê", () => {
+    // Aqui os **dois** sentidos, e não só um: a seção de texto longo é a única
+    // cujo desenho inteiro mora num arquivo só (`modules/content/prose.tsx`),
+    // então dá para comparar as duas listas de igual para igual. Campo declarado
+    // que a página ignora é escolha que não faz nada — o lojista preenche o
+    // rótulo do anexo e o botão continua com o texto genérico; e campo que a
+    // página lê sem estar declarado fica sem editor, que é o defeito que os
+    // testes acima prendem.
+    const fonte = read("frontend", "src", "modules", "content", "prose.tsx")
+    const lidos2 = [
+      ...new Set(
+        [...fonte.matchAll(/\bsection\.([A-Za-z_$][\w$]*)/g)].map(
+          (match) => match[1]
+        )
+      ),
+    ]
+
+    expect(lidos2.sort()).toEqual(camposDe("prose").sort())
   })
 })

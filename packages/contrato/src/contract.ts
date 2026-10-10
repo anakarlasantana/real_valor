@@ -425,6 +425,20 @@ export type ProseSection = SectionBase & {
   title: string
   /** A estrutura do texto, na ordem em que ela se lê. */
   blocks: ProseBlock[]
+  /**
+   * O anexo da página (a **chave** do arquivo enviado no CRM), ou `""`.
+   *
+   * É o aviso assinado, o contrato de troca, a tabela de medidas — o que a
+   * página promete em PDF. Vazio significa **sem botão**: desligar o anexo tira
+   * o botão da página sem tocar no texto (critério 7 de 14.6.3).
+   */
+  documentUrl: string
+  /**
+   * O que o botão de baixar diz. Vazio cai no rótulo genérico — "Baixar o
+   * documento (PDF)" —, e é o motivo de o rótulo ser campo: "Baixar o aviso
+   * assinado" é o que faz a cliente clicar em um e ignorar o outro.
+   */
+  documentLabel: string
 }
 
 export type InstagramSection = SectionBase &
@@ -1046,6 +1060,15 @@ export type FieldKind =
   // mantém a loja funcionando com o mesmo valor gravado hoje (URL do painel
   // nativo) e depois de trocar o provider por S3.
   | "image"
+  // Documento anexo: envio de arquivo, como a imagem — e com a mesma regra de
+  // valor. O que muda é o que a loja faz com ele: **não desenha**, publica um
+  // botão que baixa.
+  //
+  // O anexo **complementa** o texto, nunca o substitui (14.6.3 do doc 14): PDF
+  // não é indexável, não é bom no telefone e não é o que a LGPD pede para o
+  // aviso em si — ela pede o texto acessível. O documento é o **da** página, com
+  // rótulo (`documentLabel`, no `prose`): "Baixar o aviso assinado (PDF)".
+  | "document"
   // Aparência: a paleta e as fontes do tema, desenhadas como bolinhas de cor
   // e como uma lista de fontes com prévia — ver `THEME_COLOR_HEXES` e
   // `THEME_FONTS`. Continuam sendo escolha dentro de uma lista fechada: o
@@ -1404,6 +1427,18 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       label: "Blocos de texto",
       kind: "list:proseBlock",
       help: "Ordem da lista = ordem na página. Cada bloco é um subtítulo, um parágrafo ou uma lista; o texto aceita negrito, itálico, riscado e link pela barra acima da caixa. Bloco sem texto não aparece na loja.",
+    },
+    {
+      name: "documentUrl",
+      label: "Documento (PDF)",
+      kind: "document",
+      help: "O anexo da página — o aviso assinado, o contrato de troca, a tabela de medidas. A loja publica um botão de baixar abaixo do texto; sem arquivo, não há botão.",
+    },
+    {
+      name: "documentLabel",
+      label: "Rótulo do documento",
+      kind: "text",
+      help: 'O que o botão de baixar diz (ex.: "Baixar o aviso assinado (PDF)"). Em branco, o botão diz "Baixar o documento (PDF)".',
     },
   ],
   instagram: [

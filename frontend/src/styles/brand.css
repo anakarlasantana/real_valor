@@ -4883,6 +4883,29 @@ body {
   text-underline-offset: 0.2em;
 }
 
+/*
+ * O botão do anexo (`documentLabel` + o PDF): um fio acima dele e o rótulo em
+ * caixa alta pequena, para não se confundir com a última frase do texto. É um
+ * `<a download>` e não um `<button>`: é navegação para um arquivo, e um botão
+ * de verdade precisaria de JavaScript para baixar — o que este projeto não usa
+ * onde o navegador já resolve.
+ */
+.rv-prose-document {
+  margin-top: 2.2rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--rv-preto);
+}
+
+.rv-prose-document a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--rv-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
 @media (min-width: 1024px) {
   .rv-prose-title {
     font-size: 40px;

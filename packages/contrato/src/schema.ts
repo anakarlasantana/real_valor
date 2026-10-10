@@ -147,8 +147,19 @@ import {
  *      sem oferecer "Texto longo" no diálogo de criação, e a API admin **recusa**
  *      os campos do bloco (`blocks`, `text`, `items`) como desconhecidos — a
  *      loja, essa, já sabe desenhar: quem interpreta o texto é o storefront.
+ *
+ * v12 — o **anexo**. O `prose` ganha `documentUrl` (o campo de tipo novo
+ *      `document`: um arquivo que a loja **não desenha**, ela publica um botão
+ *      que baixa) e `documentLabel` (o que o botão diz — "Baixar o aviso
+ *      assinado (PDF)"). Não há nada de novo na infraestrutura: o painel sobe
+ *      pelo mesmo `POST /admin/uploads` da imagem e grava a **chave**, e o site
+ *      a traduz com o mesmo `resolveMediaUrl`. É o par que a LGPD pede: o texto
+ *      acessível **com** o aviso assinado ao lado, nunca o PDF no lugar do
+ *      texto. Sem reescrever o registro (`make seed-schema`) o CRM continua sem
+ *      os dois campos e a API admin os **recusa** como desconhecidos; a loja
+ *      ignora o que não conhece, então uma página antiga segue no ar.
  */
-export const SCHEMA_VERSION = 11
+export const SCHEMA_VERSION = 12
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.

@@ -1,5 +1,6 @@
 import { renderInline } from "@lib/content/markdown"
 import { type ProseBlock, type ProseSection } from "@lib/content/home-sections"
+import { resolveMediaUrl } from "@lib/util/media"
 import { type ReactNode } from "react"
 
 /**
@@ -36,13 +37,20 @@ export default function Prose({
   const blocks = (Array.isArray(section.blocks) ? section.blocks : []).filter(
     drawn
   )
+  // O anexo é a **chave** do arquivo; quem a traduz em endereço é
+  // `resolveMediaUrl` — o mesmo caminho da imagem, e pelo mesmo motivo: a URL
+  // absoluta do backend amarraria o conteúdo ao endereço de quem respondeu o
+  // upload. A loja serve o arquivo pelo **próprio host** (o rewrite
+  // `/uploads/:path*` do `next.config.js`), e é isso que faz o botão de baixar
+  // funcionar no domínio da página.
+  const documento = resolveMediaUrl(section.documentUrl)
 
-  // Nem título, nem bloco com texto: a seção **sai da página** — e o
+  // Nem título, nem bloco com texto, nem anexo: a seção **sai da página** — e o
   // `ContentSectionList` não desenha a âncora vazia. É o estado de uma seção
   // recém-criada no CRM (ela nasce com um parágrafo em branco) e o mesmo vazio
   // honesto da página sem bloco publicado, que responde 404 (critério 3 de
   // 14.11): melhor não ter página do que ter uma página em branco.
-  if (!title && blocks.length === 0) {
+  if (!title && blocks.length === 0 && !documento) {
     return null
   }
 
@@ -59,6 +67,22 @@ export default function Prose({
           {blocks.map((block, index) => (
             <ProseBlockBody key={`${index}-${block.kind}`} block={block} />
           ))}
+
+          {documento && (
+            // O anexo **complementa** o texto (14.6.3): ele é o botão de baixar
+            // abaixo do que a página escreveu, nunca a página. Sem arquivo, sem
+            // botão — e o texto fica onde estava.
+            //
+            // `download` é o que transforma o clique em baixar: sem ele, o
+            // navegador abriria o PDF na aba, e a cliente que só queria o aviso
+            // assinado perde a página em que estava lendo.
+            <p className="rv-prose-document">
+              <a href={documento} download>
+                {textOf(section.documentLabel).trim() ||
+                  "Baixar o documento (PDF)"}
+              </a>
+            </p>
+          )}
         </div>
       </div>
     </section>

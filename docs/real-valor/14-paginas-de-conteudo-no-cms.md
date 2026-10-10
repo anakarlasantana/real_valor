@@ -566,7 +566,7 @@ uma página que outro ainda não sabe desenhar.
 | **PR1 — F1 núcleo** | `kind` + `PAGE_SURFACES` + `PAGE_SECTION_TYPES`; as 4–6 superfícies; `defaultsFor`; `resolveSurface`; singleton só na vitrine; `getSurfaceSections`; registry de blocos; a rota `[slug]`; `sitemap`/`robots`; a guarda de colisão de slug | é o menor conjunto que faz uma página existir — e o único que precisa de `seed-schema` + `seed-content` no deploy |
 | **PR2 — F1 rodapé** | colunas "Institucional" e "Atendimento" no padrão do rodapé (dado) — ✅ **executado**, ver 14.16 | precisa do PR1: antes dele, as colunas apontariam para 404 — a promessa continuaria vazia, agora com aparência de corrigida |
 | **PR3 — F2 texto longo** | o tipo `prose`, o formato (`markdown` + `MARKDOWN_MARKS` + `renderInline` com spec) e o editor do campo no CRM | é o que destrava Privacidade, Termos, Cuidados e Frete; vem antes do FAQ porque tem quatro páginas esperando — e é o PR em que o negrito passa a funcionar de ponta a ponta — ✅ **executado**, ver 14.17 |
-| **PR3b — F2 anexo** | o `kind` `document` (upload que já existe, chave gravada, `resolveMediaUrl` no render) | separado do formato porque não depende dele: o anexo é campo, não texto — e "página + PDF assinado" é o par que a LGPD pede (14.6.3) |
+| **PR3b — F2 anexo** | o `kind` `document` (upload que já existe, chave gravada, `resolveMediaUrl` no render) | separado do formato porque não depende dele: o anexo é campo, não texto — e "página + PDF assinado" é o par que a LGPD pede (14.6.3) — ✅ **executado**, ver 14.18 |
 | **PR4 — F2 FAQ** | o tipo `faq` e o render (`<details>/<summary>`) | uma página só, e ela é a que mais se beneficia do tipo anterior (resposta longa) |
 | **PR5 — F3a destinos** | a lista de rotas conhecidas + o seletor nos campos de href do CRM | **é este PR que resolve a causa-raiz do doc 13** — os nove botões param de ter `/store` como única alternativa |
 | **PR6 — F3a tela "Páginas"** | lista das páginas declaradas, com publicada/despublicada e atalho para os blocos | trabalho de painel, e o único item que devolve autonomia sem abrir a entidade (F3b) |
@@ -614,9 +614,15 @@ Três cuidados de execução:
 9. **O PDF da LGPD precisa existir no lançamento?** Se precisar, o anexo **não** pode esperar a F2: as
    páginas da F1 são de texto (`banner`/`editorial`), e o campo `document` teria de entrar junto do PR1 —
    que hoje é o único PR com dependência de ambiente.
+   ✅ **Deixou de ser decisão de código: o anexo entrou no PR3b** (14.18), então ele está no ar no mesmo
+   lançamento que as páginas de texto. Se a loja sobe um PDF é conteúdo, não projeto — e o "único PR com
+   dependência de ambiente" da frase acima envelheceu: são três (PR1, PR3 e PR3b, cada um pelo seu
+   registro de schema; ver 14.17).
 10. **Anexo: teto de tamanho e quais tipos de arquivo?** O campo de imagem já confere um teto **antes** de
    subir (`image-input.tsx:28-31`) porque o multipart do `/admin/uploads` é montado em memória; o PDF tem
    outra ordem de grandeza. A decisão é de conteúdo (quem sobe) e de custo (quanto cabe).
+   ✅ **Respondida na execução: PDF só, teto de 25 MB** (14.18) — uma ordem de grandeza acima da foto de
+   vitrine (8 MB), o que cobre um contrato escaneado em boa qualidade.
 
 Enquanto 1 e 3 não saem, a F1 **não** está bloqueada: declarar as páginas e a rota é dado. O que não
 pode ser adiado é a regra do vazio — **404, nunca a home** —, porque é ela que separa "a página ainda
@@ -723,7 +729,7 @@ ok (artefato e fronteira); `make build-admin` ok (`Frontend build completed succ
 | :--- | :--- | :--- |
 | Colunas "Institucional" e "Atendimento" no rodapé | PR2 | ✅ **feito em 14.16** — o padrão traz as duas colunas; o que se publica segue a régua de lá |
 | `prose` (texto longo), `MARKDOWN_MARKS` e o editor do campo | PR3 | ✅ **feito em 14.17** — e a decisão 8 que o travava saiu em "barra de marcas": o tipo, o campo `markdown` com o editor, a barra no CRM e a paridade entre a barra e o parser |
-| `document` (anexo) | PR3b | Não depende do formato: é campo, não texto (decisões 9 e 10) |
+| `document` (anexo) | PR3b | ✅ **feito em 14.18** — o campo, o editor (com o teto da decisão 10) e o botão de baixar na página |
 | `faq` | PR4 | Uma página só, e depende do `prose` |
 | Lista de destinos no CRM, tela "Páginas", a página no índice e no 404 | PR5–PR7 | Devolvem autonomia; a F1 não as exige. O **PR5** é o que fecha a causa-raiz do doc 13 |
 | A **copy** das seis páginas | conteúdo | Decisão 7: o padrão é vazio e a página vazia responde 404. Quem escreve é o lojista, no CRM — a aba está lá, com os seis tipos de página disponíveis |
@@ -917,3 +923,68 @@ catálogo — o tipo novo não entrou no conteúdo padrão da vitrine, e o seed 
 páginas de texto agora existem sem ele — a Privacidade é escrevível hoje, e o anexo é o **complemento**
 (doc 14.6.3). E o **PR7** ganhou um item a menos de dúvida: a coluna automática de páginas
 (`source: "pages"`) passa a ter quatro páginas de verdade para listar assim que a copy entrar.
+
+---
+
+## 14.18 O PR3b executado: o anexo da página (2026-10-09)
+
+O **PR3b** de 14.13 era o `kind` `document`: o arquivo que a página promete em PDF — o aviso assinado, o
+contrato de troca, a tabela de medidas. Ele não dependia do formato do PR3 (é campo, não texto), e a
+infraestrutura já existia inteira: o upload do painel (`POST /admin/uploads`), a **chave** gravada no lugar
+da URL e o `resolveMediaUrl` do storefront.
+
+A **decisão 10** saiu em **PDF só, teto de 25 MB** — conferido no painel **antes** de subir, como o campo
+de imagem faz, porque o multipart do `/admin/uploads` é montado **em memória**: o custo de um arquivo
+grande não é o arquivo, é o processo que o recebe.
+
+| Arquivo | O que entrou |
+| :--- | :--- |
+| `packages/contrato/src/contract.ts` | o `FieldKind` `document` e, no `prose`, `documentUrl` (o anexo) e `documentLabel` (o que o botão diz) |
+| `packages/contrato/src/schema.ts` | `SCHEMA_VERSION` **11 → 12** — os dois campos entram no formulário, e o registro gravado é quem o serve |
+| `packages/contrato/src/defaults.ts` | a seção nova nasce **sem** anexo e sem rótulo: sem arquivo, sem botão |
+| `frontend/src/modules/content/prose.tsx` | o `<a download>` abaixo do texto, com o rótulo do CRM (ou "Baixar o documento (PDF)") |
+| `frontend/src/styles/brand.css` | `.rv-prose-document`: o fio acima e o rótulo em caixa alta pequena, para o botão não se confundir com a última frase do texto |
+| `admin/.../document-input.tsx` | o campo: envio pelo mesmo `/admin/uploads`, a chave gravada, **sem** prévia (o que se confere é o caminho do arquivo) e o teto dos 25 MB |
+| `frontend/src/lib/util/media.ts` | o cabeçalho passa a falar de **imagem e anexo**: chave → endereço é a mesma regra, e agora serve às duas pontas |
+| `backend/.../wiring.unit.spec.ts` | a guarda nova: **os campos do `prose` são exatamente os que a página lê** — os dois sentidos, e não só um |
+
+### Uma correção ao desenho, e um limite declarado
+
+- **O anexo é do `prose`, e não de cada página.** O documento é **da** página e tem rótulo; a página de
+  texto é o `prose`. Um campo "anexo" por superfície seria uma segunda forma de pendurar o mesmo botão — a
+  divergência de novo, agora no dado.
+- ⚠️ **O conteúdo do arquivo não é conferido.** O que se grava é a chave que o provider devolveu; quem
+  escolhe o arquivo é o navegador do lojista (`accept="application/pdf"`), e o teto é conferido no painel.
+  Um `curl` direto em `/admin/uploads` com outro tipo gravaria a chave dele do mesmo jeito, e o que a loja
+  faria é publicar o botão com o rótulo do conteúdo. É o mesmo arranjo do campo de imagem — e a razão de a
+  decisão 10 ser de **conteúdo**: quem sobe é a loja, e o que ela sobe é responsabilidade dela.
+
+
+### Medido na stack local (loja `:8000`, backend `:9000`)
+
+| Medição | Resultado |
+| :--- | :--- |
+| `make types` / `make test` | **0** / verde: backend **407**, CRM **81**, loja **396** (4 novos) |
+| `make build-admin` / `make check` / `make check-schema` | **0** / **0** / **0** (*"Registro do schema em dia (chave "content", versão 12)"*) |
+| `make seed-schema` | *"Schema gravado (chave "content", versão 12, 13 tipo(s) de seção). Era v11."* |
+| o envio (`POST /admin/uploads` com um PDF de teste) | **200**, e a resposta traz a **URL absoluta do backend** (`http://localhost:9000/static/<chave>`) — o motivo de o campo gravar só a chave |
+| `POST /admin/content` com `documentUrl` + `documentLabel` | **201**, e o `data` no Postgres guarda a **chave** (`1791593425255-rv-aviso.pdf`), nunca a URL |
+| `/br/privacidade` com o anexo publicado | **200**, com `<a href="/uploads/1791593425255-rv-aviso.pdf" download="">Baixar o aviso assinado (PDF)</a>` abaixo do texto |
+| `GET /uploads/<chave>` **no host da loja** | **200**, `content-type: application/pdf`, os 218 bytes do arquivo — o rewrite de `next.config.js` serve o anexo pelo domínio da página |
+| o anexo **desligado** (`PATCH` com `documentUrl: ""`) | **200 com o texto intacto e sem o botão** — o critério 7 de 14.6.3, nas duas metades |
+| a seção e o arquivo removidos no fim da medição | `/br/privacidade` volta a **404** e `/uploads/<chave>` responde 404 — a medição não deixou rastro |
+
+**O que continua fora, e o que este PR mudou na fila**
+
+- **O teto não é regra de servidor.** Ele fica onde o campo de imagem o põe — no painel, antes de subir. Uma
+  regra no `/admin/uploads` valeria para **toda** a loja, inclusive para a foto de produto do painel
+  nativo, que tem outro dono.
+- **O anexo não entra no `<sitemap>`** (não é página) nem no SEO da página (não é o texto que a busca lê).
+  Ele é o **complemento** — e é isso que a LGPD pede: o texto acessível **e** o aviso assinado ao lado.
+- **O PR4 (o FAQ)** é o próximo da fila: `prose` e `faq` são o par de 14.6.2, e o `faq` reusa este parser e
+  os mesmos campos `markdown`, trocando só o `<details>/<summary>` do render.
+
+**O que este PR mudou na fila:** com o anexo no ar, a **decisão 9** deixa de ser pergunta de cronograma — o
+campo existe, e subir o PDF é conteúdo. O **PR5** (a lista de destinos no CRM) segue sendo o que fecha a
+causa-raiz do doc 13.
+

@@ -29,6 +29,7 @@ import {
   type Fonts,
   type Palette,
 } from "./appearance-controls"
+import { DocumentInput } from "./document-input"
 import { parseTextList } from "./form-draft"
 import { ImageInput } from "./image-input"
 import { itemSummary, move } from "./list-order"
@@ -75,6 +76,11 @@ type HandledKind =
   | "number"
   | "select"
   | "image"
+  // Documento anexo (o `documentUrl` do `prose`): envio de arquivo como a
+  // imagem — o mesmo `POST /admin/uploads`, a mesma **chave** gravada —, sem
+  // prévia: o que a loja faz com ele é um botão de baixar, e o que o lojista
+  // confere é o caminho do arquivo.
+  | "document"
   | "color"
   | "font"
   // Cor **literal** (`#RRGGBB`): a paleta da estação. Não confundir com o
@@ -272,6 +278,13 @@ function ObjectListInput({
                   // uma caixa de texto que só aceita chave — a chave é
                   // consequência do envio, não algo que se digita.
                   <ImageInput
+                    value={item[field.name]}
+                    onChange={(next) => update(index, field.name, next)}
+                  />
+                ) : nested === "document" ? (
+                  // Idem para o anexo: o item de uma lista pode trazer um PDF
+                  // (um bloco de termos com o contrato assinado, por exemplo).
+                  <DocumentInput
                     value={item[field.name]}
                     onChange={(next) => update(index, field.name, next)}
                   />
@@ -905,6 +918,16 @@ export const FieldInput = ({
       <div className="flex flex-col gap-y-2">
         {label}
         <ImageInput value={value} onChange={onChange} />
+      </div>
+    )
+  }
+
+  /* ---- documento (envio de arquivo, sem prévia) ---- */
+  if (spec.kind === "document") {
+    return (
+      <div className="flex flex-col gap-y-2">
+        {label}
+        <DocumentInput value={value} onChange={onChange} />
       </div>
     )
   }

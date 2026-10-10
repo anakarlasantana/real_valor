@@ -1,5 +1,5 @@
 /**
- * O `src` de uma imagem do conteúdo, do jeito que o `next/image` precisa.
+ * O endereço de um arquivo do conteúdo — da imagem e do anexo.
  * -------------------------------------------------------------------------
  * O mesmo campo (`imageUrl`) guarda coisas diferentes conforme quem o
  * preencheu:
@@ -31,6 +31,13 @@
  * bloco do módulo em `backend/medusa-config.ts`: o que está gravado no banco
  * continua sendo a chave do arquivo, e nenhum conteúdo precisa migrar. Quem
  * traduz chave → URL é esta função — um lugar só.
+ *
+ * **Serve à imagem e ao anexo.** O `imageUrl` de um bloco e o `documentUrl` do
+ * `prose` guardam a mesma coisa — a chave que o CRM recebeu no envio —, e o que
+ * muda é o que se faz com o endereço: um vai para o `src` do `next/image`, o
+ * outro para o `href` de um `<a download>`. Traduzir os dois aqui é o que
+ * impede uma segunda regra de chave → endereço no storefront — e é por isso que
+ * o cabeçalho deste arquivo não fala mais só de imagem.
  *
  * A função é pura e não lê ambiente de propósito: a URL absoluta do backend
  * não é conhecida aqui (e nem deve ser — o caminho `/uploads/...` é resolvido

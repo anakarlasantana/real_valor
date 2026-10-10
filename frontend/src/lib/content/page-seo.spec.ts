@@ -224,6 +224,8 @@ function prosa(over: Partial<ProseSection> = {}): ProseSection {
     position: 10,
     title: "",
     blocks: [],
+    documentUrl: "",
+    documentLabel: "",
     ...over,
   }
 }

@@ -24,7 +24,7 @@ import { describe, expect, it } from "vitest"
 const html = (section: ProseSection) =>
   renderToStaticMarkup(<Prose section={section} />)
 
-/** A seção como o CRM a grava — título e blocos, e nada mais. */
+/** A seção como o CRM a grava — título, blocos e anexo, e nada mais. */
 function prosa(over: Partial<ProseSection> = {}): ProseSection {
   return {
     id: "texto",
@@ -33,6 +33,8 @@ function prosa(over: Partial<ProseSection> = {}): ProseSection {
     position: 10,
     title: "",
     blocks: [],
+    documentUrl: "",
+    documentLabel: "",
     ...over,
   }
 }
@@ -161,5 +163,59 @@ describe("Prose", () => {
     expect(markup).toContain("rv-section-pad rv-prose-body")
     expect(markup).toContain("rv-section-heading")
     expect(markup).toContain("rv-section-text")
+  })
+})
+
+/**
+ * O anexo (o PDF da página) — 14.6.3, critério 7.
+ *
+ * O que se prende aqui é o que o critério pede: o valor gravado é uma **chave**
+ * e a loja abre o arquivo pelo **host do site** (o rewrite `/uploads/:path*`),
+ * e desligar o anexo tira o botão sem tocar no texto.
+ */
+describe("Prose (o anexo)", () => {
+  it("a chave vira um botão de baixar, com o rótulo do CRM", () => {
+    const markup = html(
+      prosa({
+        title: "Privacidade",
+        blocks: [bloco({ text: "Leia com atenção." })],
+        documentUrl: "1699999999-aviso.pdf",
+        documentLabel: "Baixar o aviso assinado (PDF)",
+      })
+    )
+
+    // A chave sai como caminho **do próprio site** — nunca com o endereço do
+    // backend, que amarraria o conteúdo ao domínio de quem respondeu o upload.
+    expect(markup).toContain('href="/uploads/1699999999-aviso.pdf"')
+    expect(markup).not.toContain("localhost:9000")
+    // `download` é o que faz o clique baixar em vez de abrir o PDF na aba.
+    expect(markup).toContain('download=""')
+    expect(markup).toContain(">Baixar o aviso assinado (PDF)</a>")
+    // O texto continua onde estava: o anexo complementa, não substitui.
+    expect(markup).toContain("Leia com atenção.")
+  })
+
+  it("sem rótulo, o botão diz o que ele é", () => {
+    const markup = html(prosa({ documentUrl: "aviso.pdf" }))
+
+    expect(markup).toContain(">Baixar o documento (PDF)</a>")
+  })
+
+  it("sem arquivo não há botão — e o texto fica intacto", () => {
+    const markup = html(
+      prosa({ title: "Termos", blocks: [bloco({ text: "Os termos." })] })
+    )
+
+    expect(markup).not.toContain("rv-prose-document")
+    expect(markup).toContain("Os termos.")
+  })
+
+  it("uma seção só com o anexo ainda desenha (não é página vazia)", () => {
+    // Sem título e sem bloco com texto, mas com arquivo: há o que mostrar — o
+    // botão. Sem esta metade da condição, o anexo sozinho sumiria e a página
+    // responderia 404 com um documento publicado nela.
+    expect(html(prosa({ documentUrl: "aviso.pdf" }))).toContain(
+      "rv-prose-document"
+    )
   })
 })
