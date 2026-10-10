@@ -31,6 +31,7 @@ import {
 } from "./appearance-controls"
 import { DocumentInput } from "./document-input"
 import { parseTextList } from "./form-draft"
+import { HrefInput } from "./href-input"
 import { ImageInput } from "./image-input"
 import { itemSummary, move } from "./list-order"
 import { markExample, toggleMark, type MarkSelection } from "./markdown-bar"
@@ -54,6 +55,7 @@ import { markExample, toggleMark, type MarkSelection } from "./markdown-bar"
  */
 import type {
   CategoryRef,
+  ContentDestination,
   FieldKind,
   FieldSpec,
   ItemFieldSpec,
@@ -72,6 +74,11 @@ export type { FieldKind, FieldSpec, ItemFieldSpec, ItemFields }
  */
 type HandledKind =
   | "text"
+  // Destino: a caixa de texto com a lista das rotas conhecidas ao lado
+  // (`HrefInput` + `schema.destinations`). Tem ramo próprio porque o campo
+  // **não** é o `text` puro: o valor é o mesmo, e o que muda é o que o painel
+  // oferece. O ramo do item de lista lê o mesmo `kind` (ver `ObjectListInput`).
+  | "href"
   | "textarea"
   | "number"
   | "select"
@@ -150,6 +157,7 @@ function ObjectListInput({
   value,
   onChange,
   marks,
+  destinations,
   addLabel = "Adicionar item",
 }: {
   kind: FieldKind
@@ -158,6 +166,14 @@ function ObjectListInput({
   onChange: (value: unknown) => void
   /** As marcas do texto formatado (`schema.markdownMarks`) — o item pode ter campo `markdown`. */
   marks: readonly MarkdownMark[]
+  /**
+   * Os destinos conhecidos (`schema.destinations`): o item de lista também tem
+   * campo `href` — o link do rodapé, o ícone do menu, o slide da capa, o card
+   * de coleção —, e é aí que a lista mais serve (o padrão tem seis links de
+   * rodapé apontando para páginas declaradas). Opcional pela mesma razão do
+   * campo da seção: um registro anterior à v14 não traz a chave.
+   */
+  destinations?: readonly ContentDestination[]
   addLabel?: string
 }) {
   const fields = itemFields[kind] ?? []
@@ -270,6 +286,7 @@ function ObjectListInput({
                     value={item[field.name]}
                     onChange={(next) => update(index, field.name, next)}
                     marks={marks}
+                    destinations={destinations}
                     addLabel={`Adicionar ${field.label.toLowerCase()}`}
                   />
                 ) : nested === "image" ? (
@@ -287,6 +304,15 @@ function ObjectListInput({
                   <DocumentInput
                     value={item[field.name]}
                     onChange={(next) => update(index, field.name, next)}
+                  />
+                ) : nested === "href" ? (
+                  // O destino dentro de um item (o link do rodapé, o ícone do
+                  // menu): o mesmo controle do formulário da seção, com a lista
+                  // que o payload trouxe — o valor continua sendo a string.
+                  <HrefInput
+                    value={item[field.name]}
+                    onChange={(next) => update(index, field.name, next)}
+                    destinations={destinations}
                   />
                 ) : choices.length > 0 ? (
                   <select
@@ -811,6 +837,18 @@ type FieldInputProps = {
    * antes da v11 do schema não a tem (a caixa continua funcionando sem barra).
    */
   marks?: readonly MarkdownMark[]
+  /**
+   * Os destinos conhecidos (`schema.destinations`) — as rotas que a loja tem,
+   * com o rótulo de cada uma. São as opções do `datalist` do campo
+   * `kind: "href"` (o link do botão, o "ver tudo" do trilho, os links do
+   * rodapé e do menu): é o índice que fecha a causa-raiz do doc 13 — o painel
+   * deixou de oferecer só texto livre.
+   *
+   * Vem no payload pelo mesmo motivo da paleta e das marcas, e é opcional pela
+   * mesma razão das marcas: um registro gravado antes da v14 não tem a chave, e
+   * o campo degrada para caixa de texto em vez de sumir.
+   */
+  destinations?: readonly ContentDestination[]
 }
 
 export const FieldInput = ({
@@ -822,6 +860,7 @@ export const FieldInput = ({
   fonts,
   categories,
   marks,
+  destinations,
 }: FieldInputProps) => {
   const label = (
     <div className="flex flex-col">
@@ -907,6 +946,7 @@ export const FieldInput = ({
           value={value}
           onChange={onChange}
           marks={marks ?? []}
+          destinations={destinations}
         />
       </div>
     )
@@ -1048,6 +1088,20 @@ export const FieldInput = ({
   if (spec.kind === "font") {
     return (
       <FontPicker spec={spec} value={value} onChange={onChange} fonts={fonts} />
+    )
+  }
+
+  /* ---- destino: a caixa com a lista das rotas conhecidas ---- */
+  if (spec.kind === "href") {
+    return (
+      <div className="flex flex-col gap-y-2">
+        {label}
+        <HrefInput
+          value={value}
+          onChange={onChange}
+          destinations={destinations}
+        />
+      </div>
     )
   }
 

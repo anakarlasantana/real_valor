@@ -12,6 +12,7 @@ import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 
 import {
+  CONTENT_DESTINATIONS,
   CONTENT_SURFACES,
   CONTENT_TYPES,
   ITEM_FIELDS,
@@ -161,7 +162,7 @@ describe("o schema servido (o payload do CRM)", () => {
    * provavam que alguém tinha escrito o nome em algum lugar, e não que a chave
    * **servida** fosse aquela lista.
    */
-  it("é o contrato: tipos, campos (com o tema), rótulos, itens, marcas, paleta, fontes, cores escuras, tipos únicos e superfícies", () => {
+  it("é o contrato: tipos, campos (com o tema), rótulos, itens, destinos, marcas, paleta, fontes, cores escuras, tipos únicos e superfícies", () => {
     const schema = buildSchema()
 
     expect(schema.types).toEqual(CONTENT_TYPES)
@@ -174,6 +175,10 @@ describe("o schema servido (o payload do CRM)", () => {
       [THEME_TYPE]: THEME_TYPE_LABEL,
     })
     expect(schema.itemFields).toEqual(ITEM_FIELDS)
+    // O índice de destinos (o PR5 do doc 14): sem ele no payload o campo
+    // `kind: "href"` do painel volta a ser caixa de texto livre — o seletor é
+    // montado daqui, e não de uma lista escrita no CRM.
+    expect(schema.destinations).toEqual(CONTENT_DESTINATIONS)
     // A barra de marcas do texto formatado: sem ela no payload, o painel não
     // teria como desenhar a barra (o CRM não importa valor do contrato) e o
     // campo `markdown` apareceria sem os botões.

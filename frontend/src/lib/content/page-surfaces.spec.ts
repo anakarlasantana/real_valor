@@ -27,6 +27,7 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import {
+  CONTENT_DESTINATIONS,
   DEFAULT_HOME_SECTIONS,
   PAGE_SECTION_TYPES,
   PAGE_SURFACES,
@@ -44,6 +45,27 @@ const rotasDeMain = join(
   "[countryCode]",
   "(main)"
 )
+
+/**
+ * As rotas que a loja **tem**: as fixas de `(main)` e as páginas declaradas.
+ *
+ * É a régua de tudo que promete um destino, e por isso é uma função só, lida
+ * por quem confere o rodapé e por quem confere o seletor do CRM: um caminho
+ * interno só vale se o primeiro segmento for uma pasta de `(main)` — o que
+ * admite subcaminho (`/collections/<handle>`) — ou o `id` de uma página
+ * declarada. Lê o **diretório de verdade**, nunca uma lista digitada aqui, que
+ * é o que apodreceria no dia em que a loja ganhar uma rota nova.
+ */
+function rotasConhecidas(): Set<string> {
+  const fixas = readdirSync(rotasDeMain, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("["))
+    .map((entry) => entry.name)
+
+  return new Set([...fixas, ...PAGE_SURFACES.map((surface) => surface.id)])
+}
+
+/** O primeiro segmento de um caminho interno — a rota, sem o subcaminho. */
+const primeiroSegmento = (href: string) => href.split("/")[1] ?? ""
 
 describe("os slugs das páginas", () => {
   const vizinhos = readdirSync(rotasDeMain, { withFileTypes: true })
@@ -207,16 +229,7 @@ describe("os destinos do rodapé", () => {
     (href) => href.startsWith("/") && !href.startsWith("//") && !href.includes("#")
   )
 
-  const primeiroSegmento = (href: string) => href.split("/")[1] ?? ""
-
-  const fixas = readdirSync(rotasDeMain, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("["))
-    .map((entry) => entry.name)
-
-  const conhecidos = new Set([
-    ...fixas,
-    ...PAGE_SURFACES.map((surface) => surface.id),
-  ])
+  const conhecidos = rotasConhecidas()
 
   it("o rodapé do padrão tem links internos (a guarda não pode passar vazia)", () => {
     // Mesma lição do guarda de colisão: sem esta linha, um `columns` esvaziado
@@ -242,6 +255,57 @@ describe("os destinos do rodapé", () => {
     expect(
       PAGE_SURFACES.map((surface) => `/${surface.id}`).filter(
         (href) => !internos.includes(href)
+      )
+    ).toEqual([])
+  })
+})
+
+/**
+ * Os destinos que o CRM oferece — o índice do PR5 (14.6.4, F3a).
+ * -------------------------------------------------------------------------
+ * O campo de destino do painel deixou de ser texto livre: ele oferece a lista
+ * de `CONTENT_DESTINATIONS`, e uma lista que sugere um endereço que não existe
+ * é a promessa vazia do doc 13 — agora com a autoridade de quem deveria saber.
+ * A régua é a mesma dos destinos do rodapé, e é por isso que ela virou a função
+ * `rotasConhecidas()`: um caminho interno só vale se o primeiro segmento for uma
+ * pasta de `(main)` ou uma página declarada. Um destino novo que aponte para uma
+ * rota que não existe — ou uma rota que a loja perca — reprova **aqui**, antes
+ * de o painel oferecê-la ao lojista.
+ *
+ * O outro sentido (toda página declarada é oferecida, com o rótulo da
+ * superfície) é do contrato, em `contract.unit.spec.ts`: lá a derivação é
+ * visível, e quem lê o teste vê que a lista nasce de `PAGE_SURFACES`.
+ */
+describe("os destinos que o CRM oferece", () => {
+  const conhecidos = rotasConhecidas()
+
+  it("a lista não veio vazia — e o catálogo está nela", () => {
+    // Mesma lição dos outros guardas deste arquivo: sem esta linha, uma lista
+    // esvaziada faria os dois testes abaixo passarem sempre.
+    expect(CONTENT_DESTINATIONS.length).toBeGreaterThanOrEqual(6)
+    expect(CONTENT_DESTINATIONS.map((destino) => destino.href)).toContain(
+      "/store"
+    )
+  })
+
+  it("todo destino aponta para uma rota que existe", () => {
+    // A vitrine (`/`) é a única sem primeiro segmento: ela é a rota da home, que
+    // existe por definição — e é ela que o rótulo "Início" promete.
+    expect(
+      CONTENT_DESTINATIONS.map((destino) => destino.href)
+        .filter((href) => href !== "/")
+        .filter((href) => !conhecidos.has(primeiroSegmento(href)))
+    ).toEqual([])
+  })
+
+  it("toda página declarada está na lista, como `/<id>`", () => {
+    // A outra metade da mesma promessa: a página existe, responde 200 e o menu
+    // a promete — e o seletor do CRM é onde o lojista a encontra. Sem isto, o
+    // `href` digitado à mão (`/privacidade-politica`) continuaria sendo o
+    // caminho mais provável para um link quebrado.
+    expect(
+      PAGE_SURFACES.map((surface) => `/${surface.id}`).filter(
+        (href) => !CONTENT_DESTINATIONS.some((destino) => destino.href === href)
       )
     ).toEqual([])
   })

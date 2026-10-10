@@ -14,6 +14,7 @@
  * gravado está vazio). Ver `service.ts`.
  */
 import {
+  CONTENT_DESTINATIONS,
   CONTENT_SURFACES,
   CONTENT_TYPES,
   ITEM_FIELDS,
@@ -27,6 +28,7 @@ import {
   THEME_FONTS,
   THEME_TYPE,
   THEME_TYPE_LABEL,
+  type ContentDestination,
   type ContentSurfaceSpec,
   type FieldSpec,
   type ItemFieldSpec,
@@ -172,8 +174,22 @@ import {
  *      os tipos que o registro conhece (`Campo "type" deve ser um de: …`), e não
  *      o contrato. A loja ignora o tipo que não conhece, então a vitrine segue
  *      de pé.
+ *
+ * v14 — o **destino**. O `FieldKind` novo é `href`, e ele não muda o formato de
+ *      um valor: o que se grava continua sendo a string de antes (os dados no
+ *      banco não são tocados). O que muda é o **payload**, que ganha
+ *      `destinations` (`CONTENT_DESTINATIONS`): a lista das rotas que a loja tem,
+ *      com o rótulo de cada uma, para o painel desenhar o seletor. É o PR5 do
+ *      doc 14, e o que ele fecha é a causa-raiz do doc 13 — o campo de destino
+ *      era texto livre, e `/store` era o único endereço que o lojista podia
+ *      conferir. Sem reescrever o registro (`make seed-schema`) o CRM fica com o
+ *      formulário velho: os campos de destino aparecem como caixa de texto —
+ *      funcionam, e continuam sendo string do lado da API, só não têm a lista,
+ *      porque é o registro gravado que diz o que desenhar. Nenhum dado é
+ *      recusado por isso: o `kind` não trafega no corpo. A loja ignora
+ *      `destinations`: quem desenha a lista é o painel.
  */
-export const SCHEMA_VERSION = 13
+export const SCHEMA_VERSION = 14
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.
@@ -214,6 +230,22 @@ export type ContentSchemaPayload = {
   fields: Record<string, readonly FieldSpec[]>
   /** `kind` de lista → campos de dentro do item. */
   itemFields: Partial<Record<string, readonly ItemFieldSpec[]>>
+  /**
+   * As rotas que a loja **tem**, para o seletor dos campos de destino
+   * (`CONTENT_DESTINATIONS`, no contrato): o catálogo, a sacola, a conta, a
+   * busca, o rastreio e cada página declarada, com o rótulo de cada uma.
+   *
+   * Vai no payload pelo mesmo motivo dos campos e das marcas: o painel é outro
+   * pacote e desenha o que o registro diz — o `datalist` do campo
+   * `kind: "href"` é montado daqui, e uma página nova no contrato aparece no
+   * seletor sem edição em React (é a F3a, item 3, de 14.6.4: o índice de
+   * destinos que fecha a causa-raiz do doc 13).
+   *
+   * Ausente num registro antigo (anterior à v14) o campo degrada para caixa de
+   * texto — o seletor é sugestão, e o `href` continua sendo string.
+   * O storefront ignora esta chave.
+   */
+  destinations: readonly ContentDestination[]
   /**
    * As marcas do texto formatado (`MARKDOWN_MARKS`, no contrato) — a barra que
    * o editor desenha acima de toda caixa `markdown`.
@@ -356,6 +388,16 @@ export function buildSchema(): ContentSchemaPayload {
      * que ele pode gravar continua sendo validado pelo `validateData` da rota.
      */
     itemFields: ITEM_FIELDS,
+    /**
+     * O índice de destinos (`CONTENT_DESTINATIONS`): as rotas que a loja tem,
+     * com o rótulo de cada uma, para o seletor dos campos `href`.
+     *
+     * Vem do contrato como os campos, pelo mesmo motivo: é o painel que
+     * desenha a lista, e ela não pode divergir da rota que a loja serve — as
+     * páginas são derivadas de `PAGE_SURFACES`, a mesma lista que o `[slug]` e
+     * o `sitemap` leem.
+     */
+    destinations: CONTENT_DESTINATIONS,
     /**
      * A barra de marcas do texto formatado. Vai como dado pelo mesmo motivo dos
      * campos: o painel desenha o que o registro diz, e a lista não pode divergir

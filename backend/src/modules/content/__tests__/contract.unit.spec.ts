@@ -14,11 +14,13 @@ import { join } from "node:path"
 
 import {
   APPEARANCE_GROUPS,
+  CONTENT_DESTINATIONS,
   CONTENT_SURFACES,
   FIXED_SECTION_POSITIONS,
   FOOTER_COLUMN_SOURCES,
   FONT_ROLES,
   ITEM_FIELDS,
+  PAGE_SURFACES,
   SECTION_FIELDS,
   SECTION_TYPE_LABELS,
   SECTION_TYPES,
@@ -369,5 +371,108 @@ describe("ITEM_FIELDS ⇔ o tipo do item", () => {
       expect(editor.map((field) => field.name)).toEqual(typeFields(typeName))
     })
   }
+})
+
+/**
+ * O destino: o campo e o índice que o alimenta.
+ * -------------------------------------------------------------------------
+ * Duas promessas do PR5 do doc 14, e as duas são silenciosas se quebrarem:
+ *
+ *   1. **todo campo de endereço é `kind: "href"`** — um `ctaHref` novo (ou um
+ *      `href` dentro de um item) declarado como `text` volta a ser caixa de
+ *      texto livre, e o seletor simplesmente não aparece. O `tsc` não distingue
+ *      um `text` de um `href`, então quem cobra é este teste;
+ *   2. **a lista de destinos é a das rotas que existem** — as páginas
+ *      declaradas entram por derivação (`PAGE_SURFACES`), com o rótulo da
+ *      superfície, e as rotas fixas da loja (catálogo, sacola, conta, busca,
+ *      rastreio) são declaradas aqui. O outro sentido — *todo destino resolve
+ *      numa rota que existe* — é do storefront (`page-surfaces.spec.ts`), que lê
+ *      o diretório de verdade; este lado prende a derivação.
+ *
+ * O que este arquivo **não** confere: se o valor gravado é um destino válido. O
+ * `validateData` não toca em `href` (o doc 13 mediu isso), e o seletor sugere —
+ * não tranca: `https://…`, `mailto:` e a âncora da vitrine continuam texto.
+ */
+describe("o destino (o seletor do CRM)", () => {
+  /**
+   * A exceção declarada ao `kind: "href"`: o destino de uma rede social é
+   * sempre externo (`https://…`), então a lista das rotas da loja não tem o que
+   * oferecer — um seletor de rotas ali criaria a expectativa de um endereço da
+   * casa para o Instagram.
+   */
+  const EXTERNAL_ONLY = ["list:social.href"]
+
+  const destinos = [
+    ...Object.entries(SECTION_FIELDS).flatMap(([type, specs]) =>
+      specs.map((spec) => ({ where: `${type}.${spec.name}`, spec }))
+    ),
+    ...Object.entries(ITEM_FIELDS).flatMap(([kind, specs]) =>
+      (specs ?? []).map((spec) => ({ where: `${kind}.${spec.name}`, spec }))
+    ),
+  ].filter(({ spec }) => /^(href|.*Href)$/.test(spec.name))
+
+  it("toda página declarada é oferecida, com o rótulo da superfície", () => {
+    const pelaSuperficie = PAGE_SURFACES.map((surface) => ({
+      href: `/${surface.id}`,
+      label: surface.label,
+    }))
+
+    expect(
+      pelaSuperficie.filter(
+        (pagina) =>
+          !CONTENT_DESTINATIONS.some(
+            (destino) =>
+              destino.href === pagina.href && destino.label === pagina.label
+          )
+      )
+    ).toEqual([])
+  })
+
+  it("as rotas fixas da loja estão na lista", () => {
+    // O que o painel precisa oferecer além das páginas: o catálogo, a sacola, a
+    // conta, a busca e o rastreio — e a vitrine. São elas que dão alternativa
+    // aos botões que hoje só podem apontar para `/store` (doc 13).
+    expect(
+      ["/", "/store", "/cart", "/account", "/search", "/rastreio"].filter(
+        (href) => !CONTENT_DESTINATIONS.some((destino) => destino.href === href)
+      )
+    ).toEqual([])
+  })
+
+  it("a lista é bem formada: href de rota, rótulo escrito, sem repetição", () => {
+    // Guarda que não pode passar vazia, mais o formato — o `href` é o valor
+    // que se grava, e é **a rota como ela se escreve no conteúdo**: sem país
+    // (quem prefixa é a loja) e sem esquema para o que é interno.
+    expect(CONTENT_DESTINATIONS.length).toBeGreaterThanOrEqual(
+      PAGE_SURFACES.length + 6
+    )
+    expect(
+      CONTENT_DESTINATIONS.filter(
+        (destino) =>
+          !destino.href.startsWith("/") || !destino.label.trim()
+      )
+    ).toEqual([])
+    expect(
+      CONTENT_DESTINATIONS.map((destino) => destino.href).filter(
+        (href, index, hrefs) => hrefs.indexOf(href) !== index
+      )
+    ).toEqual([])
+  })
+
+  it("todo campo de endereço é `kind: \"href\"` — a lista, e não texto livre", () => {
+    // Hoje são oito campos: o `viewAllHref` do trilho, o `ctaHref` do editorial
+    // e do banner, e cinco dentro de itens (o slide da capa, o card de coleção,
+    // os dois `href` do cabeçalho e o do rodapé) — menos a exceção das redes.
+    expect(destinos.length).toBe(8)
+
+    expect(
+      destinos
+        .filter(
+          ({ where, spec }) =>
+            spec.kind !== "href" && !EXTERNAL_ONLY.includes(where)
+        )
+        .map(({ where }) => where)
+    ).toEqual([])
+  })
 })
 

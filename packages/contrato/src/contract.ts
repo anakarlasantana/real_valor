@@ -1088,6 +1088,20 @@ function appearanceBackground(attachedTo: string): readonly FieldSpec[] {
  */
 export type FieldKind =
   | "text"
+  // Destino (**href**): o `text` de um endereço, com a **lista das rotas
+  // conhecidas** ao lado — o seletor de destino do PR5 do doc 14 (14.6.4, F3a).
+  //
+  // O valor continua sendo a string, e a lista **sugere**, não tranca:
+  // `mailto:`, `tel:`, `https://…` e a âncora da vitrine (`/#editorial`) não
+  // são rotas da loja, e um `<select>` fechado não teria como oferecê-las. Quem
+  // oferece é o `datalist` do painel, alimentado por `CONTENT_DESTINATIONS` —
+  // que viaja no `schema` (`schema.destinations`) pelo motivo de sempre: o
+  // admin é outro pacote e não importa valor do contrato.
+  //
+  // É o campo que fecha a causa-raiz do doc 13: nove botões apontando para
+  // `/store` não era desatenção de quem editou — era ausência de alternativa no
+  // painel, que só conhecia o campo de texto livre.
+  | "href"
   | "textarea"
   // Texto **formatado**: a mesma caixa de texto, com um subconjunto fechado de
   // marcas inline (`MARKDOWN_MARKS`) gravado como **texto** — o que está no
@@ -1242,6 +1256,22 @@ export type FieldSpec = {
   step?: number
 }
 
+/**
+ * A ajuda dos campos de destino (`kind: "href"`).
+ *
+ * Uma constante porque a frase é a **mesma** em todos eles — e porque o que ela
+ * diz é o que mudou no campo: ele deixou de ser uma caixa de texto livre e
+ * ganhou a lista das rotas conhecidas ao lado. O lojista precisa saber as duas
+ * metades: que existe uma lista para escolher, e que o texto continua valendo
+ * para o que **não** é rota da loja (`https://…`, `mailto:`, `tel:` e a âncora
+ * da vitrine).
+ */
+const HREF_HELP =
+  "Escolha um destino da lista (as rotas que a loja tem) ou escreva o " +
+  "endereço: um caminho do site (ex.: /sobre), uma âncora da vitrine " +
+  "(ex.: /#editorial), uma URL completa (https://…) ou um contato " +
+  "(mailto:, tel:)."
+
 /** Campos de `data` por tipo de seção, na ordem em que o admin os mostra. */
 export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
   announcement: [
@@ -1332,8 +1362,8 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     {
       name: "viewAllHref",
       label: "Destino do link",
-      kind: "text",
-      help: "Para onde o link leva (ex.: /store).",
+      kind: "href",
+      help: HREF_HELP,
     },
     // O fundo fecha a seção: é a única escolha que vale para o bloco todo.
     ...appearanceBackground("viewAllHref"),
@@ -1428,7 +1458,12 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     },
     ...appearanceTexts("body"),
     { name: "ctaLabel", label: "Texto do botão", kind: "text" },
-    { name: "ctaHref", label: "Link do botão", kind: "text" },
+    {
+      name: "ctaHref",
+      label: "Link do botão",
+      kind: "href",
+      help: HREF_HELP,
+    },
     {
       name: "imageUrl",
       label: "Imagem",
@@ -1469,7 +1504,12 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     // detalhes: o fundo é a fotografia, e o eyebrow é a única linha de detalhe.
     ...appearanceTitles("titleEmphasis"),
     { name: "ctaLabel", label: "Texto do botão", kind: "text" },
-    { name: "ctaHref", label: "Link do botão", kind: "text" },
+    {
+      name: "ctaHref",
+      label: "Link do botão",
+      kind: "href",
+      help: HREF_HELP,
+    },
   ],
   prose: [
     {
@@ -1776,7 +1816,12 @@ export const ITEM_FIELDS: ItemFields = {
     { name: "headlineEmphasis", label: "Título (parte em itálico)" },
     { name: "subtitle", label: "Subtítulo" },
     { name: "ctaLabel", label: "Texto do botão" },
-    { name: "ctaHref", label: "Link do botão" },
+    {
+      name: "ctaHref",
+      label: "Link do botão",
+      kind: "href",
+      help: HREF_HELP,
+    },
   ],
   "list:highlight": [
     { name: "title", label: "Título" },
@@ -1788,7 +1833,12 @@ export const ITEM_FIELDS: ItemFields = {
       help: "Envie a foto pelo botão, ou informe um caminho do site (ex.: /brand/collection-1.jpg) ou uma URL.",
     },
     { name: "imageAlt", label: "Imagem (alt)" },
-    { name: "href", label: "Link" },
+    {
+      name: "href",
+      label: "Link",
+      kind: "href",
+      help: HREF_HELP,
+    },
     { name: "ctaLabel", label: "Texto do botão" },
   ],
   "list:image": [
@@ -1802,7 +1852,12 @@ export const ITEM_FIELDS: ItemFields = {
   ],
   "list:link": [
     { name: "label", label: "Rótulo" },
-    { name: "href", label: "Destino" },
+    {
+      name: "href",
+      label: "Destino",
+      kind: "href",
+      help: HREF_HELP,
+    },
   ],
   "list:action": [
     {
@@ -1813,7 +1868,12 @@ export const ITEM_FIELDS: ItemFields = {
       allowEmpty: true,
     },
     { name: "label", label: "Rótulo" },
-    { name: "href", label: "Destino" },
+    {
+      name: "href",
+      label: "Destino",
+      kind: "href",
+      help: HREF_HELP,
+    },
   ],
   // O bloco do texto longo: o `kind` (um `<select>`), o texto do subtítulo/
   // parágrafo (`markdown`) e as linhas da lista (`list:markdown`). Os três
@@ -1885,7 +1945,18 @@ export const ITEM_FIELDS: ItemFields = {
       allowEmpty: true,
     },
     { name: "label", label: "Rótulo" },
-    { name: "href", label: "Destino" },
+    // A exceção declarada ao `kind: "href"`: o destino de uma rede social é
+    // sempre externo (`https://…`), então a lista das rotas da loja não tem o
+    // que oferecer — e um seletor de rotas aqui criaria a expectativa de um
+    // destino da casa para o Instagram. A guarda de contrato
+    // (`contract.unit.spec.ts`) cobra o `kind: "href"` de todo outro `href` e
+    // declara esta exceção pelo nome.
+    {
+      name: "href",
+      label: "Destino",
+      kind: "text",
+      help: "O endereço do perfil — sempre fora da loja (ex.: https://instagram.com/sualoja).",
+    },
   ],
 }
 
@@ -2178,6 +2249,70 @@ export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
  */
 export const PAGE_SURFACES: readonly ContentSurfaceSpec[] =
   CONTENT_SURFACES.filter((surface) => surface.kind === "page")
+
+/**
+ * Um destino que o painel oferece: a rota e o nome que o lojista lê.
+ *
+ * `href` é o valor que se grava no campo — a URL como ela é escrita no conteúdo
+ * (`/sobre`, `/store`), **sem** o país: quem prefixa é a loja
+ * (`LocalizedClientLink`, por `nav-link`), e gravar `/br/sobre` amarraria o
+ * conteúdo ao país do dia.
+ */
+export type ContentDestination = {
+  href: string
+  label: string
+}
+
+/**
+ * As rotas **fixas** da loja — as vizinhas do `[slug]` em `(main)`.
+ *
+ * Nenhuma superfície as declara porque nenhuma as desenha: são as telas escritas
+ * à mão (o catálogo, a sacola, a conta, a busca e o rastreio), e por isso a lista
+ * mora aqui, com o rótulo de cada uma, em vez de num `readdir` do painel. Um
+ * destino daqui que deixe de existir na loja reprova no guarda do storefront
+ * (`page-surfaces.spec.ts`), que lê o **diretório de verdade** — a mesma régua
+ * que já prende os destinos do rodapé.
+ *
+ * O que fica de fora, de propósito: as rotas **dinâmicas** (`/products/<handle>`,
+ * `/collections/<handle>`, `/order/<id>`), que não são rota nenhuma sem o
+ * identificador, e as **âncoras** da vitrine (`/#editorial`), cujo dono é o
+ * `nav-link` da loja — uma lista aqui seria a segunda cópia do mapa dele. Os
+ * dois casos continuam valendo no campo: ele é texto, e a lista só sugere.
+ */
+const STORE_ROUTES: readonly ContentDestination[] = [
+  { href: "/", label: "Início (a vitrine)" },
+  { href: "/store", label: "Catálogo (todas as peças)" },
+  { href: "/cart", label: "Sacola" },
+  { href: "/account", label: "Minha conta" },
+  { href: "/search", label: "Busca" },
+  { href: "/rastreio", label: "Rastrear o pedido" },
+]
+
+/**
+ * O índice de destinos — as rotas que a loja **tem**, para o seletor do CRM.
+ *
+ * É a peça que fecha a causa-raiz do doc 13. O diagnóstico de lá não foi
+ * desatenção de quem editou: o painel só oferecia texto livre, e o único
+ * endereço que o lojista podia conferir era `/store`, que existe e sempre
+ * responde. Os nove botões apontando para o catálogo eram o resultado disso.
+ *
+ * Duas metades, e as duas têm dono: as rotas fixas são declaradas aqui
+ * (`STORE_ROUTES`, com o rótulo), e as páginas são **derivadas** de
+ * `PAGE_SURFACES` — a mesma lista que a rota `[slug]` e o `sitemap` leem. Página
+ * nova no contrato aparece no seletor sem que ninguém edite esta lista, que é a
+ * regra da F1 (declarar, e não desenhar) valendo para o painel.
+ *
+ * Quem consome: `schema.destinations` (o `datalist` do campo `kind: "href"`) e o
+ * guarda `page-surfaces.spec.ts`, que confere os dois sentidos — todo destino
+ * aqui resolve numa rota que existe, e toda página declarada é oferecida.
+ */
+export const CONTENT_DESTINATIONS: readonly ContentDestination[] = [
+  ...STORE_ROUTES,
+  ...PAGE_SURFACES.map((surface) => ({
+    href: `/${surface.id}`,
+    label: surface.label,
+  })),
+]
 
 /** A superfície declarada com este `id`, ou `undefined` se ninguém a declarou. */
 export function findSurface(id: unknown): ContentSurfaceSpec | undefined {

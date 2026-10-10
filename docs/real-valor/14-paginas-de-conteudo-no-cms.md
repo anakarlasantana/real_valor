@@ -568,7 +568,7 @@ uma página que outro ainda não sabe desenhar.
 | **PR3 — F2 texto longo** | o tipo `prose`, o formato (`markdown` + `MARKDOWN_MARKS` + `renderInline` com spec) e o editor do campo no CRM | é o que destrava Privacidade, Termos, Cuidados e Frete; vem antes do FAQ porque tem quatro páginas esperando — e é o PR em que o negrito passa a funcionar de ponta a ponta — ✅ **executado**, ver 14.17 |
 | **PR3b — F2 anexo** | o `kind` `document` (upload que já existe, chave gravada, `resolveMediaUrl` no render) | separado do formato porque não depende dele: o anexo é campo, não texto — e "página + PDF assinado" é o par que a LGPD pede (14.6.3) — ✅ **executado**, ver 14.18 |
 | **PR4 — F2 FAQ** | o tipo `faq` e o render (`<details>/<summary>`) | uma página só, e ela é a que mais se beneficia do tipo anterior (resposta longa) — ✅ **executado**, ver 14.19 |
-| **PR5 — F3a destinos** | a lista de rotas conhecidas + o seletor nos campos de href do CRM | **é este PR que resolve a causa-raiz do doc 13** — os nove botões param de ter `/store` como única alternativa |
+| **PR5 — F3a destinos** | a lista de rotas conhecidas + o seletor nos campos de href do CRM | **é este PR que resolve a causa-raiz do doc 13** — os nove botões param de ter `/store` como única alternativa — ✅ **executado**, ver 14.20 |
 | **PR6 — F3a tela "Páginas"** | lista das páginas declaradas, com publicada/despublicada e atalho para os blocos | trabalho de painel, e o único item que devolve autonomia sem abrir a entidade (F3b) |
 | **PR7 — F3a descoberta** | as páginas no rodapé, no índice público e na sugestão do 404 | fecha o ciclo: a página passa a ser **encontrável**, não só existente |
 
@@ -731,7 +731,7 @@ ok (artefato e fronteira); `make build-admin` ok (`Frontend build completed succ
 | `prose` (texto longo), `MARKDOWN_MARKS` e o editor do campo | PR3 | ✅ **feito em 14.17** — e a decisão 8 que o travava saiu em "barra de marcas": o tipo, o campo `markdown` com o editor, a barra no CRM e a paridade entre a barra e o parser |
 | `document` (anexo) | PR3b | ✅ **feito em 14.18** — o campo, o editor (com o teto da decisão 10) e o botão de baixar na página |
 | `faq` | PR4 | ✅ **feito em 14.19** — o tipo, o item (`question` `text` + `answer` `markdown`) e o `<details>/<summary>` nativo, que reusa o parser e a barra do `prose` |
-| Lista de destinos no CRM, tela "Páginas", a página no índice e no 404 | PR5–PR7 | Devolvem autonomia; a F1 não as exige. O **PR5** é o que fecha a causa-raiz do doc 13 |
+| Lista de destinos no CRM, tela "Páginas", a página no índice e no 404 | PR5–PR7 | Devolvem autonomia; a F1 não as exige. O **PR5** é o que fecha a causa-raiz do doc 13 — ✅ **feito em 14.20**; a tela "Páginas" (PR6) e a descoberta (PR7) seguem |
 | A **copy** das seis páginas | conteúdo | Decisão 7: o padrão é vazio e a página vazia responde 404. Quem escreve é o lojista, no CRM — a aba está lá, com os seis tipos de página disponíveis |
 
 ### As decisões de 14.14 que a execução respondeu
@@ -1094,4 +1094,108 @@ dentro do item) — é limite anterior a este PR, e o efeito é o mesmo da image
   alternativa). Depois dele vêm o PR6 (a tela "Páginas") e o PR7 (a página no índice e no 404).
 - Com o PR4, **a F2 está fechada**: os dois blocos que faltavam existem, e cada um tem o render, o editor
   no CRM e a spec que prende a promessa.
+
+
+## 14.20 O PR5 executado: a lista de destinos (2026-10-09)
+
+O PR5 de 14.13 era a F3a **sem migration**: *o índice de destinos e o seletor nos campos de destino do
+CRM* (14.6.4, itens 1 e 3). É o PR que fecha a **causa-raiz do doc 13** — o diagnóstico de lá (13.7) não
+foi desatenção de quem editou ("o painel edita só pode confiar em `/store`, que existe e sempre
+responde"), e os nove botões apontando para o catálogo eram o resultado disso.
+
+O que este PR muda é **o painel**. Nenhum valor gravado muda de forma (o destino continua sendo uma
+string, e o `data` no Postgres não é tocado), e a loja não desenha nada de novo.
+
+### Uma correção ao desenho: a lista sugere, não tranca
+
+14.6.4 pede "uma lista de rotas conhecidas **em vez de** texto livre". A execução corrige a segunda
+metade: o campo **continua sendo texto**, e a lista é o que ele passa a **oferecer**. Três razões, e a
+primeira é medida no próprio padrão do rodapé e do menu:
+
+1. **Metade dos destinos do site não é rota.** O padrão tem `mailto:contato@realvalor.com.br` (o item
+   "Contatos" do menu e a coluna "Atendimento"), `https://instagram.com/realvalor` (o rodapé) e
+   `/#editorial` (o item "Sobre", que o `nav-link` rola até a seção da vitrine). Um `<select>` fechado
+   recusaria os três — e três campos teriam de voltar a ser texto livre, agora **sem** a lista;
+2. **um `<select>` ao lado obrigaria a um segundo estado** — "o valor não é da lista" — e a uma regra de
+   qual dos dois manda ao gravar. É a mesma classe de defeito que o campo do ticker pagou no PR3
+   (dois controles para um valor só): o remédio é mais caro do que o sintoma;
+3. o `datalist` **nativo** faz as duas coisas num controle só: uma caixa de texto com a lista anexada,
+   que aparece no clique/na digitação. Zero estado, zero dependência, zero JavaScript novo.
+
+**A exceção declarada é o `href` das redes sociais** (`list:social`), que segue `text`: o destino de um
+perfil é sempre externo, e uma lista de rotas ali só criaria a expectativa de um endereço da casa para o
+Instagram. O contrato tem a exceção comentada **no lugar** e a guarda a declara pelo nome
+(`EXTERNAL_ONLY`): um `href` novo em qualquer outro canto reprova se não for `kind: "href"`.
+
+### Os cinco lugares que um `FieldKind` novo toca (14.10, item 3)
+
+| Peça | Onde | O que acontece se faltar |
+| :--- | :--- | :--- |
+| O `kind` | `FieldKind` (`contract.ts`) | nada compila — é o primeiro lugar da lista, e o único que o `tsc` cobra |
+| A exaustividade do painel | `HandledKind`/`UNHANDLED_KINDS` (`field-input.tsx`) | o `kind` cai no ramo de texto: o campo **aparece** e é editável, sem a lista — e o `make types` reprova com o nome do `kind` na mensagem |
+| O editor | `href-input.tsx` (novo) | o campo aparece sem a lista (degradação silenciosa, e é o que a exaustividade existe para impedir) |
+| O dado | `schema.destinations` | idem: sem a lista no payload o `datalist` nasce vazio |
+| O campo em si | `SECTION_FIELDS` / `ITEM_FIELDS` | um `ctaHref` novo declarado como `text` volta a ser caixa de texto livre — e o `tsc` **não** distingue um do outro: quem cobra é a guarda do contrato |
+
+| Arquivo | O que entrou |
+| :--- | :--- |
+| `packages/contrato/src/contract.ts` | o `FieldKind` `href`; `ContentDestination` + `CONTENT_DESTINATIONS` (as **seis** rotas fixas da loja declaradas + as páginas **derivadas** de `PAGE_SURFACES`, com o rótulo da superfície); e os **oito** campos de endereço passando a `href` — `launches.viewAllHref`, `editorial.ctaHref`, `banner.ctaHref` e, dentro dos itens, `list:hero-slide.ctaHref`, `list:highlight.href`, `list:link.href` e `list:action.href`. A frase de ajuda é uma constante (`HREF_HELP`), porque é a mesma nos oito |
+| `packages/contrato/src/schema.ts` | `SCHEMA_VERSION` **13 → 14** e `destinations` no payload — a v14 não muda o formato de um valor: o que ela acrescenta é a lista que o painel desenha |
+| `admin/.../href-input.tsx` *(novo)* | o campo: `Input` com `list` + o `datalist` alimentado pelo payload. O `useId` do React dá um `id` único por campo — a tela desenha dezenas deles (todo link do menu e do rodapé é um) |
+| `admin/.../field-input.tsx` | o `kind` novo na declaração de exaustividade e os **dois** ramos que ele precisa: o campo da seção e o campo **dentro do item** (`nested === "href"`) — é no item que estão os seis links do rodapé e os três do menu |
+| `admin/.../page.tsx` | `destinations={schema?.destinations}`: a lista viaja como dado, como a paleta e as marcas (o painel não importa valor do contrato) |
+| as guardas | `contract.unit.spec` (a lista ⇔ `PAGE_SURFACES`, o formato, e **todo campo de endereço é `href`**), `schema-record.unit.spec` (o payload é o contrato, chave por chave — agora com `destinations`), `page-surfaces.spec` (todo destino resolve numa rota que existe, e toda página é oferecida) e `panel-wiring.unit.spec` (`CONTENT_DESTINATIONS` entra na lista dos espelhos proibidos, e o painel **lê** `destinations`) |
+
+### A régua que já existia virou função
+
+O guarda dos destinos do rodapé (PR2) já sabia responder "esta rota existe?": o primeiro segmento do
+`href` tem de ser uma pasta de `(main)` — o que admite subcaminho, como `/collections/<handle>` — ou o
+`id` de uma página declarada. O PR5 precisava da mesma pergunta para a lista que o painel oferece, e a
+resposta foi **não escrever a segunda cópia**: a régua virou a função `rotasConhecidas()`
+(`page-surfaces.spec.ts`), lida pelos dois guardas. O efeito é o que interessa: uma rota que a loja
+perca — ou um destino novo com typo — reprova nos **dois** lugares, e nenhum deles tem uma lista de
+rotas digitada à mão para envelhecer.
+
+
+### Medido na stack local (loja `:8000`, backend `:9000`)
+
+| Medição | Resultado |
+| :--- | :--- |
+| `make types` / `make test` | **0** / verde: backend **413** (24 suítes), CRM **83** (6), loja **411** (33) — **nove** testes novos (4 do contrato, 3 do storefront, 2 do CRM) |
+| `make check` / `make build-admin` | **0** / **0** — *"Frontend build completed successfully"* (36 s): o painel compila com o campo novo, e o `CONTENT_DESTINATIONS` no painel reprovaria a fronteira se fosse import de **valor** |
+| `make check-schema` **antes** do seed | sai **1** e diz exatamente o que mudou: *"O registro do schema está velho (gravado v13, contrato v14)"* — `fields: launches, editorial, banner`, `itemFields: list:hero-slide, list:highlight, list:link, list:action, list:social`, `destinations` |
+| `make seed-schema` | *"Schema gravado (chave \"content\", versão 14, 14 tipo(s) de seção). Era v13."* |
+| `make check-schema` depois | **0** — *"Registro do schema em dia (chave \"content\", versão 14)"* |
+| o payload do CRM (`GET /admin/content?surface=home`) | `schemaVersion: 14`, `schemaSource: db`, e `schema.destinations` com **12** entradas: as **seis** rotas (a vitrine, o catálogo, a sacola, a conta, a busca e o rastreio) e as **seis** páginas, cada uma com o rótulo da superfície |
+| os campos no payload | `kind: "href"` no `ctaHref` do `editorial` e do `banner`, no `viewAllHref` do `launches` e no `href`/`ctaHref` de `list:link`, `list:action`, `list:highlight` e `list:hero-slide`; `list:social.href` segue **`text`**, com a ajuda que explica por quê |
+| um destino da lista chegando à loja (a ponta a ponta) | `PATCH /admin/content?id=editorial {"ctaHref":"/sobre"}` → **200**; `/br` passa de **9** para **8** `href="/br/store"`, e o botão "Conheça a nossa história" sai com `href="/br/sobre"` — a página declarada, que responde **200** |
+| a medição desfeita (sem rastro) | `PATCH {"ctaHref":"/store"}` (o valor original) → **200**; `/br` volta aos **nove** `/br/store`, e `select data->>'ctaHref'` no Postgres devolve `/store` nas **duas** seções (`editorial` e `banner`) |
+| a vitrine não mudou (critério 10 de 14.11) | **25** `href` distintos em `/br` nas quatro capturas (antes, durante, depois e duas seguidas agora), e a comparação dos `href` de duas capturas seguidas sai **vazia** |
+| cada destino da lista, na loja | `/br/store`, `/br/cart`, `/br/account`, `/br/search`, `/br/rastreio` e `/br/sobre`: **200**; as **cinco** páginas ainda vazias (`trocas-e-devolucoes`, `privacidade`, `termos`, `contato`, `perguntas-frequentes`): **404** — a decisão 7 (a rota existe, a página não tem conteúdo). Nenhum destino da lista aponta para rota inexistente |
+
+**O que continua fora, e o que este PR mudou na fila**
+
+- ⚠️ **O servidor não confere o destino.** `validateData` continua sem tocar em `href` (é o que o doc 13
+  mediu em 13.1), então um `/stroe` digitado à mão ainda vai ao ar. O que este PR muda é que o lojista
+  deixa de ter `/store` como **única** alternativa — a lista é sugestão, e o campo é texto por causa
+  dela (ver "uma correção ao desenho" acima). Fechar isso exigiria uma allowlist no `validateData`, e
+  ela recusaria justamente o que o padrão usa (`mailto:`, `https://`, `#âncora`).
+- **Rotas dinâmicas e âncoras ficam de fora da lista, de propósito** — `/collections/<handle>`,
+  `/products/<handle>` e `/#editorial`: as primeiras não são rota nenhuma sem o identificador do
+  catálogo, e a última tem dono (`HOME_ANCHOR`, no `nav-link`), então uma lista aqui seria a segunda
+  cópia do mapa dele. As três continuam valendo no campo, que é texto.
+- **A contagem do doc 13 não mudou com este PR**: `/br` tem **nove** `href="/br/store"`, medidos antes e
+  depois — e é o certo, porque PR5 não é mudança de conteúdo. Quem reponta é a lojista, agora com a
+  lista na mão; a decisão 2 de 14.14 (`/sobre` substitui a âncora `#editorial`) é dela, e o caminho
+  para executá-la passou a existir.
+- ⚠️ **Achado desta medição, fora do escopo do PR5:** um `ctaHref` **vazio** desenha o botão apontando
+  para a raiz (`href="/br"`), e não para o padrão da seção — o render pergunta só pelo `ctaLabel`
+  (`editorial-banner/index.tsx:78`). Limpar o campo no CRM deixa o botão de pé, agora para a home. É a
+  família do doc 13 (nada quebra, a loja responde outra coisa), e o conserto é do **render** (um
+  `ctaLabel && ctaHref`, com o botão sumindo quando não há destino) — não da lista. Fica declarado aqui,
+  e não consertado neste PR: a correção muda o desenho de quatro componentes, e merece a própria
+  medição.
+- **O PR6 (a tela "Páginas") é o próximo da fila** — a lista dos blocos declarados, com
+  publicada/despublicada e atalho para os blocos dela. Ele não depende deste PR, e é o que devolve
+  autonomia sem abrir a entidade (F3b, que segue com gatilho — nenhum deles apareceu aqui).
 

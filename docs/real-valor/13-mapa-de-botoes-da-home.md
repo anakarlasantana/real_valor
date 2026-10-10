@@ -196,7 +196,11 @@ entrega o catálogo. Quem clica recebe uma grade de produtos.
    ou conta; o único "Sobre" do site é a âncora `#editorial` da home. Sem `/sobre`, `/store` é o
    destino crível que sobra.
 2. **O CRM não conhece as rotas.** Destino é texto livre, sem seletor e sem validação (13.1) — quem
-   edita só pode confiar em `/store`, que existe e sempre responde.
+   edita só pode confiar em `/store`, que existe e sempre responde. ✅ metade disto foi fechada pelo
+   **PR5 do doc 14** (§14.20): o campo de destino passou a oferecer a lista das rotas conhecidas —
+   as seis páginas declaradas e o catálogo, a sacola, a conta, a busca e o rastreio. A outra metade
+   (a **validação**) continua aberta de propósito: `mailto:`, `https://` e a âncora da vitrine não são
+   rota, e uma allowlist no servidor recusaria o que o próprio padrão usa.
 3. **Coleções não existem no catálogo.** O dado (`/store/collections`) está vazio, então os três cards
    são promessa sem lastro. As categorias existem, e são as dos chips.
 4. **Campos assimétricos.** `launches` tem `viewAllHref` (com fallback); `featured` tem só

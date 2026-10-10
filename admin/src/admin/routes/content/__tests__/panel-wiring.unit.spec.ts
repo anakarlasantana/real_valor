@@ -34,6 +34,7 @@ const PANEL_SRC = join(__dirname, "..", "..", "..", "..")
 const CONTENT_DIR = join(PANEL_SRC, "admin", "routes", "content")
 
 const fieldInput = readFileSync(join(CONTENT_DIR, "field-input.tsx"), "utf8")
+const hrefInput = readFileSync(join(CONTENT_DIR, "href-input.tsx"), "utf8")
 const page = readFileSync(join(CONTENT_DIR, "page.tsx"), "utf8")
 
 function panelSources(): string[] {
@@ -74,6 +75,7 @@ describe("o painel não declara o contrato", () => {
       "FOOTER_COLUMN_SOURCES",
       "TYPE_LABELS",
       "MARKDOWN_MARKS",
+      "CONTENT_DESTINATIONS",
     ]
     const sources = panelSources()
     const declarados = MIRRORS.filter((name) =>
@@ -143,6 +145,26 @@ describe("o painel lê o schema", () => {
     for (const kind of ["list:text", "list:markdown"]) {
       expect(fieldInput).toContain(`spec.kind === "${kind}"`)
     }
+  })
+
+  it("o campo de destino desenha a lista do payload (`destinations`)", () => {
+    // A lista **não** pode morar no painel — é o espelho que a suíte proíbe
+    // (`MIRRORS`): ela chega pelo `schema`, e o `HrefInput` a percorre. Sem a
+    // leitura, o campo `href` volta a ser caixa de texto livre, que é
+    // exatamente a causa-raiz do doc 13 (nove botões em `/store` porque não
+    // havia alternativa no painel).
+    expect(page).toContain("destinations")
+    expect(fieldInput).toContain("destinations")
+    expect(hrefInput).toContain("destinations")
+    expect(hrefInput).toContain("<datalist")
+  })
+
+  it("o campo de destino tem ramo próprio — na seção e dentro do item", () => {
+    // O `tsc` não distingue um `kind` do outro: `text` e `href` compilam os
+    // dois. Sem o ramo da seção, o `ctaHref` continua caixa de texto; sem o do
+    // item, o link do rodapé também — e é lá que estão os seis links do padrão.
+    expect(fieldInput).toContain('spec.kind === "href"')
+    expect(fieldInput).toContain('nested === "href"')
   })
 
   it("o seletor de superfície e o diálogo saem do schema", () => {
