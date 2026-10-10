@@ -4,19 +4,10 @@ import {
   DEFAULT_HOME_SECTIONS,
   type HomeSection,
 } from "@lib/content/home-sections"
-import { appearanceVars } from "@lib/content/appearance"
 import { getHomeSections } from "@lib/data/content"
 import { getRegion } from "@lib/data/regions"
-import BenefitsBar from "@modules/home/components/benefits-bar"
-import CollectionHighlights from "@modules/home/components/collection-highlights"
-import EditorialBanner from "@modules/home/components/editorial-banner"
-import EditorialCallout from "@modules/home/components/editorial-callout"
-import FeaturedProducts from "@modules/home/components/featured-products"
-import Hero from "@modules/home/components/hero"
-import InstagramGrid from "@modules/home/components/instagram-grid"
-import LaunchesRail from "@modules/home/components/launches-rail"
+import { ContentSectionList } from "@modules/content/render-section"
 import { HttpTypes } from "@medusajs/types"
-import { type ReactNode } from "react"
 
 export const metadata: Metadata = {
   title: "A alfaiataria que valoriza você, não o seu status",
@@ -26,18 +17,21 @@ export const metadata: Metadata = {
 
 /**
  * Home is rendered from the content payload, not from hard-coded JSX:
- * `getHomeSections()` returns an ordered list of typed sections and this
- * page maps each one to its component.
+ * `getHomeSections()` returns an ordered list of typed sections and
+ * `ContentSectionList` maps each one to its component.
  *
  * That indirection is the point of the CMS phase — when `/store/content`
  * starts returning admin-managed blocks, this file does not change at
  * all. `DEFAULT_HOME_SECTIONS` guarantees the storefront renders today,
  * before that endpoint exists.
  *
- * Each rendered section is also wrapped in an element carrying the
- * section `id`: that id is the scroll anchor the header menu points at
- * (`/#editorial` is the "Sobre" item), so the wrapper has to exist for
- * every section — see `renderSection`.
+ * O `switch` de tipo → componente **saiu daqui** na F1 do doc 14: ele agora mora
+ * em `@modules/content/render-section`, porque a mesma lista passou a ser
+ * desenhada também pela rota `[slug]` (as páginas do CMS). Um registro copiado
+ * nas duas pontas seria a lista de tipos com duas opiniões — o tipo renderizado
+ * numa e não na outra só apareceria como HTTP 500 na página inteira. O **HTML
+ * desta home não mudou**: o registro é o mesmo `switch`, com o mesmo embrulho de
+ * âncora (`id` da seção + `rv-anchor` + variáveis de aparência).
  *
  * Only `hero`, `featured` and `launches` need commerce data (the current
  * region), which is why a missing region degrades those three sections
@@ -81,119 +75,10 @@ export default async function Home(props: {
   const selectedFilter = Array.isArray(rawFilter) ? rawFilter[0] : rawFilter
 
   return (
-    <>
-      {sections.map((section) => {
-        const body = renderSection(section, region, selectedFilter)
-
-        // Seção sem corpo (chrome do site, ou `featured` sem região) não
-        // vira âncora vazia no meio da página.
-        if (!body) {
-          return null
-        }
-
-        // O `id` da seção no CMS **é** a âncora do menu: o `/#editorial`
-        // do item "Sobre", por exemplo, é resolvido por
-        // `getElementById("editorial")`. Fica aqui, e não em cada
-        // componente, para que toda seção — inclusive as que ainda não
-        // existem — seja um alvo válido sem depender de alguém lembrar de
-        // repetir o id no JSX. `.rv-anchor` (brand.css) compensa o
-        // cabeçalho fixo.
-        //
-        // O mesmo wrapper é quem carrega as variáveis de aparência da
-        // seção (`appearanceVars`): como toda seção passa por aqui, um
-        // campo de aparência novo não precisa ser ligado componente por
-        // componente — quem lê as variáveis são as classes `.rv-section-*`
-        // do `brand.css`. Seção sem nenhuma escolha sai com o `style`
-        // vazio, ou seja, com o HTML de antes.
-        return (
-          <div
-            key={section.id}
-            id={section.id}
-            className="rv-anchor rv-section"
-            style={appearanceVars(section)}
-          >
-            {body}
-          </div>
-        )
-      })}
-    </>
-  )
-}
-
-/**
- * The registry. Switching on `section.type` gives real exhaustiveness:
- * `assertNever` stops compiling if a member is added to the
- * `HomeSection` union and not handled here.
- *
- * `announcement` e `nav` viajam no mesmo payload, mas não são seções da
- * home: são chrome do site, resolvidos pelo layout (barra superior e
- * cabeçalho). Por isso os dois caem em `null` aqui — devolver os dois
- * duplicaria a barra e o cabeçalho no corpo da página.
- *
- * Devolve `null` (em vez de JSX) para que o chamador consiga distinguir
- * "nada a renderizar" de "seção renderizada" e só embrulhar a segunda na
- * âncora.
- */
-function renderSection(
-  section: HomeSection,
-  region: HttpTypes.StoreRegion | null,
-  selectedFilter?: string
-): ReactNode {
-  switch (section.type) {
-    case "announcement":
-      // Rendered by the layout as site chrome, so it is skipped here to
-      // avoid duplicating the bar on the page.
-      return null
-    case "nav":
-      // Mesmo caso da barra de anúncio: o layout resolve o cabeçalho via
-      // `headerSections()` e o desenha fora da página.
-      return null
-    case "footer":
-      // E o rodapé, via `footerSections()`. Os três são chrome do site,
-      // não seção da home.
-      return null
-    case "hero":
-      return <Hero section={section} />
-    case "launches":
-      // Como o `featured`: sem região não há preço, e um trilho de cards sem
-      // preço é pior do que nenhum trilho. A seção some, a home fica de pé.
-      if (!region) {
-        return null
-      }
-      return <LaunchesRail section={section} region={region} />
-    case "benefits":
-      return <BenefitsBar items={section.items} />
-    case "collections":
-      return <CollectionHighlights section={section} />
-    case "featured":
-      if (!region) {
-        return null
-      }
-      return (
-        <FeaturedProducts
-          section={section}
-          region={region}
-          selectedFilter={selectedFilter}
-        />
-      )
-    case "editorial":
-      return <EditorialBanner section={section} />
-    case "banner":
-      // A faixa editorial: a última faixa de conteúdo da home, depois do
-      // manifesto. Não depende de região nem de catálogo — é foto, cópia e um
-      // botão para `/store`, então nunca degrada por falta de dado.
-      return <EditorialCallout section={section} />
-    case "instagram":
-      return <InstagramGrid section={section} />
-    default:
-      return assertNever(section)
-  }
-}
-
-function assertNever(value: never): never {
-  throw new Error(
-    `Seção de home não suportada: ${JSON.stringify(
-      (value as { type?: string })?.type
-    )}`
+    <ContentSectionList
+      sections={sections}
+      region={region}
+      selectedFilter={selectedFilter}
+    />
   )
 }

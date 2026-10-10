@@ -286,12 +286,15 @@ describe("resolveSectionId", () => {
 /**
  * A superfície de cada bloco.
  *
- * A `surface` é a coluna que separa a vitrine do tema, e quem a decide é a API
- * — não o corpo. Um `theme` gravado em `home` chegaria ao render da vitrine como
- * tipo desconhecido (a loja descarta e loga) e a estação sumiria; um `hero`
- * gravado em `theme` seria uma linha que nenhum render daquela superfície lê. Os
- * dois casos são lixo silencioso, e é por isso que a regra está aqui, com teste
- * próprio, em vez de espalhada em `if` na rota.
+ * A `surface` é a coluna que separa a vitrine, o tema e **cada página** (F1 do
+ * doc 14), e quem a decide é a API — não o corpo. Um `theme` gravado em `home`
+ * chegaria ao render da vitrine como tipo desconhecido (a loja descarta e loga) e
+ * a estação sumiria; um `hero` gravado em `theme` seria uma linha que nenhum
+ * render daquela superfície lê; e um `hero` gravado numa **página** seria um
+ * bloco que só existe na vitrine, com casa ancorada própria. Os três casos são
+ * lixo silencioso, e é por isso que a regra está aqui, com teste próprio, em vez
+ * de espalhada em `if` na rota — são dois defeitos do doc 14 (o 2 e o 3) que não
+ * quebram nada e que o CRM mostraria como sucesso.
  */
 describe("resolveSurface", () => {
   it("o bloco de tema nasce na superfície `theme`, mesmo sem o corpo dizer", () => {
@@ -317,6 +320,43 @@ describe("resolveSurface", () => {
     // POST cai no `home`, que é o default do modelo).
     expect(resolveSurface("", "hero")).toEqual({})
     expect(resolveSurface(undefined, "hero")).toEqual({})
+  })
+
+  it("superfície que ninguém declarou é recusada, com a lista na mensagem", () => {
+    // O typo de sempre (`?surface=sobreo`): antes era gravado numa linha que a
+    // loja nunca lê, e a leitura pública devolvia 200 com lista vazia.
+    const { error } = resolveSurface("sobreo", "editorial")
+
+    expect(error).toContain("sobreo")
+    // A mensagem ensina quais existem — é o que faz o próximo erro ser evitado.
+    expect(error).toContain("sobre")
+    expect(error).toContain("home")
+  })
+
+  it("um bloco de página é aceito numa página, e a superfície volta no retorno", () => {
+    expect(resolveSurface("sobre", "editorial")).toEqual({ surface: "sobre" })
+    expect(resolveSurface("trocas-e-devolucoes", "banner")).toEqual({
+      surface: "trocas-e-devolucoes",
+    })
+  })
+
+  it("o bloco único da vitrine não entra numa página (defeito 2)", () => {
+    // `hero` e `benefits` moram em casa ancorada; `announcement`, `nav` e
+    // `footer` são o cromo, que o layout resolve por `find` na superfície
+    // `home`. Numa página, os cinco seriam linhas que o CRM lista e a loja
+    // **nunca** desenha.
+    for (const type of ["hero", "benefits", "announcement", "nav", "footer"]) {
+      const { error } = resolveSurface("sobre", type)
+
+      expect(error).toContain(type)
+      expect(error).toContain("vitrine")
+    }
+  })
+
+  it("o tema continua recusando uma superfície de página", () => {
+    expect(resolveSurface("sobre", THEME_TYPE)).toEqual({
+      surface: THEME_SURFACE,
+    })
   })
 })
 

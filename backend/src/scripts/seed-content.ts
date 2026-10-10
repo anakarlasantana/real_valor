@@ -2,7 +2,7 @@ import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { CONTENT_MODULE } from "../modules/content"
-import { THEME_SURFACE } from "../modules/content/contract"
+import { PAGE_SURFACES, THEME_SURFACE } from "../modules/content/contract"
 import type { QueryGraph, RemoteLink } from "../modules/content/curation"
 import { retireTextFilters } from "../modules/content/filters"
 import { restoreDefaultSections } from "../modules/content/restore"
@@ -16,11 +16,14 @@ import { scriptFlags } from "./flags"
  *   ./node_modules/.bin/medusa exec ./src/scripts/seed-content.ts
  *   yarn seed-content        (o `make seed` também o chama)
  *
- * Popula as **duas** superfícies de conteúdo: a vitrine (`home`, as seções do
- * protótipo) e o tema (`theme`, as estações — a mesma lista que o gerador
- * escreve em `frontend/themes/<id>/theme.json`). As duas passam pela mesma
- * regra (`restoreDefaultSections`, em `modules/content/restore.ts`), porque as
- * duas são `content_section`: o que muda entre elas é só a lista de padrão.
+ * Popula as superfícies de conteúdo: a vitrine (`home`, as seções do
+ * protótipo), o tema (`theme`, as estações — a mesma lista que o gerador escreve
+ * em `frontend/themes/<id>/theme.json`) e **cada página declarada**
+ * (`PAGE_SURFACES`: `/sobre`, `/trocas-e-devolucoes`, …). Todas passam pela
+ * mesma regra (`restoreDefaultSections`, em `modules/content/restore.ts`),
+ * porque todas são `content_section`: o que muda entre elas é só a lista de
+ * padrão — e a das páginas é vazia hoje, de propósito, porque a copy de uma
+ * página institucional é do negócio e não do seed.
  *
  * Cria apenas as seções que ainda não existem (comparando por `id`) e não
  * encosta no que o admin já editou. **A regra é a mesma que o botão "Restaurar
@@ -44,13 +47,25 @@ export default async function seedContent({
   ) as RemoteLink
   const force = scriptFlags(args).includes("--force")
 
-  // As **duas** superfícies de conteúdo. A lista é explícita (e não
-  // `CONTENT_SURFACES`) porque o que cada uma repõe é decidido por
-  // `defaultsFor` (`modules/content/restore.ts`): uma superfície nova no
-  // contrato precisa do padrão dela declarado lá antes de entrar aqui — sem
-  // isso o `make seed` criaria o conteúdo da vitrine debaixo da superfície
-  // nova, que é o defeito que o `defaultsFor` documenta.
-  for (const surface of ["home", THEME_SURFACE]) {
+  // As superfícies de conteúdo: a vitrine, o tema e **cada página declarada**
+  // (F1 do doc 14).
+  //
+  // A vitrine e o tema são explícitos porque o que cada um repõe é decidido por
+  // `defaultsFor` (`modules/content/restore.ts`): eles precisam do padrão
+  // declarado lá antes de entrar aqui — sem isso o `make seed` criaria o
+  // conteúdo da vitrine debaixo de uma superfície que não o desenha, que é o
+  // defeito que o `defaultsFor` documenta.
+  //
+  // As páginas entram pela lista **derivada** do contrato (`PAGE_SURFACES`): uma
+  // página nova passa a nascer semeada sem que este arquivo seja editado. O
+  // padrão dela (hoje vazio, de propósito — a copy das páginas é do negócio) sai
+  // do mesmo `defaultsFor`, então "Restaurar padrão" e o seed continuam sendo a
+  // mesma resposta para a mesma pergunta.
+  for (const surface of [
+    "home",
+    THEME_SURFACE,
+    ...PAGE_SURFACES.map((page) => page.id),
+  ]) {
     if (force) {
       const existing = await service.listContentSections({ surface })
 

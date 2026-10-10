@@ -356,7 +356,8 @@ link no rodapé.
 **O link do rodapé (pendência fechada em 10/02/2026).** A rota existia, mas **ninguém conseguia chegar
 até ela** — uma tela que não se alcança não serve para nada, e "onde está o meu pedido" é justamente o
 que a cliente procura depois da confirmação. O link foi para a coluna **"Ajuda"** em
-`DEFAULT_HOME_SECTIONS` (`packages/contrato/src/defaults.ts`).
+`DEFAULT_HOME_SECTIONS` (`packages/contrato/src/defaults.ts`) — coluna que o PR2 do doc 14 substituiu por
+**"Atendimento"**, onde o mesmo link seguiu (14.16 do doc 14).
 
 O lugar certo **não** era o JSX do rodapé: as colunas são conteúdo editável pelo admin, e escrever o
 link em JSX faria a loja precisar de deploy para renomear ou remover um link do próprio rodapé. Como

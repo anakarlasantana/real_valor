@@ -30,7 +30,14 @@
  * quem o passa: é o registro que diz o que o CRM pode gravar, e o `contract.ts`
  * só entra por baixo, quando o registro não existe.
  */
-import { THEME_SURFACE, THEME_TYPE, type FieldKind } from "./contract"
+import {
+  CONTENT_SURFACES,
+  THEME_SURFACE,
+  THEME_TYPE,
+  isSingletonSectionType,
+  type ContentSurfaceSpec,
+  type FieldKind,
+} from "./contract"
 import type { ContentSchemaPayload } from "./schema"
 
 /**
@@ -209,23 +216,45 @@ export function isKnownType(
 /**
  * Amarra a `surface` ao `type` do bloco, no lugar do lojista.
  *
- * Cada superfície tem um só tipo de conteúdo: a `home` guarda seções, a
- * `theme` guarda a paleta. Um `hero` na `theme` não seria lido por ninguém (a
- * loja lê aquela superfície esperando estação) e um `theme` na `home` chegaria
- * ao render da vitrine como tipo desconhecido — então a API recusa a
- * combinação em vez de gravar dado que some na tela. O bloco de tema, por sua
- * vez, nasce na superfície dele mesmo que o corpo não a mencione: quem manda é
- * a API, não o cliente.
+ * Cada superfície tem os tipos que ela sabe desenhar: a `home` guarda as seções
+ * da vitrine (inclusive o cromo e a capa), uma **página** guarda os blocos de
+ * página (`PAGE_SECTION_TYPES`, no contrato) e a superfície de tema guarda a
+ * paleta. Um bloco fora dessa lista não seria lido por ninguém — a loja lê
+ * aquela superfície esperando outras coisas —, então a API recusa a combinação
+ * em vez de gravar dado que some na tela. O bloco de tema, por sua vez, nasce na
+ * superfície dele mesmo que o corpo não a mencione: quem manda é a API, não o
+ * cliente.
+ *
+ * Três defeitos do doc 14 são fechados aqui, e todos os três eram silenciosos:
+ *
+ *   1. **superfície inexistente** — a função aceitava qualquer string, então um
+ *      `surface` com typo (`?surface=sobreo`, o filho do `/stroe` do doc 13)
+ *      gravava uma linha numa superfície que a loja nunca lê: um bloco que
+ *      aparece no CRM e em lugar nenhum. Agora é 400, com a lista das
+ *      declaradas na mensagem;
+ *   2. **bloco único numa página** — `hero`, `benefits`, `announcement`, `nav` e
+ *      `footer` só existem na vitrine: os três últimos porque o layout os
+ *      resolve por `find` (uma segunda barra de anúncio nunca seria desenhada),
+ *      e os dois primeiros porque moram em **casa ancorada**
+ *      (`FIXED_SECTION_POSITIONS`). Sem esta regra, o CRM mostraria o bloco e a
+ *      loja não o desenharia;
+ *   3. **unicidade por superfície, não por site** — era o que
+ *      `SINGLETON_SECTION_TYPES` prometia sozinho ("uma vez por superfície"),
+ *      o que deixava `hero` numa página passar na validação. A regra agora é a
+ *      lista de tipos **da superfície**, e ela vale para as duas portas.
  *
  * Pura de propósito, e fora da rota: são **duas** portas que gravam superfície
- * (`POST` e `PATCH`) e o teste da regra não precisa de request nem container.
+ * (`POST` e `PATCH`) e o teste da regra não precisa de request nem container. A
+ * lista de superfícies entra como parâmetro para o teste poder exercitar o
+ * caso de uma superfície nova sem tocar no contrato.
  *
  * @returns `{ surface }` quando há o que gravar (ausente em `PATCH` que não
  *          tocou na coluna), `{ error }` quando a combinação é inválida.
  */
 export function resolveSurface(
   sent: unknown,
-  type: string
+  type: string,
+  surfaces: readonly ContentSurfaceSpec[] = CONTENT_SURFACES
 ): { surface?: string; error?: string } {
   if (type === THEME_TYPE) {
     return { surface: THEME_SURFACE }
@@ -241,6 +270,46 @@ export function resolveSurface(
     }
   }
 
-  return surface ? { surface } : {}
+  // Ausente é "não mexe" (o `PATCH` de um texto não reescreve a coluna); o
+  // `POST` cai no default do modelo (`home`), que é quem aceita todos os tipos.
+  if (surface === undefined) {
+    return {}
+  }
+
+  const spec = surfaces.find((candidate) => candidate.id === surface)
+
+  if (!spec) {
+    return { error: unknownSurfaceError(surface, surfaces) }
+  }
+
+  if (!spec.types.includes(type)) {
+    return {
+      error: isSingletonSectionType(type)
+        ? `O tipo "${type}" é único da vitrine: ele mora numa casa fixa (ou é ` +
+          `o cromo do site, que o layout resolve por tipo), e a loja não o ` +
+          `desenharia numa página. Ele não existe em "${surface}".`
+        : `A superfície "${surface}" não aceita blocos do tipo "${type}".`,
+    }
+  }
+
+  return { surface }
 }
+
+/**
+ * A mensagem do 400 de superfície desconhecida — uma só, para as duas portas.
+ *
+ * Escrevê-la duas vezes (aqui e na leitura pública, `GET /store/content`) é o
+ * começo de duas listas de superfícies que divergem em silêncio: uma recusaria
+ * uma superfície que a outra aceita, e a diferença só apareceria na loja.
+ */
+export function unknownSurfaceError(
+  surface: unknown,
+  surfaces: readonly ContentSurfaceSpec[] = CONTENT_SURFACES
+): string {
+  return (
+    `Superfície de conteúdo desconhecida: "${String(surface)}". ` +
+    `As declaradas são: ${surfaces.map((candidate) => candidate.id).join(", ")}.`
+  )
+}
+
 

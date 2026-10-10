@@ -276,16 +276,28 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
    * O fallback do storefront (`DEFAULT_FOOTER`) é derivado deste bloco pelo
    * gerador — não há segunda cópia.
    *
-   * `columns` quase nasce vazia: coluna é conteúdo, e o lojista insere,
-   * edita, reordena e remove todas pelo mesmo editor do admin — digitando
-   * os links ou apontando a coluna para o catálogo (`source`).
+   * `columns` nasce com as **duas colunas da referência** —
+   * "Institucional" e "Atendimento" —, e cada link delas é uma porta para uma
+   * **página declarada** (`PAGE_SURFACES`): o `href` é o `id` da superfície, e
+   * quem prefixa o país é o `nav-link`. Foi o PR1 do doc 14 que deu destino a
+   * estas colunas; antes dele, "Institucional" seria um título prometendo o que
+   * não existia — o defeito que o doc 13 mediu ("promessa no ar sem página que a
+   * sustente").
    *
-   * A **única** coluna que vem de fábrica é "Ajuda", com o link de
-   * rastreio. A página `/rastreio` (RV-044) existe e funciona, mas uma tela
-   * que ninguém consegue achar não serve para nada: o rodapé é o lugar onde
-   * uma cliente procura "onde está o meu pedido" depois de receber a
-   * confirmação. Fica como conteúdo — e não como JSX no componente — para
-   * que a loja possa renomear, mover ou apagar sem deploy.
+   * ⚠️ **A régua de publicação: um link só vai ao ar quando o destino responde
+   * 200.** Dois dos oito respondem sem depender de copy — `/rastreio` (RV-044) e
+   * o `mailto:` que o menu já publica —; os seis de página (`/sobre`,
+   * `/trocas-e-devolucoes`, `/privacidade`, `/termos`, `/contato`,
+   * `/perguntas-frequentes`) respondem **404 enquanto a página estiver vazia**
+   * (decisão 7). O padrão é o **molde de lançamento**: ele traz as colunas
+   * inteiras, e ativá-las sem a copy trocaria "o link não existe" por "o link
+   * está quebrado".
+   *
+   * A coluna continua sendo conteúdo: o lojista insere, edita, reordena e
+   * remove todas pelo mesmo editor do admin — digitando os links ou apontando a
+   * coluna para o catálogo (`source`). O que o padrão entrega é o **nome** das
+   * colunas e o destino certo já apontado (/rastreio, /sobre, …), para o
+   * rodapé não depender de alguém lembrar da URL.
    */
   {
     id: "footer",
@@ -294,12 +306,46 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     position: 10,
     columns: [
       {
-        title: "Ajuda",
+        title: "Institucional",
         source: "links",
         links: [
           {
+            label: "Sobre",
+            href: "/sobre",
+          },
+          {
+            label: "Trocas e devoluções",
+            href: "/trocas-e-devolucoes",
+          },
+          {
+            label: "Privacidade",
+            href: "/privacidade",
+          },
+          {
+            label: "Termos de uso",
+            href: "/termos",
+          },
+        ],
+      },
+      {
+        title: "Atendimento",
+        source: "links",
+        links: [
+          {
+            label: "Contato",
+            href: "/contato",
+          },
+          {
+            label: "Perguntas frequentes",
+            href: "/perguntas-frequentes",
+          },
+          {
             label: "Acompanhar pedido",
             href: "/rastreio",
+          },
+          {
+            label: "contato@realvalor.com.br",
+            href: "mailto:contato@realvalor.com.br",
           },
         ],
       },
@@ -421,4 +467,49 @@ export const DEFAULT_HEADER = defaultSection("nav")
 
 /** Rodapé padrão (bloco `footer`) — idem. */
 export const DEFAULT_FOOTER = defaultSection("footer")
+
+/**
+ * O conteúdo padrão de cada **página** — e por que ele está vazio.
+ * -------------------------------------------------------------------------
+ * A chave é o `id` da superfície (`PAGE_SURFACES`, no contrato) e o valor é a
+ * lista de blocos que "Restaurar padrão" e o `make seed` criam naquela página.
+ *
+ * **Vazio é o valor deliberado, não um TODO esquecido.** Duas razões:
+ *
+ *   1. **A copy é do negócio, não do seed.** O que uma página institucional
+ *      promete (prazo de troca, política de dados, horário de atendimento) é
+ *      compromisso da loja com a cliente, e o seed não pode inventá-lo — é a
+ *      mesma regra que fez o padrão da barra de anúncio não prometer frete
+ *      grátis (`DEFAULT_HOME_SECTIONS`). Quem escreve a página é o lojista, no
+ *      CRM, com o bloco que já existe (`editorial`, `banner`).
+ *   2. **A página vazia responde 404, e isso é o estado honesto.** Um endereço
+ *      que abre com texto de exemplo é pior do que um endereço que ainda não
+ *      existe: o segundo some do índice sozinho, o primeiro anuncia uma página
+ *      que a loja não escreveu. É a regra do defeito 4 do doc 14 — vazio em
+ *      página é `notFound()`, **nunca** o fallback da vitrine.
+ *
+ * O que **não** é vazio é o mapa: toda página declarada tem a sua entrada (a
+ * guarda de paridade cobra isso). É a entrada que faz `defaultsFor` responder
+ * "esta página não tem padrão" em vez de cair no `DEFAULT_HOME_SECTIONS` — o
+ * defeito 1 do doc 14, em que clicar em "Restaurar padrão" na aba de `/trocas`
+ * criava a vitrine **inteira** dentro da página de trocas (barra de anúncio,
+ * cabeçalho, capa e rodapé) e o painel dizia que tinha dado certo.
+ *
+ * Quando a copy existir, ela entra **aqui** e o botão passa a repor conteúdo
+ * real; até então, o que ele repõe é a ausência, que é a verdade.
+ */
+export const DEFAULT_PAGE_SECTIONS: Record<string, HomeSection[]> = {
+  /** `/sobre` — a história da marca: um `editorial` responde pela página. */
+  sobre: [],
+  /** `/trocas-e-devolucoes` — a política de troca e devolução. */
+  "trocas-e-devolucoes": [],
+  /** `/privacidade` — a política de privacidade que a LGPD pede. */
+  privacidade: [],
+  /** `/termos` — os termos de uso. */
+  termos: [],
+  /** `/contato` — os canais de atendimento (telefone, e-mail, WhatsApp). */
+  contato: [],
+  /** `/perguntas-frequentes` — hoje texto; o bloco de Q&A é da F2. */
+  "perguntas-frequentes": [],
+}
 

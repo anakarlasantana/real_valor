@@ -136,6 +136,16 @@ describe("o registro do schema, do lado do seed", () => {
     expect(seedContent).not.toMatch(/\(args \?\? \[\]\)\.includes\(/)
   })
 
+  it("o seed de conteúdo semeia toda página declarada", () => {
+    // As páginas entram pela lista **do contrato** (`PAGE_SURFACES`), e não por
+    // uma segunda lista digitada no script: uma página nova passaria a existir no
+    // contrato e no CRM e **não** numa base nova — que é a linha "o loop do seed"
+    // da tabela da superfície nova (14.10 do doc 14). O `...` é o que garante que
+    // a lista está **dentro** do loop, e não só citada.
+    expect(seedContent).toContain("PAGE_SURFACES")
+    expect(seedContent).toMatch(/\.\.\.PAGE_SURFACES/)
+  })
+
   it("o serviço delega a decisão registro × bootstrap a `resolveSchema`", () => {
     expect(service).toContain("resolveSchema")
   })

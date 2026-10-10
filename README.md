@@ -300,6 +300,9 @@ junto (`admin/`, `COPY admin/ /app/admin`) e o storefront leva o pacote do contr
 | [`docs/real-valor/09-backlog-implementacao.md`](docs/real-valor/09-backlog-implementacao.md) | 45 itens em 5 fases, com dependências e pré-requisitos |
 | [`docs/real-valor/10-roadmap.md`](docs/real-valor/10-roadmap.md) | ordem de implementação, tradução da marca e resumo executivo |
 | [`docs/real-valor/11-ambiente-local.md`](docs/real-valor/11-ambiente-local.md) | **armadilhas do ambiente local:** install parcial, `NODE_ENV` no build, o que o vitest precisa |
+| [`docs/real-valor/12-script-enriquecimento-catalogo.md`](docs/real-valor/12-script-enriquecimento-catalogo.md) | roteiro de execução: catálogo pelo admin, card de exposição e página de produto |
+| [`docs/real-valor/13-mapa-de-botoes-da-home.md`](docs/real-valor/13-mapa-de-botoes-da-home.md) | **cada botão da home, aonde leva e onde ele é configurado** — o mapa dos nove `/store` |
+| [`docs/real-valor/14-paginas-de-conteudo-no-cms.md`](docs/real-valor/14-paginas-de-conteudo-no-cms.md) | **páginas institucionais editáveis no CMS:** diagnóstico, três estratégias e o plano F1/F2/F3 |
 
 > ⚠️ **Antes de rodar build ou testes na máquina:** leia
 > [`docs/real-valor/11-ambiente-local.md`](docs/real-valor/11-ambiente-local.md). O sintoma mais

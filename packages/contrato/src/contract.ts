@@ -428,7 +428,7 @@ export const FOOTER_COLUMN_SOURCES = [
 export type FooterColumnSource = (typeof FOOTER_COLUMN_SOURCES)[number]
 
 /**
- * Coluna de links do rodapé (ex.: "Ajuda").
+ * Coluna de links do rodapé (ex.: "Institucional").
  *
  * Coluna é sempre conteúdo: não existe coluna fixa nem automática no
  * componente, e o lojista insere, edita, reordena e remove **todas** pelo
@@ -1629,6 +1629,28 @@ export const THEME_TYPE = "theme"
 export const THEME_TYPE_LABEL = "Tema da loja"
 
 /**
+ * O que uma **página** pode receber: os blocos da home **menos** o cromo e a
+ * abertura.
+ *
+ * Campo derivado, e não digitado: é a fatia de `SECTION_TYPES` que não é única
+ * (`isSingletonSectionType`). Os cinco que ficam de fora são os que só existem
+ * na vitrine — `announcement`, `nav` e `footer` porque o layout os resolve por
+ * `find` na superfície `home` (uma segunda barra de anúncio numa página nunca
+ * seria desenhada por ninguém), e `hero` e `benefits` porque moram em **casa
+ * ancorada** (`FIXED_SECTION_POSITIONS`), que é uma numeração da vitrine.
+ *
+ * A lista sai daqui — e não de um `filter` no painel, nem de uma segunda lista
+ * escrita no backend — porque três coisas dependem dela e todas as três a leem
+ * do mesmo lugar: o que a aba da página oferece no CRM (`types` da superfície,
+ * no `schema`), o que a API aceita gravar numa página (`resolveSurface`) e a
+ * conferência de que uma superfície de página **não tem casa reservada**
+ * (`reservedPositions`, que lê os `types` da superfície).
+ */
+export const PAGE_SECTION_TYPES: readonly SectionType[] = SECTION_TYPES.filter(
+  (type) => !isSingletonSectionType(type)
+)
+
+/**
  * Como uma superfície se descreve para o CRM.
  *
  * Tudo é **dado**, e não um `if (surface === "theme")` no painel: uma
@@ -1657,6 +1679,23 @@ export const THEME_TYPE_LABEL = "Tema da loja"
  */
 export type ContentSurfaceSpec = {
   id: string
+  /**
+   * O que a superfície **é**.
+   *
+   * Até a F1 existiam duas superfícies e cada uma se explicava pelo `id`: a
+   * `home` era a vitrine e a `theme` era o tema. Uma **página** (`sobre`,
+   * `trocas-e-devolucoes`…) não é nenhuma das duas, e precisava de nome.
+   *
+   * É dado porque três regras dependem dele, e nenhuma delas quer uma lista de
+   * `id` escrita à mão: quais superfícies têm **rota** na loja (`page` — a rota
+   * `[slug]` e o `sitemap` leem `PAGE_SURFACES`), o que o "Restaurar padrão"
+   * repõe (`defaultsFor`, em `restore.ts`: a página repõe o padrão dela, nunca a
+   * vitrine) e onde o bloco único do site pode existir (`home`/`theme` — em
+   * página nenhuma, porque lá ele não seria desenhado). Sem o campo, cada uma
+   * dessas três regras teria a própria cópia da lista de páginas, e um `id` novo
+   * ficaria de fora de uma delas em silêncio.
+   */
+  kind: "home" | "theme" | "page"
   label: string
   titleField: string | null
   enabledLabel: string
@@ -1686,6 +1725,7 @@ export type ContentSurfaceSpec = {
 export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
   {
     id: "home",
+    kind: "home",
     label: "Conteúdo da vitrine",
     titleField: null,
     enabledLabel: "Visível na loja",
@@ -1705,6 +1745,7 @@ export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
   },
   {
     id: THEME_SURFACE,
+    kind: "theme",
     label: THEME_TYPE_LABEL,
     titleField: "label",
     enabledLabel: "Estação no ar",
@@ -1717,7 +1758,155 @@ export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
     types: [THEME_TYPE],
     order: { first: 10, step: 10 },
   },
+  // ---------------------------------------------------------------------------
+  // As páginas (a F1 do doc 14). A chave (`id`) **é o slug**: é ela que a rota
+  // `(main)/[slug]/page.tsx` casa e que o `sitemap` publica, então renomear uma
+  // página aqui renomeia a URL dela — e URL de página institucional é
+  // permanente. O `label` é o que a aba do CRM mostra.
+  //
+  // `titleField: null` porque uma página não tem um campo que lhe dê nome (ao
+  // contrário da estação, que se chama pelo que o dono escreveu): a linha da
+  // lista se chama pelo tipo do bloco ("Sobre", "Banner editorial"), como na
+  // vitrine.
+  //
+  // `types: PAGE_SECTION_TYPES` fecha o defeito 2 do doc 14 pelo lado do painel:
+  // a lista não traz `hero`, `benefits`, `announcement`, `nav` nem `footer`,
+  // então a aba da página **não oferece** um bloco que a loja nunca desenharia
+  // ali. Quem recusa o corpo que insistir é a API (`resolveSurface`).
+  //
+  // `order.first` é **1**, e não o 5 da vitrine: a página não tem bloco ancorado
+  // nenhum (nenhum tipo único entre os `types` dela, então `reservedPositions`
+  // devolve vazio), logo a primeira casa livre é a primeira. Copiar o 5 faria a
+  // primeira linha da página nascer numerada como se quatro blocos existissem
+  // antes dela — e o numeral é o que o lojista lê na tela.
+  //
+  // A ordem da lista é a da fila do negócio (14.3): o que já tem quem peça,
+  // primeiro. `perguntas-frequentes` é a última porque depende do bloco de Q&A
+  // (F2); até lá ela é uma página de texto, montada com `editorial`.
+  // ---------------------------------------------------------------------------
+  {
+    id: "sobre",
+    kind: "page",
+    label: "Sobre",
+    titleField: null,
+    enabledLabel: "Publicada",
+    blockLabel: "seção",
+    hint:
+      "Esta página monta o /sobre — a história da marca, em texto, foto e " +
+      "botão. Sem nenhuma seção publicada, o endereço responde 404; a página " +
+      "nunca cai na vitrine.",
+    types: PAGE_SECTION_TYPES,
+    order: { first: 1, step: 1 },
+  },
+  {
+    id: "trocas-e-devolucoes",
+    kind: "page",
+    label: "Trocas e devoluções",
+    titleField: null,
+    enabledLabel: "Publicada",
+    blockLabel: "seção",
+    hint:
+      "Esta página monta o /trocas-e-devolucoes — a política de troca e " +
+      "devolução, que é o que a coluna Institucional do rodapé promete. Sem " +
+      "nenhuma seção publicada, o endereço responde 404.",
+    types: PAGE_SECTION_TYPES,
+    order: { first: 1, step: 1 },
+  },
+  {
+    id: "privacidade",
+    kind: "page",
+    label: "Privacidade",
+    titleField: null,
+    enabledLabel: "Publicada",
+    blockLabel: "seção",
+    hint:
+      "Esta página monta o /privacidade — a política de privacidade (LGPD) " +
+      "que o link de consentimento do checkout promete. Sem nenhuma seção " +
+      "publicada, o endereço responde 404.",
+    types: PAGE_SECTION_TYPES,
+    order: { first: 1, step: 1 },
+  },
+  {
+    id: "termos",
+    kind: "page",
+    label: "Termos de uso",
+    titleField: null,
+    enabledLabel: "Publicada",
+    blockLabel: "seção",
+    hint:
+      "Esta página monta o /termos — os termos de uso, irmãos do link de " +
+      "consentimento. Sem nenhuma seção publicada, o endereço responde 404.",
+    types: PAGE_SECTION_TYPES,
+    order: { first: 1, step: 1 },
+  },
+  {
+    id: "contato",
+    kind: "page",
+    label: "Contato",
+    titleField: null,
+    enabledLabel: "Publicada",
+    blockLabel: "seção",
+    hint:
+      "Esta página monta o /contato — os canais de atendimento (telefone, " +
+      "e-mail, WhatsApp e horário). Os ícones dela já existem no CRM sem uso. " +
+      "Sem nenhuma seção publicada, o endereço responde 404.",
+    types: PAGE_SECTION_TYPES,
+    order: { first: 1, step: 1 },
+  },
+  {
+    id: "perguntas-frequentes",
+    kind: "page",
+    label: "Perguntas frequentes",
+    titleField: null,
+    enabledLabel: "Publicada",
+    blockLabel: "seção",
+    hint:
+      "Esta página monta o /perguntas-frequentes. Hoje ela é montada com " +
+      "blocos de texto (`editorial`); o bloco de perguntas e respostas é o da " +
+      "fase seguinte. Sem nenhuma seção publicada, o endereço responde 404.",
+    types: PAGE_SECTION_TYPES,
+    order: { first: 1, step: 1 },
+  },
 ]
+
+/**
+ * As páginas declaradas: a fatia de `CONTENT_SURFACES` com `kind: "page"`.
+ *
+ * Derivada, e não digitada — a mesma regra do `PAGE_SECTION_TYPES`, no outro
+ * lado da relação. Quem lê esta lista é quem precisa saber que uma URL
+ * institucional existe: a rota `(main)/[slug]/page.tsx` (o `slug` está aqui, ou
+ * a página é 404), o `sitemap.ts` e o guarda de colisão de slug que a CI roda.
+ * Uma página nova entra no contrato e aparece nos três sem que nenhum deles seja
+ * editado — que é o ponto da F1: declarar, e não desenhar.
+ */
+export const PAGE_SURFACES: readonly ContentSurfaceSpec[] =
+  CONTENT_SURFACES.filter((surface) => surface.kind === "page")
+
+/** A superfície declarada com este `id`, ou `undefined` se ninguém a declarou. */
+export function findSurface(id: unknown): ContentSurfaceSpec | undefined {
+  return typeof id === "string"
+    ? CONTENT_SURFACES.find((surface) => surface.id === id)
+    : undefined
+}
+
+/**
+ * O `id` é uma superfície declarada?
+ *
+ * É a guarda das duas pontas que recebem uma superfície — a leitura pública
+ * (`GET /store/content?surface=`) e a escrita do CRM —, e existe porque as duas
+ * aceitavam **qualquer** string: `?surface=sobreo` respondia 200 com
+ * `{"sections":[]}`, e um typo de instalação de página nova (a mesma família do
+ * `/stroe` do doc 13) sumia sem aviso. Com a lista do contrato, o erro é 400 em
+ * pt-BR.
+ */
+export function isKnownSurface(id: unknown): id is string {
+  return findSurface(id) !== undefined
+}
+
+/** A superfície é uma página? Ver `kind`, no `ContentSurfaceSpec`. */
+export function isPageSurface(id: unknown): boolean {
+  return findSurface(id)?.kind === "page"
+}
 
 /**
  * Todo `type` de conteúdo que o CRM edita: as seções **e** o bloco de tema.

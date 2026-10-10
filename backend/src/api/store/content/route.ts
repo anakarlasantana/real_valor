@@ -3,9 +3,10 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { CONTENT_MODULE } from "../../../modules/content"
 import type ContentModuleService from "../../../modules/content/service"
-import { isSectionType } from "../../../modules/content/contract"
+import { isKnownSurface, isSectionType } from "../../../modules/content/contract"
 import { readChips, withFilters } from "../../../modules/content/filters"
 import { readCuration, withCuration } from "../../../modules/content/curation"
+import { unknownSurfaceError } from "../../../modules/content/validation"
 
 /**
  * GET /store/content
@@ -15,6 +16,13 @@ import { readCuration, withCuration } from "../../../modules/content/curation"
  * Query:
  *   surface — `home` por padrão.
  *   type    — filtra por tipo (opcional). Valor inválido → 400.
+ *
+ * A superfície que o contrato **não declara** é 400, e não mais 200 com a lista
+ * vazia: `?surface=sobreo` (o typo de sempre) devolvia `{"sections":[]}`, que a
+ * loja lê como "esta página está vazia" — um endereço que não existe parecia
+ * existir. Quem sabe quais superfícies existem é o contrato
+ * (`CONTENT_SURFACES`), a mesma lista que a rota do CRM usa para aceitar a
+ * escrita: as duas pontas de uma superfície dizem a mesma coisa.
  *
  * Devolve apenas as seções habilitadas: conteúdo desabilitado não deve
  * nem trafegar até o navegador.
@@ -38,6 +46,14 @@ export async function GET(
     res.status(400).json({
       type: "invalid_data",
       message: `Tipo de seção desconhecido: "${type}".`,
+    })
+    return
+  }
+
+  if (!isKnownSurface(surface)) {
+    res.status(400).json({
+      type: "invalid_data",
+      message: unknownSurfaceError(surface),
     })
     return
   }

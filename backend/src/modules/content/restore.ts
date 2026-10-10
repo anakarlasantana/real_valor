@@ -37,10 +37,11 @@
 import {
   FIXED_SECTION_POSITIONS,
   THEME_SURFACE,
+  findSurface,
   isSingletonSectionType,
 } from "./contract"
 import type { QueryGraph, RemoteLink } from "./curation"
-import { DEFAULT_HOME_SECTIONS } from "./defaults"
+import { DEFAULT_HOME_SECTIONS, DEFAULT_PAGE_SECTIONS } from "./defaults"
 import { hasChips, writeDefaultChips } from "./filters"
 import { DEFAULT_SURFACE, positionAfter } from "./order"
 import type ContentModuleService from "./service"
@@ -73,11 +74,27 @@ export type RestoreResult = {
  * **dentro** da superfície `theme` — blocos que nenhum render daquela
  * superfície lê, e que apareceriam como lixo na lista de estações.
  *
- * Uma superfície desconhecida cai no padrão da vitrine: é o que a rota admin
- * já faz com `?surface=` (o default do modelo é `home`), então um typo numa
- * chamada à mão repõe a vitrine em vez de não fazer nada em silêncio.
+ * Uma **página** repõe `DEFAULT_PAGE_SECTIONS[id]` — que hoje é vazio de
+ * propósito (ver o comentário no contrato), e é o que fecha o **defeito 1 do
+ * doc 14**: antes desta linha, "Restaurar padrão" aberto na aba de `/trocas`
+ * criava a vitrine inteira dentro da página de trocas (anúncio, cabeçalho,
+ * capa, benefícios e rodapé) e o painel anunciava sucesso. Uma página vazia não
+ * repõe nada, e uma página vazia responde 404 — que é a verdade.
+ *
+ * A escolha é pelo `kind` da superfície (`findSurface`), e não por uma lista de
+ * `id` de página escrita aqui: uma página nova no contrato cai no ramo certo sem
+ * que ninguém edite este arquivo.
+ *
+ * Uma superfície desconhecida cai no padrão da vitrine: a API já recusa o
+ * `surface` que não existe (`resolveSurface`), então este ramo é a última
+ * defesa de uma chamada por script — repor a vitrine é melhor do que não fazer
+ * nada em silêncio.
  */
 export function defaultsFor(surface: string): readonly ThemeSection[] {
+  if (findSurface(surface)?.kind === "page") {
+    return DEFAULT_PAGE_SECTIONS[surface] ?? []
+  }
+
   return surface === THEME_SURFACE ? THEME_SECTIONS : DEFAULT_HOME_SECTIONS
 }
 
