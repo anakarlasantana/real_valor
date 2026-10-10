@@ -21,7 +21,7 @@
  */
 import { Button, Input, Label, Text, Textarea } from "@medusajs/ui"
 import { ArrowDownMini, ArrowUpMini } from "@medusajs/icons"
-import type { ReactNode } from "react"
+import { useLayoutEffect, useRef, type ReactNode } from "react"
 
 import {
   ColorPicker,
@@ -32,6 +32,7 @@ import {
 import { parseTextList } from "./form-draft"
 import { ImageInput } from "./image-input"
 import { itemSummary, move } from "./list-order"
+import { markExample, toggleMark, type MarkSelection } from "./markdown-bar"
 
 /**
  * Os tipos do campo vem do **contrato**, não são declarados aqui.
@@ -56,6 +57,7 @@ import type {
   FieldSpec,
   ItemFieldSpec,
   ItemFields,
+  MarkdownMark,
 } from "@conteudo/contract"
 
 export type { FieldKind, FieldSpec, ItemFieldSpec, ItemFields }
@@ -81,7 +83,17 @@ type HandledKind =
   // o texto ao lado (o `pattern` do contrato cobra o formato, e um campo em
   // branco significa "herda o tema padrão").
   | "hex"
+  // Texto **formatado** (o `prose`): a caixa de texto com a barra de marcas
+  // acima, alimentada pelo `schema.markdownMarks` (`MARKDOWN_MARKS` no
+  // contrato). O valor continua sendo texto — o que o botão insere são as
+  // marcas, e quem as interpreta é o render da loja.
+  | "markdown"
   | "list:text"
+  // Lista de textos formatados (as linhas de uma lista do `prose`): uma caixa
+  // com barra por item. Como o `list:text`, **sem** sub-formulário — e por isso
+  // sem entrada em `ITEM_FIELDS`: o ramo genérico dos `list:*` desenharia um
+  // cartão de item vazio no lugar da caixa.
+  | "list:markdown"
   // Referência ao catálogo: a lista de ids de categoria que vira chip na
   // vitrine. Tem ramo próprio (`CategoryChipsInput`) porque o valor não é texto
   // nem objeto editável — é uma escolha dentro do catálogo, que chega pelo
@@ -131,12 +143,15 @@ function ObjectListInput({
   itemFields,
   value,
   onChange,
+  marks,
   addLabel = "Adicionar item",
 }: {
   kind: FieldKind
   itemFields: ItemFields
   value: unknown
   onChange: (value: unknown) => void
+  /** As marcas do texto formatado (`schema.markdownMarks`) — o item pode ter campo `markdown`. */
+  marks: readonly MarkdownMark[]
   addLabel?: string
 }) {
   const fields = itemFields[kind] ?? []
@@ -222,12 +237,33 @@ function ObjectListInput({
                   </Text>
                 )}
 
-                {nested && nested.startsWith("list:") ? (
+                {nested === "markdown" ? (
+                  // O campo de texto formatado dentro de um item (o `text` de um
+                  // bloco do `prose`): a mesma caixa com a barra do formulário
+                  // da seção, porque é o mesmo campo.
+                  <FormattedTextarea
+                    value={item[field.name]}
+                    onChange={(next) => update(index, field.name, next)}
+                    marks={marks}
+                    rows={5}
+                  />
+                ) : nested === "list:markdown" ? (
+                  // Uma caixa por linha — e **antes** do ramo genérico dos
+                  // `list:*`, que desenharia um cartão de item vazio (esta lista
+                  // não tem sub-formulário: a caixa é o formulário).
+                  <MarkdownListInput
+                    value={item[field.name]}
+                    onChange={(next) => update(index, field.name, next)}
+                    marks={marks}
+                    addLabel={`Adicionar ${field.label.toLowerCase()}`}
+                  />
+                ) : nested && nested.startsWith("list:") ? (
                   <ObjectListInput
                     kind={nested}
                     itemFields={itemFields}
                     value={item[field.name]}
                     onChange={(next) => update(index, field.name, next)}
+                    marks={marks}
                     addLabel={`Adicionar ${field.label.toLowerCase()}`}
                   />
                 ) : nested === "image" ? (
@@ -369,6 +405,208 @@ function TextListInput({
       ))}
 
       {/* A caixa nova nasce vazia e é do formulário: o `wireValue` descarta
+          branco no corpo, então deixá-la sem preencher não grava nada. */}
+      <Button
+        variant="secondary"
+        size="small"
+        className="self-start"
+        onClick={() => onChange([...items, ""])}
+      >
+        {addLabel}
+      </Button>
+    </div>
+  )
+}
+
+/**
+ * A barra de marcas de uma caixa de texto formatado.
+ *
+ * Os botões **não** são declarados aqui: saem do `schema.markdownMarks`
+ * (`MARKDOWN_MARKS`, no contrato) pelo mesmo motivo dos campos e do
+ * sub-formulário dos itens — o painel desenha o que o registro diz, e uma marca
+ * nova no contrato aparece nesta barra sem edição de React. O que o clique faz
+ * também não se decide aqui: é o `toggleMark` (`markdown-bar.ts`), que devolve o
+ * texto e a seleção novos.
+ */
+function MarkdownBar({
+  marks,
+  onMark,
+}: {
+  marks: readonly MarkdownMark[]
+  onMark: (mark: MarkdownMark) => void
+}) {
+  // Sem marca nenhuma — um registro gravado antes da v11 do schema — a barra
+  // não existe e a caixa continua sendo o que ela é: uma área de texto.
+  if (!marks.length) {
+    return null
+  }
+
+  return (
+    <div
+      role="toolbar"
+      aria-label="Formatação do texto"
+      className="flex flex-wrap items-center gap-x-1"
+    >
+      {marks.map((mark) => (
+        <Button
+          key={mark.label}
+          type="button"
+          variant="transparent"
+          size="small"
+          // O rótulo é o nome da marca ("Negrito") e a dica mostra o que vai
+          // aparecer no texto (`**texto**`): quem não conhece as marcas é quem
+          // mais precisa ver que o negrito fica escrito assim.
+          title={markExample(mark)}
+          aria-label={`${mark.label} — ${markExample(mark)}`}
+          onClick={() => onMark(mark)}
+        >
+          {mark.label}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * A caixa de um texto formatado: a área de digitação com a barra acima.
+ *
+ * O valor é **texto** — o que a barra insere são as marcas, e quem as
+ * interpreta é o render da loja (`renderInline`). Nada de HTML passa por aqui, e
+ * é por isso que o campo não precisa de sanitizador: o que o lojista digita é o
+ * que a página mostra.
+ *
+ * **A seleção é do DOM, não do React.** O `toggleMark` recebe as posições do
+ * `<textarea>` e devolve as novas, e quem as reaplica é o `useLayoutEffect`,
+ * depois de o React escrever o valor. Sem isso o cursor pularia para o fim do
+ * texto a cada botão apertado — o defeito clássico de um campo controlado, e o
+ * que faria o lojista marcar a palavra errada.
+ */
+function FormattedTextarea({
+  value,
+  onChange,
+  marks,
+  placeholder,
+  rows,
+}: {
+  value: unknown
+  onChange: (value: unknown) => void
+  marks: readonly MarkdownMark[]
+  placeholder?: string
+  rows: number
+}) {
+  const box = useRef<HTMLTextAreaElement | null>(null)
+  const pending = useRef<MarkSelection | null>(null)
+  const text = typeof value === "string" ? value : ""
+
+  useLayoutEffect(() => {
+    const selection = pending.current
+
+    if (!selection || !box.current) {
+      return
+    }
+
+    pending.current = null
+    box.current.focus()
+    box.current.setSelectionRange(selection.start, selection.end)
+  })
+
+  const apply = (mark: MarkdownMark) => {
+    const element = box.current
+    const result = toggleMark(
+      text,
+      {
+        // Sem o `<textarea>` na mão (não deveria acontecer), a seleção é o fim
+        // do texto: o par entra depois do que já existe, que é previsível.
+        start: element?.selectionStart ?? text.length,
+        end: element?.selectionEnd ?? text.length,
+      },
+      mark
+    )
+
+    // A seleção nova vai por `ref` porque o valor novo ainda não está na tela:
+    // quem a aplica é o efeito acima, depois do render.
+    pending.current = result.selection
+    onChange(result.text)
+  }
+
+  return (
+    <div className="flex flex-col gap-y-1">
+      <MarkdownBar marks={marks} onMark={apply} />
+      <Textarea
+        ref={box}
+        rows={rows}
+        placeholder={placeholder}
+        value={text}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  )
+}
+
+/**
+ * O editor da lista de textos formatados (`list:markdown`) — as linhas de uma
+ * lista do `prose`.
+ *
+ * Como o `TextListInput`, é **uma caixa por item**, e pelo mesmo motivo: um
+ * campo único com os itens separados por vírgula ou por linha perde o separador
+ * a cada tecla. A diferença é a barra em cada caixa — a linha de uma lista
+ * aceita o mesmo negrito e o mesmo link do parágrafo.
+ *
+ * Uma diferença **deliberada** em relação ao `list:text`: colar um texto com
+ * quebras aqui não abre uma caixa por linha. Num texto formatado, a quebra
+ * colada pode ser o parágrafo inteiro de um documento de origem (a cláusula
+ * copiada do contrato), e dividir seria adivinhar o que o lojista quis.
+ */
+function MarkdownListInput({
+  label,
+  value,
+  onChange,
+  marks,
+  addLabel,
+}: {
+  /** Ausente dentro de um item de lista: o rótulo já é do sub-formulário. */
+  label?: ReactNode
+  value: unknown
+  onChange: (value: unknown) => void
+  marks: readonly MarkdownMark[]
+  addLabel: string
+}) {
+  // O valor vem do banco, onde campo é texto livre: item que não é texto vira
+  // caixa vazia em vez de quebrar o formulário da seção inteira.
+  const items = Array.isArray(value)
+    ? value.map((item) => (typeof item === "string" ? item : ""))
+    : []
+
+  return (
+    <div className="flex flex-col gap-y-2">
+      {label}
+
+      {items.map((item, index) => (
+        <div key={index} className="flex items-start gap-x-2">
+          <div className="min-w-0 flex-1">
+            <FormattedTextarea
+              value={item}
+              onChange={(next) =>
+                onChange(
+                  items.map((current, i) => (i === index ? next : current))
+                )
+              }
+              marks={marks}
+              placeholder={`Item ${index + 1}`}
+              rows={2}
+            />
+          </div>
+          <Button
+            variant="transparent"
+            size="small"
+            onClick={() => onChange(items.filter((_, i) => i !== index))}
+          >
+            Remover
+          </Button>
+        </div>
+      ))}
+
+      {/* A linha nova nasce vazia e é do formulário: o `wireValue` descarta
           branco no corpo, então deixá-la sem preencher não grava nada. */}
       <Button
         variant="secondary"
@@ -551,6 +789,15 @@ type FieldInputProps = {
    * exatamente isso. Opcional porque só esse `kind` o usa, como a paleta.
    */
   categories?: readonly CategoryRef[]
+  /**
+   * `schema.markdownMarks` — as marcas do botão da barra (`MARKDOWN_MARKS`, no
+   * contrato). Vêm no payload pelo mesmo motivo dos outros: o painel é um pacote
+   * separado e **não importa valor** do contrato, então a barra do CRM e o
+   * parser da loja leem a mesma lista por caminhos diferentes. Opcional porque
+   * só os dois `kind` de texto formatado a usam — e porque um registro gravado
+   * antes da v11 do schema não a tem (a caixa continua funcionando sem barra).
+   */
+  marks?: readonly MarkdownMark[]
 }
 
 export const FieldInput = ({
@@ -561,6 +808,7 @@ export const FieldInput = ({
   palette,
   fonts,
   categories,
+  marks,
 }: FieldInputProps) => {
   const label = (
     <div className="flex flex-col">
@@ -603,6 +851,38 @@ export const FieldInput = ({
     )
   }
 
+  /* ---- texto formatado: a caixa com a barra de marcas ---- */
+  if (spec.kind === "markdown") {
+    return (
+      <div className="flex flex-col gap-y-2">
+        {label}
+        <FormattedTextarea
+          value={value}
+          onChange={onChange}
+          marks={marks ?? []}
+          // Oito linhas: um texto longo (o aviso, a política) se escreve lendo o
+          // parágrafo, e numa caixa de duas linhas o lojista rola o tempo todo.
+          rows={8}
+        />
+      </div>
+    )
+  }
+
+  /* ---- listas de texto formatado (as linhas de uma lista do `prose`) ---- */
+  if (spec.kind === "list:markdown") {
+    return (
+      <MarkdownListInput
+        label={label}
+        value={value}
+        onChange={onChange}
+        marks={marks ?? []}
+        // "linha" e não "item": o único `list:markdown` do contrato são as
+        // linhas de uma lista do texto longo, e o botão diz o que ele cria.
+        addLabel="Adicionar linha"
+      />
+    )
+  }
+
   /* ---- listas de objetos (itens, coleções, imagens, links) ---- */
   if (spec.kind.startsWith("list:")) {
     return (
@@ -613,6 +893,7 @@ export const FieldInput = ({
           itemFields={itemFields}
           value={value}
           onChange={onChange}
+          marks={marks ?? []}
         />
       </div>
     )

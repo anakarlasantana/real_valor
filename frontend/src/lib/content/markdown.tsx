@@ -288,3 +288,28 @@ function renderNodes(nodes: InlineNode[]): ReactNode[] {
 export function renderInline(text: string): ReactNode[] {
   return renderNodes(parseInline(text))
 }
+
+/**
+ * O mesmo texto **sem as marcas** — para onde HTML nenhum serve.
+ *
+ * Existe por causa do `<meta description>` (`page-seo.ts`): lá o texto vira uma
+ * string plana, e `**Real Valor**` chegaria ao resultado da busca com os
+ * asteriscos à mostra. O caminho é o **mesmo parser** (`parseInline`), e não um
+ * `replace(/[*_~]/g, "")`: uma segunda forma de ler as marcas divergiria da
+ * primeira no dia em que o subconjunto mudasse — e é essa divergência entre
+ * duas leituras do mesmo texto que este arquivo existe para não ter.
+ *
+ * O que não é marca continua literal (`__negrito__` sai igual): a regra de
+ * sempre, o que a loja não desenha ela também não esconde.
+ */
+export function plainText(text: string): string {
+  return nodesToText(parseInline(text))
+}
+
+function nodesToText(nodes: InlineNode[]): string {
+  return nodes
+    .map((node) =>
+      node.kind === "text" ? node.text : nodesToText(node.children)
+    )
+    .join("")
+}

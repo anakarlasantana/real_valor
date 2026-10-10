@@ -16,7 +16,10 @@ import type {
   BannerSection,
   EditorialSection,
   HomeSection,
+  ProseSection,
 } from "@lib/content/home-sections"
+
+import { plainText } from "./markdown"
 
 export type PageSeo = {
   /** Vai cru para o `<title>`: quem assina a marca é o template do layout. */
@@ -38,8 +41,8 @@ export type PageSeo = {
  */
 export const SEO_DESCRIPTION_LIMIT = 160
 
-/** Os dois tipos que **abrem** uma página: os únicos com `title` + ênfase. */
-type OpeningSection = EditorialSection | BannerSection
+/** Os três tipos que **abrem** uma página: os únicos com título próprio. */
+type OpeningSection = EditorialSection | BannerSection | ProseSection
 
 /**
  * O título e a descrição de uma página.
@@ -55,16 +58,10 @@ export function pageSeo(
 ): PageSeo {
   // O primeiro bloco **na ordem da página** (elas chegam ordenadas): o bloco de
   // abertura é o que a visitante lê primeiro, e é ele que nomeia a página.
-  const opening = sections.find(
-    (section): section is OpeningSection =>
-      section.type === "editorial" || section.type === "banner"
-  )
-  const text = sections.find(
-    (section): section is EditorialSection => section.type === "editorial"
-  )
+  const opening = sections.find(isOpening)
 
-  const title = joinTitle(opening?.title, opening?.titleEmphasis)
-  const description = clamp(text?.body)
+  const title = opening ? openingTitle(opening) : ""
+  const description = clamp(openingText(sections))
 
   return {
     title: title || fallbackTitle,
@@ -72,19 +69,73 @@ export function pageSeo(
   }
 }
 
+function isOpening(section: HomeSection): section is OpeningSection {
+  return (
+    section.type === "editorial" ||
+    section.type === "banner" ||
+    section.type === "prose"
+  )
+}
+
 /**
- * O título com a ênfase, do jeito que o render o escreve.
+ * O título com que cada tipo de abertura nomeia a página.
  *
  * `banner` e `editorial` desenham `title` e logo depois o `titleEmphasis` dentro
  * de um `<em>` (`editorial-banner`, `editorial-callout`) — no `<title>` não há
  * `<em>`, então os dois viram uma frase só, com um espaço. Sem juntar, o título
  * na busca sairia cortado na metade que dá o sentido ("A alfaiataria que").
+ *
+ * O `prose` é uma exceção de propósito: ele tem `title` e mais nada — os
+ * subtítulos dele são **blocos** (conteúdo do texto), e o primeiro parágrafo não
+ * é nome de página. Quem não tem título de abertura cai no `label`.
  */
-function joinTitle(title: unknown, emphasis: unknown): string {
-  const head = typeof title === "string" ? title.trim() : ""
-  const tail = typeof emphasis === "string" ? emphasis.trim() : ""
+function openingTitle(section: OpeningSection): string {
+  if (section.type === "prose") {
+    return text(section.title)
+  }
 
-  return [head, tail].filter(Boolean).join(" ")
+  return joinTitle(text(section.title), text(section.titleEmphasis))
+}
+
+/** As duas linhas do título, juntas com um espaço — como o `<title>` as lê. */
+function joinTitle(title: string, emphasis: string): string {
+  return [title.trim(), emphasis.trim()].filter(Boolean).join(" ")
+}
+
+/**
+ * O texto corrido de abertura — o que a busca mostra debaixo do título.
+ *
+ * É o `body` do `editorial` (o de sempre) ou o primeiro **parágrafo** do
+ * `prose`, sem as marcas: `**Real Valor**` chegaria ao resultado da busca com os
+ * asteriscos à vista. Quem tira as marcas é `plainText`, o mesmo parser que a
+ * página usa para desenhá-las — não um `replace` de `*`/`_`, que no dia em que o
+ * subconjunto mudasse passaria a divergir do render.
+ *
+ * Só o `paragraph` serve: um subtítulo é um rótulo de seção, e uma lista vira
+ * itens sem contexto ("· o prazo é de 30 dias") — nenhum dos dois é uma frase.
+ */
+function openingText(sections: HomeSection[]): string {
+  const editorial = sections.find(
+    (section): section is EditorialSection => section.type === "editorial"
+  )
+
+  if (text(editorial?.body) !== "") {
+    return text(editorial?.body)
+  }
+
+  const prose = sections.find(
+    (section): section is ProseSection => section.type === "prose"
+  )
+  const paragraph = (prose?.blocks ?? []).find(
+    (block) => block.kind === "paragraph" && text(block.text).trim() !== ""
+  )
+
+  return paragraph ? plainText(text(paragraph.text)) : ""
+}
+
+/** O texto de um campo que o banco guarda livre. */
+function text(value: unknown): string {
+  return typeof value === "string" ? value : ""
 }
 
 /**
@@ -94,8 +145,8 @@ function joinTitle(title: unknown, emphasis: unknown): string {
  * quebras que o lojista digitou (e uma descrição nunca é multilinha), e o
  * tamanho é o da vitrine da busca.
  */
-function clamp(text: unknown): string {
-  const flat = typeof text === "string" ? text.replace(/\s+/g, " ").trim() : ""
+function clamp(value: string): string {
+  const flat = value.replace(/\s+/g, " ").trim()
 
   return flat.length > SEO_DESCRIPTION_LIMIT
     ? `${flat.slice(0, SEO_DESCRIPTION_LIMIT - 1).trimEnd()}…`

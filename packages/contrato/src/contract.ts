@@ -354,6 +354,79 @@ export type BannerSection = SectionBase &
     ctaHref: string
   }
 
+/**
+ * Como um bloco do texto longo se lê — o que o `<select>` do CRM oferece em
+ * cada bloco de `prose.blocks`.
+ *
+ * É uma lista, e não um `union` solto, porque é ela que o editor do admin
+ * oferece no `<select>`: as opções do campo de item viajam em `ITEM_FIELDS` (e
+ * daí no `schema` do `GET /admin/content`), então o painel não tem cópia
+ * nenhuma. O **primeiro** é o `kind` de um bloco novo — o parágrafo, que é o
+ * caso comum de um texto corrido.
+ */
+export const PROSE_BLOCK_KINDS = [
+  "paragraph",
+  "subtitle",
+  "bullets",
+] as const
+
+export type ProseBlockKind = (typeof PROSE_BLOCK_KINDS)[number]
+
+/** A tradução de cada `kind` para o `<select>` — `bullets` é "Lista", não jargão. */
+export const PROSE_BLOCK_KIND_LABELS: Record<ProseBlockKind, string> = {
+  paragraph: "Parágrafo",
+  subtitle: "Subtítulo",
+  bullets: "Lista",
+}
+
+/**
+ * O texto longo de uma página (`prose`) — o bloco que destrava Privacidade,
+ * Termos, Trocas e Cuidados (14.6.2 do doc 14).
+ *
+ * **Por que a estrutura é dado, e não marca.** Num editor de texto rico o
+ * lojista escreve `##` e `- item`, e duas formas de escrever a mesma coisa é
+ * como nasce a divergência entre o que o painel mostra e o que a loja desenha:
+ * um `##` no meio do texto não é um subtítulo, é dois cerquilhas na tela. O que
+ * o campo de texto aceita é o **subconjunto de marcas inline** de 14.6.3
+ * (`**negrito**`, `_itálico_`, `~~riscado~~`, `[texto](/rota)`); o que é
+ * estrutura — subtítulo, parágrafo e lista — é campo, e é este tipo.
+ */
+
+/**
+ * Um bloco do texto longo: o `kind` diz **como** o trecho se lê e o texto diz
+ * o quê.
+ *
+ * Os três campos existem nos três `kind` (o editor de item desenha o
+ * sub-formulário inteiro, sem esconder campo pela escolha do outro), e quem
+ * escolhe qual deles vale é o render: `subtitle` e `paragraph` leem `text`,
+ * `bullets` lê `items`. É por isso que os três são obrigatórios no tipo — o
+ * valor gravado tem sempre a mesma forma, e a loja não precisa adivinhar.
+ */
+export type ProseBlock = {
+  /** `subtitle` é um `<h2>` dentro do texto, `paragraph` um `<p>`, `bullets` um `<ul>`. */
+  kind: ProseBlockKind
+  /** O texto do bloco, com as marcas inline (`markdown`) — vale em `subtitle` e `paragraph`. */
+  text: string
+  /** As linhas da lista, uma por `<li>` — vale em `bullets`. */
+  items: string[]
+}
+
+/**
+ * A seção de texto longo: um título e a estrutura do texto.
+ *
+ * Sem trilho de aparência, ao contrário do resto: a página de texto segue o
+ * tema da loja inteira, e a decisão do que ela pode vestir é do negócio, não
+ * deste PR (ver 14.17 do doc 14). Quem desenha é
+ * `frontend/src/modules/content/prose.tsx`.
+ */
+export type ProseSection = SectionBase & {
+  type: "prose"
+  /** O `<h2>` da seção. Em branco, o texto começa direto nos blocos. */
+  title: string
+  /** A estrutura do texto, na ordem em que ela se lê. */
+  blocks: ProseBlock[]
+}
+
 export type InstagramSection = SectionBase &
   SectionAppearance & {
     type: "instagram"
@@ -493,6 +566,7 @@ export type HomeSection =
   | LaunchesSection
   | EditorialSection
   | BannerSection
+  | ProseSection
   | InstagramSection
   | NavSection
   | FooterSection
@@ -514,6 +588,14 @@ export const SECTION_TYPES = [
   "collections",
   "editorial",
   "banner",
+  // O texto longo (a F2 do doc 14). É o **primeiro tipo que existe só em
+  // página**: ele nasce aqui e na lista de tipos do CRM como os outros, mas
+  // não está no conteúdo padrão da vitrine (`DEFAULT_HOME_SECTIONS`) — o que a
+  // home oferece a mais é o que o payload dela já tinha. O lugar dele no array
+  // é o do seletor (o bloco de texto fica ao lado do outro, o `banner`); a
+  // ordem **das seções na página** é a `position` que vem do banco, e a
+  // numeração da vitrine continua saindo de `order.ts`.
+  "prose",
   "featured",
   "instagram",
   // Não é uma seção da home: é o cabeçalho da loja, renderizado pelo
@@ -942,6 +1024,18 @@ function appearanceBackground(attachedTo: string): readonly FieldSpec[] {
 export type FieldKind =
   | "text"
   | "textarea"
+  // Texto **formatado**: a mesma caixa de texto, com um subconjunto fechado de
+  // marcas inline (`MARKDOWN_MARKS`) gravado como **texto** — o que está no
+  // banco é uma string sem HTML nenhum, e quem interpreta é `renderInline`
+  // (`frontend/src/lib/content/markdown.tsx`), que devolve nós React.
+  //
+  // É o campo do texto longo (`prose.blocks[].text`, e a resposta de cada
+  // pergunta no `faq` do PR4): o que o lojista escreve no CRM chega à página
+  // com negrito, itálico, riscado e link — e o resto sai literal, nunca
+  // desaparece. O CRM acrescenta uma barra de marcas acima da caixa; a lista
+  // das marcas chega ao painel pelo `schema` (`markdownMarks`), porque o painel
+  // não importa valor do contrato. Ver 14.6.3 do doc 14.
+  | "markdown"
   | "number"
   | "select"
   // Imagem: campo com envio de arquivo. O editor sobe a foto pelo provider de
@@ -981,6 +1075,12 @@ export type FieldKind =
   // acusava. Com uma caixa por mensagem não há separador para perder; a vírgula
   // continua valendo como gesto de **colagem** (colar uma lista abre várias).
   | "list:text"
+  // Lista de textos **formatados**: uma caixa por item, cada uma com a barra de
+  // marcas — é o `list:text` do texto longo (`prose.blocks[].items`, as linhas
+  // de uma lista). Como ele, não tem sub-campos e por isso **não** entra em
+  // `ITEM_FIELDS`: o editor de item desenharia um cartão de item sem campo
+  // nenhum dentro.
+  | "list:markdown"
   // O slide da capa (`hero.slides`): foto e cópia, o sub-formulário do tipo
   // `HeroSlide` — item de lista como o `list:highlight`, com a mesma forma
   // (imagem, textos e link) e por isso o mesmo editor do admin.
@@ -990,6 +1090,10 @@ export type FieldKind =
   | "list:image"
   | "list:link"
   | "list:action"
+  // O bloco do texto longo (`prose.blocks`): o `kind`, o texto formatado e as
+  // linhas da lista — o único `list:*` cujo item tem, ele mesmo, uma lista de
+  // textos formatados dentro (`list:markdown`).
+  | "list:proseBlock"
   // Item com sub-lista dentro (`links`): o editor do admin desenha os
   // níveis internos recursivamente.
   | "list:column"
@@ -1288,6 +1392,20 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     { name: "ctaLabel", label: "Texto do botão", kind: "text" },
     { name: "ctaHref", label: "Link do botão", kind: "text" },
   ],
+  prose: [
+    {
+      name: "title",
+      label: "Título",
+      kind: "text",
+      help: "O título da seção, desenhado em <h2>. Em branco, o texto começa direto no primeiro bloco.",
+    },
+    {
+      name: "blocks",
+      label: "Blocos de texto",
+      kind: "list:proseBlock",
+      help: "Ordem da lista = ordem na página. Cada bloco é um subtítulo, um parágrafo ou uma lista; o texto aceita negrito, itálico, riscado e link pela barra acima da caixa. Bloco sem texto não aparece na loja.",
+    },
+  ],
   instagram: [
     { name: "handle", label: "Perfil", kind: "text" },
     // O @ do perfil sai em destaque, não como texto corrido.
@@ -1342,9 +1460,11 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
 //   ITEM_FIELDS           o sub-formulário de cada item de lista (os itens de
 //                         `benefits`, os links de uma coluna do rodapé…),
 //                         recursivo como o conteúdo é;
-//   ICON_LABELS           a tradução das chaves de ícone oferecidas.
+//   ICON_LABELS           a tradução das chaves de ícone oferecidas;
+//   MARKDOWN_MARKS        as marcas do texto formatado que a barra do editor
+//                         insere e o site desenha.
 //
-// Os três viajam no `schema` do `GET /admin/content` e quem os desenha é o
+// Os quatro viajam no `schema` do `GET /admin/content` e quem os desenha é o
 // `field-input.tsx`/`page.tsx`, que não importam nada daqui (o admin é um
 // pacote npm separado do backend). Até aqui eles eram espelhos digitados à mão
 // no admin, e a guarda de paridade só sabia comparar texto com texto; agora o
@@ -1375,6 +1495,7 @@ export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   featured: "Peças em destaque",
   editorial: "Sobre",
   banner: "Banner editorial",
+  prose: "Texto longo",
   instagram: "Instagram",
   nav: "Cabeçalho",
   footer: "Rodapé",
@@ -1406,6 +1527,29 @@ export const ICON_LABELS: Record<string, string> = {
   facebook: "Facebook",
   youtube: "YouTube",
 }
+
+/**
+ * As marcas do texto formatado (o campo `markdown`): o subconjunto fechado que
+ * o lojista escreve e o site desenha — a lista que a barra do editor oferece.
+ *
+ * Cada entrada é o que a **barra** do CRM precisa para escrever a marca
+ * (`open`/`close`, que envolvem a seleção) e o que a **spec de paridade**
+ * precisa para cobrar que a loja desenhe o que o painel emite (`element`). Não
+ * existe HTML em lugar nenhum: o valor gravado é texto, e quem o interpreta
+ * devolve nós React (`renderInline`).
+ */
+export const MARKDOWN_MARKS = [
+  { label: "Negrito", open: "**", close: "**", element: "strong" },
+  { label: "Itálico", open: "_", close: "_", element: "em" },
+  { label: "Riscado", open: "~~", close: "~~", element: "s" },
+  // A única assimétrica — e a única com risco: `[clique](javascript:alert(1))`
+  // é XSS **sem HTML nenhum**. Por isso o botão insere a forma já segura
+  // (`](/rota)`) e o `href` é allowlist no storefront: o que não passa sai como
+  // texto. O rótulo é o gesto, e o destino é o que o lojista troca.
+  { label: "Link", open: "[", close: "](/rota)", element: "a" },
+] as const
+
+export type MarkdownMark = (typeof MARKDOWN_MARKS)[number]
 
 /**
  * Tradução das origens de uma coluna do rodapé.
@@ -1564,6 +1708,31 @@ export const ITEM_FIELDS: ItemFields = {
     },
     { name: "label", label: "Rótulo" },
     { name: "href", label: "Destino" },
+  ],
+  // O bloco do texto longo: o `kind` (um `<select>`), o texto do subtítulo/
+  // parágrafo (`markdown`) e as linhas da lista (`list:markdown`). Os três
+  // campos valem nos três `kind` — o editor de item desenha o sub-formulário
+  // inteiro —, e a ajuda de cada um diz em qual deles ele é lido, porque é isso
+  // que o lojista tem de saber para não preencher campo que a página ignora.
+  "list:proseBlock": [
+    {
+      name: "kind",
+      label: "Tipo de bloco",
+      options: PROSE_BLOCK_KINDS,
+      optionLabels: PROSE_BLOCK_KIND_LABELS,
+    },
+    {
+      name: "text",
+      label: "Texto",
+      kind: "markdown",
+      help: "O texto do parágrafo ou do subtítulo — a loja desenha os dois com o negrito, o itálico, o riscado e o link da barra acima.",
+    },
+    {
+      name: "items",
+      label: "Linhas da lista",
+      kind: "list:markdown",
+      help: "Só a lista usa: cada linha é um item. Ignoradas no subtítulo e no parágrafo.",
+    },
   ],
   // Coluna do rodapé: título, a origem dos itens e — quando a origem é
   // "links" — os links dela, que são uma lista dentro do item.

@@ -7,14 +7,24 @@
  * que o lojista sente: marca que o site não conhece sai literal, nunca
  * desaparece.
  *
- * O último bloco é a guarda de paridade com `INLINE_MARKS` — a lista que o
- * painel vai receber pelo payload do `schema` no PR3 do doc 14. Marca declarada
- * e não desenhada falha aqui, antes de a página.
+ * O último bloco é a guarda de paridade com o **contrato**: `INLINE_MARKS` é a
+ * lista que o parser percorre e `MARKDOWN_MARKS` (`@lib/content/home-sections`)
+ * é a que o painel recebe pelo `schema` para desenhar a barra de marcas. Marca
+ * que o editor pode emitir e o site não desenha falha aqui, antes de a página —
+ * e é o teste que a 14.6.3 do doc 14 pede.
  */
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import { INLINE_MARKS, isAllowedHref, parseInline, renderInline } from "./markdown"
+import { MARKDOWN_MARKS } from "@lib/content/home-sections"
+
+import {
+  INLINE_MARKS,
+  isAllowedHref,
+  parseInline,
+  plainText,
+  renderInline,
+} from "./markdown"
 
 const html = (text: string) => renderToStaticMarkup(<>{renderInline(text)}</>)
 
@@ -141,5 +151,79 @@ describe("paridade com INLINE_MARKS", () => {
         { kind: "mark", element, children: [{ kind: "text", text: "x" }] },
       ])
     }
+  })
+})
+
+describe("plainText (o texto sem as marcas)", () => {
+  it("tira as marcas e mantém o texto", () => {
+    expect(plainText("A **Real Valor** usa _dados_")).toBe(
+      "A Real Valor usa dados"
+    )
+    expect(plainText("[Trocas](/trocas) em até ~~30 dias~~")).toBe(
+      "Trocas em até 30 dias"
+    )
+  })
+
+  it("o que não é marca continua literal — a mesma regra do render", () => {
+    // Um `replace` de `*`/`_`/`~` comeria estes três; o parser não.
+    expect(plainText("__negrito__ e ## título e - item")).toBe(
+      "__negrito__ e ## título e - item"
+    )
+  })
+
+  it("entrada hostil sai como texto, e não como âncora", () => {
+    expect(plainText("[clique](javascript:alert(1))")).toBe(
+      "[clique](javascript:alert(1))"
+    )
+  })
+})
+
+/**
+ * A guarda de paridade entre o **editor** e o **parser**.
+ *
+ * O CRM desenha a barra a partir de `MARKDOWN_MARKS` (o contrato, que viaja no
+ * `schema`) e o site desenha o texto a partir de `INLINE_MARKS`. São duas listas
+ * porque são duas pontas — e é exatamente por isso que a paridade precisa de
+ * teste: no dia em que a barra ganhar uma marca que o parser não conhece, o
+ * lojista marcaria o texto e a loja mostraria os asteriscos.
+ */
+describe("paridade com MARKDOWN_MARKS (a barra do editor)", () => {
+  it("as marcas simétricas do botão são exatamente as do parser", () => {
+    const doParser = new Map<string, string>(
+      INLINE_MARKS.map(({ marker, element }) => [marker, element])
+    )
+    const simetricas = MARKDOWN_MARKS.filter((mark) => mark.open === mark.close)
+
+    expect(simetricas.length).toBeGreaterThan(0)
+
+    for (const { open, element } of simetricas) {
+      expect(doParser.get(open)).toBe(element)
+    }
+
+    // E o contrário: marca que o parser conhece e a barra não oferece seria um
+    // recurso que só existe para quem digita o delimitador na mão.
+    expect(
+      INLINE_MARKS.filter(
+        ({ marker }) => !simetricas.some((mark) => mark.open === marker)
+      )
+    ).toEqual([])
+  })
+
+  it("tudo o que um botão pode emitir, a loja desenha", () => {
+    for (const { label, open, close, element } of MARKDOWN_MARKS) {
+      expect(
+        html(`antes ${open}depois${close} fim`),
+        `a marca "${label}" do editor saiu literal na página`
+      ).toContain(`depois</${element}>`)
+    }
+  })
+
+  it("o link que a barra emite é o caminho do site, e passa no allowlist", () => {
+    const link = MARKDOWN_MARKS.find((mark) => mark.element === "a")
+
+    expect(link).toBeDefined()
+    expect(html(`${link?.open}depois${link?.close}`)).toBe(
+      '<a href="/rota">depois</a>'
+    )
   })
 })

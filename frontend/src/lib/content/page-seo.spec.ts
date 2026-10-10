@@ -20,7 +20,11 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { DEFAULT_HOME_SECTIONS, type HomeSection } from "@rv/contrato"
+import {
+  DEFAULT_HOME_SECTIONS,
+  type HomeSection,
+  type ProseSection,
+} from "@rv/contrato"
 
 import { SEO_DESCRIPTION_LIMIT, pageSeo } from "./page-seo"
 
@@ -146,4 +150,80 @@ describe("pageSeo", () => {
 
     expect(seo.description).toBe("O prazo é de 30 dias.")
   })
+
+  it("o `prose` abre a página pelo título dele", () => {
+    // É o bloco com que Privacidade e Termos são escritos no CRM: a página passa
+    // a ter nome próprio, em vez de sair na busca como "Termos" (o `label` da
+    // superfície).
+    const seo = pageSeo(
+      [prosa({ title: "Política de privacidade" })],
+      "Privacidade"
+    )
+
+    expect(seo.title).toBe("Política de privacidade")
+  })
+
+  it("o `prose` sem título cai no nome da página", () => {
+    expect(pageSeo([prosa()], "Privacidade").title).toBe("Privacidade")
+  })
+
+  it("a descrição do `prose` é o primeiro parágrafo, sem as marcas", () => {
+    // `**Real Valor**` chegaria ao resultado da busca com os asteriscos à vista:
+    // quem tira as marcas é o mesmo parser que a página usa para desenhá-las.
+    const seo = pageSeo(
+      [
+        prosa({
+          blocks: [
+            { kind: "subtitle", text: "Seus dados", items: [] },
+            { kind: "paragraph", text: "A **Real Valor** guarda o mínimo.", items: [] },
+          ],
+        }),
+      ],
+      "Privacidade"
+    )
+
+    expect(seo.description).toBe("A Real Valor guarda o mínimo.")
+  })
+
+  it("subtítulo, lista e parágrafo em branco não viram descrição", () => {
+    // O subtítulo é rótulo de seção, a lista vira itens sem contexto, e o
+    // parágrafo em branco é o que a seção nova traz do CRM: nenhum dos três é a
+    // frase que a busca mostra.
+    const seo = pageSeo(
+      [
+        prosa({
+          title: "Política de privacidade",
+          blocks: [
+            { kind: "paragraph", text: "   ", items: [] },
+            { kind: "subtitle", text: "Seus dados", items: [] },
+            { kind: "bullets", text: "", items: ["o prazo é de 30 dias"] },
+          ],
+        }),
+      ],
+      "Privacidade"
+    )
+
+    expect(seo.title).toBe("Política de privacidade")
+    expect("description" in seo).toBe(false)
+  })
 })
+
+/**
+ * Um bloco do texto longo (`prose`), escrito à mão.
+ *
+ * Ele **não** está no conteúdo padrão da vitrine — é o primeiro tipo que só mora
+ * em página, e a exceção está presa no `defaults.unit.spec.ts` do backend (e no
+ * comentário do `DEFAULT_SECTION_DATA`) —, então o `bloco()` acima, que lê o
+ * padrão, não o alcança.
+ */
+function prosa(over: Partial<ProseSection> = {}): ProseSection {
+  return {
+    id: "texto",
+    type: "prose",
+    enabled: true,
+    position: 10,
+    title: "",
+    blocks: [],
+    ...over,
+  }
+}

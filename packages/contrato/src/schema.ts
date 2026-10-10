@@ -17,6 +17,7 @@ import {
   CONTENT_SURFACES,
   CONTENT_TYPES,
   ITEM_FIELDS,
+  MARKDOWN_MARKS,
   SECTION_FIELDS,
   SECTION_TYPE_LABELS,
   SINGLETON_SECTION_TYPES,
@@ -29,6 +30,7 @@ import {
   type ContentSurfaceSpec,
   type FieldSpec,
   type ItemFieldSpec,
+  type MarkdownMark,
 } from "./contract.ts"
 
 /**
@@ -132,8 +134,21 @@ import {
  *      continua sem oferecer o tipo novo no diálogo de criação e a API admin
  *      **recusa** os três campos novos como desconhecidos: quem valida é o
  *      registro gravado, e não o contrato.
+ *
+ * v11 — o **texto longo**. Nasce o tipo de seção `prose` ("Texto longo" no
+ *      CRM) e, com ele, o primeiro campo de tipo novo desde a v5: `markdown`,
+ *      um `textarea` com o subconjunto fechado de marcas inline (negrito,
+ *      itálico, riscado e link) gravado como **texto** — nada de HTML no banco
+ *      —, e o `list:markdown` das linhas de uma lista. O payload ganha
+ *      `markdownMarks`: a barra que o editor desenha acima da caixa é dado do
+ *      contrato (`MARKDOWN_MARKS`), porque o painel é outro pacote e não importa
+ *      valor daqui. É o tipo que destrava Privacidade, Termos, Trocas e
+ *      Cuidados. Sem reescrever o registro (`make seed-schema`) o CRM continua
+ *      sem oferecer "Texto longo" no diálogo de criação, e a API admin **recusa**
+ *      os campos do bloco (`blocks`, `text`, `items`) como desconhecidos — a
+ *      loja, essa, já sabe desenhar: quem interpreta o texto é o storefront.
  */
-export const SCHEMA_VERSION = 10
+export const SCHEMA_VERSION = 11
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.
@@ -174,6 +189,20 @@ export type ContentSchemaPayload = {
   fields: Record<string, readonly FieldSpec[]>
   /** `kind` de lista → campos de dentro do item. */
   itemFields: Partial<Record<string, readonly ItemFieldSpec[]>>
+  /**
+   * As marcas do texto formatado (`MARKDOWN_MARKS`, no contrato) — a barra que
+   * o editor desenha acima de toda caixa `markdown`.
+   *
+   * Vai no payload pelo mesmo motivo dos campos: o painel é outro pacote e
+   * **não importa valor** do contrato (`import type` some no build, e valor pelo
+   * apelido é reprovado pelo `check-boundaries` e pelo Rollup do painel). A
+   * barra do CRM e o parser da loja leem a **mesma** lista — uma por aqui, a
+   * outra pelo import de valor que o storefront já faz —, e a paridade entre as
+   * duas tem teste (`frontend/src/lib/content/markdown.spec.tsx`): marca que o
+   * editor emite e o site não desenha reprova antes de a página.
+   * O storefront ignora esta chave.
+   */
+  markdownMarks: readonly MarkdownMark[]
   /**
    * Prévia de aparência para o editor: o hex de cada cor da paleta e a
    * família/pilha de cada papel de fonte.
@@ -302,6 +331,12 @@ export function buildSchema(): ContentSchemaPayload {
      * que ele pode gravar continua sendo validado pelo `validateData` da rota.
      */
     itemFields: ITEM_FIELDS,
+    /**
+     * A barra de marcas do texto formatado. Vai como dado pelo mesmo motivo dos
+     * campos: o painel desenha o que o registro diz, e a lista não pode divergir
+     * da que o storefront importa (`INLINE_MARKS`, no parser do texto).
+     */
+    markdownMarks: MARKDOWN_MARKS,
     palette: THEME_COLOR_HEXES,
     fonts: THEME_FONTS,
     darkTokens: THEME_DARK_TOKENS,

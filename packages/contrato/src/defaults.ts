@@ -431,16 +431,36 @@ export const DEFAULT_FEATURED_FILTERS = [
  * **mesmo** conteúdo: uma seção nova nasce com a cara da loja. Ficam de fora as
  * colunas do bloco (`id`, `enabled`, `position`) — quem decide as três é a
  * rota, e a posição da seção nova vai para o fim da lista.
+ *
+ * O `prose` não sai da vitrine: é o primeiro tipo que **só existe em página**
+ * (a home não tem texto longo de fábrica), e por isso o padrão dele vem da
+ * tabela ao lado. O que a regra exige continua valendo para ele: uma seção nova
+ * nasce com conteúdo que a loja **sabe desenhar** — um bloco de parágrafo
+ * vazio, pronto para o lojista escrever —, e não com um formulário em branco.
+ * Toda entrada de `SECTION_TYPES` tem a sua aqui; o `defaults.unit.spec.ts`
+ * cobra isso.
  */
-export const DEFAULT_SECTION_DATA: Record<string, Record<string, unknown>> =
-  Object.fromEntries(
+const DEFAULT_PAGE_SECTION_DATA: Record<string, Record<string, unknown>> = {
+  prose: {
+    // Em branco: a página já se chama pelo `label` da superfície no `pageSeo`,
+    // e um título inventado seria copy do negócio escrita por engano — a mesma
+    // regra que faz o padrão das páginas ser vazio (`DEFAULT_PAGE_SECTIONS`).
+    title: "",
+    blocks: [{ kind: "paragraph", text: "", items: [] }],
+  },
+}
+
+export const DEFAULT_SECTION_DATA: Record<string, Record<string, unknown>> = {
+  ...Object.fromEntries(
     DEFAULT_HOME_SECTIONS.map(
       ({ id: _id, enabled: _enabled, position: _position, type, ...data }) => [
         type,
         data,
       ]
     )
-  )
+  ),
+  ...DEFAULT_PAGE_SECTION_DATA,
+}
 /**
  * A primeira seção de um tipo no conteúdo padrão — o cromo (`nav`/`footer`).
  *

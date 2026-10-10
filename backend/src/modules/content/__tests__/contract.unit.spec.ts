@@ -33,12 +33,26 @@ import {
 import { DEFAULT_HOME_SECTIONS } from "../defaults"
 import { bandFor, reservedPositions } from "../order"
 
+/**
+ * Os `list:*` que **não** têm sub-formulário.
+ *
+ * São as listas de caixa de texto: uma caixa por item, sem campos dentro —
+ * `list:text` (as mensagens do ticker) e `list:markdown` (as linhas de uma lista
+ * do texto longo). É a exceção que a guarda de `ITEM_FIELDS` declara, e o que
+ * faz o editor do CRM dar a elas um ramo próprio **antes** do ramo genérico dos
+ * `list:*` (que desenharia um cartão de item vazio).
+ */
+const LIST_KINDS_WITHOUT_ITEM_FORM = ["list:text", "list:markdown"]
+
 const listKindsInSections: FieldKind[] = [
   ...new Set(
     Object.values(SECTION_FIELDS)
       .flat()
       .map((field) => field.kind)
-      .filter((kind) => kind.startsWith("list:") && kind !== "list:text")
+      .filter(
+        (kind) =>
+          kind.startsWith("list:") && !LIST_KINDS_WITHOUT_ITEM_FORM.includes(kind)
+      )
   ),
 ]
 
@@ -83,9 +97,9 @@ describe("SECTION_TYPES ⇔ SECTION_FIELDS", () => {
 
 describe("ITEM_FIELDS (o editor dentro do item)", () => {
   it("todo `list:` usado por uma seção tem editor de item", () => {
-    // `list:text` é a exceção declarada: é uma caixa de texto por item no
-    // painel, sem sub-campos, então não tem (e não pode ter) entrada em
-    // `ITEM_FIELDS`.
+    // As listas de caixa de texto são a exceção declarada
+    // (`LIST_KINDS_WITHOUT_ITEM_FORM`): são uma caixa por item no painel, sem
+    // sub-campos, então não têm (e não podem ter) entrada em `ITEM_FIELDS`.
     expect(listKindsInSections.filter((kind) => !ITEM_FIELDS[kind])).toEqual([])
   })
 
@@ -332,7 +346,9 @@ describe("ITEM_FIELDS ⇔ o tipo do item", () => {
   }
 
   // `list:image` fica fora: os itens do Instagram são inline (não têm tipo
-  // nomeado), e por isso o editor deles não tem um `ItemFieldSpec` próprio.
+  // nomeado), e por isso o editor deles não tem um `ItemFieldSpec` próprio. Os
+  // `list:*` de caixa de texto (`LIST_KINDS_WITHOUT_ITEM_FORM`) também ficam
+  // fora: eles não têm item — a caixa **é** o formulário.
   const ITEM_TYPES: Record<string, string> = {
     "list:hero-slide": "HeroSlide",
     "list:benefit": "BenefitItem",
@@ -341,6 +357,7 @@ describe("ITEM_FIELDS ⇔ o tipo do item", () => {
     "list:action": "HeaderAction",
     "list:column": "FooterColumn",
     "list:social": "FooterSocial",
+    "list:proseBlock": "ProseBlock",
   }
 
   for (const [kind, typeName] of Object.entries(ITEM_TYPES)) {

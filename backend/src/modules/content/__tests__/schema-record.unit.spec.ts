@@ -15,6 +15,7 @@ import {
   CONTENT_SURFACES,
   CONTENT_TYPES,
   ITEM_FIELDS,
+  MARKDOWN_MARKS,
   SECTION_FIELDS,
   SECTION_TYPE_LABELS,
   SINGLETON_SECTION_TYPES,
@@ -160,7 +161,7 @@ describe("o schema servido (o payload do CRM)", () => {
    * provavam que alguém tinha escrito o nome em algum lugar, e não que a chave
    * **servida** fosse aquela lista.
    */
-  it("é o contrato: tipos, campos (com o tema), rótulos, itens, paleta, fontes, cores escuras, tipos únicos e superfícies", () => {
+  it("é o contrato: tipos, campos (com o tema), rótulos, itens, marcas, paleta, fontes, cores escuras, tipos únicos e superfícies", () => {
     const schema = buildSchema()
 
     expect(schema.types).toEqual(CONTENT_TYPES)
@@ -173,6 +174,10 @@ describe("o schema servido (o payload do CRM)", () => {
       [THEME_TYPE]: THEME_TYPE_LABEL,
     })
     expect(schema.itemFields).toEqual(ITEM_FIELDS)
+    // A barra de marcas do texto formatado: sem ela no payload, o painel não
+    // teria como desenhar a barra (o CRM não importa valor do contrato) e o
+    // campo `markdown` apareceria sem os botões.
+    expect(schema.markdownMarks).toEqual(MARKDOWN_MARKS)
     expect(schema.palette).toEqual(THEME_COLOR_HEXES)
     expect(schema.fonts).toEqual(THEME_FONTS)
     expect(schema.darkTokens).toEqual(THEME_DARK_TOKENS)

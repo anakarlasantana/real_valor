@@ -10,13 +10,33 @@ import {
   SINGLETON_SECTION_TYPES,
   isSingletonSectionType,
 } from "../contract"
-import { DEFAULT_HOME_SECTIONS } from "../defaults"
+import { DEFAULT_HOME_SECTIONS, DEFAULT_SECTION_DATA } from "../defaults"
 
 describe("DEFAULT_HOME_SECTIONS", () => {
-  it("cobre todos os tipos de seção", () => {
+  it("todo tipo de seção tem o padrão de uma seção nova", () => {
+    // O invariante é o **padrão da seção nova** (`DEFAULT_SECTION_DATA`), e não
+    // a lista da vitrine: desde a v11 do schema existe um tipo que só mora em
+    // página (o `prose`, ver 14.6.2 do doc 14), e o que a home tem de fábrica
+    // continua sendo o que ela mostra. Sem a entrada, criar uma seção pelo CRM
+    // gravaria `{}` e o formulário abriria em branco — a regra que o comentário
+    // do `DEFAULT_SECTION_DATA` declara.
+    expect(SECTION_TYPES.filter((type) => !DEFAULT_SECTION_DATA[type])).toEqual(
+      []
+    )
+  })
+
+  it("a vitrine de fábrica cobre todos os tipos, menos os que são só de página", () => {
+    // A outra metade do invariante: o conteúdo padrão é o **fallback** da
+    // vitrine quando a API falha, então um tipo de vitrine fora dele deixaria a
+    // loja sem o bloco. A lista de exceções é explícita de propósito — um tipo
+    // novo tem de entrar aqui, e quem entrasse passaria a ser um bloco de
+    // fábrica da home (o que o `prose` não é: a copy de um texto longo é do
+    // negócio, e o seed não inventa página — decisão 7 de 14.15).
     const cobertos = new Set(DEFAULT_HOME_SECTIONS.map((s) => s.type))
 
-    expect(SECTION_TYPES.filter((type) => !cobertos.has(type))).toEqual([])
+    expect(SECTION_TYPES.filter((type) => !cobertos.has(type))).toEqual([
+      "prose",
+    ])
   })
 
   it("tem posição única e em ordem crescente", () => {

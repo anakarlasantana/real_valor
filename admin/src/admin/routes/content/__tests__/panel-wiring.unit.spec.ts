@@ -73,6 +73,7 @@ describe("o painel não declara o contrato", () => {
       "ICON_LABELS",
       "FOOTER_COLUMN_SOURCES",
       "TYPE_LABELS",
+      "MARKDOWN_MARKS",
     ]
     const sources = panelSources()
     const declarados = MIRRORS.filter((name) =>
@@ -119,6 +120,29 @@ describe("o painel lê o schema", () => {
     // Sem eles a listagem mostra o `type` cru (`launches`, `editorial`) no lugar
     // do nome que o lojista lê.
     expect(page).toContain("typeLabels")
+  })
+
+  it("a barra do texto formatado desenha as marcas do payload (`markdownMarks`)", () => {
+    // A lista **não** pode morar no painel — é o espelho que a suíte proíbe
+    // (`MIRRORS`): elas chegam pelo `schema`, e a barra as percorre. Quem decide
+    // o que o clique faz é o `toggleMark` (`markdown-bar.ts`), que tem teste
+    // próprio; aqui se confere a ligação: sem a leitura, a barra do `prose`
+    // nasceria vazia.
+    expect(page).toContain("markdownMarks")
+    expect(fieldInput).toContain("marks.map")
+    expect(fieldInput).toContain("toggleMark(")
+  })
+
+  it("os `list:*` de caixa de texto têm ramo próprio, antes do ramo genérico", () => {
+    // `list:text` e `list:markdown` são uma caixa por item e **não** têm
+    // entrada em `ITEM_FIELDS` (contrato: `LIST_KINDS_WITHOUT_ITEM_FORM`). Sem
+    // ramo próprio elas caem no ramo genérico dos `list:*`, que desenha um
+    // cartão de item com o sub-formulário — vazio, porque não há campo dentro.
+    // O `tsc` não distingue um `list:*` do outro, então a conferência é de
+    // texto, como as outras deste arquivo.
+    for (const kind of ["list:text", "list:markdown"]) {
+      expect(fieldInput).toContain(`spec.kind === "${kind}"`)
+    }
   })
 
   it("o seletor de superfície e o diálogo saem do schema", () => {

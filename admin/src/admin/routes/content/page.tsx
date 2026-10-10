@@ -1188,6 +1188,7 @@ const ContentPage = () => {
                       palette={schema?.palette}
                       fonts={schema?.fonts}
                       categories={categories}
+                      marks={schema?.markdownMarks}
                     />
                   )
 

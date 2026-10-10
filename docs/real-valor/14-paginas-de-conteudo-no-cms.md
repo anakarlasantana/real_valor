@@ -305,10 +305,16 @@ Três das quatro marcas não têm risco: o React escapa texto por padrão, entã
 render é que constrói a árvore), que devolve **nós React**, nunca uma string de HTML:
 
 ```tsx
-case "subtitle":  return <h2>{text}</h2>
+case "subtitle":  return <h3>{renderInline(text)}</h3>
 case "paragraph": return <p>{renderInline(text)}</p>
 case "bullets":   return <ul>{items.map((i) => <li key={i}>{renderInline(i)}</li>)}</ul>
 ```
+
+⚠️ **O `subtitle` é `<h3>`, e não o `<h2>` que esta amostra trazia.** O título da seção (o campo `title`, na
+tabela de 14.6.2) já é desenhado em `<h2>`: um `<h2>` dentro dele ficaria no **mesmo nível** do nome da
+seção — dois títulos irmãos onde um é subordinado ao outro —, e quem lê a página por cabeçalhos (leitor de
+tela, índice da busca) perde a hierarquia. A correção entrou na execução do PR3 (14.17). O `renderInline`
+nos três é a outra correção da amostra: o `subtitle` também é um campo `markdown`.
 
 **O render já existe e já tem spec** (`frontend/src/lib/content/markdown.tsx` e
 `markdown.spec.tsx`, 16 casos: marca, aninhamento, allowlist, marca desconhecida, entrada patológica e a
@@ -346,6 +352,14 @@ muda é o que a lojista vê enquanto edita:
 | :--- | :--- | :--- |
 | Editor rico no CRM, serializando para as marcas | negrito **de verdade** ("igual ao Word"); a colagem do Word perde fonte, cor e `mso-*` na serialização | uma biblioteca no workspace do `backend/` — o painel não tem `package.json` próprio (só `tsconfig.json` e `jest.config.js`), então o lockfile e o bundle do backend são tocados; conferir com `make build-admin` |
 | Sem biblioteca: uma barra de marcas sobre a caixa de texto atual | os `**` no rascunho, com prévia ao lado | zero dependência; é o mesmo `field-input.tsx` com uma barra acima |
+
+**O que o PR3 escolheu: a barra de marcas** (decisão 8, 14.17). O negrito do rascunho aparece como `**` e o
+lojista lê a página na loja para conferir — e a prévia "ao lado" desta tabela **não** foi feita, por uma
+razão que só apareceu ao escrever o editor: o painel é outro pacote e **não importa valor do contrato**, e
+uma prévia no CRM seria um **segundo parser** — exatamente a divergência entre duas leituras do mesmo texto
+que este documento inteiro combate. Quem desenha o texto é o site; o que o painel garante é que a marca saia
+como o parser entende (a paridade tem teste, item 4 acima). O custo de não ter prévia é a lojista alternar
+entre a aba e a loja — e o custo de ter uma segunda leitura seria uma prévia que mente.
 
 Os dois são **reversíveis um no outro**, e é o formato decidido aqui que garante isso. O que não se
 reabre é "gravar HTML", por três razões, em ordem de custo: (a) um sanitizador **no site**, que hoje não
@@ -551,7 +565,7 @@ uma página que outro ainda não sabe desenhar.
 | :--- | :--- | :--- |
 | **PR1 — F1 núcleo** | `kind` + `PAGE_SURFACES` + `PAGE_SECTION_TYPES`; as 4–6 superfícies; `defaultsFor`; `resolveSurface`; singleton só na vitrine; `getSurfaceSections`; registry de blocos; a rota `[slug]`; `sitemap`/`robots`; a guarda de colisão de slug | é o menor conjunto que faz uma página existir — e o único que precisa de `seed-schema` + `seed-content` no deploy |
 | **PR2 — F1 rodapé** | colunas "Institucional" e "Atendimento" no padrão do rodapé (dado) — ✅ **executado**, ver 14.16 | precisa do PR1: antes dele, as colunas apontariam para 404 — a promessa continuaria vazia, agora com aparência de corrigida |
-| **PR3 — F2 texto longo** | o tipo `prose`, o formato (`markdown` + `MARKDOWN_MARKS` + `renderInline` com spec) e o editor do campo no CRM | é o que destrava Privacidade, Termos, Cuidados e Frete; vem antes do FAQ porque tem quatro páginas esperando — e é o PR em que o negrito passa a funcionar de ponta a ponta |
+| **PR3 — F2 texto longo** | o tipo `prose`, o formato (`markdown` + `MARKDOWN_MARKS` + `renderInline` com spec) e o editor do campo no CRM | é o que destrava Privacidade, Termos, Cuidados e Frete; vem antes do FAQ porque tem quatro páginas esperando — e é o PR em que o negrito passa a funcionar de ponta a ponta — ✅ **executado**, ver 14.17 |
 | **PR3b — F2 anexo** | o `kind` `document` (upload que já existe, chave gravada, `resolveMediaUrl` no render) | separado do formato porque não depende dele: o anexo é campo, não texto — e "página + PDF assinado" é o par que a LGPD pede (14.6.3) |
 | **PR4 — F2 FAQ** | o tipo `faq` e o render (`<details>/<summary>`) | uma página só, e ela é a que mais se beneficia do tipo anterior (resposta longa) |
 | **PR5 — F3a destinos** | a lista de rotas conhecidas + o seletor nos campos de href do CRM | **é este PR que resolve a causa-raiz do doc 13** — os nove botões param de ter `/store` como única alternativa |
@@ -566,7 +580,9 @@ Três cuidados de execução:
   `SCHEMA_VERSION`. Dois bumps no mesmo PR escondem qual deles quebrou a tolerância da loja.
 - **Só o PR3 pode tocar dependência.** Se o editor for o de biblioteca (14.6.3, item 5), ele instala no
   workspace do `backend/` — o painel não tem `package.json` próprio —, e a prova é `make build-admin`. Se
-  o PR3 sair com a barra de marcas, **nenhum** PR desta sequência mexe em dependência.
+  o PR3 sair com a barra de marcas, **nenhum** PR desta sequência mexe em dependência. **A decisão 8 saiu
+  em "barra de marcas"** (14.17): nenhum PR desta sequência toca dependência, e não há lockfile nem bundle
+  de editor a defender.
 
 ## 14.14 Decisões pendentes (antes de escrever código)
 
@@ -593,6 +609,8 @@ Três cuidados de execução:
    **mesma** string; a diferença é a experiência de quem edita e o custo de uma dependência no
    `backend/`. O caso que decide é a colagem do Word: com biblioteca ela perde a sujeira sozinha; sem
    biblioteca, o lojista cola e a sujeira entra no texto — como texto, porque HTML não há.
+   ✅ **Respondida na execução: barra de marcas** (14.17). Zero dependência — nenhum PR desta sequência
+   toca o lockfile —, e a colagem do Word entra como texto sujo, nunca como HTML.
 9. **O PDF da LGPD precisa existir no lançamento?** Se precisar, o anexo **não** pode esperar a F2: as
    páginas da F1 são de texto (`banner`/`editorial`), e o campo `document` teria de entrar junto do PR1 —
    que hoje é o único PR com dependência de ambiente.
@@ -704,7 +722,7 @@ ok (artefato e fronteira); `make build-admin` ok (`Frontend build completed succ
 | Item | PR (14.13) | Por que não entrou agora |
 | :--- | :--- | :--- |
 | Colunas "Institucional" e "Atendimento" no rodapé | PR2 | ✅ **feito em 14.16** — o padrão traz as duas colunas; o que se publica segue a régua de lá |
-| `prose` (texto longo), `MARKDOWN_MARKS` e o editor do campo | PR3 | Depende da decisão 8 (biblioteca × barra de marcas). O **formato** está decidido e o `renderInline` (com spec de 16 casos) já está no código: falta o tipo, o campo e o editor |
+| `prose` (texto longo), `MARKDOWN_MARKS` e o editor do campo | PR3 | ✅ **feito em 14.17** — e a decisão 8 que o travava saiu em "barra de marcas": o tipo, o campo `markdown` com o editor, a barra no CRM e a paridade entre a barra e o parser |
 | `document` (anexo) | PR3b | Não depende do formato: é campo, não texto (decisões 9 e 10) |
 | `faq` | PR4 | Uma página só, e depende do `prose` |
 | Lista de destinos no CRM, tela "Páginas", a página no índice e no 404 | PR5–PR7 | Devolvem autonomia; a F1 não as exige. O **PR5** é o que fecha a causa-raiz do doc 13 |
@@ -722,8 +740,9 @@ ok (artefato e fronteira); `make build-admin` ok (`Frontend build completed succ
   responde 404. Rascunho publicado em nome do negócio — prazo de troca, política de dados, horário de
   atendimento — é uma promessa que ninguém combinou.
 
-As pendências que **continuam abertas** são de conteúdo (2, 3, 4, 6, 9, 10) e a 8; nenhuma bloqueia a F1:
-as páginas existem, abrem pelo slug, aparecem no CRM e obedecem à regra do vazio — **404, nunca a home**.
+As pendências que **continuam abertas** são de conteúdo (2, 3, 4, 6, 9, 10) — a **8** foi respondida na
+execução do PR3 (14.17, "barra de marcas") —; nenhuma bloqueia a F1: as páginas existem, abrem pelo slug,
+aparecem no CRM e obedecem à regra do vazio — **404, nunca a home**.
 
 ---
 
@@ -781,3 +800,120 @@ exatamente o argumento de 14.3 ("o que falta não é o botão, é o destino").
   índice público e da sugestão do 404: o PR2 é o passo manual, o PR7 é o automático — e agora há medição
   que mostra por que o automático é o desenho certo para o dia em que as páginas forem muitas.
 - Os demais itens de 14.13 (PR3, PR3b, PR4, PR5, PR6) seguem como estavam na tabela de 14.15.
+
+---
+
+## 14.17 O PR3 executado: o texto longo que a lojista escreve (2026-10-09)
+
+O **PR3** de 14.13 era o tipo `prose`, o formato (`markdown` + `MARKDOWN_MARKS` + `renderInline`) e o
+**editor** do campo no CRM. É o PR em que o negrito passa a funcionar de ponta a ponta: o que se digita no
+painel chega à página dentro de `<strong>`, e o que o site não conhece sai **literal** — nunca some.
+
+Ele estava travado na **decisão 8**, e ela saiu em **barra de marcas** (14.6.3, item 5): **zero
+dependência**, nenhum lockfile tocado, e o editor é o mesmo `field-input.tsx` com quatro botões acima da
+caixa. Os botões saem do `schema` (`markdownMarks`, gerado de `MARKDOWN_MARKS`): o painel **não importa
+valor** do contrato — a mesma regra que já fazia `ITEM_FIELDS` e `ICON_LABELS` viajarem no payload.
+
+### Os nove lugares de 14.10, um a um
+
+| Lugar | O que entrou |
+| :--- | :--- |
+| `SECTION_TYPES` | `"prose"` — o **primeiro tipo que só existe em página** (não está no conteúdo padrão da vitrine) |
+| `SECTION_FIELDS` | `title` (`text`) e `blocks` (`list:proseBlock`) |
+| `DEFAULT_SECTION_DATA` | a entrada de `prose`, vinda de uma tabela nova (`DEFAULT_PAGE_SECTION_DATA`) — a seção nova nasce com **um parágrafo vazio**, que é o "nascer com o que a loja sabe desenhar" |
+| `SECTION_TYPE_LABELS` | `prose` → **"Texto longo"** |
+| `CONTENT_TYPES` | nada a fazer: é derivado (`[...SECTION_TYPES, THEME_TYPE]`) — o tipo novo entra sozinho, e é um dos lugares que se esquece |
+| `SCHEMA_VERSION` | **10 → 11** (e o passo de deploy que este PR ganha, abaixo) |
+| registry de render | `case "prose"` em `modules/content/render-section.tsx`, com o desenho em `modules/content/prose.tsx`. O `assertNever` **reprovou o build** antes disso, com o nome do tipo no erro (`Argument of type 'ProseSection' is not assignable to parameter of type 'never'`): o compilador foi o primeiro a cobrar o lugar |
+| padrão de seed | `DEFAULT_PAGE_SECTIONS` continua **vazio** (decisão 7): o seed cria a **declaração** da página, não a copy |
+| specs de paridade | `contract` (`list:proseBlock` ⇔ o tipo `ProseBlock`, campo a campo e na ordem), `defaults` (todo tipo tem padrão de seção nova), `schema-record` (o payload tem `markdownMarks`), `markdown` (a paridade barra ⇔ parser), `panel-wiring` (o painel lê as marcas e não as espelha) |
+
+### O que a execução corrigiu no desenho
+
+- **O `subtitle` é `<h3>`**, e não o `<h2>` da amostra de 14.6.3 (o texto do documento foi corrigido): o
+  título da seção é um `<h2>`, e dois títulos irmãos onde um é subordinado ao outro perdem a hierarquia
+  para quem lê a página por cabeçalhos.
+- **A "prévia ao lado" de 14.6.3 não foi feita**, e a razão é de desenho, não de prazo: o painel não pode
+  importar valor do contrato, então uma prévia no CRM seria um **segundo parser** — a divergência entre
+  duas leituras do mesmo texto que este documento combate. Quem desenha o texto é o site; o que o painel
+  garante é que a marca saia como o parser a entende.
+- **O `subtitle` também passa por `renderInline`** (a amostra desenhava o texto cru): o campo é `markdown`
+  nos dois, e não havia razão para o subtítulo ser o único a não aceitar negrito.
+- **Este PR também tem dependência de ambiente** — ao contrário do que o "Três cuidados" de 14.13 dizia
+  (só o PR1). O `SCHEMA_VERSION` subiu, e o registro gravado é quem manda na API: medido, `POST
+  /admin/content` com `type: "prose"` respondeu **400** (`deve ser um de: announcement, … theme`) até o
+  `make seed-schema` rodar, que escreveu *"Schema gravado (chave "content", versão 11, 13 tipo(s) de
+  seção). Era v10."*. A loja, essa, já sabia desenhar antes: o tipo dela vem do contrato.
+
+
+
+### Medido na stack local (`make up`; loja `:8000`, backend `:9000`)
+
+| Medição | Resultado |
+| :--- | :--- |
+| `make types` | **0** |
+| `make test` | verde nos três pacotes: backend **406**, CRM **81**, loja **392** (18 novos) |
+| `make build-admin` | **0** — o painel compila com a barra de marcas e a caixa em item de lista (é a prova que 14.13 pede quando o PR toca o editor) |
+| `make check` | **0** — inclusive a fronteira: o painel importa o **tipo** `MarkdownMark` (`import type`, que o build apaga) e **nunca** valor do contrato |
+| `make check-schema` | **0** — *"Registro do schema em dia (chave "content", versão 11)"* |
+| o payload do CRM (`GET /admin/content?surface=privacidade`) | `schemaVersion: 11`; `types` com `prose`; `typeLabels.prose` = "Texto longo"; `fields.prose` = `title`, `blocks`; `itemFields["list:proseBlock"]` = `kind` (parágrafo · subtítulo · lista), `text` (`markdown`), `items` (`list:markdown`); `markdownMarks` = Negrito · Itálico · Riscado · Link; e `prose` entre os tipos que a aba da página oferece |
+| `/br/privacidade` com um bloco `prose` publicado | **404 → 200**, com a estrutura e as marcas abaixo |
+| o mesmo bloco **removido** no fim da medição | volta a **404** — a régua de 14.16 outra vez, e a razão de a copy não ser minha (decisão 7) |
+
+O HTML servido, literal (o mesmo texto do CRM, com `<h2>` de seção, `<h3>` de subtítulo, `<p>` e `<ul>`):
+
+```html
+<h2 class="rv-display rv-section-heading rv-prose-title">Política de privacidade</h2>
+<h3 class="rv-display rv-section-heading rv-prose-subtitle">Seus dados são seus</h3>
+<p class="rv-section-text rv-prose-paragraph">A <strong>Real Valor</strong> guarda o <em>mínimo</em> e <s>nunca vende</s> o que você escreve.</p>
+<ul class="rv-section-text rv-prose-list"><li>O prazo é de <a href="/trocas-e-devolucoes">30 dias</a>.</li><li>Peças sem uso.</li></ul>
+<p class="rv-section-text rv-prose-paragraph"><strong>&lt;script&gt;alert(1)&lt;/script&gt;</strong> e [clique](javascript:alert(1)) e __negrito__ e <a href="/store">catálogo</a>.</p>
+```
+
+E os critérios verificáveis de 14.6.3, um por um:
+
+| # | Critério | Medição |
+| :--- | :--- | :--- |
+| 1 | `**negrito**` na loja, string no Postgres | `<strong>Real Valor</strong>` no HTML, e o `data` (**jsonb**) guardando `A **Real Valor** guarda o _mínimo_ e ~~nunca vende~~ …` — sem `<strong>` nenhum no banco |
+| 2 | `<script>` colado aparece como **texto** | `<strong>&lt;script&gt;alert(1)&lt;/script&gt;</strong>`; a sequência `<script>alert(1)</script>` **não** existe no HTML servido |
+| 3 | `javascript:` sai literal; `/rota` e `mailto:` viram link | `[clique](javascript:alert(1))` literal, e `[30 dias](/trocas-e-devolucoes)` e `[catálogo](/store)` como `<a>` |
+| 4 | Marca desconhecida sai literal | `__negrito__` na página |
+| 5 | Paridade editor ⇔ parser | `markdown.spec.tsx` compara as duas listas e alimenta `renderInline` com tudo o que um botão emite |
+| 6 | Colagem do Word sem `mso-*` | **Não se aplica com a barra**: o item era da biblioteca, que serializa. O que se mediu é o que valia aqui — a colagem entra como **texto**, e nada vira HTML (critério 2) |
+| 7 | O anexo grava chave, e não URL | **PR3b** |
+
+Uma medição de beira que o link relativo levanta: `[30 dias](/trocas-e-devolucoes)` é gravado **sem** o
+país (nas colunas do rodapé é o `nav-link` que prefixa), e o `href` sai cru no HTML. Funciona porque o
+`middleware.ts` do storefront redireciona o que chega sem país — medido: `GET /trocas-e-devolucoes` responde
+**307** para `/br/trocas-e-devolucoes`. É a mesma peça que atende a âncora `/#secao` da vitrine, e é o que
+permite o default de `MARKDOWN_MARKS` (`](/rota)`) ser um caminho do próprio site.
+
+**A vitrine não mudou** (critério 10 de 14.11, medido de novo): `/br` responde 200 com **25** `href`
+distintos antes e depois, `/br/store` com **30**, e a palavra `rv-prose` **não** aparece na home nem no
+catálogo — o tipo novo não entrou no conteúdo padrão da vitrine, e o seed não inventa bloco.
+
+### O que ficou fora, e o que este PR mudou na fila
+
+- **A copy das páginas** — decisão 7, de novo. O PR3 entrega a **caneta**; o que se escreve com ela é do
+  negócio. As quatro páginas de texto (Privacidade, Termos, Trocas e Cuidados) já podem ser escritas.
+- **O trilho de aparência do `prose`** (fundo, fonte, cor) — a seção nasce sem nenhum, como a tabela de
+  14.6.2 desenha. O embrulho de 14.8 já respeita um fundo se um dia ele for declarado (`appearanceVars` é
+  de todo bloco); o que falta é a decisão de que uma página institucional se veste.
+- **Colar uma lista e ela virar vários itens** — o `list:text` faz isso (`parseTextList`); aqui, **não**:
+  num texto formatado a quebra colada pode ser um parágrafo inteiro, e dividir seria adivinhar. Fica
+  anotado como a diferença deliberada entre os dois `list:` de caixa de texto.
+- **PR3b (o anexo `document`)** é o próximo da fila de 14.13, e não depende deste formato: é campo, não
+  texto. **O PR4 (FAQ) vem depois dele** — e o `faq` reusa exatamente este parser, com o campo `answer` em
+  `markdown`.
+- **A seção `prose` publicada e ainda sem texto desenha nada — e a página responde 200** com o cromo (a
+  régua de 14.16 só sabe de "tem bloco publicado"). Não é o defeito 4 (a página **não** vira a home; a
+  vitrine não aparece) e é o estado honesto de "a seção existe e ainda não foi escrita" —, mas é o par do
+  defeito "endereço que abre vazio". Quem o resolve **não** é este PR: a decisão "esta página tem o que
+  mostrar?" é do índice de páginas (**PR5/PR6**, a tela "Páginas"), que é onde a lojista vê a linha
+  "publicada, sem texto". Fazer a rota decidir isso hoje exigiria uma segunda cópia da regra de vazio de
+  cada tipo dentro do `[slug]/page.tsx` — o tipo de espelho que este projeto paga caro.
+
+**O que este PR mudou na fila:** o PDF da LGPD (decisão 9) continua podendo esperar o PR3b, porque as
+páginas de texto agora existem sem ele — a Privacidade é escrevível hoje, e o anexo é o **complemento**
+(doc 14.6.3). E o **PR7** ganhou um item a menos de dúvida: a coluna automática de páginas
+(`source: "pages"`) passa a ter quatro páginas de verdade para listar assim que a copy entrar.
