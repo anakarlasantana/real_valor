@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next"
 
-import { PAGE_SURFACES } from "@lib/content/home-sections"
-import { getPageSections } from "@lib/data/content"
+import { getLivePages } from "@lib/data/pages"
 import { getBaseURL } from "@lib/util/env"
 
 /**
@@ -14,10 +13,12 @@ import { getBaseURL } from "@lib/util/env"
  * A regra de quem entra é a mesma do 404: **página sem bloco publicado responde
  * 404**, e anunciar um 404 no índice é o caminho mais curto para a busca
  * classificar o site como raso — além de a visitante clicar num resultado que não
- * abre. Por isso a lista é perguntada ao CMS (`getPageSections`, com a mesma tag
- * de cache e a mesma janela de 60s do resto da loja), e não montada do contrato
- * às cegas: o contrato diz que a página **pode** existir, o conteúdo diz se ela
- * existe hoje.
+ * abre. Até o PR7 do doc 14 essa regra era aplicada **aqui**: o arquivo varria as
+ * superfícies declaradas com uma requisição cada (`getPageSections`) e ficava com
+ * a lista do que respondeu. Agora ela vem pronta do servidor
+ * (`getLivePages` → `GET /store/content/pages`), que é o mesmo leitor da coluna
+ * automática do rodapé, do índice público e da sugestão do 404 — uma régua, um
+ * lugar e uma requisição em vez de seis.
  *
  * O catálogo (produtos, categorias, coleções) fica para o RV-007, de propósito:
  * misturar as duas políticas num arquivo só faria a discussão do catálogo
@@ -33,21 +34,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const country = process.env.NEXT_PUBLIC_DEFAULT_REGION || "us"
   const home = `${base}/${country}`
 
-  const pages = await Promise.all(
-    PAGE_SURFACES.map(async (surface) => ({
-      slug: surface.id,
-      live: (await getPageSections(surface.id)).length > 0,
-    }))
-  )
+  const pages = await getLivePages()
 
   return [
     { url: home, changeFrequency: "daily", priority: 1 },
-    ...pages
-      .filter((page) => page.live)
-      .map<MetadataRoute.Sitemap[number]>((page) => ({
-        url: `${home}/${page.slug}`,
-        changeFrequency: "monthly",
-        priority: 0.6,
-      })),
+    ...pages.map<MetadataRoute.Sitemap[number]>((page) => ({
+      // `path` já vem no formato do conteúdo (`/sobre`), sem o país: quem o
+      // prefixa é esta linha, que é quem sabe qual é o país do build.
+      url: `${home}${page.path}`,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    })),
   ]
 }

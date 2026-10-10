@@ -1,22 +1,22 @@
 "use server"
 
+import { CONTENT_CACHE_TAG, CONTENT_CACHE_WINDOW } from "@lib/content/cache"
 import { sdk } from "@lib/config"
 import { resolveTheme, themesFromRows, type Theme } from "@lib/theme"
 
 /**
- * Tag de cache do tema.
+ * A tag de cache do tema é a do conteúdo — a mesma, e agora de um lugar só
+ * (`lib/content/cache.ts`): o tema é conteúdo como as seções, na mesma tabela e
+ * na mesma superfície de edição, e uma gravação no CRM avisa a loja com
+ * `revalidateTag("content")` (ver `backend/src/modules/content/revalidate.ts`).
+ * Duas tags seriam duas invalidações para a mesma edição — e a loja ficaria com a
+ * paleta velha por até um minuto depois de o lojista salvar a cor.
  *
- * A mesma do conteúdo (`lib/data/content.ts`): o tema é conteúdo como as
- * seções, na mesma tabela e na mesma superfície de edição, e uma gravação no
- * CRM avisa a loja com `revalidateTag("content")` (ver
- * `backend/src/modules/content/revalidate.ts`). Duas tags seriam duas
- * invalidações para a mesma edição — e a loja ficaria com a paleta velha por
- * até um minuto depois de o lojista salvar a cor.
- *
- * Não é exportada: num arquivo `"use server"` o Next só permite exportar
- * funções async.
+ * Ela morava neste arquivo até o PR7 do doc 14, quando o índice de páginas
+ * (`lib/data/pages.ts`) virou o terceiro leitor do mesmo conteúdo: com três
+ * cópias, o dia de renomear uma seria o dia em que "a edição não apareceu na loja"
+ * (o defeito 5 do doc 14) voltaria sem aviso.
  */
-const CONTENT_CACHE_TAG = "content"
 
 type ThemeResponse = {
   /**
@@ -51,7 +51,10 @@ export const getActiveTheme = async (): Promise<Theme> => {
         method: "GET",
         query: { surface: "theme" },
         // A mesma janela e a mesma tag do conteúdo: o tema é conteúdo.
-        next: { tags: [CONTENT_CACHE_TAG], revalidate: 60 },
+        next: {
+          tags: [CONTENT_CACHE_TAG],
+          revalidate: CONTENT_CACHE_WINDOW,
+        },
         cache: "force-cache",
       }
     )

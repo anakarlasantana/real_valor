@@ -40,7 +40,7 @@ import {
 } from "../contract"
 import { DEFAULT_HOME_SECTIONS, DEFAULT_PAGE_SECTIONS } from "../defaults"
 import { bandFor, nextPosition, reservedPositions } from "../order"
-import { pageSummaries } from "../pages"
+import { livePages, pageSummaries } from "../pages"
 import { defaultsFor } from "../restore"
 
 describe("as superfícies declaradas", () => {
@@ -226,6 +226,40 @@ describe("a régua do `no ar`", () => {
     expect(
       PAGE_STATES.filter((spec) => !spec.label || !spec.meaning || !spec.tone)
     ).toEqual([])
+  })
+})
+
+describe("o leitor público (as páginas que estão no ar)", () => {
+  it("lista só as publicadas, na ordem do contrato", () => {
+    const live = livePages({
+      sobre: [{ type: "editorial", enabled: true }],
+      privacidade: [{ type: "prose", enabled: false }],
+      termos: [{ type: "prose", enabled: true }],
+    })
+
+    expect(live).toEqual([
+      { id: "sobre", label: "Sobre", path: "/sobre" },
+      { id: "termos", label: "Termos de uso", path: "/termos" },
+    ])
+  })
+
+  it("é lista de destino: sem contagem e sem estado", () => {
+    // O que a loja não lê é campo que sobra — e o payload público é o mais
+    // exposto de todos. `blocks`/`published`/`state` são da tela do CRM.
+    const [page] = livePages({ sobre: [{ type: "editorial", enabled: true }] })
+
+    expect(Object.keys(page).sort()).toEqual(["id", "label", "path"])
+  })
+
+  it("nenhuma página no ar é lista vazia — nunca uma lista que promete 404", () => {
+    expect(livePages({})).toEqual([])
+    // Tipo que a loja não desenha e seção desabilitada não põem página no ar: é o
+    // que impede o rodapé e a sugestão do 404 de oferecerem um endereço que
+    // responde 404 (o defeito medido em 14.16).
+    expect(
+      livePages({ sobre: [{ type: "loja-de-marca-nova", enabled: true }] })
+    ).toEqual([])
+    expect(livePages({ sobre: [{ type: "prose", enabled: false }] })).toEqual([])
   })
 })
 

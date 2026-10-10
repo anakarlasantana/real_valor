@@ -310,3 +310,80 @@ describe("os destinos que o CRM oferece", () => {
     ).toEqual([])
   })
 })
+
+/**
+ * As pontas que **oferecem destino** ao visitante — o PR7 do doc 14.
+ * -------------------------------------------------------------------
+ * Quatro lugares passaram a responder a mesma pergunta ("que páginas eu tenho
+ * para oferecer?"): o `sitemap`, a coluna automática do rodapé
+ * (`source: "pages"`), o índice público (`/paginas`) e a sugestão do 404. Todos
+ * leem o **mesmo** leitor público (`getLivePages` → `GET /store/content/pages`),
+ * cuja lista o servidor já filtrou pela régua do 200.
+ *
+ * O que se prende aqui é isso: nenhuma ponta monta a lista por conta própria.
+ * Uma que montasse — do contrato às cegas, ou contando seção no navegador —
+ * ofereceria endereço que responde 404, que é o defeito que o doc 13 mediu
+ * ("o link está quebrado" é pior do que "o link não existe"). O `sitemap` fazia
+ * exatamente isso até este PR (seis requisições, uma por superfície, para chegar
+ * à mesma resposta que o servidor dá numa).
+ */
+describe("as pontas que oferecem destino", () => {
+  const sitemap = readFileSync(
+    join(__dirname, "..", "..", "app", "sitemap.ts"),
+    "utf8"
+  )
+  const indice = readFileSync(join(rotasDeMain, "paginas", "page.tsx"), "utf8")
+  const naoEncontrado = readFileSync(
+    join(rotasDeMain, "not-found.tsx"),
+    "utf8"
+  )
+
+  it("o sitemap, o índice público e o 404 leem o mesmo leitor", () => {
+    const pontas = {
+      sitemap,
+      "índice público": indice,
+      "sugestão do 404": naoEncontrado,
+    }
+
+    for (const [nome, fonte] of Object.entries(pontas)) {
+      expect([nome, fonte.includes("getLivePages")]).toEqual([nome, true])
+
+      // E nenhuma delas deriva a lista do contrato às cegas: o contrato diz que
+      // a página **pode** existir, o conteúdo diz se ela existe hoje. O `sitemap`
+      // fazia exatamente isso até o PR7 — seis requisições, uma por superfície.
+      expect([nome, fonte.includes("PAGE_SURFACES")]).toEqual([nome, false])
+    }
+  })
+
+  it("o índice público usa o caminho que veio no dado, e não um montado aqui", () => {
+    // O `path` do payload é o `id` da superfície (`/sobre`), sem o país — quem o
+    // prefixa é o `LocalizedClientLink`. Montar `/${page.id}` na tela seria a
+    // terceira cópia da mesma derivação (o contrato e o payload já a têm).
+    expect(indice).toContain("page.path")
+    expect(indice).not.toContain("page.id}`")
+  })
+
+  it("a coluna `pages` do rodapé desenha o que chega, sem contar nada", () => {
+    // A régua é do servidor: se este componente contasse seção (ou comparasse
+    // tipo), haveria uma segunda resposta para "esta página está no ar" — e a que
+    // a cliente vê é a da loja.
+    const coluna = readFileSync(
+      join(
+        __dirname,
+        "..",
+        "..",
+        "modules",
+        "layout",
+        "components",
+        "footer-column",
+        "index.tsx"
+      ),
+      "utf8"
+    )
+
+    expect(coluna).toContain('column.source === "pages"')
+    expect(coluna).toContain("pages.map")
+    expect(coluna).not.toContain("enabled")
+    expect(coluna).not.toContain("isSectionType")
+  })
+})

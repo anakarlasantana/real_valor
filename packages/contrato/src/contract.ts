@@ -541,8 +541,18 @@ export type NavSection = SectionBase & {
  * De onde vêm os itens de uma coluna do rodapé.
  *
  *   `links`       → os `links` digitados no admin (o padrão)
+ *   `pages`       → as páginas **no ar**, ao vivo (as que respondem 200)
  *   `categories`  → as categorias do catálogo, ao vivo
  *   `collections` → as coleções do catálogo, ao vivo
+ *
+ * `pages` é a origem que fecha o defeito medido em 14.16: uma coluna com os
+ * links digitados à mão promete a página que a lojista ainda não escreveu, e o
+ * endereço responde 404 — "o link está quebrado", que é pior do que "o link não
+ * existe". Aqui a lista sai do **conteúdo**, pela mesma régua que a rota `[slug]`
+ * aplica (`publishedSections`, ver `page.tsx`): o que está fora do ar não entra
+ * no rodapé, e o que entra responde. É a mesma pergunta que o `sitemap` faz, e é
+ * por isso que os dois leem o mesmo leitor público (`GET /store/content/pages`) —
+ * e não uma varredura de seis requisições cada.
  *
  * É uma lista, e não um `union` solto, porque é ela que o editor do admin
  * oferece no `<select>`: as opções do campo de item viajam em `ITEM_FIELDS`
@@ -552,6 +562,7 @@ export type NavSection = SectionBase & {
  */
 export const FOOTER_COLUMN_SOURCES = [
   "links",
+  "pages",
   "categories",
   "collections",
 ] as const
@@ -1706,6 +1717,7 @@ export type MarkdownMark = (typeof MARKDOWN_MARKS)[number]
  */
 export const FOOTER_COLUMN_SOURCE_LABELS: Record<FooterColumnSource, string> = {
   links: "os links digitados abaixo",
+  pages: "as páginas que estão no ar",
   categories: "as categorias do catálogo",
   collections: "as coleções do catálogo",
 }
@@ -1933,7 +1945,7 @@ export const ITEM_FIELDS: ItemFields = {
       name: "links",
       label: "Links",
       kind: "list:link",
-      help: "Ignorados quando a origem é o catálogo.",
+      help: "Só valem quando a origem dos itens é \"os links digitados abaixo\": a coluna que aponta para o catálogo ou para as páginas no ar tira os itens de lá.",
     },
   ],
   "list:social": [

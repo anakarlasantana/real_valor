@@ -24,8 +24,8 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 
 import { CONTENT_MODULE } from "../../../../modules/content"
-import { PAGE_STATES, PAGE_SURFACES } from "../../../../modules/content/contract"
-import { pageSummaries } from "../../../../modules/content/pages"
+import { PAGE_STATES } from "../../../../modules/content/contract"
+import { pageSummaries, readPageSections } from "../../../../modules/content/pages"
 import type ContentModuleService from "../../../../modules/content/service"
 
 export async function GET(
@@ -34,20 +34,13 @@ export async function GET(
 ): Promise<void> {
   const service: ContentModuleService = req.scope.resolve(CONTENT_MODULE)
 
-  const sectionsBySurface: Record<
-    string,
-    readonly { type: string; enabled: boolean }[]
-  > = {}
-
-  // Uma leitura por página declarada: são seis hoje, e cada uma precisa da lista
-  // inteira (habilitadas e não). `PAGE_SURFACES`, e não uma lista escrita aqui:
-  // uma página nova no contrato aparece no índice sem tocar nesta rota.
-  for (const surface of PAGE_SURFACES) {
-    sectionsBySurface[surface.id] = await service.listSections({
-      surface: surface.id,
-      onlyEnabled: false,
-    })
-  }
+  // Uma leitura por página declarada (a de dentro de `readPageSections`), com o
+  // filtro **desligado**: o que o índice mostra é justamente o que está fora do
+  // ar, e uma seção despublicada precisa contar como "tem bloco, nenhum
+  // publicado".
+  const sectionsBySurface = await readPageSections(service, {
+    onlyEnabled: false,
+  })
 
   res.json({
     pages: pageSummaries(sectionsBySurface),

@@ -188,8 +188,20 @@ import {
  *      porque é o registro gravado que diz o que desenhar. Nenhum dado é
  *      recusado por isso: o `kind` não trafega no corpo. A loja ignora
  *      `destinations`: quem desenha a lista é o painel.
+ *
+ * v15 — a **coluna de páginas do rodapé**. Nasce uma opção de `source` na coluna
+ *      do rodapé (`FOOTER_COLUMN_SOURCES` ganha `pages`), e ela vem com rótulo
+ *      porque é isso que o `<select>` do item mostra: a coluna passa a listar as
+ *      páginas que estão **no ar** (as que respondem 200) em vez dos links
+ *      digitados. Nenhum tipo, nenhum campo e nenhum `kind` novo — é uma opção a
+ *      mais no mesmo campo, e é o PR7 do doc 14 (a descoberta: a página no
+ *      rodapé, no índice público e na sugestão do 404). Sem reescrever o registro
+ *      (`make seed-schema`) a coluna gravada continua sendo o que era: `source`
+ *      desconhecido conta como `links`, que é o comportamento de um registro
+ *      anterior a este campo — o rodapé publicado **não** muda sozinho, e o
+ *      `<select>` do painel só não oferece a opção nova.
  */
-export const SCHEMA_VERSION = 14
+export const SCHEMA_VERSION = 15
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.

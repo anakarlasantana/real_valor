@@ -570,7 +570,7 @@ uma página que outro ainda não sabe desenhar.
 | **PR4 — F2 FAQ** | o tipo `faq` e o render (`<details>/<summary>`) | uma página só, e ela é a que mais se beneficia do tipo anterior (resposta longa) — ✅ **executado**, ver 14.19 |
 | **PR5 — F3a destinos** | a lista de rotas conhecidas + o seletor nos campos de href do CRM | **é este PR que resolve a causa-raiz do doc 13** — os nove botões param de ter `/store` como única alternativa — ✅ **executado**, ver 14.20 |
 | **PR6 — F3a tela "Páginas"** | lista das páginas declaradas, com publicada/despublicada e atalho para os blocos | trabalho de painel, e o único item que devolve autonomia sem abrir a entidade (F3b) — ✅ **executado**, ver 14.21 |
-| **PR7 — F3a descoberta** | as páginas no rodapé, no índice público e na sugestão do 404 | fecha o ciclo: a página passa a ser **encontrável**, não só existente |
+| **PR7 — F3a descoberta** | as páginas no rodapé, no índice público e na sugestão do 404 | fecha o ciclo: a página passa a ser **encontrável**, não só existente — ✅ **executado**, ver 14.22 |
 
 Três cuidados de execução:
 
@@ -731,7 +731,7 @@ ok (artefato e fronteira); `make build-admin` ok (`Frontend build completed succ
 | `prose` (texto longo), `MARKDOWN_MARKS` e o editor do campo | PR3 | ✅ **feito em 14.17** — e a decisão 8 que o travava saiu em "barra de marcas": o tipo, o campo `markdown` com o editor, a barra no CRM e a paridade entre a barra e o parser |
 | `document` (anexo) | PR3b | ✅ **feito em 14.18** — o campo, o editor (com o teto da decisão 10) e o botão de baixar na página |
 | `faq` | PR4 | ✅ **feito em 14.19** — o tipo, o item (`question` `text` + `answer` `markdown`) e o `<details>/<summary>` nativo, que reusa o parser e a barra do `prose` |
-| Lista de destinos no CRM, tela "Páginas", a página no índice e no 404 | PR5–PR7 | Devolvem autonomia; a F1 não as exige. O **PR5** é o que fecha a causa-raiz do doc 13 — ✅ **feito em 14.20**; a tela "Páginas" (PR6) — ✅ **feita em 14.21** — e a descoberta (PR7) seguem |
+| Lista de destinos no CRM, tela "Páginas", a página no índice e no 404 | PR5–PR7 | Devolvem autonomia; a F1 não as exige. O **PR5** é o que fecha a causa-raiz do doc 13 — ✅ **feito em 14.20**; a tela "Páginas" (PR6) — ✅ **feita em 14.21** — e a descoberta (PR7) — ✅ **feita em 14.22** |
 | A **copy** das seis páginas | conteúdo | Decisão 7: o padrão é vazio e a página vazia responde 404. Quem escreve é o lojista, no CRM — a aba está lá, com os seis tipos de página disponíveis |
 
 ### As decisões de 14.14 que a execução respondeu
@@ -802,9 +802,10 @@ exatamente o argumento de 14.3 ("o que falta não é o botão, é o destino").
 - **A copy das seis páginas** — decisão 7, e a razão de os links ficarem desligados. É o único item entre
   "o rodapé está no ar" e "as páginas são alcançáveis".
 - **A coluna automática de páginas** — uma `source: "pages"` que liste só as que respondem 200 (a mesma
-  regra do `sitemap` de 14.15) resolveria isto sem ninguém lembrar de ligar link. **Fica no PR7**, junto do
-  índice público e da sugestão do 404: o PR2 é o passo manual, o PR7 é o automático — e agora há medição
-  que mostra por que o automático é o desenho certo para o dia em que as páginas forem muitas.
+  regra do `sitemap` de 14.15) resolveria isto sem ninguém lembrar de ligar link. **Ficou no PR7** — ✅
+  **feito em 14.22**, junto do índice público e da sugestão do 404: o PR2 é o passo manual, o PR7 é o
+  automático — e a medição de 14.22 mostrou por que o automático é o desenho certo para o dia em que as
+  páginas forem muitas.
 - Os demais itens de 14.13 (PR3, PR3b, PR4, PR5, PR6) seguem como estavam na tabela de 14.15.
 
 ---
@@ -1277,8 +1278,84 @@ transforma em link quebrado (14.16).
   render**, e o PR6 não comprou esse espelho. O que a tela mostra é o que ela consegue provar.
 - **O achado do PR5 (o `ctaHref` vazio desenhando um botão para a raiz)** segue fora, como declarado em
   14.20: é conserto de render, em quatro componentes.
-- **O PR7 (a página no índice e no 404) é o próximo da fila**, e este PR deixou a régua de graça para
-  ele: `GET /admin/content/pages` já responde "quais páginas estão no ar" (o `sitemap` de 14.15 lista as
-  que respondem 200, e a sugestão do 404 sai da mesma lista), e `pageState` é a função que a coluna
-  automática de páginas (`source: "pages"`) precisa. Nada nele depende de conteúdo novo.
+- **O PR7 (a página no índice e no 404) era o próximo da fila**, e este PR deixou a régua de graça para
+  ele: `pageState` é a função que a coluna automática de páginas (`source: "pages"`) precisa, e
+  `GET /admin/content/pages` já respondia "quais páginas estão no ar". ✅ **feito em 14.22** — a régua
+  virou o leitor público (`GET /store/content/pages`), e as quatro pontas passam a ler dele.
+
+
+## 14.22 O PR7 executado: a descoberta (2026-10-09)
+
+O **PR7** de 14.13 era o item 3 da F3a: as páginas no rodapé, no índice público e na sugestão do 404.
+É o PR que **fecha o ciclo** — até aqui a página existia (`[slug]`, SEO, anexo) e o rodapé dava destino
+(PR2), mas os dois eram passos manuais: alguém tinha de digitar o link e lembrar de ligá-lo. A descoberta
+é o passo automático: a página que **está no ar** aparece sozinha onde há um lugar para oferecê-la, e a
+que não está não aparece — porque oferecer um endereço que responde 404 é pior do que não oferecer nada
+(o defeito medido em 14.16).
+
+O PR7 não abriu entidade nem tipo: é **leitura**. Nasceu um leitor público único
+(`GET /store/content/pages`), e quatro pontas da loja passaram a ler dele em vez de cada uma montar a
+própria lista.
+
+| Arquivo | O que entrou |
+| :--- | :--- |
+| `packages/contrato/src/contract.ts` | a origem `pages` em `FOOTER_COLUMN_SOURCES` + o rótulo (`as páginas que estão no ar`); o `help` do campo `links` passa a dizer que ele só vale para a origem dos links digitados |
+| `packages/contrato/src/schema.ts` | `SCHEMA_VERSION` **14 → 15** — a opção nova no `<select>` do painel viaja no registro gravado (`make seed-schema`) |
+| `backend/.../modules/content/pages.ts` | `livePages` (a régua aplicada: só as `published`, sem contagem) e `readPageSections` (a leitura que as **duas** portas fazem, com `onlyEnabled` do chamador) |
+| `backend/.../api/store/content/pages/route.ts` *(novo)* | `GET /store/content/pages` — as páginas no ar + `schemaVersion`, `onlyEnabled: true` |
+| `backend/.../api/admin/content/pages/route.ts` | passa a usar `readPageSections` com `onlyEnabled: false` — o índice do CRM precisa das desabilitadas |
+| `frontend/.../lib/data/pages.ts` *(novo)* | `getLivePages` — o leitor público (`GET /store/content/pages`), com a mesma tag e a mesma janela do resto do conteúdo; falha de rede devolve **lista vazia**, nunca a lista do contrato |
+| `frontend/.../lib/content/cache.ts` *(novo)* | a tag (`content`) e a janela (60s) num lugar só — eram três cópias (conteúdo, tema, e agora páginas); um arquivo `"use server"` não pode exportar constante, daí o arquivo próprio |
+| `frontend/.../lib/data/content.ts`, `theme.ts` | passam a importar a tag/janela de `cache.ts` em vez de redeclará-las |
+| `frontend/.../app/sitemap.ts` | troca as **seis** requisições (`PAGE_SURFACES.map` + `getPageSections`) por uma (`getLivePages`); o `path` já vem no dado |
+| `frontend/.../modules/layout/templates/footer/index.tsx` | busca `getLivePages()` só quando alguma coluna é `source: "pages"` (como catálogo/coleções) |
+| `frontend/.../modules/layout/components/footer-column/index.tsx` | o ramo `source === "pages"`: desenha o que chega, lista vazia esconde a coluna |
+| `frontend/.../app/[countryCode]/(main)/paginas/page.tsx` *(novo)* | o índice público: uma lista de links para as páginas no ar, com o vazio honesto |
+| `frontend/.../app/[countryCode]/(main)/not-found.tsx` | a sugestão: as páginas no ar ao lado do caminho para o catálogo (a falha de rede cai no 404 sem sugestão) |
+| `backend/.../__tests__/pages.unit.spec.ts` | **3** testes novos do `livePages`: só as publicadas na ordem do contrato; sem contagem/estado; lista vazia nunca promete 404 |
+| `frontend/.../lib/content/page-surfaces.spec.ts` | **3** testes novos: as quatro pontas leem **o mesmo** leitor e nenhuma deriva do contrato; o índice usa `page.path`; a coluna do rodapé não conta nada |
+
+### A decisão que faz a descoberta valer: uma régua, um leitor
+
+A pergunta "que páginas eu tenho para oferecer?" era feita em quatro lugares, e cada um podia respondê-la
+de um jeito: o `sitemap` varria as superfícies com seis requisições; a coluna do rodapé listava links
+digitados à mão; o 404 e o índice público não existiam. Agora os quatro leem **o mesmo** leitor
+(`getLivePages` → `GET /store/content/pages`), e quem filtra é o servidor, com a mesma régua que a rota
+`[slug]` aplica antes de responder 404 (`publishedSections` + `pageState`, no contrato). A loja não conta
+bloco nenhum: é isso que impede a coluna de prometer um endereço que não abre.
+
+O `livePages` é a versão **curta** da régua — o `id`, o rótulo e o `path`, sem `blocks`/`published`/`state`
+(que são da tela do CRM): o payload público é o mais exposto de todos, e o que a loja não lê é campo que
+sobra. Por isso o `readPageSections` recebe `onlyEnabled` do chamador: o CRM precisa das desabilitadas
+(a tela existe para mostrar o que está fora do ar), a loja não — e conteúdo desabilitado não trafega.
+
+### Medido na stack local (loja `:8000`, backend `:9000`)
+
+| Medição | Resultado |
+| :--- | :--- |
+| `make types` / `make test` | **0** / verde: backend **424** (3 novos), CRM **85**, loja **416** (3 novos) |
+| `make check` / `make check-schema` | **0** / *"Registro do schema em dia (chave \"content\", versão 15)"* — o `seed-schema` do deploy grava a v15, e a opção `pages` entra no `<select>` do painel |
+| `make build-admin` | **0** — *"Frontend build completed successfully"* (backend 12,87s, frontend 36,28s): os quatro arquivos novos da loja compilam no bundle de produção |
+| o registro gravado traz a origem nova | `itemFields["list:column"]` → `source.options` = `["links","pages","categories","collections"]` com `optionLabels.pages` = *"as páginas que estão no ar"* |
+| `GET /store/content/pages` | **200** → `{"pages":[{"id":"sobre","label":"Sobre","path":"/sobre"}],"schemaVersion":15}` |
+| `/br/paginas` (o índice público) | **200**, com `pages-index`/`pages-index-link` e o link para `/br/sobre` |
+| o 404 (`/br/nao-existe-mesmo`) | **404** com a sugestão: `not-found-pages` com a página no ar e o link "Ver todas as páginas" |
+| o `sitemap.xml` | só `/br` e `/br/sobre` — a única página no ar, numa requisição (antes: seis) |
+| o ciclo do 200 (é o aceite) | um `prose` publicado em `/privacidade` (`POST /admin/content`) → aparece no `/store/content/pages`, **200** em `/br/privacidade` e no `sitemap.xml`; removido → volta a **404** e some das três listas — "o que está fora do ar não entra, o que entra responde", nas duas metades |
+| a coluna `pages` do rodapé | `PATCH /admin/content?id=footer` põe uma coluna `source: "pages"` → `/br` desenha `footer-pages`/`footer-page` com "Sobre"; restaurada → a coluna some — a lista **não é** digitada no CRM, sai do conteúdo |
+| a seção e a coluna removidas no fim da medição | no Postgres só resta a seção semeada (`sobre/editorial`); o rodapé volta às duas colunas `links` — a medição não deixou rastro |
+
+### O que ficou fora, e o que este PR mudou na fila
+
+- **A copy das seis páginas** segue sendo conteúdo, não código (decisão 7): a descoberta só torna a
+  página encontrável **se** ela estiver no ar; com cinco das seis sem blocos, o índice, o rodapé e o 404
+  mostram uma página só — e é o correto.
+- **A ancoragem do caminho**: o `path` do payload é o `id` da superfície (`/sobre`), e quem prefixa o país
+  é o `LocalizedClientLink` (na loja) e o `sitemap` (com o país do build). Não há uma terceira cópia da
+  derivação — o teste de `page-surfaces` prende isso.
+- **A colisão de slug de uma página com uma rota existente** continua sendo o que o PR1 resolveu (a guarda
+  de colisão): a descoberta não muda esse mapa, só passa a **ler** o que ele declara.
+- **Os quatro itens da F1–F3a estão completos** (PR1–PR7). A **F3b** (`content_page` — criar, renomear e
+  publicar página inteira) segue com gatilho, como em 14.6.4: nenhum dos três apareceu até aqui, e a
+  descoberta não o exige — o que ela pede é que a página no ar apareça, e ela aparece.
 

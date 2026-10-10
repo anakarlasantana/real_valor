@@ -1,5 +1,6 @@
 "use server"
 
+import { CONTENT_CACHE_TAG, CONTENT_CACHE_WINDOW } from "@lib/content/cache"
 import { sdk } from "@lib/config"
 import {
   DEFAULT_HOME_SECTIONS,
@@ -9,17 +10,12 @@ import {
 import { supportedSections } from "@lib/data/supported-sections"
 
 /**
- * Tag de cache do conteúdo.
- *
- * Passada direto (não via `getCacheOptions`), que prefixa a tag com um
- * id de visitante por cookie. O conteúdo é igual para todo mundo, então
- * uma tag global é mais útil: `revalidateTag("content")` invalida de
- * uma vez, e não só a sessão que editou.
- *
- * Não é exportada: num arquivo `"use server"` o Next só permite
- * exportar funções async, e uma constante quebraria o build.
+ * A tag de cache do conteúdo e a janela dele moram em `@lib/content/cache`, e não
+ * aqui: um arquivo `"use server"` só pode exportar função `async`, e desde a F3a
+ * do doc 14 há **mais de um** leitor do conteúdo (este e o das páginas,
+ * `lib/data/pages.ts`). Uma tag escrita em dois lugares divergiria em silêncio, e
+ * o sintoma seria "a edição não apareceu na loja".
  */
-const CONTENT_CACHE_TAG = "content"
 
 type ContentResponse = {
   sections: HomeSection[]
@@ -72,7 +68,10 @@ export const getSurfaceSections = async (
       // `revalidateTag("content")` na mão, e nada no código faz isso.
       // Uma janela curta e explícita limita a defasagem ao mesmo
       // "dentro de um minuto" já documentado em `(main)/page.tsx`.
-      next: { tags: [CONTENT_CACHE_TAG], revalidate: 60 },
+      next: {
+        tags: [CONTENT_CACHE_TAG],
+        revalidate: CONTENT_CACHE_WINDOW,
+      },
       cache: "force-cache",
     }
   )

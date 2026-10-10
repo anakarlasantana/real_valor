@@ -1,6 +1,7 @@
 import { type FooterSection } from "@lib/content/home-sections"
 import { listCategories } from "@lib/data/categories"
 import { listCollections } from "@lib/data/collections"
+import { getLivePages } from "@lib/data/pages"
 import { ArrowRightMini } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 
@@ -54,6 +55,7 @@ export default async function Footer({ content }: { content: FooterSection }) {
   const needsCollections = columns.some(
     (column) => column.source === "collections"
   )
+  const needsPages = columns.some((column) => column.source === "pages")
 
   const productCategories: HttpTypes.StoreProductCategory[] = needsCategories
     ? await listCategories()
@@ -62,6 +64,13 @@ export default async function Footer({ content }: { content: FooterSection }) {
   const collections: HttpTypes.StoreCollection[] = needsCollections
     ? (await listCollections({ fields: "*products" })).collections
     : []
+
+  // A coluna automática (PR7 do doc 14): as páginas que estão **no ar**, lidas de
+  // uma vez só (`GET /store/content/pages`, com a mesma tag e a mesma janela do
+  // resto do conteúdo). É a resposta ao defeito medido em 14.16 — o link digitado
+  // à mão promete a página que a lojista ainda não escreveu, e a URL responde 404:
+  // aqui o que está fora do ar não entra na lista, e o que entra responde.
+  const pages = needsPages ? await getLivePages() : []
 
   return (
     <footer
@@ -136,6 +145,7 @@ export default async function Footer({ content }: { content: FooterSection }) {
                 column={column}
                 categories={productCategories}
                 collections={collections}
+                pages={pages}
                 tone="dark"
               />
             ))}

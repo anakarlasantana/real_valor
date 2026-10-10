@@ -1,4 +1,5 @@
 import { type FooterColumn as FooterColumnContent } from "@lib/content/home-sections"
+import { type LivePage } from "@lib/data/pages"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 
@@ -14,13 +15,22 @@ import NavLink from "@modules/layout/components/nav-link"
  * escolhida por coluna em `source`:
  *
  *   `links`       → os links digitados no admin
+ *   `pages`       → as páginas que estão **no ar**, ao vivo
  *   `categories`  → as categorias do catálogo, ao vivo
  *   `collections` → as coleções do catálogo, ao vivo
  *
  * Um `source` ausente ou desconhecido conta como `links`: é o que um
- * registro gravado antes deste campo significa. O catálogo é buscado pelo
- * rodapé só quando alguma coluna aponta para ele (ver `footer/index.tsx`),
- * então uma coluna digitada à mão não custa requisição.
+ * registro gravado antes deste campo significa. O catálogo e as páginas são
+ * buscados pelo rodapé só quando alguma coluna aponta para eles (ver
+ * `footer/index.tsx`), então uma coluna digitada à mão não custa
+ * requisição.
+ *
+ * A coluna `pages` é a única origem que promete e cumpre: as outras listam
+ * **o que alguém escolheu**, e um link digitado à mão pode apontar para uma
+ * página que ainda não foi escrita (o defeito medido em 14.16 — "o link está
+ * quebrado" é pior do que "o link não existe"). Aqui a lista vem do
+ * conteúdo, já filtrada pela régua do 200 no servidor, e é por isso que ela
+ * não tem como prometer um 404.
  *
  * Regra de ouro das listas: vazia esconde o bloco. Coluna sem título ou
  * sem itens não aparece — é o que permite publicar o rodapé antes de o
@@ -94,6 +104,7 @@ export default function FooterColumn({
   column,
   categories,
   collections,
+  pages,
   tone = "light",
 }: {
   column: FooterColumnContent
@@ -101,6 +112,8 @@ export default function FooterColumn({
   categories: HttpTypes.StoreProductCategory[]
   /** Só as colunas de origem `collections` usam; as outras recebem vazio. */
   collections: HttpTypes.StoreCollection[]
+  /** Só as colunas de origem `pages` usam; as outras recebem vazio. */
+  pages: LivePage[]
   /** O fundo em que a coluna está posta. O rodapé é preto: passa `dark`. */
   tone?: FooterTone
 }) {
@@ -194,6 +207,37 @@ export default function FooterColumn({
                 href={`/collections/${collection.handle}`}
               >
                 {collection.title}
+              </LocalizedClientLink>
+            </li>
+          ))}
+        </ul>
+      </ColumnShell>
+    )
+  }
+
+  if (column.source === "pages") {
+    // A lista já vem filtrada pela régua do 200 (o servidor decide, ver
+    // `lib/data/pages.ts`): aqui não há o que conferir, e lista vazia esconde a
+    // coluna — o mesmo "vazio esconde" das outras origens, que é o que permite
+    // publicar o rodapé antes de as páginas existirem.
+    if (pages.length === 0) {
+      return null
+    }
+
+    return (
+      <ColumnShell title={column.title} titleTone={titleTone}>
+        <ul
+          className={clx("grid grid-cols-1 gap-y-2 txt-small", bodyTone)}
+          data-testid="footer-pages"
+        >
+          {pages.map((page) => (
+            <li key={page.id}>
+              <LocalizedClientLink
+                className={LINK_CLASSES}
+                href={page.path}
+                data-testid="footer-page"
+              >
+                {page.label}
               </LocalizedClientLink>
             </li>
           ))}
