@@ -2341,6 +2341,106 @@ export function isPageSurface(id: unknown): boolean {
 }
 
 /**
+ * As seções de uma página que põem o endereço **no ar** — a régua do 200.
+ * -------------------------------------------------------------------------
+ * Duas perguntas, uma resposta:
+ *
+ *   - a seção está **ligada**? O interruptor é a coluna `enabled`, que o
+ *     contrato chama de **Publicada** na superfície de página (`enabledLabel`);
+ *   - o tipo dela é um que a loja **conhece**? (`isSectionType`) — um tipo
+ *     gravado no registro do schema sem deploy da loja é descartado antes do
+ *     render (`supportedSections`, no storefront), porque o render é exaustivo
+ *     e o `default` lança: a página inteira viraria HTTP 500.
+ *
+ * É o mesmo par que a rota `[slug]` aplica antes de responder 404
+ * (`visibleSections` + `supportedSections`, no storefront — ela lê os dois pelos
+ * dados, já que a Store API só manda as habilitadas). E é por isso que a função
+ * mora **aqui**, e não numa cópia de cada lado: o CRM diz "publicada" com ela e
+ * a página responde 200 com ela. Um CRM que dissesse "publicada" para um
+ * endereço que responde 404 seria pior do que não ter a tela — é a promessa
+ * vazia do doc 13, agora com a autoridade de quem deveria saber.
+ *
+ * **O que ela não sabe:** se a seção que sobrou tem o que mostrar. Um `prose`
+ * publicado e ainda sem texto passa por aqui e some no render — o vazio de cada
+ * tipo é de quem desenha, e o endereço abre vazio. Distinguir os dois exigiria
+ * uma segunda cópia das regras de vazio de cada render, que é o espelho que este
+ * contrato não paga (doc 14, 14.21).
+ */
+export function publishedSections<T extends { type: string; enabled: boolean }>(
+  sections: readonly T[]
+): T[] {
+  return sections.filter(
+    (section) => section.enabled && isSectionType(section.type)
+  )
+}
+
+/**
+ * Os estados de uma página declarada — o vocabulário da tela "Páginas".
+ *
+ * São **três**, e o terceiro existe porque a diferença importa para quem edita:
+ * uma página **despublicada** é a que tem bloco e nenhum no ar (o endereço
+ * responde 404 e o link do rodapé, se promete a página, promete um link
+ * quebrado — o defeito medido em 14.16); uma página **sem blocos** é a que ainda
+ * não foi montada (404 também, e é esse o caminho normal até a copy entrar).
+ *
+ * Os rótulos e o tom viajam no payload do CRM (`pageStates`, em
+ * `GET /admin/content/pages`): a tela do lojista desenha o que chega, e a
+ * palavra "Publicada" é a mesma do interruptor da seção — uma régua, um
+ * vocabulário.
+ */
+export type PageState = "published" | "unpublished" | "empty"
+
+/** O que a tela mostra para cada estado: o rótulo, o tom e a frase. */
+export type PageStateSpec = {
+  id: PageState
+  label: string
+  /** O `color` do `Badge` do painel (`@medusajs/ui`). */
+  tone: "green" | "orange" | "grey"
+  meaning: string
+}
+
+export const PAGE_STATES: readonly PageStateSpec[] = [
+  {
+    id: "published",
+    label: "Publicada",
+    tone: "green",
+    meaning: "Tem bloco publicado: o endereço responde.",
+  },
+  {
+    id: "unpublished",
+    label: "Despublicada",
+    tone: "orange",
+    meaning:
+      "Tem blocos e nenhum publicado: o endereço responde 404. Se o rodapé " +
+      "promete esta página, ele promete um link quebrado.",
+  },
+  {
+    id: "empty",
+    label: "Sem blocos",
+    tone: "grey",
+    meaning:
+      "Nenhum bloco montado: o endereço responde 404 até alguém montar a página.",
+  },
+]
+
+/**
+ * O estado de uma página, das seções dela — a régua aplicada.
+ *
+ * Recebe as seções **cruas** (as desabilitadas inclusive), que é o que o CRM
+ * tem em mão: a conta e a decisão saem da mesma lista, e por isso não há como a
+ * tela dizer "publicada" com zero publicadas.
+ */
+export function pageState(
+  sections: readonly { type: string; enabled: boolean }[]
+): PageState {
+  if (publishedSections(sections).length > 0) {
+    return "published"
+  }
+
+  return sections.length > 0 ? "unpublished" : "empty"
+}
+
+/**
  * Todo `type` de conteúdo que o CRM edita: as seções **e** o bloco de tema.
  *
  * É a união do que as superfícies podem criar (`CONTENT_SURFACES[i].types`), e

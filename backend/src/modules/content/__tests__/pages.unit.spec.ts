@@ -14,6 +14,10 @@
  *     página nasceria na casa de um bloco fixo (defeito 3, pelo lado da ordem);
  *   - uma página fora do seed: base nova nasce com a página declarada e vazia, e
  *     vazia (pela regra do 404) é uma URL que não existe.
+ *   - a régua do "no ar" (`publishedSections` + `pageState`) e o índice da tela
+ *     "Páginas": o estado que o CRM mostra tem de ser o que a loja responde —
+ *     "Publicada" com o endereço em 404 é a promessa vazia do doc 13, agora
+ *     dita por quem deveria saber.
  *
  * O que **não** está aqui: o comportamento da rota (é do storefront, em
  * `page-surfaces.spec.ts` e `page-seo.spec.ts`) e a validação do corpo (está em
@@ -23,15 +27,20 @@ import {
   CONTENT_SURFACES,
   PAGE_SECTION_TYPES,
   PAGE_SURFACES,
+  PAGE_STATES,
   SECTION_TYPES,
   THEME_SURFACE,
   findSurface,
   isKnownSurface,
   isPageSurface,
   isSingletonSectionType,
+  pageState,
+  publishedSections,
+  type ContentSurfaceSpec,
 } from "../contract"
 import { DEFAULT_HOME_SECTIONS, DEFAULT_PAGE_SECTIONS } from "../defaults"
 import { bandFor, nextPosition, reservedPositions } from "../order"
+import { pageSummaries } from "../pages"
 import { defaultsFor } from "../restore"
 
 describe("as superfícies declaradas", () => {
@@ -164,5 +173,130 @@ describe("o padrão de cada página (defeito 1)", () => {
   it("a vitrine e o tema continuam repondo o que sempre repuseram", () => {
     expect(defaultsFor("home")).toEqual(DEFAULT_HOME_SECTIONS)
     expect(defaultsFor(THEME_SURFACE)).not.toEqual(DEFAULT_HOME_SECTIONS)
+  })
+})
+
+/**
+ * A tela "Páginas" (F3a, item 2): a régua do "no ar" e o índice.
+ * -------------------------------------------------------------------------
+ * O que se prende aqui é a promessa mais fácil de quebrar em silêncio: o estado
+ * que o CRM mostra é o **mesmo** que a loja responde. A régua é uma função só
+ * (`publishedSections`, no contrato), lida pelos dois lados — o CRM para dizer
+ * "Publicada" e o `[slug]` do storefront para decidir o 404 (a premissa do lado
+ * dela é do `supported-sections.spec.ts`, que confere que o par é o mesmo que os
+ * dois filtros da loja já aplicavam).
+ */
+describe("a régua do `no ar`", () => {
+  const habilitada = { id: "no-ar", type: "editorial", enabled: true }
+  const desabilitada = { id: "oculta", type: "editorial", enabled: false }
+  const desconhecida = { id: "nova", type: "loja-de-marca-nova", enabled: true }
+
+  it("conta habilitada **e** de tipo conhecido — o par exato, sem filtro a mais", () => {
+    // As duas metades, uma por linha: um aperto futuro na régua (excluir um tipo
+    // da conta, por exemplo) reprova aqui — e não na loja, em silêncio, com o CRM
+    // dizendo "Despublicada" para um endereço que responde 200.
+    expect(publishedSections([habilitada, desabilitada, desconhecida])).toEqual([
+      habilitada,
+    ])
+    expect(publishedSections([habilitada])).toHaveLength(1)
+    expect(publishedSections([desabilitada])).toEqual([])
+    expect(publishedSections([desconhecida])).toEqual([])
+  })
+
+  it("o estado sai das seções — nunca 'published' com zero publicadas", () => {
+    expect(pageState([])).toBe("empty")
+    expect(pageState([desabilitada])).toBe("unpublished")
+    expect(pageState([habilitada, desabilitada])).toBe("published")
+  })
+
+  it("o vocabulário está completo: todo estado da régua tem rótulo, tom e frase", () => {
+    // `PAGE_STATES` é o que a tela desenha (ela não tem tabela própria — ver
+    // `panel-wiring.unit.spec.ts`): um estado que a régua produzisse sem entrada
+    // aqui sairia sem rótulo na tela, e uma entrada que a régua não alcança seria
+    // legenda que nunca aparece.
+    const produzidos = [
+      pageState([]),
+      pageState([desabilitada]),
+      pageState([habilitada]),
+    ]
+
+    expect([...new Set(produzidos)].sort()).toEqual(
+      PAGE_STATES.map((spec) => spec.id).sort()
+    )
+    expect(
+      PAGE_STATES.filter((spec) => !spec.label || !spec.meaning || !spec.tone)
+    ).toEqual([])
+  })
+})
+
+describe("o índice da tela Páginas", () => {
+  it("uma linha por página declarada — nenhuma fica de fora, nenhuma sobra", () => {
+    expect(pageSummaries({}).map((row) => row.id)).toEqual(
+      PAGE_SURFACES.map((surface) => surface.id)
+    )
+  })
+
+  it("o endereço da linha é o `id` da página — o slug, sem o país", () => {
+    expect(pageSummaries({}).map((row) => row.path)).toEqual(
+      PAGE_SURFACES.map((surface) => `/${surface.id}`)
+    )
+  })
+
+  it("as duas contagens e o estado saem da régua", () => {
+    const rows = pageSummaries({
+      sobre: [
+        { type: "editorial", enabled: true },
+        { type: "editorial", enabled: false },
+      ],
+      privacidade: [{ type: "prose", enabled: false }],
+    })
+
+    expect(rows.find((row) => row.id === "sobre")).toMatchObject({
+      blocks: 2,
+      published: 1,
+      state: "published",
+    })
+    // O caso que a tela existe para mostrar: tem bloco, nenhum no ar — o
+    // endereço responde 404 e o link do rodapé, se o promete, promete um link
+    // quebrado (o defeito medido em 14.16).
+    expect(rows.find((row) => row.id === "privacidade")).toMatchObject({
+      blocks: 1,
+      published: 0,
+      state: "unpublished",
+    })
+  })
+
+  it("página sem leitura nenhuma vira a linha `sem blocos`, e não some", () => {
+    // A leitura pode não trazer entrada para uma superfície (página recém
+    // declarada, seção nunca criada): a linha existe do mesmo jeito — uma página
+    // declarada que não aparece na lista é uma página que o lojista não sabe que
+    // existe.
+    const rows = pageSummaries({})
+
+    expect(rows.every((row) => row.blocks === 0 && row.state === "empty")).toBe(
+      true
+    )
+  })
+
+  it("uma página nova no contrato entra no índice sem edição na rota", () => {
+    const nova: ContentSurfaceSpec = {
+      ...PAGE_SURFACES[0],
+      id: "cuidados",
+      label: "Cuidados",
+    }
+
+    expect(
+      pageSummaries(
+        { cuidados: [{ type: "prose", enabled: true }] },
+        [...PAGE_SURFACES, nova]
+      ).at(-1)
+    ).toEqual({
+      id: "cuidados",
+      label: "Cuidados",
+      path: "/cuidados",
+      blocks: 1,
+      published: 1,
+      state: "published",
+    })
   })
 })

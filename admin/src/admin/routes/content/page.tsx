@@ -68,6 +68,7 @@ import type { ContentSchemaPayload } from "@conteudo/schema"
 import { AppearanceRail } from "./appearance-controls"
 import { FieldInput, type FieldSpec } from "./field-input"
 import { isDirty, wireValue } from "./form-draft"
+import { PagesView } from "./pages-view"
 
 type Section = {
   id: string
@@ -352,6 +353,17 @@ const ContentPage = () => {
    */
   const [pendingOrder, setPendingOrder] = useState<string[] | null>(null)
 
+  /**
+   * A view "Páginas" — o índice das páginas declaradas (F3a, item 2 do doc 14).
+   *
+   * É um **modo** da mesma tela, e não uma rota: o atalho de cada linha é a
+   * troca de aba que já existe (`openSurface`), e uma rota nova teria de levar a
+   * URL do painel junto para linkar de volta — `MEDUSA_ADMIN_PATH` é
+   * configuração, e o único endereço que o CRM escreve é o da API
+   * (`/admin/...`, absoluto). Ver `pages-view.tsx`.
+   */
+  const [showPages, setShowPages] = useState(false)
+
   const load = useCallback(async () => {
     try {
       // `surface` é query da rota: a mesma tela edita as seções da vitrine e as
@@ -509,6 +521,19 @@ const ContentPage = () => {
     setCreating(false)
     setNewType("")
     setNewId("")
+  }
+
+  /**
+   * Abre a aba de uma superfície — da barra e do atalho do índice "Páginas".
+   *
+   * Sai da view "Páginas" **antes** de trocar: a barra destaca a superfície
+   * aberta, e clicar na que já está aberta (`switchSurface` não faz nada nesse
+   * caso) tem de devolver a lista de blocos dela — é o caminho de volta de quem
+   * olhou o índice e decidiu não trocar de página.
+   */
+  const openSurface = (id: string) => {
+    setShowPages(false)
+    switchSurface(id)
   }
 
   /** Os tipos oferecidos no "Nova seção", já sem os únicos que já existem. */
@@ -848,10 +873,14 @@ const ContentPage = () => {
       <div className="flex items-start justify-between gap-x-4">
         <div>
           <Heading level="h1">
-            {currentSurface?.label ?? "Conteúdo da vitrine"}
+            {showPages
+              ? "Páginas"
+              : currentSurface?.label ?? "Conteúdo da vitrine"}
           </Heading>
           <Text size="small" className="text-ui-fg-subtle">
-            {currentSurface?.hint ?? ""}
+            {showPages
+              ? "As páginas declaradas no contrato, com o estado de cada endereço na loja."
+              : currentSurface?.hint ?? ""}
           </Text>
         </div>
         <div className="flex shrink-0 items-center gap-x-2">
@@ -863,34 +892,55 @@ const ContentPage = () => {
             <Button
               key={spec.id}
               size="small"
-              variant={spec.id === surface ? "primary" : "secondary"}
-              onClick={() => switchSurface(spec.id)}
+              variant={
+                !showPages && spec.id === surface ? "primary" : "secondary"
+              }
+              onClick={() => openSurface(spec.id)}
             >
               {spec.label}
             </Button>
           ))}
 
+          {/* O índice das páginas declaradas — as mesmas abas, com o estado de
+              cada uma. Ele não cria nem publica nada: quem liga/desliga página
+              inteira é a F3b (14.6.4), que segue com gatilho. */}
           <Button
             size="small"
-            variant={creating ? "secondary" : "primary"}
-            onClick={() => setCreating((open) => !open)}
+            variant={showPages ? "primary" : "secondary"}
+            onClick={() => setShowPages((open) => !open)}
           >
-            {creating
-              ? "Fechar"
-              : `Nova ${currentSurface?.blockLabel ?? "seção"}`}
+            Páginas
           </Button>
-          <Button
-            variant="secondary"
-            size="small"
-            isLoading={working === "restore"}
-            disabled={working !== null && working !== "restore"}
-            onClick={restore}
-          >
-            Restaurar padrão
-          </Button>
-          <Button variant="secondary" size="small" onClick={load}>
-            Recarregar
-          </Button>
+
+          {/* "Nova seção" e "Restaurar padrão" são da **superfície aberta**, e no
+              índice não há superfície aberta: a barra os esconde em vez de
+              oferecer um botão que age no que não está na tela. O "Recarregar" do
+              índice é o de dentro dele. */}
+          {!showPages && (
+            <>
+              <Button
+                size="small"
+                variant={creating ? "secondary" : "primary"}
+                onClick={() => setCreating((open) => !open)}
+              >
+                {creating
+                  ? "Fechar"
+                  : `Nova ${currentSurface?.blockLabel ?? "seção"}`}
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                isLoading={working === "restore"}
+                disabled={working !== null && working !== "restore"}
+                onClick={restore}
+              >
+                Restaurar padrão
+              </Button>
+              <Button variant="secondary" size="small" onClick={load}>
+                Recarregar
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -928,301 +978,307 @@ const ContentPage = () => {
         </Container>
       )}
 
-      {creating && (
-        <Container className="flex flex-col gap-y-4">
-          <div>
-            <Heading level="h2">
-              {`Nova ${currentSurface?.blockLabel ?? "seção"}`}
-            </Heading>
-            <Text size="small" className="text-ui-fg-subtle">
-              A {currentSurface?.blockLabel ?? "seção"} nasce com o conteúdo
-              padrão do tipo e entra no fim da lista: crie, edite e salve. Os
-              tipos únicos que já existem (cabeçalho, rodapé e a barra de
-              anúncio) não aparecem aqui porque a loja só desenha um de cada.
-            </Text>
-          </div>
+      {showPages ? (
+        <PagesView onOpen={openSurface} />
+      ) : (
+        <>
+          {creating && (
+            <Container className="flex flex-col gap-y-4">
+              <div>
+                <Heading level="h2">
+                  {`Nova ${currentSurface?.blockLabel ?? "seção"}`}
+                </Heading>
+                <Text size="small" className="text-ui-fg-subtle">
+                  A {currentSurface?.blockLabel ?? "seção"} nasce com o conteúdo
+                  padrão do tipo e entra no fim da lista: crie, edite e salve. Os
+                  tipos únicos que já existem (cabeçalho, rodapé e a barra de
+                  anúncio) não aparecem aqui porque a loja só desenha um de cada.
+                </Text>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-y-2">
-              <Label size="small" weight="plus">
-                Tipo
-              </Label>
-              <select
-                className="h-8 rounded-md border border-ui-border-base bg-ui-bg-field px-2 text-sm"
-                value={newType}
-                onChange={(e) => pickType(e.target.value)}
-              >
-                {types.map((type) => (
-                  <option key={type} value={type}>
-                    {schema?.typeLabels?.[type] ?? type}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-y-2">
+                  <Label size="small" weight="plus">
+                    Tipo
+                  </Label>
+                  <select
+                    className="h-8 rounded-md border border-ui-border-base bg-ui-bg-field px-2 text-sm"
+                    value={newType}
+                    onChange={(e) => pickType(e.target.value)}
+                  >
+                    {types.map((type) => (
+                      <option key={type} value={type}>
+                        {schema?.typeLabels?.[type] ?? type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="flex flex-col gap-y-2">
-              <Label size="small" weight="plus">
-                Âncora
-              </Label>
-              <Input
-                value={newId}
-                placeholder="hero"
-                onChange={(e) => setNewId(e.target.value)}
-              />
-              <Text size="xsmall" className="text-ui-fg-subtle">
-                É o id da seção e o destino que o menu usa (ex.: /#hero):
-                minúsculas, números e hífen. Já vem sugerida livre.
-              </Text>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-x-2">
-            <Button
-              variant="secondary"
-              size="small"
-              onClick={() => setCreating(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              size="small"
-              isLoading={working === "create"}
-              disabled={!newType}
-              onClick={create}
-            >
-              <Plus /> Criar {currentSurface?.blockLabel ?? "seção"}
-            </Button>
-          </div>
-        </Container>
-      )}
-
-      {rows.map((section) => {
-        const draft = drafts[section.id] ?? {}
-        const specs = schema?.fields[section.type] ?? []
-        const isOpen = openId === section.id
-        // Só as seções ordenáveis têm ordem: a fixa é o **bloco ancorado** — o
-        // cromo do site, que a moldura desenha em todas as rotas, mais a abertura
-        // da home (a capa e a faixa de benefícios) —, e ela mora sempre na mesma
-        // casa. Quem responde é a coluna — não o tipo —, pelo mesmo motivo que a
-        // lista se separa por ela.
-        const movable = !section.fixed
-        const place = vitrineIndex.get(section.id) ?? 0
-        // O numeral da seção: a casa gravada — ou a que ela **vai** ter. Com a
-        // lista já mexida na tela e ainda não publicada, o número no banco não
-        // corresponde mais ao que se vê, e um numeral que discorda da ordem
-        // visível é pior do que nenhum. A previsão sai da faixa que o servidor
-        // manda como dado (`order`, no payload), pulando as casas ancoradas
-        // (`numeralFor`), e é a mesma numeração que o "Salvar ordem" vai gravar;
-        // quem renumera é o servidor (`applyOrder`, em
-        // `modules/content/order.ts`). Sem a faixa no payload, fica o numeral
-        // gravado.
-        const numeral =
-          orderDirty && order ? numeralFor(place, order) : section.position
-        // Alteração pendente no formulário: é o que faz a barra com o "Salvar"
-        // aparecer (ver `form-draft.ts`).
-        const dirty = isDirty(draft, section)
-
-        return (
-          <Container key={section.id} className="overflow-hidden p-0">
-            <div className="flex items-center justify-between gap-x-4 p-4">
-              <div className="flex items-center gap-x-3">
-                {movable ? (
-                  // O numeral: a casa gravada, ou a que a seção vai receber
-                  // quando a pendente for publicada (ver `numeral`, acima).
-                  <Badge size="2xsmall">{numeral}</Badge>
-                ) : (
-                  // A seção fixa mostra a **casa** dela — 1, 2, 3, 4 e 10 na
-                  // home: é o número que ela ocupa sempre. O "Fixo" ao lado diz
-                  // que nenhuma seta a move; as duas informações juntas são o
-                  // desenho da numeração (ver `FIXED_SECTION_POSITIONS`).
-                  <div className="flex shrink-0 items-center gap-x-2">
-                    <Badge size="2xsmall">{numeral}</Badge>
-                    <Badge size="2xsmall" color="grey">
-                      Fixo
-                    </Badge>
-                  </div>
-                )}
-                <div>
-                  <Text weight="plus" size="small">
-                    {/* A superfície diz como o bloco se chama: a estação usa o
-                        rótulo que o dono escreveu (`titleField` — "Natal"), a
-                        seção usa o nome do tipo, porque o `type` é o
-                        identificador do render. `titleField: null` é o caso das
-                        seções. */}
-                    {String(
-                      (currentSurface?.titleField
-                        ? draft[currentSurface.titleField]
-                        : "") ||
-                        schema?.typeLabels?.[section.type] ||
-                        section.type
-                    )}
-                  </Text>
+                <div className="flex flex-col gap-y-2">
+                  <Label size="small" weight="plus">
+                    Âncora
+                  </Label>
+                  <Input
+                    value={newId}
+                    placeholder="hero"
+                    onChange={(e) => setNewId(e.target.value)}
+                  />
                   <Text size="xsmall" className="text-ui-fg-subtle">
-                    {/* `#id` é a âncora que o menu usa: um Destino
-                        `/#editorial` rola até esta seção. */}
-                    #{section.id} · {section.type}
+                    É o id da seção e o destino que o menu usa (ex.: /#hero):
+                    minúsculas, números e hífen. Já vem sugerida livre.
                   </Text>
                 </div>
               </div>
 
-              <div
-                className={`flex items-center gap-x-2 ${
-                  working === section.id ? "opacity-50" : ""
-                }`}
-              >
-                {/* O que "ligada" significa muda com a superfície: numa seção é
-                    "aparece na loja"; numa estação é "pode entrar no ar hoje",
-                    porque quem escolhe é a janela de datas. Quem diz é o
-                    contrato (`enabledLabel`). */}
-                <Badge
-                  size="2xsmall"
-                  color={section.enabled ? "green" : "grey"}
-                >
-                  {section.enabled
-                    ? (currentSurface?.enabledLabel ?? "Visível")
-                    : "Oculta"}
-                </Badge>
-
-                {/* Ordem por setas, e não por um número digitado: posições
-                    iguais são ordem indefinida na loja (a vitrine ordena por
-                    `position`) e adivinhar um número livre é tarefa que ninguém
-                    quer. As setas mexem **na tela** — valem depois de "Salvar
-                    ordem" — e não existem no cromo, que não tem ordem. */}
-                {movable && (
-                  <>
-                    <Button
-                      variant="transparent"
-                      size="small"
-                      aria-label={`Mover ${section.id} para cima`}
-                      disabled={place === 0 || working !== null}
-                      onClick={() => move(section.id, -1)}
-                    >
-                      <ArrowUpMini />
-                    </Button>
-                    <Button
-                      variant="transparent"
-                      size="small"
-                      aria-label={`Mover ${section.id} para baixo`}
-                      disabled={
-                        place === shown.length - 1 || working !== null
-                      }
-                      onClick={() => move(section.id, 1)}
-                    >
-                      <ArrowDownMini />
-                    </Button>
-                  </>
-                )}
-
-                <Button
-                  variant="transparent"
-                  size="small"
-                  aria-label={`Remover a seção ${section.id}`}
-                  disabled={working !== null}
-                  onClick={() => remove(section)}
-                >
-                  <Trash />
-                </Button>
-
+              <div className="flex justify-end gap-x-2">
                 <Button
                   variant="secondary"
                   size="small"
-                  onClick={() => setOpenId(isOpen ? null : section.id)}
+                  onClick={() => setCreating(false)}
                 >
-                  {isOpen ? "Fechar" : "Editar"}
+                  Cancelar
+                </Button>
+                <Button
+                  size="small"
+                  isLoading={working === "create"}
+                  disabled={!newType}
+                  onClick={create}
+                >
+                  <Plus /> Criar {currentSurface?.blockLabel ?? "seção"}
                 </Button>
               </div>
-            </div>
+            </Container>
+          )}
 
-            {isOpen && (
-              <div className="flex flex-col gap-y-5 border-t border-ui-border-base p-4">
-                {/* A barra da seção, irmã da barra da ordem: aparece quando o
-                    formulário tem alteração não salva, e é o **único** "Salvar"
-                    do formulário — fora dela não há o que salvar. Fica no topo
-                    porque os trilhos de aparência esticam a seção, e um botão no
-                    fim de um formulário longo é um botão que ninguém acha. */}
-                {dirty && (
-                  <div className="flex items-center justify-between gap-x-4 rounded-md bg-ui-bg-subtle p-3">
+          {rows.map((section) => {
+            const draft = drafts[section.id] ?? {}
+            const specs = schema?.fields[section.type] ?? []
+            const isOpen = openId === section.id
+            // Só as seções ordenáveis têm ordem: a fixa é o **bloco ancorado** — o
+            // cromo do site, que a moldura desenha em todas as rotas, mais a abertura
+            // da home (a capa e a faixa de benefícios) —, e ela mora sempre na mesma
+            // casa. Quem responde é a coluna — não o tipo —, pelo mesmo motivo que a
+            // lista se separa por ela.
+            const movable = !section.fixed
+            const place = vitrineIndex.get(section.id) ?? 0
+            // O numeral da seção: a casa gravada — ou a que ela **vai** ter. Com a
+            // lista já mexida na tela e ainda não publicada, o número no banco não
+            // corresponde mais ao que se vê, e um numeral que discorda da ordem
+            // visível é pior do que nenhum. A previsão sai da faixa que o servidor
+            // manda como dado (`order`, no payload), pulando as casas ancoradas
+            // (`numeralFor`), e é a mesma numeração que o "Salvar ordem" vai gravar;
+            // quem renumera é o servidor (`applyOrder`, em
+            // `modules/content/order.ts`). Sem a faixa no payload, fica o numeral
+            // gravado.
+            const numeral =
+              orderDirty && order ? numeralFor(place, order) : section.position
+            // Alteração pendente no formulário: é o que faz a barra com o "Salvar"
+            // aparecer (ver `form-draft.ts`).
+            const dirty = isDirty(draft, section)
+
+            return (
+              <Container key={section.id} className="overflow-hidden p-0">
+                <div className="flex items-center justify-between gap-x-4 p-4">
+                  <div className="flex items-center gap-x-3">
+                    {movable ? (
+                      // O numeral: a casa gravada, ou a que a seção vai receber
+                      // quando a pendente for publicada (ver `numeral`, acima).
+                      <Badge size="2xsmall">{numeral}</Badge>
+                    ) : (
+                      // A seção fixa mostra a **casa** dela — 1, 2, 3, 4 e 10 na
+                      // home: é o número que ela ocupa sempre. O "Fixo" ao lado diz
+                      // que nenhuma seta a move; as duas informações juntas são o
+                      // desenho da numeração (ver `FIXED_SECTION_POSITIONS`).
+                      <div className="flex shrink-0 items-center gap-x-2">
+                        <Badge size="2xsmall">{numeral}</Badge>
+                        <Badge size="2xsmall" color="grey">
+                          Fixo
+                        </Badge>
+                      </div>
+                    )}
                     <div>
-                      <Text size="small" weight="plus">
-                        Alterações não salvas nesta seção
+                      <Text weight="plus" size="small">
+                        {/* A superfície diz como o bloco se chama: a estação usa o
+                            rótulo que o dono escreveu (`titleField` — "Natal"), a
+                            seção usa o nome do tipo, porque o `type` é o
+                            identificador do render. `titleField: null` é o caso das
+                            seções. */}
+                        {String(
+                          (currentSurface?.titleField
+                            ? draft[currentSurface.titleField]
+                            : "") ||
+                            schema?.typeLabels?.[section.type] ||
+                            section.type
+                        )}
                       </Text>
                       <Text size="xsmall" className="text-ui-fg-subtle">
-                        A loja continua mostrando o conteúdo anterior até você
-                        salvar. Ordem é outro assunto: ela vai no “Salvar ordem”
-                        da lista.
+                        {/* `#id` é a âncora que o menu usa: um Destino
+                            `/#editorial` rola até esta seção. */}
+                        #{section.id} · {section.type}
                       </Text>
                     </div>
-                    <div className="flex shrink-0 items-center gap-x-2">
-                      <Button
-                        variant="secondary"
-                        size="small"
-                        disabled={savingId === section.id}
-                        onClick={() => discardFields(section)}
-                      >
-                        Descartar
-                      </Button>
-                      <Button
-                        size="small"
-                        isLoading={savingId === section.id}
-                        onClick={() => save(section)}
-                      >
-                        Salvar
-                      </Button>
+                  </div>
+
+                  <div
+                    className={`flex items-center gap-x-2 ${
+                      working === section.id ? "opacity-50" : ""
+                    }`}
+                  >
+                    {/* O que "ligada" significa muda com a superfície: numa seção é
+                        "aparece na loja"; numa estação é "pode entrar no ar hoje",
+                        porque quem escolhe é a janela de datas. Quem diz é o
+                        contrato (`enabledLabel`). */}
+                    <Badge
+                      size="2xsmall"
+                      color={section.enabled ? "green" : "grey"}
+                    >
+                      {section.enabled
+                        ? (currentSurface?.enabledLabel ?? "Visível")
+                        : "Oculta"}
+                    </Badge>
+
+                    {/* Ordem por setas, e não por um número digitado: posições
+                        iguais são ordem indefinida na loja (a vitrine ordena por
+                        `position`) e adivinhar um número livre é tarefa que ninguém
+                        quer. As setas mexem **na tela** — valem depois de "Salvar
+                        ordem" — e não existem no cromo, que não tem ordem. */}
+                    {movable && (
+                      <>
+                        <Button
+                          variant="transparent"
+                          size="small"
+                          aria-label={`Mover ${section.id} para cima`}
+                          disabled={place === 0 || working !== null}
+                          onClick={() => move(section.id, -1)}
+                        >
+                          <ArrowUpMini />
+                        </Button>
+                        <Button
+                          variant="transparent"
+                          size="small"
+                          aria-label={`Mover ${section.id} para baixo`}
+                          disabled={
+                            place === shown.length - 1 || working !== null
+                          }
+                          onClick={() => move(section.id, 1)}
+                        >
+                          <ArrowDownMini />
+                        </Button>
+                      </>
+                    )}
+
+                    <Button
+                      variant="transparent"
+                      size="small"
+                      aria-label={`Remover a seção ${section.id}`}
+                      disabled={working !== null}
+                      onClick={() => remove(section)}
+                    >
+                      <Trash />
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => setOpenId(isOpen ? null : section.id)}
+                    >
+                      {isOpen ? "Fechar" : "Editar"}
+                    </Button>
+                  </div>
+                </div>
+
+                {isOpen && (
+                  <div className="flex flex-col gap-y-5 border-t border-ui-border-base p-4">
+                    {/* A barra da seção, irmã da barra da ordem: aparece quando o
+                        formulário tem alteração não salva, e é o **único** "Salvar"
+                        do formulário — fora dela não há o que salvar. Fica no topo
+                        porque os trilhos de aparência esticam a seção, e um botão no
+                        fim de um formulário longo é um botão que ninguém acha. */}
+                    {dirty && (
+                      <div className="flex items-center justify-between gap-x-4 rounded-md bg-ui-bg-subtle p-3">
+                        <div>
+                          <Text size="small" weight="plus">
+                            Alterações não salvas nesta seção
+                          </Text>
+                          <Text size="xsmall" className="text-ui-fg-subtle">
+                            A loja continua mostrando o conteúdo anterior até você
+                            salvar. Ordem é outro assunto: ela vai no “Salvar ordem”
+                            da lista.
+                          </Text>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-x-2">
+                          <Button
+                            variant="secondary"
+                            size="small"
+                            disabled={savingId === section.id}
+                            onClick={() => discardFields(section)}
+                          >
+                            Descartar
+                          </Button>
+                          <Button
+                            size="small"
+                            isLoading={savingId === section.id}
+                            onClick={() => save(section)}
+                          >
+                            Salvar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {toRows(specs).map((row) => {
+                      // Um campo de conteúdo e um campo de trilho se desenham do
+                      // mesmo jeito: quem muda o desenho é o `kind`, que veio do
+                      // contrato.
+                      const field = (spec: FieldSpec) => (
+                        <FieldInput
+                          key={spec.name}
+                          spec={spec}
+                          value={draft[spec.name]}
+                          onChange={(value) =>
+                            setField(section.id, spec.name, value)
+                          }
+                          itemFields={schema?.itemFields ?? {}}
+                          palette={schema?.palette}
+                          fonts={schema?.fonts}
+                          categories={categories}
+                          marks={schema?.markdownMarks}
+                          destinations={schema?.destinations}
+                        />
+                      )
+
+                      return row.kind === "field" ? (
+                        field(row.spec)
+                      ) : (
+                        <AppearanceRail
+                          key={`rail:${row.group}`}
+                          title={row.group}
+                          note={railNote(row, draft, schema?.darkTokens)}
+                          onReset={() => resetFields(section.id, row.specs)}
+                        >
+                          {row.specs.map(field)}
+                        </AppearanceRail>
+                      )
+                    })}
+
+                    <div className="flex items-center gap-x-3">
+                      <Switch
+                        checked={Boolean(draft.enabled)}
+                        onCheckedChange={(checked) =>
+                          setField(section.id, "enabled", checked)
+                        }
+                      />
+                      <Label size="small" weight="plus">
+                        {currentSurface?.enabledLabel ?? "Visível na loja"}
+                      </Label>
                     </div>
                   </div>
                 )}
-
-                {toRows(specs).map((row) => {
-                  // Um campo de conteúdo e um campo de trilho se desenham do
-                  // mesmo jeito: quem muda o desenho é o `kind`, que veio do
-                  // contrato.
-                  const field = (spec: FieldSpec) => (
-                    <FieldInput
-                      key={spec.name}
-                      spec={spec}
-                      value={draft[spec.name]}
-                      onChange={(value) =>
-                        setField(section.id, spec.name, value)
-                      }
-                      itemFields={schema?.itemFields ?? {}}
-                      palette={schema?.palette}
-                      fonts={schema?.fonts}
-                      categories={categories}
-                      marks={schema?.markdownMarks}
-                      destinations={schema?.destinations}
-                    />
-                  )
-
-                  return row.kind === "field" ? (
-                    field(row.spec)
-                  ) : (
-                    <AppearanceRail
-                      key={`rail:${row.group}`}
-                      title={row.group}
-                      note={railNote(row, draft, schema?.darkTokens)}
-                      onReset={() => resetFields(section.id, row.specs)}
-                    >
-                      {row.specs.map(field)}
-                    </AppearanceRail>
-                  )
-                })}
-
-                <div className="flex items-center gap-x-3">
-                  <Switch
-                    checked={Boolean(draft.enabled)}
-                    onCheckedChange={(checked) =>
-                      setField(section.id, "enabled", checked)
-                    }
-                  />
-                  <Label size="small" weight="plus">
-                    {currentSurface?.enabledLabel ?? "Visível na loja"}
-                  </Label>
-                </div>
-              </div>
-            )}
-          </Container>
-        )
-      })}
+              </Container>
+            )
+          })}
+        </>
+      )}
     </Container>
   )
 }

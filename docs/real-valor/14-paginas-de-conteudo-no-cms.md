@@ -569,7 +569,7 @@ uma página que outro ainda não sabe desenhar.
 | **PR3b — F2 anexo** | o `kind` `document` (upload que já existe, chave gravada, `resolveMediaUrl` no render) | separado do formato porque não depende dele: o anexo é campo, não texto — e "página + PDF assinado" é o par que a LGPD pede (14.6.3) — ✅ **executado**, ver 14.18 |
 | **PR4 — F2 FAQ** | o tipo `faq` e o render (`<details>/<summary>`) | uma página só, e ela é a que mais se beneficia do tipo anterior (resposta longa) — ✅ **executado**, ver 14.19 |
 | **PR5 — F3a destinos** | a lista de rotas conhecidas + o seletor nos campos de href do CRM | **é este PR que resolve a causa-raiz do doc 13** — os nove botões param de ter `/store` como única alternativa — ✅ **executado**, ver 14.20 |
-| **PR6 — F3a tela "Páginas"** | lista das páginas declaradas, com publicada/despublicada e atalho para os blocos | trabalho de painel, e o único item que devolve autonomia sem abrir a entidade (F3b) |
+| **PR6 — F3a tela "Páginas"** | lista das páginas declaradas, com publicada/despublicada e atalho para os blocos | trabalho de painel, e o único item que devolve autonomia sem abrir a entidade (F3b) — ✅ **executado**, ver 14.21 |
 | **PR7 — F3a descoberta** | as páginas no rodapé, no índice público e na sugestão do 404 | fecha o ciclo: a página passa a ser **encontrável**, não só existente |
 
 Três cuidados de execução:
@@ -731,7 +731,7 @@ ok (artefato e fronteira); `make build-admin` ok (`Frontend build completed succ
 | `prose` (texto longo), `MARKDOWN_MARKS` e o editor do campo | PR3 | ✅ **feito em 14.17** — e a decisão 8 que o travava saiu em "barra de marcas": o tipo, o campo `markdown` com o editor, a barra no CRM e a paridade entre a barra e o parser |
 | `document` (anexo) | PR3b | ✅ **feito em 14.18** — o campo, o editor (com o teto da decisão 10) e o botão de baixar na página |
 | `faq` | PR4 | ✅ **feito em 14.19** — o tipo, o item (`question` `text` + `answer` `markdown`) e o `<details>/<summary>` nativo, que reusa o parser e a barra do `prose` |
-| Lista de destinos no CRM, tela "Páginas", a página no índice e no 404 | PR5–PR7 | Devolvem autonomia; a F1 não as exige. O **PR5** é o que fecha a causa-raiz do doc 13 — ✅ **feito em 14.20**; a tela "Páginas" (PR6) e a descoberta (PR7) seguem |
+| Lista de destinos no CRM, tela "Páginas", a página no índice e no 404 | PR5–PR7 | Devolvem autonomia; a F1 não as exige. O **PR5** é o que fecha a causa-raiz do doc 13 — ✅ **feito em 14.20**; a tela "Páginas" (PR6) — ✅ **feita em 14.21** — e a descoberta (PR7) seguem |
 | A **copy** das seis páginas | conteúdo | Decisão 7: o padrão é vazio e a página vazia responde 404. Quem escreve é o lojista, no CRM — a aba está lá, com os seis tipos de página disponíveis |
 
 ### As decisões de 14.14 que a execução respondeu
@@ -918,6 +918,10 @@ catálogo — o tipo novo não entrou no conteúdo padrão da vitrine, e o seed 
   mostrar?" é do índice de páginas (**PR5/PR6**, a tela "Páginas"), que é onde a lojista vê a linha
   "publicada, sem texto". Fazer a rota decidir isso hoje exigiria uma segunda cópia da regra de vazio de
   cada tipo dentro do `[slug]/page.tsx` — o tipo de espelho que este projeto paga caro.
+  ⚠️ **Corrigido pela medição do PR6 (14.21):** o índice chegou, e a linha "publicada, sem texto"
+  **não** — ela precisa da regra de vazio **de cada render**, que é exatamente o espelho que a frase
+  acima recusa. O que a tela mostra é o que a régua (habilitada ∧ tipo conhecido) consegue provar:
+  "Publicada", "Despublicada" e "Sem blocos". O resto segue aberto, agora com nome e dono.
 
 **O que este PR mudou na fila:** o PDF da LGPD (decisão 9) continua podendo esperar o PR3b, porque as
 páginas de texto agora existem sem ele — a Privacidade é escrevível hoje, e o anexo é o **complemento**
@@ -1198,4 +1202,83 @@ rotas digitada à mão para envelhecer.
 - **O PR6 (a tela "Páginas") é o próximo da fila** — a lista dos blocos declarados, com
   publicada/despublicada e atalho para os blocos dela. Ele não depende deste PR, e é o que devolve
   autonomia sem abrir a entidade (F3b, que segue com gatilho — nenhum deles apareceu aqui).
+
+## 14.21 O PR6 executado: a tela "Páginas" (2026-10-09)
+
+O **PR6** de 14.13 era o item 2 da F3a: a lista das páginas declaradas, com "publicada/despublicada" e um
+atalho para os blocos dela. É trabalho de painel, e não abriu entidade nenhuma — a **F3b**
+(`content_page`) segue com gatilho, e nenhum dos três apareceu aqui (nenhuma página precisou de PR de dev
+duas vezes, a lista tem seis, e ninguém pediu para criar ou despublicar página).
+
+| Arquivo | O que entrou |
+| :--- | :--- |
+| `packages/contrato/src/contract.ts` | a **régua** (`publishedSections`) e o **vocabulário** dos estados (`PageState`, `PAGE_STATES`, `pageState`) |
+| `backend/.../modules/content/pages.ts` *(novo)* | `pageSummaries`: as linhas do índice, com a régua aplicada (puro — sem request, sem banco) |
+| `backend/.../api/admin/content/pages/route.ts` *(novo)* | `GET /admin/content/pages` — as linhas + o vocabulário, ao lado de `/order` e `/restore` |
+| `frontend/.../(main)/[slug]/page.tsx` | o `notFound()` passa a ler a **mesma** função (`publishedSections`) |
+| `admin/.../routes/content/pages-view.tsx` *(novo)* | a tela: uma linha por página, o estado e "Editar blocos" |
+| `admin/.../routes/content/page.tsx` | o botão "Páginas" na barra das superfícies e o `openSurface` (o atalho) |
+| `backend/.../__tests__/pages.unit.spec.ts` | **8** testes novos: o par da régua, os três estados, o vocabulário completo e o índice |
+| `frontend/.../lib/data/supported-sections.spec.ts` | a premissa: a régua do contrato não tira nada dos dois filtros da loja |
+| `admin/.../__tests__/panel-wiring.unit.spec.ts` | a tela lê o índice e **não conta** nada; o atalho é a troca de aba |
+
+### A decisão que faz a tela valer: uma régua, dois leitores
+
+O estado que o CRM mostra **tem** de ser o que a loja responde. "Publicada" com `/privacidade` em 404
+seria a promessa vazia do doc 13 — agora dita por quem deveria saber, que é pior: o doc 13 é um mapa de
+botões que ninguém conferiu, e isto seria um painel afirmando com autoridade. Por isso a conta
+(`habilitada` ∧ tipo que a loja conhece) saiu para `publishedSections`, no **contrato**, e passou a ser
+lida pelo CRM **e** pela rota `[slug]`, que é quem responde 404. Duas implementações da mesma regra
+seriam duas respostas para a mesma pergunta, e o teste de uma não veria a outra.
+
+O que a régua **não** vê continua declarado (14.17): uma seção publicada que o render desenha vazia — o
+`prose` sem texto — conta como publicada, e o endereço abre vazio. A linha "publicada, sem texto" que
+aquele PR esperava desta tela precisa da regra de vazio **de cada tipo**, que hoje mora em cada
+componente (`prose.tsx:53`, `faq.tsx:47`); trazê-la para cá seria uma segunda cópia dela, e é o espelho
+que este PR não pagou. O que a tela entrega é o outro lado do mesmo par, e ele foi medido:
+**Despublicada** (tem bloco, nenhum no ar) é a URL que quebra — e é o estado que o link do rodapé
+transforma em link quebrado (14.16).
+
+### Três decisões de execução
+
+- **A tela é um modo, não uma rota.** O atalho "Editar blocos" é a troca de aba que já existia
+  (`openSurface` → `switchSurface`). Uma rota nova teria de linkar de volta para `/painel/content`, e o
+  painel **não conhece a própria URL**: `MEDUSA_ADMIN_PATH` é configuração (`/painel` hoje, e o Medusa
+  documenta trocá-la), enquanto o único endereço que o CRM escreve é o da **API** (`/admin/...`,
+  absoluto). Uma segunda tela seria também um segundo lugar para manter a lista de páginas em dia com as
+  abas — o contrato faz isso sozinho quando o índice é um modo do mesmo payload.
+- **O índice não publica nem despublica página.** Ligar/desligar página inteira é um dos três gatilhos da
+  F3b (14.6.4) — é a única coisa que F1–F3a não entregam, e o que a lojista pediria se quisesse
+  autonomia total. O estado desta tela é **leitura**: o que se edita continua sendo o bloco, na aba dele.
+- **O estado viaja como dado** (`pageStates`, com rótulo, tom e frase), como `typeLabels` e o `hint` da
+  superfície. O painel desenha o que chega e não tem tabela própria — o `panel-wiring.unit.spec.ts`
+  passou a proibir `PAGE_STATES` no bundle do CRM e a provar que a tela não recebe seção nenhuma para
+  contar.
+
+### Medido na stack local (loja `:8000`, backend `:9000`)
+
+| Medição | Resultado |
+| :--- | :--- |
+| `make types` / `make test` | **0** / verde: backend **421** (8 novos), CRM **85** (2 novos), loja **413** (2 novos) |
+| `make check` / `make check-schema` | **0** / *"Registro do schema em dia (chave \"content\", versão 14)"* — o PR6 não toca o formulário, então **não há bump**, e `destinations` da v14 segue sendo o que o campo de endereço desenha |
+| `make build-admin` | **0** — *"Frontend build completed successfully"* (backend 14,45s, frontend 40,01s): o arquivo novo compila no bundle de produção, e o import de tipo do contrato (`PageStateSpec`) é apagado antes do Rollup |
+| `make logs-admin` | OK — e o grafo do dev server **alcança o arquivo novo**: com `ADMIN_MAX=900 ADMIN_DEPTH=8`, **460** módulos conferidos, `pages-view.tsx` entre eles (o alvo sozinho para no teto de 300 e não chegaria nele) |
+| `GET /admin/content/pages` | **200** — `pages` com as **6** páginas declaradas e `pageStates` com os **3** estados |
+| o estado × a loja (é o aceite) | `sobre` **publicada** → `/br/sobre` **200**; `trocas-e-devolucoes`, `privacidade`, `termos`, `contato` e `perguntas-frequentes` **sem blocos** → **404** nas cinco |
+| um `prose` publicado em `/privacidade` | o CRM passa a **Publicada** (`blocks=1 published=1`) e `/br/privacidade` responde **200** — 404 → 200 ao vivo, com uma seção criada por `POST /admin/content` |
+| o mesmo bloco **despublicado** | o CRM passa a **Despublicada** (`blocks=1 published=0`) e a URL volta a **404** — é a linha laranja que o índice existe para mostrar |
+| a seção removida no fim da medição | o CRM volta a **Sem blocos** e a URL a **404**; no Postgres sobrou **1** seção de página (`sobre/editorial`) — a medição não deixou rastro |
+| a vitrine não mudou (critério 10 de 14.11) | `/br` com **25** `href` distintos e **9** `href="/br/store"`, e `/br/store` com **30** âncoras — os mesmos números do PR5. A comparação com a captura daquele PR difere só no bloco `hidden id="S:0"` (o placeholder da fronteira de Suspense da sacola, que o `$RC` do Next apaga no browser antes de pintar): fora dele as âncoras e as classes `rv-*` batem, e duas capturas consecutivas agora são idênticas |
+| o diff do `page.tsx` | **638** linhas, das quais **294** são reindentação (o bloco de blocos passou a viver dentro do fragmento do índice): `git diff -w` mostra só a mudança real — três trechos de código e dois comentários novos |
+
+### O que ficou fora, e o que este PR mudou na fila
+
+- **"Publicada, sem texto"** — declarado acima e em 14.17: precisaria da regra de vazio **de cada
+  render**, e o PR6 não comprou esse espelho. O que a tela mostra é o que ela consegue provar.
+- **O achado do PR5 (o `ctaHref` vazio desenhando um botão para a raiz)** segue fora, como declarado em
+  14.20: é conserto de render, em quatro componentes.
+- **O PR7 (a página no índice e no 404) é o próximo da fila**, e este PR deixou a régua de graça para
+  ele: `GET /admin/content/pages` já responde "quais páginas estão no ar" (o `sitemap` de 14.15 lista as
+  que respondem 200, e a sugestão do 404 sai da mesma lista), e `pageState` é a função que a coluna
+  automática de páginas (`source: "pages"`) precisa. Nada nele depende de conteúdo novo.
 

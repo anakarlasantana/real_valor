@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { findSurface } from "@lib/content/home-sections"
+import { findSurface, publishedSections } from "@lib/content/home-sections"
 import { pageSeo } from "@lib/content/page-seo"
 import { getPageSections } from "@lib/data/content"
 import { getRegion } from "@lib/data/regions"
@@ -91,7 +91,16 @@ export default async function ContentPage({ params }: Props) {
   // Página sem bloco publicado responde 404 — nunca a home (critério 3 do doc
   // 14). É a diferença entre "esta página ainda não foi escrita" e "esta página
   // é a vitrine", e a segunda é mentira.
-  if (!sections.length) {
+  //
+  // A régua é a do **contrato** (`publishedSections`), a mesma que o CRM lê para
+  // dizer "publicada" na tela "Páginas" (14.21 do doc 14): habilitada e de um
+  // tipo que a loja desenha. Aqui ela não tira nada — `getSurfaceSections` já
+  // entregou só o que passou pelos dois filtros (a Store API manda apenas as
+  // habilitadas, e `supportedSections` descartou o tipo desconhecido) —, e é por
+  // isso que a chamada vale: a decisão do 404 passa a ter **um** texto, e não
+  // dois que precisam concordar. Uma régua que apertasse (um tipo a mais fora,
+  // por exemplo) apareceria aqui e na tela ao mesmo tempo, no mesmo commit.
+  if (!publishedSections(sections).length) {
     notFound()
   }
 

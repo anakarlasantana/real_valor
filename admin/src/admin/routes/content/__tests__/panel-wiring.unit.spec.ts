@@ -36,6 +36,7 @@ const CONTENT_DIR = join(PANEL_SRC, "admin", "routes", "content")
 const fieldInput = readFileSync(join(CONTENT_DIR, "field-input.tsx"), "utf8")
 const hrefInput = readFileSync(join(CONTENT_DIR, "href-input.tsx"), "utf8")
 const page = readFileSync(join(CONTENT_DIR, "page.tsx"), "utf8")
+const pagesView = readFileSync(join(CONTENT_DIR, "pages-view.tsx"), "utf8")
 
 function panelSources(): string[] {
   const found: string[] = []
@@ -76,6 +77,11 @@ describe("o painel não declara o contrato", () => {
       "TYPE_LABELS",
       "MARKDOWN_MARKS",
       "CONTENT_DESTINATIONS",
+      // O vocabulário dos estados da tela "Páginas": ele chega no payload
+      // (`pageStates`), com rótulo, tom e frase. Uma tabela aqui seria o
+      // painel inventando a palavra — e a palavra tem de ser a do servidor,
+      // que é quem de fato sabe se a página está no ar (ver `pages-view.tsx`).
+      "PAGE_STATES",
     ]
     const sources = panelSources()
     const declarados = MIRRORS.filter((name) =>
@@ -183,6 +189,34 @@ describe("o painel lê o schema", () => {
     expect(page).toContain("numeralFor(place, order)")
     expect(page).toContain("order.reserved")
     expect(page).toContain('"/admin/content/order"')
+  })
+
+  it('a tela "Páginas" lê o índice da API — e não conta nada no navegador', () => {
+    // O estado de cada página ("Publicada", "Despublicada", "Sem blocos") é a
+    // régua do contrato, aplicada no **servidor** (`GET /admin/content/pages`,
+    // ver `modules/content/pages.ts`): habilitada e de um tipo que a loja
+    // desenha — a mesma régua que a rota `[slug]` do storefront usa para decidir
+    // o 404. A tela desenha o que chega. Se ela contasse seção, haveria uma
+    // segunda resposta para "esta página está no ar" — e a resposta que a
+    // cliente vê é a da loja.
+    expect(pagesView).toContain('"/admin/content/pages"')
+    expect(pagesView).toContain("json.pageStates")
+    expect(pagesView).toContain("state?.label")
+    // A prova de que ela não conta: não há o que contar. A tela não recebe seção
+    // nenhuma — nem `enabled`, nem `type` para comparar.
+    expect(pagesView).not.toContain("enabled")
+  })
+
+  it("o índice é um modo da tela de conteúdo, e o atalho troca de aba", () => {
+    // A F3a pede "um atalho para a aba de blocos dela", e o atalho é a troca de
+    // aba que já existe (`openSurface`): o índice não inventa navegação — uma
+    // rota nova teria de carregar a URL do painel junto, que o CRM não conhece
+    // (`MEDUSA_ADMIN_PATH` é configuração). Sem `setShowPages(false)` antes da
+    // troca, o atalho mudaria a superfície e continuaria mostrando o índice.
+    expect(page).toContain("PagesView")
+    expect(page).toContain("showPages")
+    expect(page).toContain("setShowPages(false)")
+    expect(page).toContain("openSurface")
   })
 })
 
