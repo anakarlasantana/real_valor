@@ -11,7 +11,7 @@ impactados · critérios de aceite · complexidade · pré-requisitos.
 
 Pré-requisito de tudo. Curta, e cria a estrutura que os itens seguintes consomem.
 
-### ✅ RV-001 · Camada de abstração de pagamento — **FEITO**
+### ✅ RV-001 · Camada de abstração de pagamento — **FEITO** (`73ed719544`)
 
 **O que foi feito:** contrato `packages/contrato/src/payment.ts` (`FulfillmentMode`, `PaymentResult`,
 `PaymentCapabilities`, `InstallmentInfo`, `MANUAL_PROVIDER_ID`); `lib/payments/{types,registry,labels}.ts`;
@@ -33,7 +33,21 @@ storefront, e migrar o Stripe atual para dentro de um adapter — sem mudar a ap
 **Aceite:** os 8 critérios da RV-001; `grep -r "adapters/" modules/checkout` vazio
 **Pré-requisito:** nenhum
 
-### RV-006 · Frete automático e plugável ✅ FEITO
+### ✅ RV-014 · Guarda de fronteira do pagamento — **FEITO** (`73ed719544`)
+
+**O que foi feito:** `scripts/check-boundaries.mjs` ganhou uma segunda verificação — `modules/checkout/`
+não importa `@lib/payments/adapters` nem `@stripe/*`. Testada nos dois sentidos: passa no código atual
+e **reprova** quando se injeta um import proibido.
+
+**Descrição original:** estender `scripts/check-boundaries.mjs` para reprovar `modules/checkout/` que importe
+`lib/payments/adapters/` diretamente.
+**Tipo:** arquitetura · **Prioridade:** ALTA · **Complexidade:** baixa
+**Depende de:** RV-001
+**Arquivos:** *alterado:* `scripts/check-boundaries.mjs`
+**Aceite:** um import de teste reprova; o hook de commit chama a guarda
+**Pré-requisito:** RV-001
+
+### ✅ RV-006 · Frete automático e plugável — **FEITO** (`7bdf25bf1e`)
 **Descrição:** Fulfillment Provider que calcula preço por peso × região, com valores fictícios
 isolados em um arquivo só.
 **Tipo:** arquitetura · **Prioridade:** ALTA · **Complexidade:** média
@@ -47,6 +61,33 @@ isolados em um arquivo só.
 `frontend/src/lib/shipping/`. O Medusa já entrega a abstração
 (`AbstractFulfillmentProviderService` + `StoreCartShippingOption`), e o frontend não tem o que decidir.
 Ver a correção em `04-requisitos-funcionais.md`.
+
+---
+
+### ✅ Doc 14 — Páginas de conteúdo no CMS (F1–F3a, PR1–PR7) — **FEITO** (`b1f53846db`)
+
+**O que foi feito (7 PRs):**
+
+| PR | Escopo | Commit |
+|----|--------|--------|
+| **PR1+PR2 (F1)** | 6 páginas declaradas (`sobre`, `trocas-e-devolucoes`, `privacidade`, `termos`, `contato`, `perguntas-frequentes`) + rota genérica `[slug]` + contrato→rota→sitemap | `da0ac04c5e` |
+| **PR3 (F2)** | Bloco `prose` (texto longo) + campo `markdown` + barra do editor + parser | `d5fd87a501` |
+| **PR3b (F2)** | Bloco `document` (PDF anexo, 25 MB) + botão de download | `eab966d071` |
+| **PR4 (F2)** | Bloco `faq` (`<details>`/`<summary>`, reusa parser `markdown`) | `a8c35a1bce` |
+| **PR5 (F3a)** | Campo `href` kind + lista de destinos (`/store`, `/cart`, páginas, etc.) — resolve causa-raiz do doc 13 | `d91c19b063` |
+| **PR6 (F3a)** | Tela "Páginas" no CRM: estado publicada/despublicada/sem blocos + atalho "Editar blocos" | `e43071dcb4` |
+| **PR7 (F3a)** | Descoberta: páginas no rodapé (coluna `pages`), índice público `/paginas`, sugestão no 404, `sitemap` usa mesmo leitor | `b1f53846db` |
+
+**Arquivos principais:**
+- *contrato:* `packages/contrato/src/contract.ts` (`CONTENT_SURFACES`, `PAGE_SURFACES`, `CONTENT_DESTINATIONS`, `pageState`, `publishedSections`)
+- *backend:* `src/modules/content/{contract,pages,payload,validation}.ts`, `src/api/admin/content/pages/route.ts`, `src/api/store/content/pages/route.ts`
+- *CRM:* `src/admin/routes/content/{pages-view.tsx,page.tsx,markdown-bar.ts,href-input.tsx,document-input.tsx,image-input.tsx,field-input.tsx}`
+- *storefront:* `src/app/[countryCode]/(main)/[slug]/page.tsx`, `src/app/[countryCode]/(main)/paginas/page.tsx`, `src/app/[countryCode]/(main)/not-found.tsx`, `src/lib/data/{pages,content}.ts`, `src/lib/content/page-seo.ts`, `src/modules/content/{prose,faq,render-section}.tsx`, `src/modules/layout/components/footer-column/index.tsx`
+- *testes:* `page-surfaces.spec.ts` (19 testes), `pages.unit.spec.ts`, `panel-wiring.unit.spec.ts`, `prose.spec.tsx`, `faq.spec.tsx`
+
+**Aceite:** todos os gates verdes (`make types`/`test`/`check`/`check-schema`); 6 páginas declaradas; 3 blocos novos; seletor de destinos no CRM; descoberta em 4 pontas (rodapé, índice, 404, sitemap) com **uma** leitura (`getLivePages` → `GET /store/content/pages`); sem fallback de página vazia para home.
+
+**O que **não** foi feito (gatilho — §14.6.4):** entidade `content_page` (criar/renomear/publicar página inteira no CRM) — só entra se: (1) página pediu PR de dev 2× seguidas, (2) > 8 páginas, ou (3) lojista pede autonomia total. Nenhum gatilho apareceu.
 
 ### RV-048 · Remoção do código Stripe
 **Descrição:** apagar o que sobrou do Stripe no frontend, depois que o MP estiver funcionando.
@@ -580,6 +621,18 @@ Git, se o conteúdo ainda for válido.
 > **não** está contado nas linhas acima: a linha "Fase 0" já reflete a lista publicada sem ele, e o
 > efetivo é **46 itens**, não 47. (Esta tabela estava somando errado antes do RV-002: dizia 2 feitos
 > na Fase 0, com o RV-006 também pronto, e 2 na Fase 1, com RV-043 e RV-044 prontos.)
+
+---
+
+### ✅ Entregável extra não contado na tabela: **Doc 14 — Páginas de conteúdo no CMS (F1–F3a)**
+
+| Fase Doc 14 | PRs | Escopo | Commits |
+|-------------|-----|--------|---------|
+| **F1** (declarar) | PR1+PR2 | 6 páginas, rota `[slug]`, contrato→rota→sitemap | `da0ac04c5e` |
+| **F2** (blocos) | PR3, PR3b, PR4 | `prose`, `document`, `faq` | `d5fd87a501`, `eab966d071`, `a8c35a1bce` |
+| **F3a** (autonomia sem migration) | PR5, PR6, PR7 | seletor `href`, tela "Páginas", descoberta (rodapé, índice, 404, sitemap) | `d91c19b063`, `e43071dcb4`, `b1f53846db` |
+
+**Total Doc 14:** **7 PRs**, todos os gates verdes, **F3b (entidade `content_page`) segue com gatilho** (§14.6.4).
 
 **Complexidade da Fase 0 + Fase 1 (entregável da inauguração):** 19 itens, sendo 4 de complexidade
 alta. É o escopo mínimo para abrir a loja vendendo, **com pagamento, reserva de estoque, envio e
