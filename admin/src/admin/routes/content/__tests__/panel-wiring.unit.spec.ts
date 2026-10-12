@@ -38,6 +38,26 @@ const hrefInput = readFileSync(join(CONTENT_DIR, "href-input.tsx"), "utf8")
 const page = readFileSync(join(CONTENT_DIR, "page.tsx"), "utf8")
 const pagesView = readFileSync(join(CONTENT_DIR, "pages-view.tsx"), "utf8")
 
+/**
+ * A tela de conteúdo é dividida em arquivos desde o refactor (a página é a
+ * casca das três abas): cada asserção abaixo aponta para o arquivo que **faz** o
+ * que ela confere, e não mais para a página monolítica. A promessa é a mesma — o
+ * dado e o tipo chegam pelo `schema` da API, e nenhum deles é redeclarado no
+ * painel —, e por isso a varredura de espelhos/formas continua sendo o pacote
+ * inteiro (`panelSources`), que não depende de nome de arquivo.
+ */
+const surfacePanel = readFileSync(
+  join(CONTENT_DIR, "SurfaceSectionsPanel.tsx"),
+  "utf8"
+)
+const sectionRow = readFileSync(join(CONTENT_DIR, "SectionRow.tsx"), "utf8")
+const navigation = readFileSync(join(CONTENT_DIR, "navigation.ts"), "utf8")
+const utils = readFileSync(join(CONTENT_DIR, "utils.ts"), "utf8")
+const hook = readFileSync(
+  join(CONTENT_DIR, "hooks", "useSurfaceSections.ts"),
+  "utf8"
+)
+
 function panelSources(): string[] {
   const found: string[] = []
 
@@ -117,17 +137,18 @@ describe("o painel não declara o contrato", () => {
 })
 
 describe("o painel lê o schema", () => {
-  it("a página e o editor leem os campos de item (`itemFields`)", () => {
+  it("a lista e o editor leem os campos de item (`itemFields`)", () => {
     // O outro lado do mesmo defeito: um `schema` que ninguém lê é campo que some
-    // da tela — o sub-formulário da lista deixa de ser desenhado.
-    expect(page).toContain("itemFields")
+    // da tela — o sub-formulário da lista deixa de ser desenhado. Quem passa o
+    // `itemFields` para o editor é a linha da seção (o painel não o conhece).
+    expect(sectionRow).toContain("itemFields")
     expect(fieldInput).toContain("itemFields")
   })
 
   it("a listagem lê os rótulos de tipo (`typeLabels`)", () => {
     // Sem eles a listagem mostra o `type` cru (`launches`, `editorial`) no lugar
     // do nome que o lojista lê.
-    expect(page).toContain("typeLabels")
+    expect(sectionRow).toContain("typeLabels")
   })
 
   it("a barra do texto formatado desenha as marcas do payload (`markdownMarks`)", () => {
@@ -136,7 +157,7 @@ describe("o painel lê o schema", () => {
     // o que o clique faz é o `toggleMark` (`markdown-bar.ts`), que tem teste
     // próprio; aqui se confere a ligação: sem a leitura, a barra do `prose`
     // nasceria vazia.
-    expect(page).toContain("markdownMarks")
+    expect(sectionRow).toContain("markdownMarks")
     expect(fieldInput).toContain("marks.map")
     expect(fieldInput).toContain("toggleMark(")
   })
@@ -159,7 +180,7 @@ describe("o painel lê o schema", () => {
     // leitura, o campo `href` volta a ser caixa de texto livre, que é
     // exatamente a causa-raiz do doc 13 (nove botões em `/store` porque não
     // havia alternativa no painel).
-    expect(page).toContain("destinations")
+    expect(sectionRow).toContain("destinations")
     expect(fieldInput).toContain("destinations")
     expect(hrefInput).toContain("destinations")
     expect(hrefInput).toContain("<datalist")
@@ -176,9 +197,10 @@ describe("o painel lê o schema", () => {
   it("o seletor de superfície e o diálogo saem do schema", () => {
     // Uma superfície nova no contrato aparece na tela sem edição no painel: é a
     // mesma promessa da bolinha de cor e do sub-formulário dos itens.
-    expect(page).toContain("schema?.surfaces")
-    expect(page).toContain("currentSurface")
+    expect(navigation).toContain("schema?.surfaces")
+    expect(page).toContain("getPageSurfaces")
     expect(page).toContain("?surface=")
+    expect(surfacePanel).toContain("surface.label")
   })
 
   it("a ordem pendente usa a faixa do payload, e publica pela porta única", () => {
@@ -186,9 +208,9 @@ describe("o painel lê o schema", () => {
     // `order` que a API manda (com as casas ancoradas em `order.reserved`), e não
     // de uma segunda regra dentro do navegador. Publicar é o POST da porta única
     // — não N `PATCH`es, um por seção.
-    expect(page).toContain("numeralFor(place, order)")
-    expect(page).toContain("order.reserved")
-    expect(page).toContain('"/admin/content/order"')
+    expect(surfacePanel).toContain("numeralFor(place, order)")
+    expect(utils).toContain("order.reserved")
+    expect(hook).toContain('"/admin/content/order"')
   })
 
   it('a tela "Páginas" lê o índice da API — e não conta nada no navegador', () => {
@@ -207,15 +229,16 @@ describe("o painel lê o schema", () => {
     expect(pagesView).not.toContain("enabled")
   })
 
-  it("o índice é um modo da tela de conteúdo, e o atalho troca de aba", () => {
+  it("o índice é um modo da tela, e o atalho abre os blocos da página", () => {
     // A F3a pede "um atalho para a aba de blocos dela", e o atalho é a troca de
     // aba que já existe (`openSurface`): o índice não inventa navegação — uma
     // rota nova teria de carregar a URL do painel junto, que o CRM não conhece
-    // (`MEDUSA_ADMIN_PATH` é configuração). Sem `setShowPages(false)` antes da
-    // troca, o atalho mudaria a superfície e continuaria mostrando o índice.
+    // (`MEDUSA_ADMIN_PATH` é configuração). E o atalho abre a página que ele
+    // nomeia: sem o `setOpenPage`, ele trocaria de aba e mostraria o índice de
+    // novo, com o acordeão fechado.
     expect(page).toContain("PagesView")
-    expect(page).toContain("showPages")
-    expect(page).toContain("setShowPages(false)")
+    expect(page).toContain("onOpen={openSurface}")
+    expect(page).toContain("setOpenPage")
     expect(page).toContain("openSurface")
   })
 })

@@ -1,42 +1,45 @@
 /**
- * Linha de uma seção na lista — numeral, drag-drop, toggle, formulário, trilhos de aparência.
- * Componente genérico reutilizado por VitrineSections, PageSectionsPanel, ThemeSections.
+ * A linha de uma seção: numeral, setas, interruptor, formulário e trilhos.
+ * -------------------------------------------------------------------------
+ * Portada de `page.tsx` para o refactor não perder o que ela já fazia: o numeral
+ * previsto (`numeralFor`, em `./utils`), a etiqueta "Fixo" da seção ancorada, as
+ * setas que mexem **na tela** (quem publica é o "Salvar ordem", na lista), a
+ * barra de alterações pendentes com Descartar/Salvar e o formulário desenhado das
+ * linhas do contrato (`toRows`) — com cada trilho de aparência logo abaixo do
+ * campo que ele veste.
+ *
+ * O `FieldInput` recebe o que ele declara receber (`itemFields`, `palette`,
+ * `fonts`, `categories`, `marks`, `destinations`), e não um saco `references`:
+ * era esse desencontro que fazia a bolinha de cor e a lista de fontes não
+ * aparecerem — e que derrubava a seção inteira em runtime, porque `itemFields`
+ * chegava `undefined` e o sub-formulário da lista lia a chave de um undefined.
  */
 import { ArrowDownMini, ArrowUpMini, Trash } from "@medusajs/icons"
-import { Badge, Button, Container, Switch, Text, toast } from "@medusajs/ui"
-import { useCallback, useState, type ReactNode } from "react"
+import { Badge, Button, Container, Label, Switch, Text } from "@medusajs/ui"
 
 import { AppearanceRail } from "./appearance-controls"
 import { FieldInput, type FieldSpec } from "./field-input"
-import { isDirty, wireValue } from "./form-draft"
-import { move, itemSummary } from "./list-order"
-import { numeralFor } from "./page"
-import type { Section, Draft, Schema, OrderFaixa, ContentSurfaceSpec } from "./types"
-
-interface SectionRowProps {
-  section: Section
-  draft: Draft
-  schema: Schema | null
-  surface: ContentSurfaceSpec
-  numeral: number
-  movable: boolean
-  isOpen: boolean
-  onToggleOpen: (id: string | null) => void
-  onUpdate: (id: string, data: Record<string, unknown>) => Promise<void>
-  onRemove: (id: string) => Promise<void>
-  onMove: (fromIndex: number, toIndex: number) => void
-}
+import { isDirty } from "./form-draft"
+import { railNote, toRows } from "./utils"
+import type { SectionRowProps } from "./types"
 
 export function SectionRow({
   section,
   draft,
   schema,
   surface,
+  categories,
   numeral,
   movable,
   isOpen,
+  place,
+  shownLength,
+  working,
+  savingId,
   onToggleOpen,
   onUpdate,
+  onDiscard,
+  onSave,
   onRemove,
   onMove,
 }: SectionRowProps) {
@@ -44,160 +47,199 @@ export function SectionRow({
   const typeLabel = schema?.typeLabels?.[section.type] ?? section.type
   const dirty = isDirty(draft, section)
 
-  // Garante que section.data nunca seja undefined (seções novas vêm com data: undefined)
-  const sectionData = section.data ?? {}
+  /**
+   * O nome que o bloco mostra.
+   *
+   * A superfície diz como ele se chama: a estação usa o rótulo que o dono
+   * escreveu (`titleField` — "Natal"), a seção usa o nome do tipo, porque o
+   * `type` é o identificador do render. `titleField: null` é o caso das seções.
+   */
+  const title = String(
+    (surface.titleField ? draft[surface.titleField] : "") || typeLabel
+  )
 
-  const handleSave = useCallback(async () => {
-    await onUpdate(section.id, draft)
-    toast.success("Salvo.")
-  }, [draft, onUpdate, section.id])
+  // Um campo de conteúdo e um campo de trilho se desenham do mesmo jeito: quem
+  // muda o desenho é o `kind`, que veio do contrato.
+  const field = (spec: FieldSpec) => (
+    <FieldInput
+      key={spec.name}
+      spec={spec}
+      value={draft[spec.name]}
+      onChange={(value) => onUpdate(section.id, { [spec.name]: value })}
+      itemFields={schema?.itemFields ?? {}}
+      palette={schema?.palette}
+      fonts={schema?.fonts}
+      categories={categories}
+      marks={schema?.markdownMarks}
+      destinations={schema?.destinations}
+    />
+  )
 
-  const handleCancel = useCallback(() => {
-    onUpdate(section.id, { ...section })
-  }, [onUpdate, section])
-
-  const handleToggle = useCallback(async () => {
-    await onUpdate(section.id, { enabled: !section.enabled })
-  }, [onUpdate, section])
-
-  const handleMoveUp = useCallback(() => {
-    const place = numeral - 1
-    onMove(place, place - 1)
-  }, [numeral, onMove])
-
-  const handleMoveDown = useCallback(() => {
-    const place = numeral - 1
-    onMove(place, place + 1)
-  }, [numeral, onMove])
-
-  const renderFields = (): ReactNode => {
-    if (!specs.length) return null
-
-    return (
-      <div className="flex flex-col gap-y-4 pt-4 border-t border-ui-border-base">
-        {specs.map((spec) => (
-          <FieldInput
-            key={spec.name}
-            spec={spec}
-            value={draft[spec.name] ?? sectionData[spec.name]}
-            onChange={(v) => onUpdate(section.id, { ...draft, [spec.name]: v })}
-            references={{
-              palette: schema?.palette,
-              fonts: schema?.fonts,
-              destinations: schema?.destinations,
-              categories: [],
-              markdownMarks: schema?.markdownMarks,
-            }}
-          />
-        ))}
-        {surface.blockLabel && (
-          <AppearanceRail
-            surface={surface}
-            sectionType={section.type}
-            sectionData={sectionData}
-            onChange={(v) => onUpdate(section.id, { ...draft, ...v })}
-            palette={schema?.palette}
-            fonts={schema?.fonts}
-          />
-        )}
-      </div>
-    )
+  /**
+   * Devolve um trilho inteiro ao padrão do tema.
+   *
+   * O valor gravado é a opção vazia — o contrato já define `""` como "segue o
+   * tema da loja" —, então restaurar não apaga o campo: grava a escolha que não
+   * sobrescreve nada. Um botão por trilho, e não um só para a seção toda: voltar
+   * a fonte dos títulos ao padrão não tem por que desfazer a cor de fundo que o
+   * lojista escolheu a três linhas de distância.
+   */
+  const resetRail = (rail: readonly FieldSpec[]) => {
+    onUpdate(section.id, Object.fromEntries(rail.map((spec) => [spec.name, ""])))
   }
 
   return (
-    <Container key={section.id} className="overflow-hidden p-0">
+    <Container className="overflow-hidden p-0">
       <div className="flex items-center justify-between gap-x-4 p-4">
         <div className="flex items-center gap-x-3">
           {movable ? (
-            <>
-              <Badge size="2xsmall">{numeral}</Badge>
-              <div className="flex flex-col gap-y-1">
-                <Button
-                  variant="transparent"
-                  size="small"
-                  className="h-6 w-6 p-0"
-                  onClick={handleMoveUp}
-                  disabled={numeral === 1}
-                >
-                  <ArrowUpMini className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="transparent"
-                  size="small"
-                  className="h-6 w-6 p-0"
-                  onClick={handleMoveDown}
-                >
-                  <ArrowDownMini className="h-3 w-3" />
-                </Button>
-              </div>
-            </>
+            // O numeral: a casa gravada, ou a que a seção vai receber quando a
+            // pendente for publicada (a previsão é do painel de lista).
+            <Badge size="2xsmall">{numeral}</Badge>
           ) : (
+            // A seção fixa mostra a **casa** dela — 1, 2, 3, 4 e 10 na home: é o
+            // número que ela ocupa sempre. O "Fixo" ao lado diz que nenhuma seta
+            // a move; as duas informações juntas são o desenho da numeração.
             <div className="flex shrink-0 items-center gap-x-2">
-              <Badge size="2xsmall" variant="secondary">
-                {numeral}
-              </Badge>
-              <Badge size="2xsmall" variant="outline">
+              <Badge size="2xsmall">{numeral}</Badge>
+              <Badge size="2xsmall" color="grey">
                 Fixo
               </Badge>
             </div>
           )}
-          <div className="flex items-center gap-x-2">
-            <Text size="small" weight="plus">
-              {typeLabel}
+          <div>
+            <Text weight="plus" size="small">
+              {title}
             </Text>
-            {dirty && (
-              <Badge size="2xsmall" variant="warning">
-                Pendente
-              </Badge>
-            )}
+            <Text size="xsmall" className="text-ui-fg-subtle">
+              {/* `#id` é a âncora que o menu usa: um Destino `/#editorial` rola
+                  até esta seção. */}
+              #{section.id} · {section.type}
+            </Text>
           </div>
         </div>
 
-        <div className="flex items-center gap-x-2">
-          <Switch
-            checked={section.enabled}
-            onCheckedChange={handleToggle}
-            size="small"
-            aria-label={section.enabled ? "Desativar" : "Ativar"}
-          />
+        <div
+          className={`flex items-center gap-x-2 ${
+            working === section.id ? "opacity-50" : ""
+          }`}
+        >
+          <Badge size="2xsmall" color={section.enabled ? "green" : "grey"}>
+            {section.enabled ? (surface.enabledLabel ?? "Visível") : "Oculta"}
+          </Badge>
+
+          {/* Ordem por setas, e não por um número digitado: posições iguais são
+              ordem indefinida na loja (a vitrine ordena por `position`) e
+              adivinhar um número livre é tarefa que ninguém quer. As setas mexem
+              **na tela** — valem depois do "Salvar ordem" — e não existem no
+              cromo, que não tem ordem. */}
+          {movable && (
+            <>
+              <Button
+                variant="transparent"
+                size="small"
+                aria-label={`Mover ${section.id} para cima`}
+                disabled={place === 0 || working !== null}
+                onClick={() => onMove(section.id, -1)}
+              >
+                <ArrowUpMini />
+              </Button>
+              <Button
+                variant="transparent"
+                size="small"
+                aria-label={`Mover ${section.id} para baixo`}
+                disabled={place === shownLength - 1 || working !== null}
+                onClick={() => onMove(section.id, 1)}
+              >
+                <ArrowDownMini />
+              </Button>
+            </>
+          )}
+
           <Button
             variant="transparent"
+            size="small"
+            aria-label={`Remover a seção ${section.id}`}
+            disabled={working !== null}
+            onClick={() => onRemove(section.id)}
+          >
+            <Trash />
+          </Button>
+
+          <Button
+            variant="secondary"
             size="small"
             onClick={() => onToggleOpen(isOpen ? null : section.id)}
-            aria-label={isOpen ? "Fechar" : "Editar"}
           >
             {isOpen ? "Fechar" : "Editar"}
-          </Button>
-          <Button
-            variant="transparent"
-            size="small"
-            color="danger"
-            onClick={() => onRemove(section.id)}
-            aria-label="Remover"
-          >
-            <Trash className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {isOpen && (
-        <div className="px-4 pb-4">
-          <div className="flex items-center justify-between gap-x-4 mb-4">
-            <div className="flex items-center gap-x-2">
-              <Text size="small" className="text-ui-fg-subtle">
-                Editando <strong>{typeLabel}</strong> (id: {section.id})
-              </Text>
+        <div className="flex flex-col gap-y-5 border-t border-ui-border-base p-4">
+          {/* A barra da seção, irmã da barra da ordem: aparece quando o
+              formulário tem alteração não salva, e é o **único** "Salvar" do
+              formulário. Fica no topo porque os trilhos de aparência esticam a
+              seção, e um botão no fim de um formulário longo é um botão que
+              ninguém acha. */}
+          {dirty && (
+            <div className="flex items-center justify-between gap-x-4 rounded-md bg-ui-bg-subtle p-3">
+              <div>
+                <Text size="small" weight="plus">
+                  Alterações não salvas nesta seção
+                </Text>
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  A loja continua mostrando o conteúdo anterior até você salvar.
+                  Ordem é outro assunto: ela vai no “Salvar ordem” da lista.
+                </Text>
+              </div>
+              <div className="flex shrink-0 items-center gap-x-2">
+                <Button
+                  variant="secondary"
+                  size="small"
+                  disabled={savingId === section.id}
+                  onClick={() => onDiscard(section)}
+                >
+                  Descartar
+                </Button>
+                <Button
+                  size="small"
+                  isLoading={savingId === section.id}
+                  onClick={() => void onSave(section.id)}
+                >
+                  Salvar
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-x-2">
-              <Button variant="secondary" size="small" onClick={handleCancel}>
-                Cancelar
-              </Button>
-              <Button size="small" onClick={handleSave} disabled={!dirty}>
-                Salvar
-              </Button>
-            </div>
+          )}
+
+          {toRows(specs).map((row) =>
+            row.kind === "field" ? (
+              field(row.spec)
+            ) : (
+              <AppearanceRail
+                key={`rail:${row.group}`}
+                title={row.group}
+                note={railNote(row, draft, schema?.darkTokens)}
+                onReset={() => resetRail(row.specs)}
+              >
+                {row.specs.map(field)}
+              </AppearanceRail>
+            )
+          )}
+
+          <div className="flex items-center gap-x-3">
+            <Switch
+              checked={Boolean(draft.enabled)}
+              onCheckedChange={(checked) =>
+                onUpdate(section.id, { enabled: checked })
+              }
+            />
+            <Label size="small" weight="plus">
+              {surface.enabledLabel ?? "Visível na loja"}
+            </Label>
           </div>
-          {renderFields()}
         </div>
       )}
     </Container>
