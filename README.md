@@ -651,12 +651,19 @@ seção da vitrine mostra o estado vazio até receber curadoria.
 | :--- | :--- | :--- |
 | **Loja Storefront (Next.js)** | [http://localhost:8000](http://localhost:8000) | Vitrine e catálogo nacional (BRL) |
 | **Catálogo de Roupas** | [http://localhost:8000/br/store](http://localhost:8000/br/store) | Vestidos, Camisas e Alfaiataria |
-| **Painel Admin Medusa v2** | [http://localhost:9000/painel](http://localhost:9000/painel) | **E-mail**: `admin@realvalor.com.br`<br>**Senha**: `admin123456` |
+| **Painel Admin Medusa v2** | [http://localhost:9000/painel](http://localhost:9000/painel) | **E-mail**: `admin@realvalor.com.br`<br>**Senha**: a de `ADMIN_PASSWORD` no `.env` (troque com `make admin-password`) |
 | **CMS — Conteúdo da vitrine** | [http://localhost:9000/painel/content](http://localhost:9000/painel/content) | Sidebar principal → **Conteúdo da vitrine** |
 | **Store API** | [http://localhost:9000/store](http://localhost:9000/store) | API REST consumida pelo frontend |
 | **Health check** | [http://localhost:9000/health](http://localhost:9000/health) | `200` indica backend operacional |
 | **PostgreSQL** | `localhost:5439` | user `real_valor` / db `real_valor_db` (loopback) |
 | **Redis** | `localhost:6382` | cache e event bus (loopback) |
+
+> **Publicar para teste externo (celular, outra máquina).** `make tunnel` publica a loja **e** o painel
+> num endereço HTTPS único do ngrok — a loja em `https://<endereço>/br`, o painel em
+> `https://<endereço>/painel` — e `make tunnel-stop` derruba o agente e devolve o `.env` como estava.
+> Ele **recusa** publicar enquanto a senha do painel for a de exemplo (`admin123456`): rode
+> `make admin-password` antes. Passo a passo, o que quebra em silêncio e os limites honestos do plano
+> gratuito: `docs/real-valor/11-ambiente-local.md` §11.6 e §11.6.2.
 
 > **CMS da vitrine:** a página **Conteúdo da vitrine** fica na **sidebar principal** do admin,
 > em `/painel/content` — ao lado dos menus nativos e, por isso, dentro do **personalizar
@@ -697,21 +704,23 @@ make health      # inclui o HTTP do painel admin (espera 200)
 make logs-admin  # falha se o Vite registrou "Failed to resolve import"
 ```
 
-**Credenciais — valor único:** `admin@realvalor.com.br` / `admin123456`. É o
-mesmo valor de `ADMIN_PASSWORD` no `.env` e no `.env.example`, e o mesmo que
-valida no endpoint usado pela tela de login:
+**Credenciais:** `admin@realvalor.com.br` e a senha que estiver em `ADMIN_PASSWORD`
+no `.env` — que **não** é a senha do painel, e sim o valor com que o usuário foi
+**criado** na primeira subida. Depois disso, editar o `.env` não troca senha
+nenhuma: o `backend/docker-entrypoint.sh` chama `yarn medusa user -e ... -p ...`,
+que trata "usuário já existe" como sucesso (uma falha que se parece com sucesso).
+Quem troca a senha é o **Medusa**:
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' -X POST http://localhost:9000/auth/user/emailpass \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"admin@realvalor.com.br","password":"admin123456"}'   # espera 200
+make admin-password                       # sorteia uma senha forte e a imprime
+make admin-password NOVA='a senha nova'
 ```
 
-`ADMIN_PASSWORD` só é aplicado na **primeira** criação do usuário: o
-`backend/docker-entrypoint.sh` chama `yarn medusa user -e ... -p ...`, que **não**
-sobrescreve a senha de um usuário existente (ele registra o usuário como já
-existente e segue). Por isso `.env`, `.env.example` e este README mantêm o mesmo
-valor — assim a senha documentada é sempre a verdadeira.
+O script faz login com a senha atual, chama `POST /auth/user/emailpass/update` com
+o token, confere que a **nova é aceita** e que a **antiga é recusada** — e só
+então grava `ADMIN_PASSWORD` no `.env`. Se qualquer passo falhar, o `.env` fica
+como estava. (A senha de exemplo do `.env.example`, `admin123456`, é justamente a
+que `make tunnel` recusa publicar: o painel publicado é acesso administrativo.)
 
 O `make up` tambem cria/verifica o admin logo
 depois das migrations, lendo `ADMIN_EMAIL`/`ADMIN_PASSWORD` do `.env` (o

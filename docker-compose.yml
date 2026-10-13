@@ -155,7 +155,26 @@ services:
       # container passou a ser `/app/backend` (a raiz do workspace e' `/app`),
       # entao a colisao que existia com "/app" deixou de existir. O valor segue
       # explicito porque e' UI publica e nao vale a pena depender do default.
+      #
+      # ⚠️ Este valor e' o `base` do Vite do painel E a rota que o storefront
+      # reescreve (`/painel` e `/painel/:path*` em `frontend/next.config.js`,
+      # ver §11.6.2). Trocar um lado sem o outro deixa o painel em branco ou
+      # inalcancavel no endereco publico — `make tunnel` assume "/painel".
       MEDUSA_ADMIN_PATH: ${MEDUSA_ADMIN_PATH:-/painel}
+      # Hosts que o Vite do painel aceita alem de IPv4/localhost (lista por
+      # virgula, SEM esquema: o Vite compara com o cabecalho `Host`).
+      #
+      # ⚠️ O host que chega NAO e' o do navegador: a reescrita do storefront
+      # (`/painel` em frontend/next.config.js) fala com o backend como um
+      # cliente HTTP, e a requisicao chega ao Vite com `Host: backend:9000`.
+      # Medido: sem `backend` nesta lista, `GET localhost:8000/painel` responde
+      # 403 "Blocked request. This host (\"backend\") is not allowed." — em LOCAL
+      # e no tunel, porque o caminho e' o mesmo. Dai o default `backend`.
+      # `localhost`/`127.0.0.1`/`::1` valem por conta propria (o `:9000/painel`
+      # direto nunca precisou desta chave). O `scripts/tunnel.sh` acrescenta o
+      # host do ngrok, que serve ao caminho de dois tuneis (§11.6), em que o
+      # navegador alcanca o painel direto no backend.
+      __MEDUSA_ADMIN_ADDITIONAL_ALLOWED_HOSTS: ${__MEDUSA_ADMIN_ADDITIONAL_ALLOWED_HOSTS:-backend}
       # Aviso ao storefront depois de gravar conteúdo: o backend chama
       # `POST /api/revalidate?tag=content` com o MESMO segredo que o frontend
       # tem no ambiente dele. Sem `REVALIDATE_SECRET` (ou sem `FRONTEND_URL`) o

@@ -16,6 +16,10 @@
  *   `http://localhost:9000/static/<chave>`  URL absoluta do backend, que é o
  *                           que o painel nativo da Medusa grava em alguns
  *                           lugares (foto de produto) — vira `/uploads/<chave>`;
+ *   `https://<tunel>/painel-api/static/<chave>`  a MESMA URL quando a loja é
+ *                           publicada por um endereço só (`make tunnel`): o
+ *                           backend passa a se ver nesse endereço, com o prefixo
+ *                           do painel na frente — idem;
  *   `https://images.unsplash.com/...`       imagem de terceiro, colada à mão,
  *                           que sai daqui intacta.
  *
@@ -77,8 +81,10 @@ export function resolveMediaUrl(value: unknown): string | undefined {
       return src
     }
 
-    if (url.pathname.startsWith(BACKEND_FILE_PATH)) {
-      return `${UPLOAD_PATH}${url.pathname.slice(BACKEND_FILE_PATH.length)}`
+    const chave = chaveDoBackend(url.pathname)
+
+    if (chave !== undefined) {
+      return `${UPLOAD_PATH}${chave}`
     }
 
     if (url.pathname.startsWith(UPLOAD_PATH)) {
@@ -90,6 +96,30 @@ export function resolveMediaUrl(value: unknown): string | undefined {
 
   // Sobrou a chave crua do provider de arquivos.
   return `${UPLOAD_PATH}${src}`
+}
+
+/**
+ * A chave de um arquivo do backend a partir de um caminho — `/static/<chave>`.
+ *
+ * O `/static/` é procurado como SEGMENTO em qualquer posição, e não apenas no
+ * começo: com a loja publicada por um endereço só (`make tunnel`),
+ * `MEDUSA_BACKEND_URL` do backend ganha o prefixo do painel
+ * (`https://<tunel>/painel-api`) e o provider de arquivos passa a devolver
+ * `https://<tunel>/painel-api/static/<chave>` — o mesmo arquivo, com um
+ * namespace na frente. Ancorar no começo do caminho deixaria essa URL passar
+ * intacta e a foto sumiria no otimizador do `next/image` (que roda no servidor e
+ * não alcança o endereço público), que é exatamente o desfecho que este arquivo
+ * existe para impedir.
+ *
+ * A inclusão das duas barras na busca é o que a mantém sendo um *segmento*:
+ * `.../mystatic/<chave>` não casa.
+ */
+function chaveDoBackend(pathname: string): string | undefined {
+  const marcador = pathname.indexOf(BACKEND_FILE_PATH)
+
+  return marcador < 0
+    ? undefined
+    : pathname.slice(marcador + BACKEND_FILE_PATH.length)
 }
 
 /** `null` em vez de exceção: um valor estranho no conteúdo não pode derrubar a página. */

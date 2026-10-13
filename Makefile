@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart recreate logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen test check types build-admin doctor
+.PHONY: help up down restart recreate logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen test check types build-admin doctor tunnel tunnel-status tunnel-stop admin-password
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -50,6 +50,11 @@ help:
 	@echo "    make health        - Checa /health do backend, a home da loja e o admin"
 	@echo "    make logs-admin    - Falha se o Vite do admin nao resolveu modulos, serviu o index.html no lugar de um modulo ou deixou algum modulo do painel com 404 (import dinamico quebrado)"
 	@echo "    make revalidate TAG=products - Invalida o cache do storefront (ISR)"
+	@echo "    make tunnel        - Publica a loja E O PAINEL num endereco HTTPS unico (ngrok) e aponta o .env para ele"
+	@echo "                         (webhook e volta do MP no mesmo endereco; painel em /painel e a API dele em /painel-api)"
+	@echo "    make tunnel-status - Mostra o endereco publico e testa a loja, o webhook e o painel por ele"
+	@echo "    make tunnel-stop   - Encerra o tunel e devolve o .env como estava"
+	@echo "    make admin-password - Troca a senha do admin do painel (NOVA=<senha>; sem ela, sorteia uma forte)"
 	@echo ""
 	@echo "  Contrato de conteudo"
 	@echo "    make gen           - Regera o contrato do storefront (commit o diff)"
@@ -308,6 +313,44 @@ revalidate:
 	@curl -fsS -X POST "http://localhost:8000/api/revalidate?tag=$(TAG)" \
 	  -H "x-revalidate-secret: $$($(COMPOSE) exec -T frontend printenv REVALIDATE_SECRET)" \
 	  && echo " cache invalidado: $(TAG)"
+
+# ---------------------------------------------------------------------------
+# Tunel: a loja num endereco publico (ver docs/real-valor/11-ambiente-local.md)
+# ---------------------------------------------------------------------------
+# O pagamento precisa de DUAS coisas publicas: a notificacao do provedor
+# (`MP_NOTIFICATION_URL`, que so' pode ser alcancada de fora) e a volta da
+# cliente (`MP_BACK_URL`). O §11.6 preve dois tuneis porque sao dois enderecos —
+# mas o plano gratuito do ngrok da UM dominio reservado, e dois agentes no mesmo
+# dominio nao coexistem (o ultimo responde, o outro fica inalcancavel, e o
+# webhook cai no servidor errado sem erro nenhum).
+#
+# Por isso o tunel e' UM, para o storefront, e o backend entra por reescrita
+# (`/webhooks/:path*`, `/painel` e `/painel-api` em `frontend/next.config.js`).
+# Na loja, o navegador nunca fala com o backend: as chamadas de dados sao server
+# actions, e o servidor do Next alcanca o Medusa por `http://backend:9000`,
+# dentro da rede do Compose. No painel, o navegador fala — mas pelo endereco
+# publico (`/painel-api`), na MESMA origem da pagina: sem CORS.
+#
+# O script edita o `.env` — nao um overlay — e guarda o original em
+# `.run/tunnel.env.bak`, que e' o que `tunnel-stop` devolve. Ele tambem RECUSA
+# publicar com a senha de exemplo: o painel publicado e' acesso administrativo,
+# e quem troca a senha e' o alvo abaixo.
+tunnel:
+	@scripts/tunnel.sh start
+
+tunnel-status:
+	@scripts/tunnel.sh status
+
+tunnel-stop:
+	@scripts/tunnel.sh stop
+
+# A senha do painel. Quem troca e' o MEDUSA (`POST /auth/user/emailpass/update`),
+# e nao o `.env`: `ADMIN_PASSWORD` so' serve para CRIAR o primeiro admin, e o
+# entrypoint trata "usuario ja' existe" como sucesso — editar o `.env` nao muda
+# login nenhum. Sem NOVA, sorteia uma senha forte e a imprime.
+# Ver o cabecalho de `scripts/senha-admin.sh` e §11.6.2 do doc 11.
+admin-password:
+	@scripts/senha-admin.sh "$(NOVA)"
 
 # ---------------------------------------------------------------------------
 # Diagnostico do ambiente local (le e nao mexe)

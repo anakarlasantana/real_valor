@@ -172,6 +172,24 @@ export const config = {
     // redirecionaria a imagem para `/br/uploads/...`, e cada foto da vitrine
     // custaria uma consulta de regiões. `static` é a mesma rota do lado do
     // backend, aceita porque as URLs de upload podem chegar absolutas.
-    "/((?!api|_next/static|_next/image|favicon.ico|images|assets|uploads|static|png|svg|jpg|jpeg|gif|webp).*)",
+    //
+    // `webhooks` entra pelo mesmo motivo, com uma consequência pior. Quando a
+    // loja é publicada por um endereço só (ver
+    // `docs/real-valor/11-ambiente-local.md` §11.6.1), o Mercado Pago chama
+    // `POST /webhooks/mercadopago` — uma rota sem país. Sem esta exclusão o
+    // middleware responde 307 para `/br/webhooks/mercadopago`: o provedor não
+    // segue o redirecionamento (ou, se seguir, o caminho deixa de casar com o
+    // rewrite), o webhook morre em 404, o pagamento é aprovado e o pedido
+    // NUNCA nasce — sem erro nenhum no log do storefront.
+    //
+    // `painel` (que já cobre `painel-api`, pelo mesmo prefixo) entra pelo mesmo
+    // motivo, e é o caso mais visível dos quatro: as duas são as rotas do painel
+    // do admin publicadas pelo storefront (`next.config.js`, §11.6.2). A cliente
+    // abre `/painel` — sem país — e sem esta exclusão o middleware responde 307
+    // para `/br/painel`, que não é rota de ninguém: o painel fica inalcançável
+    // por 404, enquanto a API dele (`/painel-api/admin/...`) levaria o mesmo
+    // desvio e o login cairia num HTML de vitrine. Verificado: `/painel` e
+    // `/painel-api/admin/users/me` respondem **307 → /br/...** sem esta linha.
+    "/((?!api|_next/static|_next/image|favicon.ico|images|assets|uploads|static|webhooks|painel|png|svg|jpg|jpeg|gif|webp).*)",
   ],
 }

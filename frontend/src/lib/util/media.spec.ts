@@ -45,6 +45,18 @@ describe("resolveMediaUrl", () => {
     )
   })
 
+  it("a mesma URL com o prefixo do túnel na frente também vira caminho do site", () => {
+    // Quando a loja é publicada por um endereço só (`make tunnel`), o
+    // `MEDUSA_BACKEND_URL` do backend passa a ser `https://<tunel>/painel-api` e
+    // o provider de arquivos monta a URL com esse namespace. O `/static/` deixa
+    // de estar no começo do caminho — e a foto não pode sumir por isso.
+    expect(
+      resolveMediaUrl(
+        "https://algo.ngrok-free.dev/painel-api/static/1699-hero.jpg"
+      )
+    ).toBe("/uploads/1699-hero.jpg")
+  })
+
   it("imagem de terceiro sai intacta (o host é liberado no next.config.js)", () => {
     const unsplash = "https://images.unsplash.com/photo-1234?w=800"
 
