@@ -1,5 +1,5 @@
 import { clx } from "@medusajs/ui"
-import { VariantPrice } from "types/global"
+import { VariantPrice } from "@lib/catalog/types"
 
 /**
  * O preço da peça, no card — o número que a vitrine promete manter à vista.

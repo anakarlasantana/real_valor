@@ -30,7 +30,7 @@ import { useState } from "react"
 
 import { MERCADOPAGO_PROVIDER_PREFIX } from "@rv/contrato/payment"
 
-import type { ConfirmButtonProps } from "../../types"
+import type { ConfirmButtonProps } from "@lib/payments/types"
 
 /** A mensagem de uma preferência que não foi criada. */
 const SEM_DESTINO =

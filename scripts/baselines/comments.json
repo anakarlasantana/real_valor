@@ -5,8 +5,8 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37601,
-      "comments": 9790
+      "lines": 37588,
+      "comments": 9773
     },
     "admin/src": {
       "lines": 7098,
@@ -153,7 +153,7 @@
     },
     "frontend/src/lib/catalog/__tests__/product-enrichment.unit.spec.ts": {
       "comments": 76,
-      "lines": 524,
+      "lines": 525,
       "header": 23
     },
     "frontend/src/lib/catalog/__tests__/product-rating.unit.spec.ts": {
@@ -253,7 +253,7 @@
     },
     "frontend/src/lib/content/__tests__/page-surfaces.unit.spec.ts": {
       "comments": 146,
-      "lines": 390,
+      "lines": 393,
       "header": 23
     },
     "frontend/src/lib/content/__tests__/ticker.unit.spec.ts": {
@@ -950,11 +950,6 @@
       "comments": 19,
       "lines": 30,
       "header": 18
-    },
-    "frontend/src/types/global.ts": {
-      "comments": 19,
-      "lines": 49,
-      "header": 5
     },
     "admin/src/admin/lib/__tests__/api-url.unit.spec.ts": {
       "comments": 40,

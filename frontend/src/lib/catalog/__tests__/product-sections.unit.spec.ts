@@ -13,7 +13,7 @@
 // globais `describe`/`it`/`expect` dariam erro de tipo (ver `launches.unit.spec.ts`).
 import { describe, expect, it } from "vitest"
 
-import type { ProductEnrichment } from "types/global"
+import type { ProductEnrichment } from "@lib/catalog/types"
 
 import { fichaDaPeca, secoesDaPeca, urlDoGuia } from "../product-sections"
 

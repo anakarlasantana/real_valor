@@ -29,7 +29,7 @@ import {
   STRIPE_PROVIDER_PREFIX,
 } from "@rv/contrato/payment"
 
-import type { PaymentAdapter } from "../../types"
+import type { PaymentAdapter } from "@lib/payments/types"
 
 import { StripeCardContainer } from "./card-container"
 import { StripePaymentButton } from "./payment-button"

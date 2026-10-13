@@ -30,7 +30,7 @@ import {
   MERCADOPAGO_PIX_PROVIDER_ID,
 } from "@rv/contrato/payment"
 
-import type { PaymentAdapter } from "../../types"
+import type { PaymentAdapter } from "@lib/payments/types"
 
 import { criarBotaoDoMercadoPago } from "./payment-button"
 

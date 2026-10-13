@@ -21,7 +21,7 @@
  * Sem o `kind`, o componente adivinharia pelo título — e adivinhar por texto é
  * como as duas telas divergem depois.
  */
-import type { ProductEnrichment } from "types/global"
+import type { ProductEnrichment } from "@lib/catalog/types"
 
 export type ItemDaFicha = { rotulo: string; valor: string }
 

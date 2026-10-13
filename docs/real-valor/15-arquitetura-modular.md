@@ -20,9 +20,8 @@ página conhece quem está mais longe dela; o contrário nunca.
 | :--- | :--- | :--- | ---: |
 | `app/` | rota, layout, `page.tsx`, `metadata`: composição e fronteira HTTP | `modules`, `lib`, contrato | 38 arquivos · 2.067 linhas |
 | `modules/` | UI e comportamento de um domínio (`store`, `products`, `checkout`, `account`, `home`, `content`, `skeletons`, `common`) | `lib`, contrato | 164 arquivos · 16.397 linhas |
-| `lib/` | dado, regra e integração, sem React de tela (`catalog`, `ui`, `content`, `checkout`, `medusa`, `data`, `payments`, `theme`, `config`, `hooks`, `context`) | contrato | 95 arquivos · 12.544 linhas |
+| `lib/` | dado, regra e integração, sem React de tela (`catalog`, `ui`, `content`, `checkout`, `medusa`, `data`, `payments`, `theme`, `config`, `hooks`, `context`) | contrato | 97 arquivos · 12.583 linhas |
 | `src/__checks__/` | guarda de arquitetura: lê o FONTE do que confere, não renderiza (`media-wiring`, `ruler`) | `lib`, `modules` | 2 arquivos · 650 linhas |
-| `types/` | tipo sem dono de camada (candidato a virar dono: F4) | contrato | 2 arquivos · 52 linhas |
 | `packages/contrato` | tipo e schema compartilhados pelos três runtimes (`@rv/contrato`) | — é folha | 3.817 linhas |
 | `styles/` | CSS (`brand.css` e parciais: F6) | — | 5.248 linhas |
 
@@ -204,7 +203,7 @@ que impede o refactor de ser um "depois eu volto".
 | **F1** (feita) | código morto: `lib/constants.tsx`, `medusa-cta/` + 5 ícones órfãos, `retrieveCollection`, o `export` de `themeFromRow`, `FeaturedProduct` e as 4 funções mortas de `lib/data/cart.ts`; o `SortOptions` **e** o `DEFAULT_SORT` (que existia em 5 lugares) para `lib/catalog/types.ts`. **Não** foram tocados, apesar da lista: `isEmpty.ts` (vivo por `money.ts`), `repeat.ts` (6 consumidores) e `getOrSetCart`/`updateCart` (usados dentro do `cart.ts`) | R-A 5 → 3 | `make check` · `make types` · `yarn test` |
 | **F2** (feita) | o `lib/util` (45 arquivos, 6.622 linhas) dissolvido por dono — `catalog`, `ui`, `content`, `checkout`, `payments` e `medusa`, com o `isEmpty` inline no seu único consumidor; o checkout passa a conhecer só a fachada `@lib/payments` e o `needsInlineInput` duplicado sai. A promessa de `R-C 2 → 1` era falsa: a exceção que sobra é o ciclo do locale, que é do F5 | R-D 4 → 0 | + `yarn build` · GET `/br` |
 | **F3** (feita) | convenção de teste: os 30 specs de unidade → `__tests__/<alvo>.unit.spec.ts` (colado no alvo) e os 2 de arquitetura → `src/__checks__/`; as 20 specs de `lib/` com import relativo passaram a `../<alvo>`, os cinco `index.spec.tsx` de componente a `from ".."`, e os dois `__checks__` tiveram os caminhos de leitura refeitos. O baseline da convenção ficou vazio | convenção 32 → 0 | `yarn test` (34) · `STOREFRONT_RUNNER=1` |
-| **F4** | `src/types` → `lib/{catalog,ui,checkout}/types.ts`; os imports por caminho nu → apelido | R-A/R-C sem regressão | `make types` |
+| **F4** (feita) | `src/types` (2 arquivos) dissolvido: `VariantPrice`, `ProductColor` e `ProductEnrichment` para `lib/catalog/types.ts`, o `IconProps` para `lib/ui/types.ts` e o `StoreFreeShippingPrice` para `lib/checkout/types.ts`; os 19 imports do caminho NU (`from "types/global"`) passaram ao apelido, e os 4 adapters que subiam `../../types` a `@lib/payments/types` | R-A/R-C sem regressão | `make types` |
 | **F5** | os ciclos: `config ↔ locale` (o locale vira folha) e o `LOGIN_VIEW` do `account` | R-C 1 → 0 · R-E 6 → 3 | `make check` |
 | **F6** | `brand.css` (5.248 linhas) partido em parciais + manifesto, com prova de concatenação byte a byte | catraca (`--write`) | `yarn build` · GET `/br` |
 | **F7** | CRM: `admin/src/admin/routes/content/` (23 arquivos + 3 diretórios) → `page.tsx` + `components/` + `hooks/` + `lib/`; `widgets/` só com entrypoint | `make build-admin` | smoke do painel |
@@ -248,6 +247,7 @@ no `make test`, e não no `make check`.
 | Specs fora da convenção | 0 | ✅ F3 |
 | `lib/util` sem uma responsabilidade só | 45 arquivos · 6.622 linhas | ✅ F2 — dissolvido em `catalog`, `ui`, `content`, `checkout`, `payments` e `medusa` |
 | `lib/data/cart.ts` | 421 linhas (eram 476: a F1 tirou as 4 funções mortas) | ✅ F1 |
+| `src/types` sem dono de camada | 2 arquivos · 52 linhas | ✅ F4 — os tipos foram para `lib/{catalog,ui,checkout}/types.ts` |
 | `brand.css` | 5.248 linhas, 2.039 de comentário | F6 |
 
 Fora deste lote (não é F0–F10, e não entra no meio de uma fase): o push do `develop`

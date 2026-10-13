@@ -20,7 +20,7 @@ import type { StripeCardElementOptions } from "@stripe/stripe-js"
 import PaymentContainer from "@modules/checkout/components/payment-container"
 import SkeletonCardDetails from "@modules/skeletons/components/skeleton-card-details"
 
-import type { InlinePaymentUIProps } from "../../types"
+import type { InlinePaymentUIProps } from "@lib/payments/types"
 
 import { useStripeContext } from "./index"
 

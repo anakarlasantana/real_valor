@@ -2,7 +2,7 @@ import { ehTituloDeCor } from "@lib/catalog/product-enrichment"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 import React from "react"
-import type { ProductColor } from "types/global"
+import type { ProductColor } from "@lib/catalog/types"
 
 /**
  * O seletor de uma opção na página da peça — e a única escolha de cor que a loja

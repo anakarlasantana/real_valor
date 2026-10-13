@@ -1,6 +1,6 @@
 import React from "react"
 
-import { IconProps } from "types/icon"
+import { IconProps } from "@lib/ui/types"
 
 /**
  * Social icon registry for the footer.

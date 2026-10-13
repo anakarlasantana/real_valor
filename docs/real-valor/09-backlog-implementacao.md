@@ -199,7 +199,7 @@ O lugar do spec deixa de ser livre: unidade colada no alvo
 (`__tests__/<alvo>.unit.spec.ts`), guarda de arquitetura em `src/__checks__/`. A guarda
 que fica mais verde é a convenção — 32 → 0, e o baseline dela fica vazio.
 
-### ✅ F3 · A convenção de teste — **FEITO** (hash na entrada da F4: um commit não carrega o próprio hash)
+### ✅ F3 · A convenção de teste — **FEITO** (`22b255a186`)
 
 **O que foi feito:** os 32 specs fora da convenção mudaram de casa — 30 de unidade para
 `<dono>/__tests__/<alvo>.unit.spec.ts` (o spec fica colado no alvo, um nível abaixo
@@ -239,6 +239,50 @@ tem.
 comentários com caminho, `scripts/baselines/storefront-tests.json` (vazio),
 `scripts/baselines/comments.json` (reancorado), este doc e o doc 15.
 **Pré-requisito:** F2
+
+---
+
+## Fase 4 — Os tipos com dono
+
+A pasta `src/types` (2 arquivos, 52 linhas) some: cada tipo vai para o dono do que ele
+descreve, e o caminho NU (`from "types/global"`, resolvido pelo `baseUrl`) vira o
+apelido que o resto do storefront já usa.
+
+### ✅ F4 · Os tipos com dono — **FEITO** (hash na entrada da F5: um commit não carrega o próprio hash)
+
+**O que foi feito:**
+
+- `lib/catalog/types.ts` (o dono que a F1 estreou) recebe `VariantPrice`,
+  `ProductColor` e `ProductEnrichment`, junto do `SortOptions`/`DEFAULT_SORT`. As
+  regras longas da cor e do enriquecimento **ficaram onde sempre estiveram** — em
+  `lib/catalog/product-enrichment.ts`, que é quem lê o dado bruto —, e o arquivo de
+  tipos guarda a forma com uma linha por tipo: a catraca manda (6 comentários em 37
+  linhas é o teto, e as três doc-comments originais somavam 10).
+- `lib/ui/types.ts` recebe o `IconProps`, que 11 ícones e o `lib/content/social-icons`
+  importavam por `from "types/icon"`.
+- `lib/checkout/types.ts` recebe o `StoreFreeShippingPrice` (o do frete grátis, que é
+  da entrega).
+- 19 imports trocaram o caminho nu pelo apelido; os 4 adapters de pagamento que subiam
+  `../../types` passaram a `@lib/payments/types` — o apelido vale também dentro do
+  pacote, e era o único lugar do storefront que ainda subia dois níveis para achar um
+  tipo seu.
+- `frontend/src/types/` deixa de existir: não há mais tipo sem dono de camada.
+
+**Medido (13/10/2026, pós-F4):** camadas sem regressão (R-A 3 · R-C 2 · R-D 0 · R-E 6)
+e convenção em 0; comentário de `frontend/src` 9.790 → 9.773 (o `types/global` tinha
+15 linhas de comentário, e as três que vieram viraram uma linha cada) e o baseline da
+catraca 311 → 310; `lib/` 95/12.544 → 97/12.583 (dois arquivos de tipo novos, e o
+`catalog/types.ts` com 37 linhas); `types/` 2/52 → não existe.
+
+**Guarda que fica verde:** a catraca de comentário (o arquivo de tipos novo não herdou
+a exceção de ninguém e coube no teto) e a §15.1 do doc 15, que perde a linha do
+`types/` — a tabela das camadas passa a ter só camada com dono.
+**Gate:** `make check` · `make types` · `yarn test` (34 arquivos/466 testes).
+**Arquivos:** *novos:* `lib/ui/types.ts`, `lib/checkout/types.ts` · *alterados:*
+`lib/catalog/types.ts`, 19 arquivos que importavam o caminho nu, `lib/payments/adapters/*`
+(4), `scripts/baselines/comments.json`, este doc e o doc 15 · *removidos:*
+`types/global.ts`, `types/icon.ts`.
+**Pré-requisito:** F3
 
 ---
 

@@ -21,7 +21,7 @@
  * `node_modules` do Medusa dentro do teste (a mesma escolha, pelo mesmo motivo,
  * de `product-availability.ts`).
  */
-import type { ProductColor, ProductEnrichment } from "types/global"
+import type { ProductColor, ProductEnrichment } from "@lib/catalog/types"
 
 /** O que este módulo lê do produto que a Store API devolve. */
 export type ProdutoComEnriquecimento = {
