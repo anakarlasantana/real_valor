@@ -1,4 +1,4 @@
-import { type AbaDeCategoria } from "@lib/util/category-tabs"
+import { type AbaDeCategoria } from "@lib/catalog/category-tabs"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 /**
@@ -11,7 +11,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
  * compartilháveis, indexáveis e alcançáveis sem JavaScript. Um filtro de
  * categoria por URL faria a mesma tela com dois endereços diferentes.
  *
- * A lista (`../lib/util/category-tabs.ts`) é montada por quem chama, porque é a
+ * A lista (`lib/catalog/category-tabs.ts`) é montada por quem chama, porque é a
  * rota que sabe se a página atual é uma categoria e quais filhas ela tem. Aqui só
  * se desenha: a aba ativa é a que tem o `handle` corrente, e nenhuma outra.
  */

@@ -4,7 +4,7 @@ import React from "react"
 
 import PlaceholderImage from "@modules/common/icons/placeholder-image"
 
-import { resolveMediaUrl } from "@lib/util/media"
+import { resolveMediaUrl } from "@lib/ui/media"
 
 type ThumbnailProps = {
   thumbnail?: string | null

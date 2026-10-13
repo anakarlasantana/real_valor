@@ -6,7 +6,7 @@ import {
   PopoverPanel,
   Transition,
 } from "@headlessui/react"
-import { convertToLocale } from "@lib/util/money"
+import { convertToLocale } from "@lib/ui/money"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
 import DeleteButton from "@modules/common/components/delete-button"

@@ -5,7 +5,7 @@
  * `brand.css` (`rv-rating*`), as cinco estrelas, o texto em pt-BR — e o principal,
  * que só o render mostra: **sem dado, a saída é uma string vazia**, e não um bloco
  * vazio ocupando o lugar acima do título. A régua do que conta como avaliação tem
- * teste próprio em `lib/util/product-rating.spec.ts`; aqui ela é só o gatilho.
+ * teste próprio em `lib/catalog/product-rating.spec.ts`; aqui ela é só o gatilho.
  *
  * Renderiza com `renderToStaticMarkup` porque o componente é **de servidor**: ele
  * não tem estado, efeito nem evento — e é isso que permite exercitá-lo em `node`,

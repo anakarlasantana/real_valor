@@ -17,7 +17,7 @@
 import { describe, expect, it } from "vitest"
 
 import { getPricesForVariant, getProductPrice } from "./get-product-price"
-import { convertToLocale } from "./money"
+import { convertToLocale } from "@lib/ui/money"
 
 /** Uma variante como a Store API a devolve nesses campos. */
 const variante = ({

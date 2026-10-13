@@ -19,7 +19,7 @@
  * entrega; o que a tabela de frete dá é preço por região e peso, sem prazo. Uma
  * modalidade sem prazo continua entrando na linha — sem a parte do meio.
  */
-import { convertToLocale } from "./money"
+import { convertToLocale } from "@lib/ui/money"
 
 /** Uma modalidade de entrega com preço calculado, como o backend a devolve. */
 export type OpcaoDeEntrega = {

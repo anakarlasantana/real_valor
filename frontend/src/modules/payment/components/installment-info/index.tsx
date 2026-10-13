@@ -1,6 +1,6 @@
 import type { InstallmentInfo as InstallmentInfoDoProvedor } from "@rv/contrato/payment"
 
-import { linhaDasParcelas, linhaDoPix } from "@lib/util/installments"
+import { linhaDasParcelas, linhaDoPix } from "@lib/payments/installments"
 
 /**
  * O parcelamento e a linha do Pix — as duas condições de pagamento do mesmo
@@ -12,7 +12,7 @@ import { linhaDasParcelas, linhaDoPix } from "@lib/util/installments"
  * Ele é **puro**: não consulta nada, não decide preço e não conhece provedor. O
  * que chega são dois números já respondidos — o `InstallmentInfo` do meio de
  * pagamento (contrato `@rv/contrato/payment`) e o valor do Pix —, e quem os
- * escreve é `lib/util/installments.ts`, com teste. A regra de exibição inteira
+ * escreve é `lib/payments/installments.ts`, com teste. A regra de exibição inteira
  * mora lá; aqui só se decide desenhar ou não.
  *
  * **Os dois valores ainda não existem, e é por isso que este bloco nasce

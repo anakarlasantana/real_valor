@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 
 import { SortOptions } from "@lib/catalog/types"
 import { getCollectionByHandle } from "@lib/data/collections"
-import { selecaoDaUrl } from "@lib/util/catalog-filters"
+import { selecaoDaUrl } from "@lib/catalog/catalog-filters"
 import { StoreCollection } from "@medusajs/types"
 import CollectionTemplate from "@modules/collections/templates"
 

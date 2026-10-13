@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next"
 
 import { getLivePages } from "@lib/data/pages"
-import { getBaseURL } from "@lib/util/env"
+import { getBaseURL } from "@lib/medusa/env"
 
 /**
  * O índice do site: a home e **as páginas que estão no ar**.

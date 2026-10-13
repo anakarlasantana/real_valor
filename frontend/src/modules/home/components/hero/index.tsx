@@ -1,6 +1,6 @@
 import { type HeroSection } from "@lib/content/home-sections"
-import { heroSlides, type HeroSlide } from "@lib/util/hero"
-import { mediaImageProps } from "@lib/util/media"
+import { heroSlides, type HeroSlide } from "@lib/content/hero"
+import { mediaImageProps } from "@lib/ui/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 import { type CSSProperties } from "react"
@@ -28,7 +28,7 @@ import HeroCarousel from "./carousel"
  * conteúdo que o lojista escreve — um nono campo no formulário da capa para um
  * ajuste que ninguém pede. O valor é o que estava no ar quando o campo saiu.
  *
- * A foto passa por `mediaImageProps` (`lib/util/media.ts`), que resolve o
+ * A foto passa por `mediaImageProps` (`lib/ui/media.ts`), que resolve o
  * endereço — a imagem enviada pelo CRM (chave crua do provider) e a URL absoluta
  * do backend chegam as duas ao `/uploads/...` do próprio storefront, a única
  * forma que o otimizador consegue buscar de dentro do contêiner — **e decide se

@@ -6,8 +6,8 @@ import { getRegion } from "@lib/data/regions"
 import {
   CHAVES_DE_FACETA,
   type SelecaoDoCatalogo,
-} from "@lib/util/catalog-filters"
-import { chipsDaSelecao } from "@lib/util/filter-chips"
+} from "@lib/catalog/catalog-filters"
+import { chipsDaSelecao } from "@lib/catalog/filter-chips"
 import EmptyState from "@modules/common/components/empty-state"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ProductPreview from "@modules/products/components/product-preview"

@@ -6,11 +6,11 @@ import useToggleState from "@lib/hooks/use-toggle-state"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import X from "@modules/common/icons/x"
 
-import { getProductPrice } from "@lib/util/get-product-price"
-import { coresDoProduto } from "@lib/util/product-enrichment"
+import { getProductPrice } from "@lib/catalog/get-product-price"
+import { coresDoProduto } from "@lib/catalog/product-enrichment"
 import OptionSelect from "./option-select"
 import { HttpTypes } from "@medusajs/types"
-import { isSimpleProduct } from "@lib/util/product"
+import { isSimpleProduct } from "@lib/catalog/product"
 
 type MobileActionsProps = {
   product: HttpTypes.StoreProduct

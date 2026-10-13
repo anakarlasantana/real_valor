@@ -1,8 +1,8 @@
 import { Container, Heading, Text } from "@medusajs/ui"
 
-import { paymentLabel } from "@lib/payments/labels"
+import { paymentLabel } from "@lib/payments"
 import Divider from "@modules/common/components/divider"
-import { convertToLocale } from "@lib/util/money"
+import { convertToLocale } from "@lib/ui/money"
 import { HttpTypes } from "@medusajs/types"
 
 type PaymentDetailsProps = {

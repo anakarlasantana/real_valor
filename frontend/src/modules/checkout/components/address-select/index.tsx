@@ -6,7 +6,7 @@ import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 import { useMemo } from "react"
 
-import compareAddresses from "@lib/util/compare-addresses"
+import compareAddresses from "@lib/checkout/compare-addresses"
 
 type AddressSelectProps = {
   addresses: HttpTypes.StoreCustomerAddress[]

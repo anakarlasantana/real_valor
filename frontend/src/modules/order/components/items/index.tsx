@@ -1,4 +1,4 @@
-import repeat from "@lib/util/repeat"
+import repeat from "@lib/ui/repeat"
 import { HttpTypes } from "@medusajs/types"
 import { Table } from "@medusajs/ui"
 

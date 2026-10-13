@@ -1,6 +1,6 @@
 "use client"
 
-import { convertToLocale } from "@lib/util/money"
+import { convertToLocale } from "@lib/ui/money"
 import { CheckCircleSolid, XMark } from "@medusajs/icons"
 import {
   HttpTypes,

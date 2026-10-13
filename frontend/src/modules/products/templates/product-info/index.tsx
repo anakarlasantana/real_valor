@@ -1,5 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
-import { avaliacaoDoProduto } from "@lib/util/product-rating"
+import { avaliacaoDoProduto } from "@lib/catalog/product-rating"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ProductRating from "@modules/products/components/product-rating"
 

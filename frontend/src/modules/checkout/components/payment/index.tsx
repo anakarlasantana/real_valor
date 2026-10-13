@@ -6,21 +6,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Fragment, useCallback, useEffect, useState } from "react"
 
 import { initiatePaymentSession } from "@lib/data/cart"
-import { resolvePayment } from "@lib/payments/registry"
+import { needsInlineInput, resolvePayment } from "@lib/payments"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PaymentContainer from "@modules/checkout/components/payment-container"
-
-/**
- * Este meio precisa de formulário na NOSSA página?
- *
- * A pergunta que o checkout fazia antes era `isStripeLike(id)`, e ela é a
- * razão de o fluxo estar amarrado a um provedor. Agora é `fulfillment`:
- * `inline` desenha aqui, `redirect` vai para o Checkout Pro do provedor,
- * `external` é só finalizar o pedido. Trocar Checkout Pro por Checkout API é
- * mudar um valor no adapter — esta linha não muda.
- */
-const needsInlineInput = (providerId?: string | null) =>
-  resolvePayment(providerId).fulfillment === "inline"
 
 /**
  * O passo 3 do checkout — "Pagamento".

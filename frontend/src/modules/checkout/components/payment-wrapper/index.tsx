@@ -11,7 +11,7 @@
  * A maioria dos meios não declara `Provider` (o Mercado Pago, por exemplo), e
  * então estes são só os filhos — que é o caso comum.
  */
-import { resolvePayment } from "@lib/payments/registry"
+import { resolvePayment } from "@lib/payments"
 import { HttpTypes } from "@medusajs/types"
 
 type PaymentWrapperProps = {

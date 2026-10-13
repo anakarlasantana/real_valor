@@ -160,7 +160,7 @@ describe("componentes que entregam src ao next/image", () => {
  * ele roda na renderização, no servidor. O erro sobe do SSR: medido com o
  * conteúdo real da loja, a foto de `cdn.awsli.com.br` no bloco de coleções fazia
  * a **home inteira** responder HTTP 500. Quem fecha isso é o `mediaImageProps`
- * (`lib/util/media.ts`), e é ele que os blocos de conteúdo têm de chamar.
+ * (`lib/ui/media.ts`), e é ele que os blocos de conteúdo têm de chamar.
  */
 describe("foto de conteúdo de host de terceiro não derruba a página", () => {
   /**

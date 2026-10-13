@@ -1,6 +1,6 @@
 "use client"
 
-import repeat from "@lib/util/repeat"
+import repeat from "@lib/ui/repeat"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 

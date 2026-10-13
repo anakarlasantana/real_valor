@@ -1,4 +1,4 @@
-import { ehTituloDeCor } from "@lib/util/product-enrichment"
+import { ehTituloDeCor } from "@lib/catalog/product-enrichment"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 import React from "react"

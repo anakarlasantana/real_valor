@@ -10,7 +10,7 @@ import {
   tickerCopies,
   tickerLapSeconds,
   tickerMessages,
-} from "@lib/util/ticker"
+} from "@lib/content/ticker"
 
 /**
  * Announcement bar — the thin strip above the header.
@@ -50,7 +50,7 @@ import {
  * respiro que o container dava.
  *
  * Os dois campos de conteúdo (`text` e `messages`) são lidos por
- * `tickerMessages` (`lib/util/ticker.ts`), que **não** mora aqui de
+ * `tickerMessages` (`lib/content/ticker.ts`), que **não** mora aqui de
  * propósito: é a decisão "qual mensagem vale", ela tem caso de borda
  * (lista vazia, item em branco, base antiga só com `text`) e é testável sem
  * renderizar nada. Esta barra aparece em toda rota da loja, então uma

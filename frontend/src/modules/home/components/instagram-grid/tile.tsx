@@ -1,5 +1,5 @@
 import { type InstagramSection } from "@lib/content/home-sections"
-import { mediaImageProps } from "@lib/util/media"
+import { mediaImageProps } from "@lib/ui/media"
 import Image from "next/image"
 
 /** Uma foto da lista da seção — o par que o CRM grava. */
@@ -15,7 +15,7 @@ export type InstagramImage = InstagramSection["images"][number]
  * nada); com o quadro num módulo só, o desenho é um, e os dois lados desenham o
  * mesmo quadrado.
  *
- * Só `imageUrl` cru poderia não virar `src` (ver `lib/util/media.ts`, em
+ * Só `imageUrl` cru poderia não virar `src` (ver `lib/ui/media.ts`, em
  * `mediaImageProps`): o quadro continua no lugar, com o fundo cacao da régua,
  * para a faixa não desmontar por causa de um item vazio.
  */

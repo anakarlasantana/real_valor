@@ -2,8 +2,8 @@ import { Suspense } from "react"
 
 import { DEFAULT_SORT, SortOptions } from "@lib/catalog/types"
 import { listCategories } from "@lib/data/categories"
-import { abasDoCatalogo } from "@lib/util/category-tabs"
-import { type SelecaoDoCatalogo } from "@lib/util/catalog-filters"
+import { abasDoCatalogo } from "@lib/catalog/category-tabs"
+import { type SelecaoDoCatalogo } from "@lib/catalog/catalog-filters"
 import CatalogSkeleton from "@modules/store/components/catalog-skeleton"
 import CategoryTabs from "@modules/store/components/category-tabs"
 

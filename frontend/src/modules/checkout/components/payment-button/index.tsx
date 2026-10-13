@@ -1,6 +1,6 @@
 "use client"
 
-import { resolvePayment } from "@lib/payments/registry"
+import { resolvePayment } from "@lib/payments"
 import { placeOrder } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
 import React, { useState } from "react"

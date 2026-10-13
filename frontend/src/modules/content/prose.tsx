@@ -1,6 +1,6 @@
 import { renderInline } from "@lib/content/markdown"
 import { type ProseBlock, type ProseSection } from "@lib/content/home-sections"
-import { resolveMediaUrl } from "@lib/util/media"
+import { resolveMediaUrl } from "@lib/ui/media"
 import { type ReactNode } from "react"
 
 /**

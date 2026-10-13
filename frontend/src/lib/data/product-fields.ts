@@ -18,7 +18,7 @@
  *   - `*options` e `*options.values` — a lista de cores da peça;
  *   - `+tags` — o `tag_status` e as etiquetas do chip;
  *   - `*categories` — a categoria de cada peça, que é a faceta "Categoria" do
- *     catálogo (`lib/util/catalog-filters.ts`). Sem ela a faceta não existe: os
+ *     catálogo (`lib/catalog/catalog-filters.ts`). Sem ela a faceta não existe: os
  *     defaults da Store API não trazem a lista, e o filtro por categoria ficaria
  *     com um valor só — o da página em que se está.
  *

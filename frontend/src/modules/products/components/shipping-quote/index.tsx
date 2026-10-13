@@ -4,7 +4,7 @@ import {
   descreverOpcao,
   formatarCep,
   type OpcaoDeEntrega,
-} from "@lib/util/shipping-quote"
+} from "@lib/checkout/shipping-quote"
 
 /**
  * A caixa de frete e prazo da página da peça — "Entrega padrão · 3 a 5 dias úteis

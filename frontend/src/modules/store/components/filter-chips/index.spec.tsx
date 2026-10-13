@@ -4,7 +4,7 @@
  * O desenho do chip é o `.rv-chip` do `brand.css` — o **mesmo** do estado da peça
  * no card —, então o que se testa aqui é: a lista com a classe da fileira, a classe
  * do chip em cada item e o silêncio quando não há filtro. Quem monta os rótulos é
- * `chipsDaSelecao`, com teste em `lib/util/filter-chips.spec.ts`.
+ * `chipsDaSelecao`, com teste em `lib/catalog/filter-chips.spec.ts`.
  */
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"

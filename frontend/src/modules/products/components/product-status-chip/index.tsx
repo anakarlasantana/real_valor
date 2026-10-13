@@ -1,19 +1,19 @@
 import { clx } from "@medusajs/ui"
 
-import { pulses } from "@lib/util/motion"
+import { pulses } from "@lib/ui/motion"
 import {
   PRODUCT_STATUS_LABELS,
   productStatus,
   type AvailabilityProduct,
   type ProductStatus,
-} from "@lib/util/product-availability"
+} from "@lib/catalog/product-availability"
 
 /**
  * O chip de estado da peça — "Pronta entrega", "Sob demanda", "Últimas peças",
  * "Esgotado".
  *
  * Ele é burro de propósito: quem decide o estado é `productStatus`
- * (`lib/util/product-availability.ts`), que é testável sem renderizar nada, e
+ * (`lib/catalog/product-availability.ts`), que é testável sem renderizar nada, e
  * o que sobra para este arquivo é o mapa estado → classe e o rótulo. Um chip
  * que decidisse sozinho teria a regra duplicada no card e na página do produto,
  * e as duas versões discordariam no dia em que o estoque mudasse de forma.
@@ -27,7 +27,7 @@ import {
  *
  * **E o chip se anima — em dois dos quatro estados.** O desenho do pulso é do CSS
  * (`.rv-chip-pulse`, em `brand.css`); *se* este estado pulsa é pergunta que o
- * componente faz a `pulses` (`lib/util/motion.ts`), e não decide sozinho.
+ * componente faz a `pulses` (`lib/ui/motion.ts`), e não decide sozinho.
  */
 
 /** Estado → classe do `brand.css`. Um estado sem classe aqui seria um chip nu. */
@@ -55,7 +55,7 @@ export default function ProductStatusChip({
         STATUS_CLASSES[status],
         // O pulso é desenho do CSS (`.rv-chip-pulse`, em `brand.css`), e **se**
         // este estado pulsa é decisão de comportamento: `pulses`, com teste, e
-        // dois dos quatro estados respondem `true` (ver `lib/util/motion.ts`).
+        // dois dos quatro estados respondem `true` (ver `lib/ui/motion.ts`).
         pulses(status) && "rv-chip-pulse",
         className
       )}

@@ -7,7 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useActionState } from "react"
 
 import { setAddresses } from "@lib/data/cart"
-import compareAddresses from "@lib/util/compare-addresses"
+import compareAddresses from "@lib/checkout/compare-addresses"
 import Spinner from "@modules/common/icons/spinner"
 
 import BillingAddress from "../billing_address"

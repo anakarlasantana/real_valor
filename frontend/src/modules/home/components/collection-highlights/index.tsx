@@ -1,5 +1,5 @@
 import { type CollectionsSection } from "@lib/content/home-sections"
-import { mediaImageProps } from "@lib/util/media"
+import { mediaImageProps } from "@lib/ui/media"
 import ArrowIcon from "@modules/common/components/arrow-icon"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
@@ -80,7 +80,7 @@ export default function CollectionHighlights({
             // A imagem pode chegar como chave crua do provider (upload pelo
             // CRM), como URL do backend ou como endereço de fora (a foto colada
             // do site antigo da loja): `mediaImageProps` resolve **e** responde
-            // se o otimizador pode buscá-la — ver `lib/util/media.ts`.
+            // se o otimizador pode buscá-la — ver `lib/ui/media.ts`.
             const image = mediaImageProps(item.imageUrl)
 
             return (

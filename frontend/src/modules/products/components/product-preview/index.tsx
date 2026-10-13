@@ -1,5 +1,5 @@
-import { getProductPrice } from "@lib/util/get-product-price"
-import { categoriaDaPeca } from "@lib/util/product-enrichment"
+import { getProductPrice } from "@lib/catalog/get-product-price"
+import { categoriaDaPeca } from "@lib/catalog/product-enrichment"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ProductStatusChip from "../product-status-chip"
@@ -19,7 +19,7 @@ import PreviewPrice from "./price"
  *      peças"…), posicionado no canto da foto por `className` — que é o que o
  *      componente foi feito para receber (ver `product-status-chip`). Quem decide
  *      **qual** dos quatro estados é `productStatus`
- *      (`lib/util/product-availability.ts`), a mesma função que a página do
+ *      (`lib/catalog/product-availability.ts`), a mesma função que a página do
  *      produto usa: o card e a página não podem discordar sobre a peça.
  *   2. **O convite** ("Ver detalhes"), no pé da foto, escondido até o ponteiro
  *      chegar. Ele **não é um `<button>`**: o card inteiro já é um link, e um
@@ -28,7 +28,7 @@ import PreviewPrice from "./price"
  *      não existe (`@media (hover: hover)`, em `brand.css`), e o caminho para a
  *      peça continua sendo o que sempre foi: o card inteiro.
  *   3. **A informação da peça** — categoria, nome com as cores ao lado e preço. A
- *      categoria sai de `categoriaDaPeca` (`lib/util/product-enrichment.ts`), a
+ *      categoria sai de `categoriaDaPeca` (`lib/catalog/product-enrichment.ts`), a
  *      **mesma leitura** da página da peça; aqui ela é **texto**, e não o link
  *      que ela é lá: `<a>` dentro de `<a>` é HTML inválido (o navegador desfaz o
  *      de dentro, e o mesmo toque passa a ter dois destinos conforme o pixel) —

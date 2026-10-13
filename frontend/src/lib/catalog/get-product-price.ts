@@ -1,6 +1,6 @@
 import { HttpTypes } from "@medusajs/types"
 import { getPercentageDiff } from "./get-percentage-diff"
-import { convertToLocale } from "./money"
+import { convertToLocale } from "@lib/ui/money"
 
 /**
  * O preço calculado de uma variante, no formato que a loja desenha.

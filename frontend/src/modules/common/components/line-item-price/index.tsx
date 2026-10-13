@@ -1,5 +1,5 @@
-import { getPercentageDiff } from "@lib/util/get-percentage-diff"
-import { convertToLocale } from "@lib/util/money"
+import { getPercentageDiff } from "@lib/catalog/get-percentage-diff"
+import { convertToLocale } from "@lib/ui/money"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
 

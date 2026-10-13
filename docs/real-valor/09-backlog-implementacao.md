@@ -70,7 +70,7 @@ Um commit: o que ninguém chama sai do repositório, e o que parecia morto e nã
 registrado com o porquê. A guarda que fica mais verde é a R-A (5 → 3): o `SortOptions`
 sai do componente e o dono do vocabulário passa a ser o dado.
 
-### ✅ F1 · Código morto — **FEITO** (hash na entrada da F2: um commit não carrega o próprio hash)
+### ✅ F1 · Código morto — **FEITO** (`3813a4fc6c`)
 
 **O que foi feito:** sete arquivos apagados — `lib/constants.tsx`, o diretório `medusa-cta/` e
 cinco ícones órfãos do starter (`bancontact`, `ideal`, `paypal`, `medusa`, `nextjs`) —, o tipo
@@ -111,6 +111,85 @@ storefront) e o hook de commit rodando o `make check`.
 `types/global.ts`, os 10 consumidores do `SortOptions`,
 `scripts/baselines/{boundaries,comments}.json` e o doc 15 · *removidos:* os sete arquivos mortos.
 **Pré-requisito:** F0
+
+---
+
+## Fase 2 — `lib/util` dissolvido por dono
+
+A pasta que existia por acúmulo (45 arquivos, 6.622 linhas) sai inteira: cada peça vai
+para o dono do que ela decide, e o checkout passa a conhecer o pagamento por um nome
+só. A guarda que fica mais verde é a R-D (4 → 0).
+
+### ✅ F2 · O `lib/util` dissolvido por dono — **FEITO** (hash na entrada da F3: um commit não carrega o próprio hash)
+
+**O que foi feito:** os 45 arquivos foram para seis donos, e nenhum ficou em "util":
+
+- **`lib/catalog`** (19 arquivos) — a regra e a leitura da peça e do catálogo:
+  `catalog-filters`, `filter-chips`, `category-tabs`, `product-availability`,
+  `product-enrichment`, `product-rating`, `product-sections`, `sort-products`,
+  `get-product-price`, `get-percentage-diff`, `product` e os 8 specs deles. É o dono
+  que a F1 estreou com o `types.ts`.
+- **`lib/ui`** (9) — apresentação sem React: `money`, `media` (o endereço que o
+  `next/image` busca), `media-wiring.spec`, `motion`, `carousel` e `repeat` (o dos
+  esqueletos).
+- **`lib/content`** (8) — a regra de uma seção do conteúdo: `hero`, `launches`,
+  `ticker`, `marquee` e os specs, junto do que já morava lá (`page-seo`,
+  `page-surfaces`, `markdown`, `home-sections`).
+- **`lib/checkout`** (3) — `shipping-quote` (CEP e opções de entrega) e
+  `compare-addresses`.
+- **`lib/payments`** (2) — `installments` (as duas linhas do parcelamento e do Pix) e
+  o spec; a fachada `@lib/payments` passou a exportá-lo, junto do `paymentLabel`.
+- **`lib/medusa`** (3) — a integração com o SDK: `env` (`getBaseURL`), `medusa-error`
+  e `get-locale-header`.
+- **`isEmpty`** não ganhou dono: o único consumidor era o `money`, e a checagem virou
+  a linha `currency_code?.trim()` dele. O arquivo morreu.
+
+**O checkout conhece o pagamento por um nome só (R-D 4 → 0):** os quatro componentes
+(`payment`, `payment-button`, `payment-container`, `payment-wrapper`) trocaram
+`@lib/payments/registry` por `@lib/payments`, a cópia local do `needsInlineInput`
+saiu (a fachada já respondia, com o mesmo `fulfillment` do adapter) e o resumo do
+pedido deixou de buscar `paymentLabel` no subcaminho. As quatro entradas do baseline
+morreram com elas.
+
+**A malha e a prosa:** 28 comentários de componente citavam `lib/util/<peça>`, e o
+`check-boundaries` acusou o que mais ninguém veria — o caminho da exceção R-C e do
+ciclo R-E do locale (`lib/util/get-locale-header.ts` → `lib/medusa/…`) e o ciclo do
+Stripe, que **ganhou um nó**: o `payment-container` passou a importar a fachada, e o
+DFS do ciclo passa por `lib/payments/index.ts`. Baselines: `boundaries.json` 15 → 11
+exceções; `comments.json` reancorado (312 → 311 arquivos); `storefront-tests.json`
+com os 18 specs em casa nova (a lista é de caminhos e não tem `--write`, então o
+reancoramento foi explícito).
+
+**A promessa que a fase não podia cumprir:** o doc 15 prometia `R-C 2 → 1` aqui. Não
+dá: das duas exceções, uma é o adapter do Stripe (RV-048) e a outra é o ciclo do
+locale — justamente o que o **F5** desmancha. A tabela do §15.6 foi corrigida em vez
+de cumprida pela metade.
+
+**Medido (13/10/2026, pós-F2):** `lib/` 97 arquivos/12.806 linhas → 96/12.794 (uma
+peça a menos e nenhum arquivo novo: os seis donos são internos); `modules/` 16.804 →
+16.793 (as 11 linhas do `needsInlineInput` duplicado); comentário em `frontend/src`
+9.799 → 9.790; baseline de comentário 312 → 311; exceções de camada 15 → 11;
+`lib/catalog` 20/3.646, `lib/ui` 9/1.302, `lib/content` 18/3.047, `lib/checkout`
+3/287, `lib/medusa` 3/33.
+
+**Lido integralmente na fase:** as peças cujo dono era uma decisão — `money`,
+`motion`, `installments`, `shipping-quote`, `compare-addresses`, `env`,
+`medusa-error`, `get-locale-header`, `repeat`, `sort-products`, `isEmpty`, `product`
+— e as que foram editadas (`lib/payments/index.ts`, os quatro componentes do
+checkout, o resumo do pedido). As demais foram classificadas pela responsabilidade
+que o próprio cabeçalho declara (§15.5), com o fan-out e as arestas medidos; o
+veredito é do `tsc`, do vitest e do build — nenhuma ficou no dono errado.
+
+**Guarda que fica verde:** R-D 4 → 0 (o checkout não conhece subcaminho de
+pagamento), com a catraca de comentário e a convenção de teste reancoradas.
+**Gate:** `make check` · `make types` · `yarn test` (34 arquivos/466 testes) · o
+`next build` de produção · GET `/br` = 200 na stack de pé.
+**Arquivos:** *novos donos:* `lib/{catalog,ui,checkout,medusa}/` · *movidos:* 44
+arquivos (com 15 specs) · *removido:* `lib/util/isEmpty.ts` · *alterados:* os quatro
+componentes do checkout, `lib/payments/index.ts`,
+`modules/order/components/payment-details`, 28 comentários de prosa,
+`scripts/baselines/{boundaries,comments,storefront-tests}.json`, este doc e o doc 15.
+**Pré-requisito:** F1
 
 ---
 

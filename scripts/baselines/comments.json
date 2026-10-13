@@ -5,8 +5,8 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37621,
-      "comments": 9799
+      "lines": 37596,
+      "comments": 9790
     },
     "admin/src": {
       "lines": 7098,
@@ -116,6 +116,101 @@
       "lines": 50,
       "header": 5
     },
+    "frontend/src/lib/catalog/catalog-filters.spec.ts": {
+      "comments": 15,
+      "lines": 356,
+      "header": 8
+    },
+    "frontend/src/lib/catalog/catalog-filters.ts": {
+      "comments": 187,
+      "lines": 666,
+      "header": 28
+    },
+    "frontend/src/lib/catalog/category-tabs.ts": {
+      "comments": 19,
+      "lines": 75,
+      "header": 5
+    },
+    "frontend/src/lib/catalog/filter-chips.spec.ts": {
+      "comments": 23,
+      "lines": 129,
+      "header": 14
+    },
+    "frontend/src/lib/catalog/filter-chips.ts": {
+      "comments": 37,
+      "lines": 88,
+      "header": 19
+    },
+    "frontend/src/lib/catalog/get-percentage-diff.ts": {
+      "comments": 11,
+      "lines": 22,
+      "header": 11
+    },
+    "frontend/src/lib/catalog/get-product-price.spec.ts": {
+      "comments": 19,
+      "lines": 114,
+      "header": 16
+    },
+    "frontend/src/lib/catalog/get-product-price.ts": {
+      "comments": 13,
+      "lines": 93,
+      "header": 5
+    },
+    "frontend/src/lib/catalog/product-availability.spec.ts": {
+      "comments": 41,
+      "lines": 301,
+      "header": 21
+    },
+    "frontend/src/lib/catalog/product-availability.ts": {
+      "comments": 139,
+      "lines": 271,
+      "header": 28
+    },
+    "frontend/src/lib/catalog/product-enrichment.spec.ts": {
+      "comments": 76,
+      "lines": 524,
+      "header": 23
+    },
+    "frontend/src/lib/catalog/product-enrichment.ts": {
+      "comments": 128,
+      "lines": 300,
+      "header": 23
+    },
+    "frontend/src/lib/catalog/product-rating.spec.ts": {
+      "comments": 21,
+      "lines": 146,
+      "header": 16
+    },
+    "frontend/src/lib/catalog/product-rating.ts": {
+      "comments": 67,
+      "lines": 152,
+      "header": 21
+    },
+    "frontend/src/lib/catalog/product-sections.spec.ts": {
+      "comments": 17,
+      "lines": 147,
+      "header": 13
+    },
+    "frontend/src/lib/catalog/product-sections.ts": {
+      "comments": 49,
+      "lines": 176,
+      "header": 23
+    },
+    "frontend/src/lib/catalog/sort-products.ts": {
+      "comments": 8,
+      "lines": 51,
+      "header": 5
+    },
+    "frontend/src/lib/checkout/shipping-quote.spec.ts": {
+      "comments": 17,
+      "lines": 137,
+      "header": 16
+    },
+    "frontend/src/lib/checkout/shipping-quote.ts": {
+      "comments": 64,
+      "lines": 124,
+      "header": 21
+    },
     "frontend/src/lib/content/appearance.ts": {
       "comments": 52,
       "lines": 104,
@@ -125,6 +220,16 @@
       "comments": 22,
       "lines": 26,
       "header": 21
+    },
+    "frontend/src/lib/content/hero.spec.ts": {
+      "comments": 22,
+      "lines": 116,
+      "header": 18
+    },
+    "frontend/src/lib/content/hero.ts": {
+      "comments": 37,
+      "lines": 80,
+      "header": 25
     },
     "frontend/src/lib/content/home-sections.ts": {
       "comments": 40,
@@ -136,6 +241,16 @@
       "lines": 77,
       "header": 5
     },
+    "frontend/src/lib/content/launches.spec.ts": {
+      "comments": 27,
+      "lines": 102,
+      "header": 22
+    },
+    "frontend/src/lib/content/launches.ts": {
+      "comments": 39,
+      "lines": 61,
+      "header": 27
+    },
     "frontend/src/lib/content/markdown.spec.tsx": {
       "comments": 27,
       "lines": 230,
@@ -145,6 +260,16 @@
       "comments": 125,
       "lines": 316,
       "header": 41
+    },
+    "frontend/src/lib/content/marquee.spec.ts": {
+      "comments": 49,
+      "lines": 225,
+      "header": 21
+    },
+    "frontend/src/lib/content/marquee.ts": {
+      "comments": 117,
+      "lines": 174,
+      "header": 50
     },
     "frontend/src/lib/content/page-seo.spec.ts": {
       "comments": 61,
@@ -160,6 +285,16 @@
       "comments": 146,
       "lines": 390,
       "header": 23
+    },
+    "frontend/src/lib/content/ticker.spec.ts": {
+      "comments": 49,
+      "lines": 227,
+      "header": 24
+    },
+    "frontend/src/lib/content/ticker.ts": {
+      "comments": 103,
+      "lines": 164,
+      "header": 35
     },
     "frontend/src/lib/data/__tests__/catalog-cache.unit.spec.ts": {
       "comments": 40,
@@ -263,8 +398,18 @@
     },
     "frontend/src/lib/payments/index.ts": {
       "comments": 24,
-      "lines": 42,
+      "lines": 43,
       "header": 12
+    },
+    "frontend/src/lib/payments/installments.spec.ts": {
+      "comments": 24,
+      "lines": 118,
+      "header": 15
+    },
+    "frontend/src/lib/payments/installments.ts": {
+      "comments": 48,
+      "lines": 93,
+      "header": 26
     },
     "frontend/src/lib/payments/labels.ts": {
       "comments": 32,
@@ -296,190 +441,45 @@
       "lines": 268,
       "header": 5
     },
-    "frontend/src/lib/util/carousel.spec.ts": {
+    "frontend/src/lib/ui/carousel.spec.ts": {
       "comments": 54,
       "lines": 252,
       "header": 23
     },
-    "frontend/src/lib/util/carousel.ts": {
+    "frontend/src/lib/ui/carousel.ts": {
       "comments": 134,
       "lines": 245,
       "header": 33
     },
-    "frontend/src/lib/util/catalog-filters.spec.ts": {
-      "comments": 15,
-      "lines": 356,
-      "header": 8
-    },
-    "frontend/src/lib/util/catalog-filters.ts": {
-      "comments": 187,
-      "lines": 666,
-      "header": 28
-    },
-    "frontend/src/lib/util/category-tabs.ts": {
-      "comments": 19,
-      "lines": 75,
-      "header": 5
-    },
-    "frontend/src/lib/util/filter-chips.spec.ts": {
-      "comments": 23,
-      "lines": 129,
-      "header": 14
-    },
-    "frontend/src/lib/util/filter-chips.ts": {
-      "comments": 37,
-      "lines": 88,
-      "header": 19
-    },
-    "frontend/src/lib/util/get-percentage-diff.ts": {
-      "comments": 11,
-      "lines": 22,
-      "header": 11
-    },
-    "frontend/src/lib/util/get-product-price.spec.ts": {
-      "comments": 19,
-      "lines": 114,
-      "header": 16
-    },
-    "frontend/src/lib/util/get-product-price.ts": {
-      "comments": 13,
-      "lines": 93,
-      "header": 5
-    },
-    "frontend/src/lib/util/hero.spec.ts": {
-      "comments": 22,
-      "lines": 116,
-      "header": 18
-    },
-    "frontend/src/lib/util/hero.ts": {
-      "comments": 37,
-      "lines": 80,
-      "header": 25
-    },
-    "frontend/src/lib/util/installments.spec.ts": {
-      "comments": 24,
-      "lines": 118,
-      "header": 15
-    },
-    "frontend/src/lib/util/installments.ts": {
-      "comments": 48,
-      "lines": 93,
-      "header": 26
-    },
-    "frontend/src/lib/util/launches.spec.ts": {
-      "comments": 27,
-      "lines": 102,
-      "header": 22
-    },
-    "frontend/src/lib/util/launches.ts": {
-      "comments": 39,
-      "lines": 61,
-      "header": 27
-    },
-    "frontend/src/lib/util/marquee.spec.ts": {
-      "comments": 49,
-      "lines": 225,
-      "header": 21
-    },
-    "frontend/src/lib/util/marquee.ts": {
-      "comments": 117,
-      "lines": 174,
-      "header": 50
-    },
-    "frontend/src/lib/util/media-wiring.spec.ts": {
+    "frontend/src/lib/ui/media-wiring.spec.ts": {
       "comments": 99,
       "lines": 251,
       "header": 34
     },
-    "frontend/src/lib/util/media.spec.ts": {
+    "frontend/src/lib/ui/media.spec.ts": {
       "comments": 39,
       "lines": 160,
       "header": 15
     },
-    "frontend/src/lib/util/media.ts": {
+    "frontend/src/lib/ui/media.ts": {
       "comments": 120,
       "lines": 190,
       "header": 51
     },
-    "frontend/src/lib/util/money.ts": {
+    "frontend/src/lib/ui/money.ts": {
       "comments": 11,
-      "lines": 38,
+      "lines": 36,
       "header": 5
     },
-    "frontend/src/lib/util/motion.spec.ts": {
+    "frontend/src/lib/ui/motion.spec.ts": {
       "comments": 17,
       "lines": 84,
       "header": 14
     },
-    "frontend/src/lib/util/motion.ts": {
+    "frontend/src/lib/ui/motion.ts": {
       "comments": 61,
       "lines": 87,
       "header": 29
-    },
-    "frontend/src/lib/util/product-availability.spec.ts": {
-      "comments": 41,
-      "lines": 301,
-      "header": 21
-    },
-    "frontend/src/lib/util/product-availability.ts": {
-      "comments": 139,
-      "lines": 271,
-      "header": 28
-    },
-    "frontend/src/lib/util/product-enrichment.spec.ts": {
-      "comments": 76,
-      "lines": 524,
-      "header": 23
-    },
-    "frontend/src/lib/util/product-enrichment.ts": {
-      "comments": 128,
-      "lines": 300,
-      "header": 23
-    },
-    "frontend/src/lib/util/product-rating.spec.ts": {
-      "comments": 21,
-      "lines": 146,
-      "header": 16
-    },
-    "frontend/src/lib/util/product-rating.ts": {
-      "comments": 67,
-      "lines": 152,
-      "header": 21
-    },
-    "frontend/src/lib/util/product-sections.spec.ts": {
-      "comments": 17,
-      "lines": 147,
-      "header": 13
-    },
-    "frontend/src/lib/util/product-sections.ts": {
-      "comments": 49,
-      "lines": 176,
-      "header": 23
-    },
-    "frontend/src/lib/util/shipping-quote.spec.ts": {
-      "comments": 17,
-      "lines": 137,
-      "header": 16
-    },
-    "frontend/src/lib/util/shipping-quote.ts": {
-      "comments": 64,
-      "lines": 124,
-      "header": 21
-    },
-    "frontend/src/lib/util/sort-products.ts": {
-      "comments": 8,
-      "lines": 51,
-      "header": 5
-    },
-    "frontend/src/lib/util/ticker.spec.ts": {
-      "comments": 49,
-      "lines": 227,
-      "header": 24
-    },
-    "frontend/src/lib/util/ticker.ts": {
-      "comments": 103,
-      "lines": 164,
-      "header": 35
     },
     "frontend/src/middleware.ts": {
       "comments": 44,
@@ -550,11 +550,6 @@
       "comments": 12,
       "lines": 32,
       "header": 12
-    },
-    "frontend/src/modules/checkout/components/payment/index.tsx": {
-      "comments": 37,
-      "lines": 277,
-      "header": 5
     },
     "frontend/src/modules/checkout/components/payment-button/index.tsx": {
       "comments": 27,

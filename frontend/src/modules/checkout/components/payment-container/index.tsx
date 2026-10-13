@@ -4,7 +4,7 @@ import { Radio as RadioGroupOption } from "@headlessui/react"
 import { clx } from "@medusajs/ui"
 import React from "react"
 
-import { resolvePayment } from "@lib/payments/registry"
+import { resolvePayment } from "@lib/payments"
 import { MANUAL_PROVIDER_ID } from "@rv/contrato/payment"
 
 import PaymentTest from "../payment-test"

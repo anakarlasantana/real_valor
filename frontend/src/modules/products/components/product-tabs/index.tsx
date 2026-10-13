@@ -2,11 +2,11 @@
 
 import { Plus } from "@medusajs/icons"
 
-import { enriquecimentoDoProduto } from "@lib/util/product-enrichment"
+import { enriquecimentoDoProduto } from "@lib/catalog/product-enrichment"
 import {
   secoesDaPeca,
   type SecaoDaPeca,
-} from "@lib/util/product-sections"
+} from "@lib/catalog/product-sections"
 import Back from "@modules/common/icons/back"
 import FastDelivery from "@modules/common/icons/fast-delivery"
 import Refresh from "@modules/common/icons/refresh"
@@ -16,9 +16,9 @@ import { HttpTypes } from "@medusajs/types"
  * As seções da página da peça — descrição, ficha, cuidados, guia e aviso.
  * -------------------------------------------------------------------------
  * O componente ficou com o que é só dele: **escolher a marcação de cada seção**.
- * O que existe, em que ordem e de que tipo é `secoesDaPeca`, em `@lib/util`, que
- * é função pura e tem teste — inclusive o teste que garante que campo vazio
- * **não vira travessão**: peça sem peso e sem dimensões não desenha "Peso -".
+ * O que existe, em que ordem e de que tipo é `secoesDaPeca`, em
+ * `@lib/catalog/product-sections` (função pura, com teste): é ele que garante
+ * que campo vazio **não vira travessão** — peça sem peso não desenha "Peso -".
  *
  * Era o defeito desta tela: um bloco fixo de dois acordeões com cinco "-"
  * esperando a cliente e os rótulos em inglês ("Product Information", "Type",

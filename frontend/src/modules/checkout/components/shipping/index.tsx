@@ -9,7 +9,7 @@ import { useEffect, useState } from "react"
 
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
-import { convertToLocale } from "@lib/util/money"
+import { convertToLocale } from "@lib/ui/money"
 import ErrorMessage from "@modules/checkout/components/error-message"
 
 const PICKUP_OPTION_ON = "__PICKUP_ON"

@@ -26,7 +26,7 @@
  */
 import type { InstallmentInfo } from "@rv/contrato/payment"
 
-import { convertToLocale } from "./money"
+import { convertToLocale } from "@lib/ui/money"
 
 /**
  * "6x de R$ 124,90 sem juros".

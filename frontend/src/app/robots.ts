@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next"
 
-import { getBaseURL } from "@lib/util/env"
+import { getBaseURL } from "@lib/medusa/env"
 
 /**
  * `/robots.txt` — o par do `sitemap.ts` (a F1 do doc 14 trouxe os dois).

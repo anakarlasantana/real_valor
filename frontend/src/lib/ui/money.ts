@@ -1,5 +1,3 @@
-import { isEmpty } from "./isEmpty"
-
 type ConvertToLocaleParams = {
   amount: number
   currency_code: string
@@ -26,7 +24,7 @@ export const convertToLocale = ({
   maximumFractionDigits,
   locale = "pt-BR",
 }: ConvertToLocaleParams) => {
-  return currency_code && !isEmpty(currency_code)
+  return currency_code?.trim()
     ? new Intl.NumberFormat(locale, {
         style: "currency",
         currency: currency_code,

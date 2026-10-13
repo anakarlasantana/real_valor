@@ -1,6 +1,6 @@
 import { type FeaturedSection } from "@lib/content/home-sections"
 import { listProducts } from "@lib/data/products"
-import { revealDelay } from "@lib/util/motion"
+import { revealDelay } from "@lib/ui/motion"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Reveal from "@modules/common/components/reveal"
 import ProductPreview from "@modules/products/components/product-preview"
@@ -37,7 +37,7 @@ import { HttpTypes } from "@medusajs/types"
  * peça que não coube ganha a segunda página em vez de uma sobra na mesma linha —
  * e, no desktop de hoje, com três peças publicadas, a fila cabe inteira e os
  * controles se retiram: quem mede isso é a ilha (`product-carousel/index.tsx`), e
- * não uma tabela de pontos de quebra. Ver `lib/util/carousel.ts` para a conta, e
+ * não uma tabela de pontos de quebra. Ver `lib/ui/carousel.ts` para a conta, e
  * `brand.css` (`.rv-carousel-*`) para a régua.
  *
  * **O trilho sangra.** A seção é quem hospeda a sangria (`rv-bleed`, em

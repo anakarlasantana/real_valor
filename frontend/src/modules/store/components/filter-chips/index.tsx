@@ -1,4 +1,4 @@
-import type { ChipDeFiltro } from "@lib/util/filter-chips"
+import type { ChipDeFiltro } from "@lib/catalog/filter-chips"
 
 /**
  * A fileira dos filtros aplicados, abaixo da barra de ferramentas do catálogo.
@@ -10,7 +10,7 @@ import type { ChipDeFiltro } from "@lib/util/filter-chips"
  *
  * Ele é burro de propósito: quem monta os chips — com o título da faceta e o
  * rótulo da loja, na ordem fixa das facetas — é `chipsDaSelecao`
- * (`lib/util/filter-chips.ts`), que se testa sem renderizar nada. Aqui só se
+ * (`lib/catalog/filter-chips.ts`), que se testa sem renderizar nada. Aqui só se
  * desenha a lista, e **sem seleção a lista não existe** (array vazio → `null`).
  *
  * **O chip ainda não é clicável**, e isso é deliberado: desfazer um filtro é

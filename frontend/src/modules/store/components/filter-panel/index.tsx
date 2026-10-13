@@ -8,7 +8,7 @@ import {
   selecaoDaUrl,
   type ChaveDeFaceta,
   type Faceta,
-} from "@lib/util/catalog-filters"
+} from "@lib/catalog/catalog-filters"
 
 /**
  * O painel de filtros — os acordeões do redesenho, com valores do catálogo.

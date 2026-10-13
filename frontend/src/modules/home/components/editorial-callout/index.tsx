@@ -1,5 +1,5 @@
 import { type BannerSection } from "@lib/content/home-sections"
-import { mediaImageProps } from "@lib/util/media"
+import { mediaImageProps } from "@lib/ui/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 import { type CSSProperties } from "react"
@@ -30,7 +30,7 @@ import { type CSSProperties } from "react"
  * onde não há texto. Ela chega inline, em `--rv-callout-veil`, e a classe
  * `.rv-callout-veil` só a aplica — mesma arquitetura dos dois véus da capa.
  *
- * A foto passa por `mediaImageProps` (ver `lib/util/media.ts`): a imagem
+ * A foto passa por `mediaImageProps` (ver `lib/ui/media.ts`): a imagem
  * enviada pelo CRM chega como chave do provider e é traduzida aqui, como no
  * hero e no manifesto — e, vinda de fora (a colada do site antigo da loja), é
  * entregue sem otimizar em vez de derrubar a página. Sem imagem não há faixa (o

@@ -1,7 +1,7 @@
 import { type LaunchesSection } from "@lib/content/home-sections"
 import { listProducts } from "@lib/data/products"
-import { launchesLimit } from "@lib/util/launches"
-import { revealDelay } from "@lib/util/motion"
+import { launchesLimit } from "@lib/content/launches"
+import { revealDelay } from "@lib/ui/motion"
 import ArrowIcon from "@modules/common/components/arrow-icon"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Reveal from "@modules/common/components/reveal"
@@ -47,7 +47,7 @@ import { HttpTypes } from "@medusajs/types"
  *
  * `limit` passa por `launchesLimit`: a faixa é do contrato e a API já a
  * confere, mas o que está gravado pode ser anterior à faixa (ver
- * `lib/util/launches.ts`).
+ * `lib/content/launches.ts`).
  */
 export default async function LaunchesRail({
   section,

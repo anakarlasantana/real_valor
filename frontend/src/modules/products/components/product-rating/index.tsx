@@ -5,7 +5,7 @@ import {
   estrelasCheiasDaMedia,
   NOTA_MAXIMA,
   rotuloDaAvaliacao,
-} from "@lib/util/product-rating"
+} from "@lib/catalog/product-rating"
 
 /**
  * As estrelas de avaliação da peça — "★★★★★ 4,9 · 28 avaliações".
@@ -15,7 +15,7 @@ import {
  *
  * Ele é burro de propósito, como o `ProductStatusChip`: quem decide se há
  * avaliação — e se o dado que chegou serve — é `avaliacaoValida`
- * (`lib/util/product-rating.ts`), que se testa sem renderizar nada. O que sobra
+ * (`lib/catalog/product-rating.ts`), que se testa sem renderizar nada. O que sobra
  * para este arquivo é a conta das estrelas e o texto.
  *
  * **As estrelas são decorativas; o número é que informa.** Elas saem com

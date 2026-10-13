@@ -26,7 +26,7 @@
  * tamanhos foram cadastrados **como opções separadas** não aparece em "Tamanho"
  * nenhum. A faceta diz o que o catálogo diz — não o que ele deveria dizer.
  */
-import { convertToLocale } from "./money"
+import { convertToLocale } from "@lib/ui/money"
 import {
   PRODUCT_STATUS_LABELS,
   productStatus,

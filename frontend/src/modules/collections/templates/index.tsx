@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 
 import { DEFAULT_SORT, SortOptions } from "@lib/catalog/types"
-import { type SelecaoDoCatalogo } from "@lib/util/catalog-filters"
+import { type SelecaoDoCatalogo } from "@lib/catalog/catalog-filters"
 import { HttpTypes } from "@medusajs/types"
 import CatalogSkeleton from "@modules/store/components/catalog-skeleton"
 import PaginatedProducts from "@modules/store/templates/paginated-products"

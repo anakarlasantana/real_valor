@@ -27,7 +27,7 @@
  * toda animação e transição da loja — inclusive as do chip, que terminam no
  * estado parado em vez de congelar a meio caminho.
  */
-import { type ProductStatus } from "./product-availability"
+import { type ProductStatus } from "@lib/catalog/product-availability"
 
 /** O atraso entre um card e o seguinte na entrada da seção, em ms. */
 export const MOTION_STAGGER_MS = 70

@@ -5,7 +5,7 @@ import { Plus, XMark } from "@medusajs/icons"
 import { Fragment } from "react"
 
 import type { SortOptions } from "@lib/catalog/types"
-import type { Faceta } from "@lib/util/catalog-filters"
+import type { Faceta } from "@lib/catalog/catalog-filters"
 
 import FilterPanel from "../filter-panel"
 import SortProducts from "../refinement-list/sort-products"

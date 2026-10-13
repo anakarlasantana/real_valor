@@ -1,4 +1,4 @@
-import { getBaseURL } from "@lib/util/env"
+import { getBaseURL } from "@lib/medusa/env"
 import { getActiveTheme } from "@lib/data/theme"
 import { themeToCSSVariables } from "@lib/theme"
 import { Metadata } from "next"

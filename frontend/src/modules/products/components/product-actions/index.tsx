@@ -2,8 +2,8 @@
 
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
-import { variantIsAvailable } from "@lib/util/product-availability"
-import { coresDoProduto } from "@lib/util/product-enrichment"
+import { variantIsAvailable } from "@lib/catalog/product-availability"
+import { coresDoProduto } from "@lib/catalog/product-enrichment"
 import { HttpTypes } from "@medusajs/types"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
 import { isEqual } from "lodash"

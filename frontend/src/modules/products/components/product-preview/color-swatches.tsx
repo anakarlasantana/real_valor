@@ -2,7 +2,7 @@ import {
   bolinhasDoCard,
   coresDoProduto,
   type ProdutoComEnriquecimento,
-} from "@lib/util/product-enrichment"
+} from "@lib/catalog/product-enrichment"
 
 /**
  * As bolinhas de cor do card.

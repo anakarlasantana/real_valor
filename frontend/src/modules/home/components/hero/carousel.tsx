@@ -14,7 +14,7 @@ import {
   nextIndex,
   pageIndexFromScroll,
   shouldAutoplay,
-} from "@lib/util/carousel"
+} from "@lib/ui/carousel"
 
 /**
  * Quantos segundos cada slide da capa fica antes de o rodízio passar ao próximo.
@@ -39,7 +39,7 @@ const HERO_AUTOPLAY_SECONDS = 7
  * Com um slide só, a ilha nem é montada: a capa continua HTML puro.
  *
  * As decisões puras (de quanto em quanto tempo, de quem é a vez, em que slide
- * está) moram em `lib/util/carousel.ts`, com teste próprio — aqui fica só o que é
+ * está) moram em `lib/ui/carousel.ts`, com teste próprio — aqui fica só o que é
  * de React: efeito, `ref` e evento. A conta é a **mesma do carrossel de produtos**
  * (`product-carousel/index.tsx`): a capa é o caso particular em que cada página é
  * um slide, e por isso `pageCount` aqui é o número de slides.

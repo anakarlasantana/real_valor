@@ -17,7 +17,7 @@ import {
   pageIndexFromScroll,
   pagesOf,
   shouldAutoplay,
-} from "@lib/util/carousel"
+} from "@lib/ui/carousel"
 
 /**
  * O carrossel da vitrine — a ilha de cliente de "Peças em destaque" e de
@@ -28,7 +28,7 @@ import {
  * fronteira é só o *estado de navegação*, que não existe no servidor — em que
  * página a fila está, quantos pontos acenderam e de quem é a vez de andar. É o
  * mesmo desenho do carrossel da capa (`hero/carousel.tsx`), e a conta pura dos
- * dois mora junta (`lib/util/carousel.ts`).
+ * dois mora junta (`lib/ui/carousel.ts`).
  *
  * As decisões deste arquivo, e o que cada uma custa:
  *
@@ -481,7 +481,7 @@ export default function ProductCarousel({
  * A página que a rolagem do trilho está mostrando.
  *
  * Existe para o componente não repetir os quatro campos do DOM em cada lugar em
- * que precisa perguntar — a conta é de `lib/util/carousel.ts`.
+ * que precisa perguntar — a conta é de `lib/ui/carousel.ts`.
  */
 function pageAt(element: HTMLElement, pageCount: number): number {
   return pageIndexFromScroll({

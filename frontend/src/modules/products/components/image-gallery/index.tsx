@@ -1,4 +1,4 @@
-import { resolveMediaUrl } from "@lib/util/media"
+import { resolveMediaUrl } from "@lib/ui/media"
 import { HttpTypes } from "@medusajs/types"
 import Image from "next/image"
 

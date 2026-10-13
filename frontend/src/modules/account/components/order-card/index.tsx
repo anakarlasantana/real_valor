@@ -3,7 +3,7 @@ import { useMemo } from "react"
 
 import Thumbnail from "@modules/products/components/thumbnail"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { convertToLocale } from "@lib/util/money"
+import { convertToLocale } from "@lib/ui/money"
 import { HttpTypes } from "@medusajs/types"
 
 type OrderCardProps = {

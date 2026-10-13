@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 
 import { SortOptions } from "@lib/catalog/types"
 import { getCategoryByHandle } from "@lib/data/categories"
-import { selecaoDaUrl } from "@lib/util/catalog-filters"
+import { selecaoDaUrl } from "@lib/catalog/catalog-filters"
 import CategoryTemplate from "@modules/categories/templates"
 
 type Props = {

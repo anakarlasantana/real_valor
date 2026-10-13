@@ -1,5 +1,5 @@
 import { type EditorialSection } from "@lib/content/home-sections"
-import { mediaImageProps } from "@lib/util/media"
+import { mediaImageProps } from "@lib/ui/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 
@@ -20,7 +20,7 @@ import Image from "next/image"
  * `grid-cols-2`) e o `brand.css` não tinha um `rv-manifesto`: era a "segunda
  * régua" que o `ruler.spec.ts` prende, e o teste novo de lá cobre esta seção.
  *
- * A foto passa por `mediaImageProps` (ver `lib/util/media.ts`): a imagem enviada
+ * A foto passa por `mediaImageProps` (ver `lib/ui/media.ts`): a imagem enviada
  * pelo CRM chega como chave do provider e é traduzida aqui, como no hero, na
  * capa e na faixa editorial — e, vinda de fora (a colada do site antigo da
  * loja), é entregue sem otimizar em vez de derrubar a página. O fundo da caixa é

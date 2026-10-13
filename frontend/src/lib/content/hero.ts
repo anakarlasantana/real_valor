@@ -20,7 +20,7 @@
  * controles que não fazem nada.
  *
  * O tipo é **estrutural** (e não `HeroSection`) pelo mesmo motivo de
- * `lib/util/ticker.ts`: a decisão é testável com um objeto de dez linhas, sem
+ * `lib/content/ticker.ts`: a decisão é testável com um objeto de dez linhas, sem
  * contrato gerado e sem render.
  */
 

@@ -298,7 +298,7 @@ describe("a régua das seções da abertura", () => {
     const faixa = semComentarios(fonte("instagram-grid", "strip.tsx"))
 
     // O ponteiro **adianta ou atrasa** a animação que já existe (`animation-delay`)
-    // com a conta de `lib/util/marquee.ts`: um `requestAnimationFrame` ou um
+    // com a conta de `lib/content/marquee.ts`: um `requestAnimationFrame` ou um
     // `scrollLeft` aqui seria a segunda régua do mesmo movimento — a que fica fora
     // de sincronia com o keyframe, e a que ninguém lembra de atualizar.
     expect(faixa).toContain("animationDelay")

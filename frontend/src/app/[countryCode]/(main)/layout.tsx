@@ -3,7 +3,7 @@ import { Metadata } from "next"
 import { listCartOptions, retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
 import { getHomeSections } from "@lib/data/content"
-import { getBaseURL } from "@lib/util/env"
+import { getBaseURL } from "@lib/medusa/env"
 import { StoreCartShippingOption } from "@medusajs/types"
 import {
   announceSections,

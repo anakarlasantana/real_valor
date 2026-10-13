@@ -2,8 +2,8 @@
 
 import { DEFAULT_SORT, SortOptions } from "@lib/catalog/types"
 import { sdk } from "@lib/config"
-import { filtrarProdutos, construirFacetas, type Faceta, type SelecaoDoCatalogo } from "@lib/util/catalog-filters"
-import { sortProducts } from "@lib/util/sort-products"
+import { filtrarProdutos, construirFacetas, type Faceta, type SelecaoDoCatalogo } from "@lib/catalog/catalog-filters"
+import { sortProducts } from "@lib/catalog/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { getAuthHeaders, getCatalogCacheOptions } from "./cookies"
 import { CAMPOS_DO_CATALOGO } from "./product-fields"

@@ -24,7 +24,7 @@
     },
     {
       "rule": "R-C",
-      "file": "frontend/src/lib/util/get-locale-header.ts",
+      "file": "frontend/src/lib/medusa/get-locale-header.ts",
       "specifier": "@lib/data/locale-actions",
       "why": "o cabeçalho de locale pergunta o idioma ao dado — é o meio do ciclo `config → locale-header → locale-actions → config`",
       "diesIn": "F5 — o locale vira folha (`lib/medusa/locale*`) e o ciclo desmancha"
@@ -37,38 +37,10 @@
       "diesIn": "RV-048"
     },
     {
-      "rule": "R-D",
-      "file": "frontend/src/modules/checkout/components/payment/index.tsx",
-      "specifier": "@lib/payments/registry",
-      "why": "o componente pergunta ao registry direto, em vez da fachada `@lib/payments`",
-      "diesIn": "F2 — passa a importar `@lib/payments`"
-    },
-    {
-      "rule": "R-D",
-      "file": "frontend/src/modules/checkout/components/payment-button/index.tsx",
-      "specifier": "@lib/payments/registry",
-      "why": "idem",
-      "diesIn": "F2"
-    },
-    {
-      "rule": "R-D",
-      "file": "frontend/src/modules/checkout/components/payment-container/index.tsx",
-      "specifier": "@lib/payments/registry",
-      "why": "idem",
-      "diesIn": "F2"
-    },
-    {
-      "rule": "R-D",
-      "file": "frontend/src/modules/checkout/components/payment-wrapper/index.tsx",
-      "specifier": "@lib/payments/registry",
-      "why": "idem",
-      "diesIn": "F2"
-    },
-    {
       "rule": "R-E",
       "cycle": [
         "frontend/src/lib/config.ts",
-        "frontend/src/lib/util/get-locale-header.ts",
+        "frontend/src/lib/medusa/get-locale-header.ts",
         "frontend/src/lib/data/locale-actions.ts"
       ],
       "why": "o SDK injeta o cabeçalho de locale e o dado do locale usa o SDK — o ciclo é a razão de o F5 existir",
@@ -79,6 +51,7 @@
       "cycle": [
         "frontend/src/lib/payments/adapters/stripe/card-container.tsx",
         "frontend/src/modules/checkout/components/payment-container/index.tsx",
+        "frontend/src/lib/payments/index.ts",
         "frontend/src/lib/payments/registry.ts",
         "frontend/src/lib/payments/adapters/stripe/index.tsx"
       ],

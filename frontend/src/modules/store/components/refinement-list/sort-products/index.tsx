@@ -13,7 +13,7 @@ import { DEFAULT_SORT, type SortOptions } from "@lib/catalog/types"
  * ("Ordenar por ▾"), e é onde ela é procurada.
  *
  * Três opções, e nenhuma a mais: as três que a loja sabe aplicar (`sortProducts`,
- * em `lib/util/sort-products.ts`). Um "Melhor avaliadas" no seletor precisaria de
+ * em `lib/catalog/sort-products.ts`). Um "Melhor avaliadas" no seletor precisaria de
  * dado que o catálogo não tem, e um seletor que não ordena é pior do que não ter
  * seletor.
  *

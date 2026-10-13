@@ -3,7 +3,7 @@
 import React from "react"
 
 import { applyPromotions } from "@lib/data/cart"
-import { convertToLocale } from "@lib/util/money"
+import { convertToLocale } from "@lib/ui/money"
 import { HttpTypes } from "@medusajs/types"
 import Trash from "@modules/common/icons/trash"
 

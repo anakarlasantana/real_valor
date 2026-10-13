@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 
 import { SortOptions } from "@lib/catalog/types"
-import { selecaoDaUrl } from "@lib/util/catalog-filters"
+import { selecaoDaUrl } from "@lib/catalog/catalog-filters"
 import StoreTemplate from "@modules/store/templates"
 
 export const metadata: Metadata = {

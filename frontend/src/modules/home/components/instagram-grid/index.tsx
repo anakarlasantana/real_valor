@@ -32,7 +32,7 @@ import { InstagramTile } from "./tile"
  * lados — a faixa (cliente) e a grade de uma foto só (aqui, no servidor).
  *
  * O desenho do quadro é da régua (`.rv-insta-*`, `brand.css`), e as contas que o
- * CSS não pode fazer moram em `lib/util/marquee.ts`, com caso de borda (valor
+ * CSS não pode fazer moram em `lib/content/marquee.ts`, com caso de borda (valor
  * ausente, banco antigo, contagem fora do normal) e teste próprio:
  *
  *   - **quantas vezes a lista se repete dentro de uma volta** (`marqueeCopies`).

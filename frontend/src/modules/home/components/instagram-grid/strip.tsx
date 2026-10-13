@@ -11,7 +11,7 @@ import {
   marqueeCopies,
   marqueeSeconds,
   marqueeSeekOffset,
-} from "@lib/util/marquee"
+} from "@lib/content/marquee"
 
 import { InstagramTile, type InstagramImage } from "./tile"
 

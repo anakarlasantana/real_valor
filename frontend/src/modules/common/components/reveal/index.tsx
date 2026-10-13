@@ -26,7 +26,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react"
  *      onde o visitante pediu menos movimento, a classe não esconde nada e a
  *      vitrine é a de sempre.
  *
- * O atraso chega pronto (`revealDelay(index)`, `lib/util/motion.ts`): o compasso
+ * O atraso chega pronto (`revealDelay(index)`, `lib/ui/motion.ts`): o compasso
  * é decisão de comportamento, e mora longe do React com teste próprio.
  */
 export default function Reveal({

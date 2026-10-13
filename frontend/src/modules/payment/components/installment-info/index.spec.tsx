@@ -1,7 +1,7 @@
 /**
  * As parcelas e o Pix: as duas linhas, e o que acontece quando falta uma.
  * -------------------------------------------------------------------------
- * A conta das duas frases tem teste próprio em `lib/util/installments.spec.ts`;
+ * A conta das duas frases tem teste próprio em `lib/payments/installments.spec.ts`;
  * o que se testa aqui é a **montagem**: o bloco com a classe do `brand.css`
  * (`.rv-installments`, que o bloco do preço e o resumo da sacola compartilham), o
  * Pix como `<b>` (é o que o CSS pinta de verde) e o comportamento de cada metade

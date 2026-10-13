@@ -10,6 +10,7 @@
  * antes — "este meio precisa de cartão na minha página?" — era a mesma, com
  * o nome preso a um provedor.
  */
+export { paymentLabel } from "./labels"
 export { listPaymentAdapters, resolvePayment } from "./registry"
 export type {
   FulfillmentMode,
