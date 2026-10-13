@@ -18,6 +18,22 @@
  *      faixas **era** o Tailwind. Os dois testes do fim do arquivo prendem as
  *      famílias novas no lugar, e são a razão de elas existirem.
  *
+ *      A faixa do Instagram entrou nesse mesmo lote pelo outro lado: o desenho
+ *      dela (`.rv-insta-*`) é novo, mas o **movimento** é o do ticker da barra de
+ *      anúncio (`.rv-marquee`, em `brand.css`), emprestado de propósito — pausa
+ *      no mouse e no teclado, laço por `translateX(-50%)` e o tratamento de
+ *      `prefers-reduced-motion` são comportamento de faixa contínua, e uma
+ *      segunda cópia deles seria a segunda régua do mesmo movimento. O teste
+ *      prende as duas famílias juntas: a de lá e a de cá.
+ *
+ *      A mesma seção abriu **duas** decisões que o desenho não mostra e um
+ *      `not.toContain` não alcança, e as duas têm teste próprio aqui: a faixa é
+ *      **irmã** do `rv-container` (a sangria de borda a borda depende disso, e o
+ *      defeito é uma faixa que para no respiro, sem erro nenhum) e o arrasto é um
+ *      **seek** do mesmo keyframe (o componente adianta o relógio do CSS, e não
+ *      anima nada por conta própria — um `requestAnimationFrame` ou um
+ *      `scrollLeft` aqui seria a segunda régua do mesmo movimento).
+ *
  *   2. **a cor que não chega.** O eyebrow e a linha de apoio da capa usavam a
  *      classe de cor **herdada** e a faixa não tinha cor própria: o que chegava
  *      era o grafite do `body`, texto escuro sobre foto escura, na primeira
@@ -159,6 +175,94 @@ describe("a régua das seções da abertura", () => {
     // A ordem das colunas continua sendo do componente: é o `imagePosition` do
     // CMS, e trocar a foto de lado é estrutura, não desenho.
     expect(manifesto).toContain("imageFirst")
+  })
+
+  it("a faixa do Instagram escreve o desenho em classe, e não em utilitário", () => {
+    const secao = semComentarios(componente("instagram-grid"))
+    const faixa = semComentarios(fonte("instagram-grid", "strip.tsx"))
+    const quadro = semComentarios(fonte("instagram-grid", "tile.tsx"))
+
+    // O quadro e a faixa são da régua, e o movimento é o `.rv-marquee` do ticker
+    // — as duas famílias, uma de cada lado do arquivo de estilos.
+    expect(faixa).toContain("rv-marquee-track")
+    expect(faixa).toContain("rv-marquee rv-insta-strip")
+    expect(quadro).toContain("rv-insta-tile")
+    // A proporção do quadro, o zoom do hover e o tempo dele são do `brand.css`:
+    // era este o trio que os escrevia no componente, e o utilitário ganha da
+    // régua quando os dois convivem.
+    expect(quadro).not.toContain("aspect-")
+    expect(quadro).not.toContain("scale-[1.04]")
+    expect(quadro).not.toContain("duration-500")
+    // E a grade de quatro colunas não voltou: ela é da foto única (o caso em
+    // que não há laço), com o mesmo quadro, e as colunas de antes eram um
+    // `grid-cols-4` no `className`.
+    expect(secao).not.toContain("grid-cols-")
+    expect(secao).toContain("images.length > 1")
+    expect(secao).toContain("rv-insta-grid")
+  })
+
+  it("a faixa do Instagram sangra: ela é irmã do container, e não filha", () => {
+    const secao = semComentarios(componente("instagram-grid"))
+    const onde = secao.indexOf("<InstagramStrip")
+
+    expect(onde).toBeGreaterThan(-1)
+
+    // O `rv-container` (a largura de leitura, 1440px com o respiro lateral) fecha
+    // **antes** da faixa, e é essa vizinhança que decide a sangria: filha do
+    // container, a faixa para no respiro; irmã dele, ela atravessa a tela. O
+    // defeito não dá erro nenhum — dá uma faixa que para antes da borda.
+    const fecha = secao.lastIndexOf("</div>", onde)
+
+    expect(secao.slice(0, fecha)).toContain("rv-container")
+    expect(secao.slice(fecha, onde)).not.toContain("rv-container")
+    // E a sangria **não** é o `100vw` com margem negativa do trilho do carrossel:
+    // aquela conta existe porque aquele trilho mora dentro do container, e este não
+    // mora. Copiá-la aqui daria rolagem horizontal na página inteira.
+    expect(semComentarios(bloco(".rv-insta-strip"))).not.toContain("100vw")
+  })
+
+  it("o arrasto da faixa é um seek do mesmo relógio, e não um segundo movimento", () => {
+    const faixa = semComentarios(fonte("instagram-grid", "strip.tsx"))
+
+    // O ponteiro **adianta ou atrasa** a animação que já existe (`animation-delay`)
+    // com a conta de `lib/util/marquee.ts`: um `requestAnimationFrame` ou um
+    // `scrollLeft` aqui seria a segunda régua do mesmo movimento — a que fica fora
+    // de sincronia com o keyframe, e a que ninguém lembra de atualizar.
+    expect(faixa).toContain("animationDelay")
+    expect(faixa).toContain("marqueeSeekOffset(")
+    expect(faixa).not.toContain("requestAnimationFrame")
+    expect(faixa).not.toContain("scrollLeft")
+    // O gesto tem começo, meio e fim declarados: o ponteiro fica **preso** à faixa
+    // (o arrasto não morre na borda do bloco), a mão em cima acende o cursor e para
+    // o relógio (a classe que o `brand.css` lê) e o eixo horizontal é nosso
+    // (`touch-action`, no `brand.css`).
+    expect(faixa).toContain("setPointerCapture")
+    expect(faixa).toContain("rv-insta-dragging")
+    expect(faixa).toContain("onPointerCancel")
+
+    const gesto = semComentarios(bloco(".rv-insta-strip"))
+
+    expect(gesto).toContain("cursor: grab")
+    // Duas declarações, e a ordem delas é a decisão: o `pan-y` fica **antes** do
+    // valor com `pinch-zoom`, então o navegador que não conhece o segundo descarta a
+    // linha e mantém o gesto (é o `pan-y` que sustenta o arrasto), e o que conhece
+    // ganha o zoom de dois dedos por cima das fotos.
+    expect(gesto).toContain("touch-action: pan-y;")
+    expect(gesto).toContain("touch-action: pan-y pinch-zoom;")
+    // A pausa do relógio durante o arrasto é a regra que impede o salto: com a
+    // animação correndo, cada `animation-delay` novo seria um pulo no meio do
+    // movimento em vez de um deslocamento debaixo do dedo.
+    expect(CSS).toContain(".rv-insta-strip.rv-insta-dragging .rv-marquee-track")
+    // E com o movimento desligado (`prefers-reduced-motion`) o cursor não promete o
+    // gesto: lá a animação sai e o arrasto não tem relógio para mover. A classe do
+    // arrasto entra na mesma lista porque sozinha ela tem especificidade maior —
+    // sem isso o `grabbing` voltaria justamente no modo em que nada se move.
+    const semMovimento = CSS.slice(
+      CSS.indexOf("@media (prefers-reduced-motion: reduce) {")
+    )
+
+    expect(semMovimento).toContain(".rv-insta-strip.rv-insta-dragging {")
+    expect(semMovimento).toContain("cursor: default")
   })
 
   it("o degrau de desktop do ritmo vence a base do tema", () => {

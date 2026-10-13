@@ -86,6 +86,32 @@ export const ANNOUNCEMENT_SPEED_MIN = 8
 export const ANNOUNCEMENT_SPEED_MAX = 60
 export const ANNOUNCEMENT_SPEED_DEFAULT = 24
 
+/**
+ * A velocidade da faixa do Instagram, em **segundos por imagem**.
+ *
+ * A unidade é a imagem, e não a volta, porque aqui a volta é invisível: o
+ * lojista conta fotos na tela, não sabe quantas vezes a lista se repete para o
+ * laço fechar (o storefront repete a lista até a volta cobrir a largura da tela
+ * — ver `frontend/src/lib/util/marquee.ts`). Com a unidade na foto, o ritmo é o
+ * mesmo com quatro ou com doze imagens; com a unidade na volta, ele mudaria
+ * sozinho quando o lojista subisse uma foto, sem ele ter pedido nada.
+ *
+ * Mora no contrato pelo mesmo arranjo do ticker da barra de anúncio
+ * (`ANNOUNCEMENT_SPEED_*`): o `min`/`max` do `SECTION_FIELDS.instagram` (que o
+ * CRM desenha e a API admin valida) e o storefront
+ * (`frontend/src/lib/util/marquee.ts`), que é a última defesa — o que está
+ * gravado no banco pode ser anterior à faixa. Quem confere o espelho é
+ * `marquee.spec.ts`.
+ *
+ * O piso de 3s não é estético: abaixo dele a foto atravessa a tela rápido
+ * demais para ser vista, e uma faixa de fotos embaçadas é ruído com movimento.
+ * O teto de 12s é o outro extremo — acima dele a faixa parece parada, e o
+ * lojista fica com um bloco que ele acha que quebrou.
+ */
+export const INSTAGRAM_SPEED_MIN = 3
+export const INSTAGRAM_SPEED_MAX = 12
+export const INSTAGRAM_SPEED_DEFAULT = 6
+
 export type AnnouncementSection = SectionBase &
   SectionAppearance & {
     type: "announcement"
@@ -491,6 +517,16 @@ export type InstagramSection = SectionBase &
     handle: string
     title: string
     images: { imageUrl: string; imageAlt: string }[]
+    /**
+     * Quantos segundos **cada imagem** leva para atravessar a faixa
+     * (`INSTAGRAM_SPEED_*`). Ausente é o padrão.
+     *
+     * Com **duas ou mais** imagens a faixa rola sozinha, em laço, e para no
+     * mouse e no teclado. Com **uma só** ela é a grade parada de sempre: não há
+     * laço com uma imagem, e repetir a mesma foto lado a lado para preencher a
+     * tela seria uma faixa de cópias, não uma faixa.
+     */
+    secondsPerImage?: number
   }
 
 /**
@@ -1573,6 +1609,21 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     // destaque, o título é título e o resto é imagem. A cor de fundo, essa
     // sim, é o que dá o tom do bloco (o padrão é o preto).
     ...appearanceBackground("images"),
+    // A velocidade vem **depois** dos trilhos de propósito, como na barra de
+    // anúncio: o `attachedTo` é a promessa de "aparece embaixo do campo que
+    // muda", e a guarda de paridade exige que o trilho fique logo abaixo do
+    // último campo de conteúdo — aqui, `images`. A ordem do formulário também
+    // fica melhor assim: quem entra nesta seção entra para subir foto, e a
+    // velocidade é o último ajuste.
+    {
+      name: "secondsPerImage",
+      label: "Segundos por imagem",
+      kind: "number",
+      min: INSTAGRAM_SPEED_MIN,
+      max: INSTAGRAM_SPEED_MAX,
+      step: 1,
+      help: "Quanto tempo cada imagem leva para atravessar a faixa. Com duas ou mais imagens a faixa rola sozinha, em laço, e para no mouse e no teclado; com uma só, ela fica parada.",
+    },
   ],
   nav: [
     {

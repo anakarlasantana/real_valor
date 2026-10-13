@@ -79,10 +79,11 @@ lembrete de que hoje esse caminho é um `mailto:` porque **não há página de c
 
 ## 13.4 Home, casa por casa
 
-> ⚠️ **Retrato de antes.** A tabela foi levantada em 2026-10-09, antes de a F1/F2 do doc 14 entrar. Uma
-> linha mudou: a casa **10** — o rodapé tinha **uma** coluna ("Ajuda", com o rastreio) e hoje traz as duas
+> ⚠️ **Retrato de antes.** A tabela foi levantada em 2026-10-09, antes de a F1/F2 do doc 14 entrar. Duas
+> linhas mudaram: a casa **10** — o rodapé tinha **uma** coluna ("Ajuda", com o rastreio) e hoje traz as duas
 > colunas da referência, **"Institucional" e "Atendimento"**, com os links das páginas declaradas
-> (14.16 do doc 14). Ver a nota no fim desta seção.
+> (14.16 do doc 14) — e a casa **11**, que trocou a grade parada pela faixa que rola (2026-10-13, com o
+> campo `secondsPerImage`). Ver as notas no fim desta seção.
 
 Ordem do `position` no payload — a mesma ordem do render. "Fixo" é a casa que o CRM não deixa
 reordenar (`FIXED_SECTION_POSITIONS`).
@@ -109,7 +110,7 @@ reordenar (`FIXED_SECTION_POSITIONS`).
 | 10 | Rodapé | wordmark | REAL VALOR | `/` | ❌ hardcoded | `footer/index.tsx:105` |
 | 10 | Rodapé | newsletter | "Em breve" | **desabilitado** | ❌ hardcoded | `footer/index.tsx:94` |
 | 10 | Rodapé | crédito | Ana Karla Santana | `ana-karla-dev.vercel.app` | ❌ hardcoded | `footer/index.tsx:157` |
-| 11 | Instagram | — | @realvalor + 4 fotos | **nenhum link** ⚠️ | — (o `@` é `<p>`) | `instagram-grid/index.tsx:20` |
+| 11 | Instagram | — | @realvalor + 4 fotos (a faixa rola e arrasta) | **nenhum link** ⚠️ | `secondsPerImage` (o `@` é `<p>`) | `instagram-grid/strip.tsx` |
 
 Notas que a tabela não cabe:
 
@@ -128,6 +129,19 @@ Notas que a tabela não cabe:
   `/privacidade`, `/termos`) e "Atendimento" (`/contato`, `/perguntas-frequentes`, `/rastreio`, o e-mail) —,
   com uma régua que o doc 14 executou e mediu (14.16): **um link só entra no ar quando o destino responde
   200**, porque as cinco páginas de texto longo respondem 404 até a copy existir.
+- **A casa 11 deixou de ser uma grade parada** (2026-10-13). Com duas ou mais fotos a seção atravessa a
+  largura em laço, devagar, e para no mouse e no teclado; `secondsPerImage` (3 a 12 segundos **por
+  imagem**, padrão 6) é o único campo que governa o movimento, e o mecanismo é o mesmo do ticker da
+  barra de anúncio — o movimento é do **CSS**, e a faixa anda inteira sem JavaScript nenhum.
+  Duas coisas que a grade não tinha entraram junto: a faixa **sangra** — as fotos atravessam de borda
+  a borda e só o `@realvalor` e o título ficam na largura de leitura da página — e ela **pega no
+  ponteiro**: dá para arrastar de um lado para o outro, e a foto anda exatamente o que a mão anda,
+  porque o arrasto não é outra animação e sim um *seek* da mesma (`instagram-grid/strip.tsx`, a única
+  ilha de cliente desta seção, com a conta em `lib/util/marquee.ts`). Sem JavaScript, e com "menos
+  movimento" pedido no sistema, a faixa continua andando e desenhada igual — o que não existe nesses
+  dois casos é o arrasto. Com **uma** foto só não há laço e ela volta a ser a grade parada, no respiro
+  da página. O que **não** mudou é a falta que esta tabela registra: o `@realvalor` e as fotos
+  continuam sem `<a>` — clicar numa foto segue não levando a lugar nenhum.
 
 ## 13.5 Sacola — os botões que o CMS não desenha
 

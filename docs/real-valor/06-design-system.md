@@ -200,6 +200,14 @@ Sombras **muito suaves**, coerentes com a paleta clara. **Manter.**
 > `.rv-marquee-track` (animação e `transform` fora), `.rv-marquee-clone` (a cópia que existe só para
 > o laço some) e `.rv-marquee-group` (volta a ser a lista de mensagens que é).
 >
+> **As três regras cobrem duas seções hoje** (2026-10-13): a barra de anúncio e a **faixa do
+> Instagram**, que passou a ser uma faixa contínua e reusa o mesmo `.rv-marquee` em vez de ter um
+> movimento próprio. É o ganho de reusar o mecanismo: o grupo volta a ser a lista — agora de fotos,
+> centrada e quebrada em linhas —, e nenhuma seção nova precisou de tratamento de movimento novo.
+> A faixa do Instagram acrescentou **uma** regra ao bloco, e ela é do mesmo assunto: o arrasto da faixa
+> é um *seek* da animação que este bloco desliga (ver a nota da casa 11 no doc 13), então sem relógio
+> não há gesto — o cursor `grab` volta a `default` ali, para o ponteiro não prometer o que não anda.
+>
 > **O princípio está certo e registrado no arquivo:** *"quem pediu menos movimento pediu menos
 > movimento, não menos informação"* — nenhum item do RV-017 mexe nesse bloco, que já estava pronto e
 > correto.

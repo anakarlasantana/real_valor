@@ -200,8 +200,23 @@ import {
  *      desconhecido conta como `links`, que é o comportamento de um registro
  *      anterior a este campo — o rodapé publicado **não** muda sozinho, e o
  *      `<select>` do painel só não oferece a opção nova.
+ *
+ * v16 — a **velocidade da faixa do Instagram**. O bloco `instagram` ganha
+ *      `secondsPerImage` (`kind: "number"`, com a faixa em `INSTAGRAM_SPEED_*`),
+ *      o campo que diz de quanto em quanto tempo cada foto atravessa a faixa que
+ *      a seção passou a desenhar — o mesmo arranjo do `speedSeconds` da barra de
+ *      anúncio, incluindo o espelho do storefront
+ *      (`frontend/src/lib/util/marquee.ts`). Nenhum tipo e nenhum `kind` novo: é
+ *      um campo a mais num bloco que já existe, e é o único campo de conteúdo
+ *      desta seção depois dos quatro de sempre. Sem reescrever o registro
+ *      (`make seed-schema`) o CRM não desenha o campo (o formulário é o registro
+ *      gravado) e a API admin o **recusa** como desconhecido — quem grava pelo
+ *      painel continua gravando o que gravava. A loja, essa, não muda de
+ *      comportamento: o módulo do Instagram lê o campo com o padrão do contrato
+ *      quando ele não vem, então uma base anterior a esta versão desenha a mesma
+ *      faixa, no ritmo padrão.
  */
-export const SCHEMA_VERSION = 15
+export const SCHEMA_VERSION = 16
 
 /**
  * A chave da linha do registro. Uma só linha: o schema do CRM.

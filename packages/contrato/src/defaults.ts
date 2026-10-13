@@ -1,4 +1,8 @@
-import { ANNOUNCEMENT_SPEED_DEFAULT, type HomeSection } from "./contract.ts"
+import {
+  ANNOUNCEMENT_SPEED_DEFAULT,
+  INSTAGRAM_SPEED_DEFAULT,
+  type HomeSection,
+} from "./contract.ts"
 
 /**
  * Conteúdo padrão da home — a cópia exata do protótipo.
@@ -389,6 +393,15 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
         imageAlt: "Real Valor no Instagram",
       },
     ],
+    /**
+     * A faixa **rola** já no padrão, e é por isso que a velocidade nasce
+     * declarada aqui: quatro fotos com um ritmo comum são o convite que a seção
+     * existe para fazer, e é o mesmo arranjo do ticker da barra de anúncio
+     * (que também nasce com a velocidade do padrão). A unidade é por imagem —
+     * seis segundos cada, como o `INSTAGRAM_SPEED_DEFAULT` diz —, e não por
+     * volta: subir ou tirar foto não muda o ritmo de quem está olhando.
+     */
+    secondsPerImage: INSTAGRAM_SPEED_DEFAULT,
   },
 ]
 /**

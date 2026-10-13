@@ -505,6 +505,159 @@ body {
 }
 
 /*
+ * A faixa do Instagram — o quadro que passa, e não a grade parada
+ * ---------------------------------------------------------------
+ * A seção nasceu como uma grade de quatro quadros (`grid-cols-4`) e passou a ser
+ * uma **faixa que anda**: as mesmas fotos, na mesma ordem, atravessando a
+ * largura em laço. O mecanismo é o do ticker logo acima — `.rv-marquee`,
+ * `.rv-marquee-track` e `@keyframes rv-marquee` —, e as duas seções o
+ * compartilham de propósito: pausa no mouse e no teclado, laço geométrico
+ * (`translateX(-50%)`) e o tratamento de `prefers-reduced-motion` (mais abaixo)
+ * são comportamento de faixa contínua, e uma segunda cópia deles seria a segunda
+ * régua do mesmo movimento.
+ *
+ * O que é **desta** família é a geometria do quadro, que o texto do ticker não
+ * tem:
+ *
+ *   - a largura é fixa (`clamp(200px, 24vw, 340px)`), e não uma fração da tela:
+ *     numa faixa não existe "quatro por linha" — existe quantos couberem;
+ *   - o quadro é um quadrado (`aspect-ratio: 1`) com o mesmo fundo cacao da
+ *     grade, que é o vazio que segura o lugar de uma imagem que não resolveu
+ *     virar `src`;
+ *   - o respiro entre quadros é `margin-inline`, e **não** o `gap` do grupo: um
+ *     `gap` só existe entre irmãos de um mesmo flex, e a costura do laço cai
+ *     **entre** as duas voltas — o vão sem respiro apareceria uma vez por volta,
+ *     à vista de quem olha. Com 0.375rem de cada lado, o vão entre dois quadros é
+ *     o mesmo 0.75rem da grade, incluindo na emenda.
+ *
+ * A `--rv-marquee-duration` chega inline, do campo `secondsPerImage`
+ * (`lib/util/marquee.ts`). O `var()` só cai no 24s do ticker se a variável não
+ * chegar — o que não acontece enquanto o servidor renderizar a faixa. Ela é a
+ * duração da **volta inteira** (segundos por imagem × quadros da volta), e é por
+ * isso que a multiplicação mora no util e não aqui.
+ *
+ * **A faixa sangra.** O cabeçalho da seção mora no `rv-container` (a largura de
+ * leitura, 1440px com o respiro lateral) e a faixa **não**: no componente ela é
+ * irmã do container, e como a seção é `w-full`, irmã do container é a tela
+ * inteira. É o que o olho vê — as fotos atravessam de borda a borda em vez de
+ * pararem no respiro. A sangria não vira rolagem horizontal da página: o que passa
+ * da borda é o **trilho** (`width: max-content`) e quem o apara é o
+ * `overflow: hidden` do `.rv-marquee`, que já era a viewport do laço. O `100vw`
+ * com margem negativa do trilho do carrossel **não** é necessário aqui: aquela
+ * conta existe porque o trilho sangrado de lá mora dentro do container, e este não
+ * mora.
+ *
+ * A grade parada continua existindo — é a seção com **uma** foto só, em que não há
+ * laço para fechar —, e ela fica dentro do container: uma foto sozinha é leitura,
+ * e leitura tem a largura da página. As duas dividem o mesmo quadro, e quem decide
+ * a largura é o container de quem ele é filho: a faixa estica o quadro, a grade
+ * divide a linha.
+ */
+.rv-insta-strip,
+.rv-insta-grid {
+  margin-top: 2.5rem;
+}
+
+.rv-insta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.rv-insta-tile {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--rv-cacao);
+}
+
+.rv-insta-strip .rv-insta-tile {
+  flex: none;
+  width: clamp(200px, 24vw, 340px);
+  margin-inline: 0.375rem;
+}
+
+/*
+ * O gesto: a faixa pega.
+ *
+ * O cursor diz o que acontece **antes** de a visitante tentar (`grab`, e
+ * `grabbing` com a mão em cima), e o arrasto de verdade é a ilha de cliente
+ * (`instagram-grid/strip.tsx`): o ponteiro anda `dx` px e a faixa anda os mesmos
+ * `dx` px — porque o arrasto não é outra animação, é um adiantamento do mesmo
+ * relógio que anima a faixa (`marqueeSeekOffset`).
+ *
+ * `touch-action: pan-y` é o que separa os dois gestos no dedo: o vertical continua
+ * sendo a rolagem da página — o polegar que sobe e desce não perde a página — e o
+ * horizontal fica para a faixa. Sem ele o navegador trata o arrasto deitado como
+ * gesto dele (a rolagem da página, ou o "voltar" da borda da tela) e cancela o
+ * nosso no meio.
+ *
+ * O `user-select: none` é do gesto, e não do gosto: um arrasto que seleciona as
+ * fotos e o texto alternativo deixa um rastro azul na tela até alguém clicar fora.
+ */
+.rv-insta-strip {
+  cursor: grab;
+  /*
+   * Dois valores, e não um: o navegador que não conhece `pinch-zoom` fica com o
+   * `pan-y`, e o que conhece fica também com o zoom de dois dedos por cima das
+   * fotos — que `pan-y` sozinho tiraria da visitante (o `touch-action` de um
+   * elemento manda no gesto *dentro dele*, e `pan-y` não inclui o gesto de pinça).
+   */
+  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.rv-insta-strip.rv-insta-dragging {
+  cursor: grabbing;
+}
+
+/*
+ * Com a mão na faixa, o relógio para: quem anda é o dedo.
+ *
+ * É a mesma pausa do `:hover` / `:focus-within` do `.rv-marquee` (logo acima), e
+ * ela é **necessária** aqui: no toque não existe `hover`, e o arrasto só existe se
+ * o relógio parar de andar enquanto o `animation-delay` que o dedo escreve muda —
+ * com a animação correndo, cada mudança seria um salto no meio do movimento.
+ * Nenhuma das duas pausas é enfeite: a faixa fica parada para quem a pega, e volta
+ * a andar quando a mão (e o ponteiro) sai.
+ */
+.rv-insta-strip.rv-insta-dragging .rv-marquee-track {
+  animation-play-state: paused;
+}
+
+.rv-insta-grid .rv-insta-tile {
+  width: 100%;
+}
+
+/*
+ * O zoom do mouse, que era utilitário no `className` (`transition-transform
+ * duration-500 ease-out hover:scale-[1.04]`). É desenho do quadro, e o tempo
+ * dele pertence à régua: o bloco de `prefers-reduced-motion` zera a transição de
+ * todo mundo, e é assim que o zoom deixa de ser movimento para quem pediu menos
+ * movimento.
+ */
+.rv-insta-tile img {
+  transition: transform 500ms ease-out;
+}
+
+.rv-insta-tile:hover img {
+  transform: scale(1.04);
+}
+
+@media (min-width: 1024px) {
+  .rv-insta-strip,
+  .rv-insta-grid {
+    margin-top: 3.5rem;
+  }
+
+  .rv-insta-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/*
  * O trilho horizontal (a capa e o carrossel da vitrine)
  * ---------------------------------------------------------------
  * A navegação é a nativa: arrastar no dedo, rolar com a barra, girar a roda. As
@@ -3667,6 +3820,21 @@ body {
 
   .rv-marquee-clone {
     display: none !important;
+  }
+
+  /*
+   * E a faixa do Instagram **não se arrasta** aqui: o arrasto é um *seek* da
+   * mesma animação que este bloco desliga (`animation: none !important`, acima),
+   * então não há relógio para mover — e o cursor não pode prometer um gesto que
+   * não anda. O `grabbing` do arrasto entra na **mesma lista** de propósito: a
+   * classe sozinha tem especificidade maior que um `.rv-insta-strip` só, e sem
+   * repeti-la aqui o cursor de "pega" voltaria justamente no modo em que o gesto
+   * não move nada. A faixa continua inteira: o grupo volta a ser a lista de fotos,
+   * como o de mensagens, e nenhuma foto se perde.
+   */
+  .rv-insta-strip,
+  .rv-insta-strip.rv-insta-dragging {
+    cursor: default;
   }
 
   /*
