@@ -45,7 +45,7 @@
  * propósito — este é código de **cliente**, e importar `SECTION_FIELDS` aqui
  * levaria o contrato inteiro para o bundle do navegador por causa de três
  * números (o mesmo arranjo de `ticker.ts` e `launches.ts`). Quem confere o
- * espelho é `marquee.spec.ts` (o último `describe`): faixa divergente reprova
+ * espelho é `marquee.unit.spec.ts` (o último `describe`): faixa divergente reprova
  * `make test`.
  */
 

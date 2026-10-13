@@ -19,8 +19,9 @@ página conhece quem está mais longe dela; o contrário nunca.
 | Camada | Papel | Pode importar | Medido (13/10/2026) |
 | :--- | :--- | :--- | ---: |
 | `app/` | rota, layout, `page.tsx`, `metadata`: composição e fronteira HTTP | `modules`, `lib`, contrato | 38 arquivos · 2.067 linhas |
-| `modules/` | UI e comportamento de um domínio (`store`, `products`, `checkout`, `account`, `home`, `content`, `skeletons`, `common`) | `lib`, contrato | 165 arquivos · 16.793 linhas |
-| `lib/` | dado, regra e integração, sem React de tela (`catalog`, `ui`, `content`, `checkout`, `medusa`, `data`, `payments`, `theme`, `config`, `hooks`, `context`) | contrato | 96 arquivos · 12.794 linhas |
+| `modules/` | UI e comportamento de um domínio (`store`, `products`, `checkout`, `account`, `home`, `content`, `skeletons`, `common`) | `lib`, contrato | 164 arquivos · 16.397 linhas |
+| `lib/` | dado, regra e integração, sem React de tela (`catalog`, `ui`, `content`, `checkout`, `medusa`, `data`, `payments`, `theme`, `config`, `hooks`, `context`) | contrato | 95 arquivos · 12.544 linhas |
+| `src/__checks__/` | guarda de arquitetura: lê o FONTE do que confere, não renderiza (`media-wiring`, `ruler`) | `lib`, `modules` | 2 arquivos · 650 linhas |
 | `types/` | tipo sem dono de camada (candidato a virar dono: F4) | contrato | 2 arquivos · 52 linhas |
 | `packages/contrato` | tipo e schema compartilhados pelos três runtimes (`@rv/contrato`) | — é folha | 3.817 linhas |
 | `styles/` | CSS (`brand.css` e parciais: F6) | — | 5.248 linhas |
@@ -62,7 +63,7 @@ isso estão no hook de commit (`.githooks/pre-commit`) e no job `guard` da CI.
 | **R-E** | ciclo de import de VALOR no storefront | `check-boundaries.mjs` | 6 | 3 na F5 · 3 no RV-048 |
 | painel × backend | `admin/` importa VALOR do backend (só `import type`) | `check-boundaries.mjs` (R7) | 0 | — |
 | checkout × adapter | `modules/checkout` importa adapter ou SDK de pagamento | `check-boundaries.mjs` (RV-014) | 0 | — |
-| convenção de teste | spec fora de `__tests__/<alvo>.unit.spec.ts` ou `src/__checks__/` | `check-storefront-tests.mjs` | 32 | F3 zera |
+| convenção de teste | spec fora de `__tests__/<alvo>.unit.spec.ts` ou `src/__checks__/` | `check-storefront-tests.mjs` | 0 | — (a F3 zerou) |
 | comentário | cabeçalho > 5 linhas, densidade > 12% (arquivo fora do baseline) | `check-comments.mjs` | 311 arquivos | F10 reduz |
 
 **O baseline é a lista das exceções vivas, não uma licença.**
@@ -120,8 +121,12 @@ em silêncio. É o que o RV-049 transforma em teste próprio.
   continuou no disco, o `make test` continuou verde e passou a rodar menos — ver
   `check-panel-tests.mjs`). No storefront o glob padrão do vitest é largo, mas o lugar
   do spec é livre: um arquivo colado em qualquer lugar roda, e ninguém sabe onde
-  procurá-lo. A F3 unifica em `__tests__/<alvo>.unit.spec.ts` e reserva
-  `src/__checks__/` para as guardas de arquitetura (`media-wiring`, `ruler`).
+  procurá-lo. **A F3 unificou** os 32 em `__tests__/<alvo>.unit.spec.ts` — colado no
+  alvo, um nível abaixo dele — e reservou `src/__checks__/` para as duas guardas de
+  arquitetura (`media-wiring`, `ruler`), que leem o FONTE de outros arquivos por
+  caminho e por isso tiveram os seus `join(__dirname, …)` reancorados ao mudar de casa.
+  O baseline da convenção ficou **vazio**: não é mais uma lista de exceções, é o
+  registro de que não há nenhuma.
 ## 15.4 A política de comentário
 
 O problema medido na varredura de 13/10/2026: **19.512 linhas de comentário** nas cinco
@@ -198,7 +203,7 @@ que impede o refactor de ser um "depois eu volto".
 | **F0** (esta) | R-A…R-E, a catraca de comentário, a convenção de teste e este doc | as guardas nascem com baseline | `make check` |
 | **F1** (feita) | código morto: `lib/constants.tsx`, `medusa-cta/` + 5 ícones órfãos, `retrieveCollection`, o `export` de `themeFromRow`, `FeaturedProduct` e as 4 funções mortas de `lib/data/cart.ts`; o `SortOptions` **e** o `DEFAULT_SORT` (que existia em 5 lugares) para `lib/catalog/types.ts`. **Não** foram tocados, apesar da lista: `isEmpty.ts` (vivo por `money.ts`), `repeat.ts` (6 consumidores) e `getOrSetCart`/`updateCart` (usados dentro do `cart.ts`) | R-A 5 → 3 | `make check` · `make types` · `yarn test` |
 | **F2** (feita) | o `lib/util` (45 arquivos, 6.622 linhas) dissolvido por dono — `catalog`, `ui`, `content`, `checkout`, `payments` e `medusa`, com o `isEmpty` inline no seu único consumidor; o checkout passa a conhecer só a fachada `@lib/payments` e o `needsInlineInput` duplicado sai. A promessa de `R-C 2 → 1` era falsa: a exceção que sobra é o ciclo do locale, que é do F5 | R-D 4 → 0 | + `yarn build` · GET `/br` |
-| **F3** | convenção de teste: 30 specs → `__tests__/<alvo>.unit.spec.ts`, os 2 de arquitetura → `src/__checks__/` | convenção 32 → 0 | `yarn test` (34) · `STOREFRONT_RUNNER=1` |
+| **F3** (feita) | convenção de teste: os 30 specs de unidade → `__tests__/<alvo>.unit.spec.ts` (colado no alvo) e os 2 de arquitetura → `src/__checks__/`; as 20 specs de `lib/` com import relativo passaram a `../<alvo>`, os cinco `index.spec.tsx` de componente a `from ".."`, e os dois `__checks__` tiveram os caminhos de leitura refeitos. O baseline da convenção ficou vazio | convenção 32 → 0 | `yarn test` (34) · `STOREFRONT_RUNNER=1` |
 | **F4** | `src/types` → `lib/{catalog,ui,checkout}/types.ts`; os imports por caminho nu → apelido | R-A/R-C sem regressão | `make types` |
 | **F5** | os ciclos: `config ↔ locale` (o locale vira folha) e o `LOGIN_VIEW` do `account` | R-C 1 → 0 · R-E 6 → 3 | `make check` |
 | **F6** | `brand.css` (5.248 linhas) partido em parciais + manifesto, com prova de concatenação byte a byte | catraca (`--write`) | `yarn build` · GET `/br` |
@@ -240,7 +245,7 @@ no `make test`, e não no `make check`.
 | :--- | :--- | :--- |
 | Exceções de camada no baseline | 11 (4 na F5, 7 no RV-048; eram 17 antes da F1) | as fases |
 | Arquivos acima da política de comentário | 311 | F10 (meta: ≤12% e cabeçalho ≤5) |
-| Specs fora da convenção | 32 | F3 |
+| Specs fora da convenção | 0 | ✅ F3 |
 | `lib/util` sem uma responsabilidade só | 45 arquivos · 6.622 linhas | ✅ F2 — dissolvido em `catalog`, `ui`, `content`, `checkout`, `payments` e `medusa` |
 | `lib/data/cart.ts` | 421 linhas (eram 476: a F1 tirou as 4 funções mortas) | ✅ F1 |
 | `brand.css` | 5.248 linhas, 2.039 de comentário | F6 |

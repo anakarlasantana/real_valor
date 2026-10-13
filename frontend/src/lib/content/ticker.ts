@@ -29,7 +29,7 @@
  * Os três números e a regra das mensagens são espelho do contrato mantido à mão
  * de propósito: este é código de **cliente**, e importar `SECTION_FIELDS` aqui
  * levaria o contrato inteiro para o bundle do navegador por causa de três
- * números. Quem confere o espelho é `ticker.spec.ts` (o último `describe`):
+ * números. Quem confere o espelho é `ticker.unit.spec.ts` (o último `describe`):
  * faixa divergente reprova `make test` — era o que
  * `scripts/check-contract-parity.mjs` fazia por texto antes do G4.
  */

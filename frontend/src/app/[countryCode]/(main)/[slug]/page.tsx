@@ -18,7 +18,7 @@ import { HttpTypes } from "@medusajs/types"
  * rota estática vizinha (`/rastreio`, `/store`…): o Next dá precedência à
  * estática, então uma página que colidisse **desapareceria em silêncio** — e é
  * por isso que existe um guarda em
- * `frontend/src/lib/content/page-surfaces.spec.ts`, que lista os diretórios de
+ * `frontend/src/lib/content/__tests__/page-surfaces.unit.spec.ts`, que lista os diretórios de
  * `(main)/` e falha se um `id` de `PAGE_SURFACES` colidir com algum. A colisão é
  * erro de CI, não descoberta de sexta-feira.
  *

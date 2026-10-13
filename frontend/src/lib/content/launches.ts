@@ -18,7 +18,7 @@
  * Os três números são espelho do contrato mantido à mão — o storefront importa
  * o mesmo pacote (`@rv/contrato`) desde o G5, e a faixa fica declarada aqui de
  * propósito: é a última defesa contra o que já está gravado no banco —, e quem
- * confere o espelho é `launches.spec.ts`, comparando valor a valor contra a
+ * confere o espelho é `launches.unit.spec.ts`, comparando valor a valor contra a
  * faixa de `SECTION_FIELDS`: faixa divergente reprova o commit.
  *
  * Não é `Math.min(Math.max(...))` solto na página de propósito: é a decisão,

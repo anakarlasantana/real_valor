@@ -28,7 +28,7 @@ import defaultTheme from "../../themes/default/theme.json"
  * (`backend/src/modules/content/themes.ts`, pelo `scripts/gen-content.mjs`).
  *
  * Este módulo é **puro**: quem fala com a API é `lib/data/theme.ts`, e o que dá
- * para testar sem servidor fica aqui (`theme.spec.ts`).
+ * para testar sem servidor fica aqui (`theme.unit.spec.ts`).
  *
  * Every theme falls back to `default` for any value it does not
  * override, which is the risk mitigation described in the doc:

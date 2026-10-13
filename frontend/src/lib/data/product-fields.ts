@@ -35,7 +35,7 @@
  *
  * A regra, então, é uma só: **quem lista peça não escreve `fields`**. Campo novo
  * que uma tela precise entra nesta lista, e a guarda que reprova um `fields`
- * recriado numa tela está em `product-enrichment.spec.ts`.
+ * recriado numa tela está em `product-enrichment.unit.spec.ts`.
  *
  * POR QUE ISTO NÃO MORA NO `products.ts`, QUE É QUEM USA (medido)
  * -------------------------------------------------------------------------
@@ -50,7 +50,7 @@
  *
  * — e nada antes disso acusa: o `tsc` do storefront passa (a regra não é de tipo
  * nenhum) e os testes unitários passam (nenhum deles carrega um módulo de
- * action). Quem acusa é a guarda em `product-enrichment.spec.ts`, que lê o AST
+ * action). Quem acusa é a guarda em `product-enrichment.unit.spec.ts`, que lê o AST
  * dos módulos de `src/lib/data` e roda em milissegundos; o `import` que a usa no
  * `products.ts` é a única fiação entre os dois arquivos, e ela também é
  * conferida lá.

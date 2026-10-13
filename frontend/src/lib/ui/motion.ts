@@ -20,7 +20,7 @@
  *
  * As durações e as curvas são **tokens de CSS** (`--rv-motion-*` e `--rv-ease-*`,
  * em `brand.css`): o que é decisão de desenho fica no desenho. O que é decisão de
- * comportamento — em que ordem, e se — fica aqui, com teste (`motion.spec.ts`).
+ * comportamento — em que ordem, e se — fica aqui, com teste (`motion.unit.spec.ts`).
  *
  * **Nada aqui devolve duração.** Quem desenha a animação é o CSS, e quem atende
  * `prefers-reduced-motion` é a guarda global do fim do `brand.css`, que zera

@@ -120,7 +120,7 @@ A pasta que existia por acúmulo (45 arquivos, 6.622 linhas) sai inteira: cada p
 para o dono do que ela decide, e o checkout passa a conhecer o pagamento por um nome
 só. A guarda que fica mais verde é a R-D (4 → 0).
 
-### ✅ F2 · O `lib/util` dissolvido por dono — **FEITO** (hash na entrada da F3: um commit não carrega o próprio hash)
+### ✅ F2 · O `lib/util` dissolvido por dono — **FEITO** (`ba4fff683e`)
 
 **O que foi feito:** os 45 arquivos foram para seis donos, e nenhum ficou em "util":
 
@@ -190,6 +190,55 @@ componentes do checkout, `lib/payments/index.ts`,
 `modules/order/components/payment-details`, 28 comentários de prosa,
 `scripts/baselines/{boundaries,comments,storefront-tests}.json`, este doc e o doc 15.
 **Pré-requisito:** F1
+
+---
+
+## Fase 3 — A convenção de teste
+
+O lugar do spec deixa de ser livre: unidade colada no alvo
+(`__tests__/<alvo>.unit.spec.ts`), guarda de arquitetura em `src/__checks__/`. A guarda
+que fica mais verde é a convenção — 32 → 0, e o baseline dela fica vazio.
+
+### ✅ F3 · A convenção de teste — **FEITO** (hash na entrada da F4: um commit não carrega o próprio hash)
+
+**O que foi feito:** os 32 specs fora da convenção mudaram de casa — 30 de unidade para
+`<dono>/__tests__/<alvo>.unit.spec.ts` (o spec fica colado no alvo, um nível abaixo
+dele) e 2 de arquitetura para `frontend/src/__checks__/` (`media-wiring` e `ruler`: eles
+leem o FONTE de outros arquivos, não renderizam nada).
+
+**O que o movimento obrigou a corrigir** (e que o vitest acusou na hora):
+
+- as 20 specs de `lib/` importavam o alvo por `./<alvo>`; agora é `../<alvo>`;
+- os 5 `index.spec.tsx` de componente importavam `"."`; agora é `".."`;
+- os 2 `__checks__` montam o caminho de leitura com `join(__dirname, …)`: o `ruler`
+  perdia três `..` para chegar ao `brand.css` e um nível para chegar aos componentes da
+  home, e o `media-wiring` perdia um. É a armadilha de mover teste que lê arquivo: **o
+  caminho é dado, não import** — e quem o verifica não é o `tsc`, é o vitest;
+- **duas specs de unidade também leem o fonte** (`page-surfaces` lê as rotas fixas do
+  `app/`, o rodapé e o `sitemap`; `product-enrichment` lê `product-fields`, `products` e
+  as telas que listam peças): elas só apareceram no `vitest run`, e as duas ganharam um
+  `".."`;
+- 28 comentários de prosa passaram a citar `__tests__/<alvo>.unit.spec.ts`, e os
+  caminhos inteiros foram reancorados (o `[slug]/page.tsx` cita o `page-surfaces`, o
+  `editorial-callout` cita o `__checks__/ruler.spec.ts`).
+
+**Medido (13/10/2026, pós-F3):** **34 na convenção, 0 no baseline** (eram 2 + 32);
+`lib/` 96/12.794 → 95/12.544 e `modules/` 165/16.793 → 164/16.397 (as duas guardas
+saíram de lá para `src/__checks__/`, que tem 2 arquivos/650 linhas); o comentário de
+`frontend/src` não mudou (9.790) e a catraca segue em 311 arquivos — **mover não é
+comentar**; os 466 testes continuam 466.
+
+**Guarda que fica verde:** a convenção de teste 32 → 0, com o baseline dela **vazio** —
+não é mais uma lista de exceções a vencer, é o registro de que não há nenhuma, e é o
+estado que o F10 tem de manter.
+**Gate:** `make check` · `make types` · `yarn test` (34 arquivos/466 testes) e a
+convenção em modo RUNNER (`STOREFRONT_RUNNER=1`): o que o vitest lista é o que o disco
+tem.
+**Arquivos:** *movidos:* 32 specs (30 para `__tests__/`, 2 para `__checks__/`) ·
+*alterados:* os 2 `__checks__` (caminhos de leitura), 25 specs (import relativo), 4
+comentários com caminho, `scripts/baselines/storefront-tests.json` (vazio),
+`scripts/baselines/comments.json` (reancorado), este doc e o doc 15.
+**Pré-requisito:** F2
 
 ---
 

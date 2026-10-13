@@ -43,7 +43,7 @@ import { criarBotaoDoMercadoPago } from "./payment-button"
  * ser alcançado, porque a busca para no primeiro que casa. Seria um meio com o
  * ícone e o rótulo do outro, resolvido pela ordem de um array que ninguém lê.
  *
- * O teste de registro (`registry.spec.ts`) prende isto: os dois ids têm de
+ * O teste de registro (`registry.unit.spec.ts`) prende isto: os dois ids têm de
  * existir, ser distintos e cada um resolver para o seu adapter.
  */
 const iconePix = null

@@ -33,7 +33,7 @@
  * é declarada no contrato (`MARKDOWN_MARKS`) para o painel desenhar a barra de
  * marcas — o painel **não** pode importar valor do contrato (ver
  * `admin/tsconfig.json`), então ela chega lá pelo payload do `schema` —, e
- * `markdown.spec.tsx` passa a cobrar as duas listas iguais. Hoje há uma só, e a
+ * `markdown.unit.spec.tsx` passa a cobrar as duas listas iguais. Hoje há uma só, e a
  * spec já a percorre inteira: marca declarada e não desenhada falha o teste.
  *
  * Este arquivo é TSX (e não TS) porque devolve JSX: os nós são construídos

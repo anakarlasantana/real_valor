@@ -76,7 +76,7 @@ export default async function LaunchesRail({
        * bolinhas de cor saíam como letras; e sem a categoria, o card ficava sem o
        * eyebrow. O trilho dizia outra coisa sobre a mesma peça que o catálogo
        * dizia — e é o próprio `data/product-fields.ts` que avisa que esse defeito
-       * não aparece como erro. A guarda está em `product-enrichment.spec.ts`.
+       * não aparece como erro. A guarda está em `product-enrichment.unit.spec.ts`.
        */
     },
   })

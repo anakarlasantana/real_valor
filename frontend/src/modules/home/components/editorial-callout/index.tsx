@@ -21,7 +21,7 @@ import { type CSSProperties } from "react"
  * small:text-[72px]`) estavam no `className`, o `brand.css` não tinha um
  * `rv-callout` — e um utilitário do Tailwind, emitido **depois** do `brand.css`,
  * venceria qualquer ajuste feito por lá. Agora o componente escreve a classe e
- * a régua é uma só; o teste novo de `home/components/ruler.spec.ts` prende isso.
+ * a régua é uma só; o teste novo de `__checks__/ruler.spec.ts` prende isso.
  *
  * O véu é a constante `VEIL`, e não um campo do CRM: como o `SCRIM` da capa, a
  * força do gradiente é valor de **desenho** — o lojista escolhe a foto e o

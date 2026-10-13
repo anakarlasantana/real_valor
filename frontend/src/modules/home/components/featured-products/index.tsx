@@ -84,7 +84,7 @@ export default async function FeaturedProducts({
      * um `fields` que **substitui** o da consulta, e com ele a seção perdia o
      * estoque (a peça com 50 unidades aparecia como esgotada), o hex da cor e a
      * categoria. O defeito inteiro está contado em `launches-rail`, que tinha a
-     * mesma linha; a guarda, em `product-enrichment.spec.ts`.
+     * mesma linha; a guarda, em `product-enrichment.unit.spec.ts`.
      */
   }
 

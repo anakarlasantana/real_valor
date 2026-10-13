@@ -5,7 +5,7 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37596,
+      "lines": 37601,
       "comments": 9790
     },
     "admin/src": {
@@ -26,6 +26,16 @@
     }
   },
   "files": {
+    "frontend/src/__checks__/media-wiring.spec.ts": {
+      "comments": 99,
+      "lines": 249,
+      "header": 34
+    },
+    "frontend/src/__checks__/ruler.spec.ts": {
+      "comments": 172,
+      "lines": 403,
+      "header": 56
+    },
     "frontend/src/app/[countryCode]/(checkout)/layout.tsx": {
       "comments": 11,
       "lines": 73,
@@ -116,10 +126,45 @@
       "lines": 50,
       "header": 5
     },
-    "frontend/src/lib/catalog/catalog-filters.spec.ts": {
+    "frontend/src/lib/__tests__/theme.unit.spec.ts": {
+      "comments": 21,
+      "lines": 149,
+      "header": 14
+    },
+    "frontend/src/lib/catalog/__tests__/catalog-filters.unit.spec.ts": {
       "comments": 15,
       "lines": 356,
       "header": 8
+    },
+    "frontend/src/lib/catalog/__tests__/filter-chips.unit.spec.ts": {
+      "comments": 23,
+      "lines": 129,
+      "header": 14
+    },
+    "frontend/src/lib/catalog/__tests__/get-product-price.unit.spec.ts": {
+      "comments": 19,
+      "lines": 114,
+      "header": 16
+    },
+    "frontend/src/lib/catalog/__tests__/product-availability.unit.spec.ts": {
+      "comments": 41,
+      "lines": 301,
+      "header": 21
+    },
+    "frontend/src/lib/catalog/__tests__/product-enrichment.unit.spec.ts": {
+      "comments": 76,
+      "lines": 524,
+      "header": 23
+    },
+    "frontend/src/lib/catalog/__tests__/product-rating.unit.spec.ts": {
+      "comments": 21,
+      "lines": 146,
+      "header": 16
+    },
+    "frontend/src/lib/catalog/__tests__/product-sections.unit.spec.ts": {
+      "comments": 17,
+      "lines": 147,
+      "header": 13
     },
     "frontend/src/lib/catalog/catalog-filters.ts": {
       "comments": 187,
@@ -131,11 +176,6 @@
       "lines": 75,
       "header": 5
     },
-    "frontend/src/lib/catalog/filter-chips.spec.ts": {
-      "comments": 23,
-      "lines": 129,
-      "header": 14
-    },
     "frontend/src/lib/catalog/filter-chips.ts": {
       "comments": 37,
       "lines": 88,
@@ -146,50 +186,25 @@
       "lines": 22,
       "header": 11
     },
-    "frontend/src/lib/catalog/get-product-price.spec.ts": {
-      "comments": 19,
-      "lines": 114,
-      "header": 16
-    },
     "frontend/src/lib/catalog/get-product-price.ts": {
       "comments": 13,
       "lines": 93,
       "header": 5
-    },
-    "frontend/src/lib/catalog/product-availability.spec.ts": {
-      "comments": 41,
-      "lines": 301,
-      "header": 21
     },
     "frontend/src/lib/catalog/product-availability.ts": {
       "comments": 139,
       "lines": 271,
       "header": 28
     },
-    "frontend/src/lib/catalog/product-enrichment.spec.ts": {
-      "comments": 76,
-      "lines": 524,
-      "header": 23
-    },
     "frontend/src/lib/catalog/product-enrichment.ts": {
       "comments": 128,
       "lines": 300,
       "header": 23
     },
-    "frontend/src/lib/catalog/product-rating.spec.ts": {
-      "comments": 21,
-      "lines": 146,
-      "header": 16
-    },
     "frontend/src/lib/catalog/product-rating.ts": {
       "comments": 67,
       "lines": 152,
       "header": 21
-    },
-    "frontend/src/lib/catalog/product-sections.spec.ts": {
-      "comments": 17,
-      "lines": 147,
-      "header": 13
     },
     "frontend/src/lib/catalog/product-sections.ts": {
       "comments": 49,
@@ -201,7 +216,7 @@
       "lines": 51,
       "header": 5
     },
-    "frontend/src/lib/checkout/shipping-quote.spec.ts": {
+    "frontend/src/lib/checkout/__tests__/shipping-quote.unit.spec.ts": {
       "comments": 17,
       "lines": 137,
       "header": 16
@@ -210,6 +225,41 @@
       "comments": 64,
       "lines": 124,
       "header": 21
+    },
+    "frontend/src/lib/content/__tests__/hero.unit.spec.ts": {
+      "comments": 22,
+      "lines": 116,
+      "header": 18
+    },
+    "frontend/src/lib/content/__tests__/launches.unit.spec.ts": {
+      "comments": 27,
+      "lines": 102,
+      "header": 22
+    },
+    "frontend/src/lib/content/__tests__/markdown.unit.spec.tsx": {
+      "comments": 27,
+      "lines": 230,
+      "header": 15
+    },
+    "frontend/src/lib/content/__tests__/marquee.unit.spec.ts": {
+      "comments": 49,
+      "lines": 225,
+      "header": 21
+    },
+    "frontend/src/lib/content/__tests__/page-seo.unit.spec.ts": {
+      "comments": 61,
+      "lines": 286,
+      "header": 20
+    },
+    "frontend/src/lib/content/__tests__/page-surfaces.unit.spec.ts": {
+      "comments": 146,
+      "lines": 390,
+      "header": 23
+    },
+    "frontend/src/lib/content/__tests__/ticker.unit.spec.ts": {
+      "comments": 49,
+      "lines": 227,
+      "header": 24
     },
     "frontend/src/lib/content/appearance.ts": {
       "comments": 52,
@@ -220,11 +270,6 @@
       "comments": 22,
       "lines": 26,
       "header": 21
-    },
-    "frontend/src/lib/content/hero.spec.ts": {
-      "comments": 22,
-      "lines": 116,
-      "header": 18
     },
     "frontend/src/lib/content/hero.ts": {
       "comments": 37,
@@ -241,55 +286,25 @@
       "lines": 77,
       "header": 5
     },
-    "frontend/src/lib/content/launches.spec.ts": {
-      "comments": 27,
-      "lines": 102,
-      "header": 22
-    },
     "frontend/src/lib/content/launches.ts": {
       "comments": 39,
       "lines": 61,
       "header": 27
-    },
-    "frontend/src/lib/content/markdown.spec.tsx": {
-      "comments": 27,
-      "lines": 230,
-      "header": 15
     },
     "frontend/src/lib/content/markdown.tsx": {
       "comments": 125,
       "lines": 316,
       "header": 41
     },
-    "frontend/src/lib/content/marquee.spec.ts": {
-      "comments": 49,
-      "lines": 225,
-      "header": 21
-    },
     "frontend/src/lib/content/marquee.ts": {
       "comments": 117,
       "lines": 174,
       "header": 50
     },
-    "frontend/src/lib/content/page-seo.spec.ts": {
-      "comments": 61,
-      "lines": 286,
-      "header": 20
-    },
     "frontend/src/lib/content/page-seo.ts": {
       "comments": 78,
       "lines": 168,
       "header": 14
-    },
-    "frontend/src/lib/content/page-surfaces.spec.ts": {
-      "comments": 146,
-      "lines": 390,
-      "header": 23
-    },
-    "frontend/src/lib/content/ticker.spec.ts": {
-      "comments": 49,
-      "lines": 227,
-      "header": 24
     },
     "frontend/src/lib/content/ticker.ts": {
       "comments": 103,
@@ -300,6 +315,11 @@
       "comments": 40,
       "lines": 103,
       "header": 26
+    },
+    "frontend/src/lib/data/__tests__/supported-sections.unit.spec.ts": {
+      "comments": 29,
+      "lines": 121,
+      "header": 9
     },
     "frontend/src/lib/data/__tests__/tracking.unit.spec.ts": {
       "comments": 34,
@@ -336,11 +356,6 @@
       "lines": 181,
       "header": 5
     },
-    "frontend/src/lib/data/supported-sections.spec.ts": {
-      "comments": 29,
-      "lines": 121,
-      "header": 9
-    },
     "frontend/src/lib/data/supported-sections.ts": {
       "comments": 23,
       "lines": 51,
@@ -365,6 +380,16 @@
       "comments": 12,
       "lines": 47,
       "header": 5
+    },
+    "frontend/src/lib/payments/__tests__/installments.unit.spec.ts": {
+      "comments": 24,
+      "lines": 118,
+      "header": 15
+    },
+    "frontend/src/lib/payments/__tests__/registry.unit.spec.ts": {
+      "comments": 46,
+      "lines": 243,
+      "header": 15
     },
     "frontend/src/lib/payments/adapters/manual.ts": {
       "comments": 21,
@@ -401,11 +426,6 @@
       "lines": 43,
       "header": 12
     },
-    "frontend/src/lib/payments/installments.spec.ts": {
-      "comments": 24,
-      "lines": 118,
-      "header": 15
-    },
     "frontend/src/lib/payments/installments.ts": {
       "comments": 48,
       "lines": 93,
@@ -415,11 +435,6 @@
       "comments": 32,
       "lines": 73,
       "header": 17
-    },
-    "frontend/src/lib/payments/registry.spec.ts": {
-      "comments": 46,
-      "lines": 243,
-      "header": 15
     },
     "frontend/src/lib/payments/registry.ts": {
       "comments": 62,
@@ -431,35 +446,30 @@
       "lines": 133,
       "header": 10
     },
-    "frontend/src/lib/theme.spec.ts": {
-      "comments": 21,
-      "lines": 149,
-      "header": 14
-    },
     "frontend/src/lib/theme.ts": {
       "comments": 93,
       "lines": 268,
       "header": 5
     },
-    "frontend/src/lib/ui/carousel.spec.ts": {
+    "frontend/src/lib/ui/__tests__/carousel.unit.spec.ts": {
       "comments": 54,
       "lines": 252,
       "header": 23
+    },
+    "frontend/src/lib/ui/__tests__/media.unit.spec.ts": {
+      "comments": 39,
+      "lines": 160,
+      "header": 15
+    },
+    "frontend/src/lib/ui/__tests__/motion.unit.spec.ts": {
+      "comments": 17,
+      "lines": 84,
+      "header": 14
     },
     "frontend/src/lib/ui/carousel.ts": {
       "comments": 134,
       "lines": 245,
       "header": 33
-    },
-    "frontend/src/lib/ui/media-wiring.spec.ts": {
-      "comments": 99,
-      "lines": 251,
-      "header": 34
-    },
-    "frontend/src/lib/ui/media.spec.ts": {
-      "comments": 39,
-      "lines": 160,
-      "header": 15
     },
     "frontend/src/lib/ui/media.ts": {
       "comments": 120,
@@ -470,11 +480,6 @@
       "comments": 11,
       "lines": 36,
       "header": 5
-    },
-    "frontend/src/lib/ui/motion.spec.ts": {
-      "comments": 17,
-      "lines": 84,
-      "header": 14
     },
     "frontend/src/lib/ui/motion.ts": {
       "comments": 61,
@@ -621,20 +626,20 @@
       "lines": 90,
       "header": 5
     },
-    "frontend/src/modules/content/faq.spec.tsx": {
+    "frontend/src/modules/content/__tests__/faq.unit.spec.tsx": {
       "comments": 40,
       "lines": 194,
       "header": 20
+    },
+    "frontend/src/modules/content/__tests__/prose.unit.spec.tsx": {
+      "comments": 48,
+      "lines": 222,
+      "header": 18
     },
     "frontend/src/modules/content/faq.tsx": {
       "comments": 66,
       "lines": 114,
       "header": 5
-    },
-    "frontend/src/modules/content/prose.spec.tsx": {
-      "comments": 48,
-      "lines": 222,
-      "header": 18
     },
     "frontend/src/modules/content/prose.tsx": {
       "comments": 68,
@@ -711,11 +716,6 @@
       "lines": 516,
       "header": 5
     },
-    "frontend/src/modules/home/components/ruler.spec.ts": {
-      "comments": 172,
-      "lines": 396,
-      "header": 56
-    },
     "frontend/src/modules/layout/components/cart-button/index.tsx": {
       "comments": 7,
       "lines": 22,
@@ -756,7 +756,7 @@
       "lines": 85,
       "header": 5
     },
-    "frontend/src/modules/payment/components/installment-info/index.spec.tsx": {
+    "frontend/src/modules/payment/components/installment-info/__tests__/index.unit.spec.tsx": {
       "comments": 13,
       "lines": 72,
       "header": 10
@@ -801,7 +801,7 @@
       "lines": 96,
       "header": 5
     },
-    "frontend/src/modules/products/components/product-rating/index.spec.tsx": {
+    "frontend/src/modules/products/components/product-rating/__tests__/index.unit.spec.tsx": {
       "comments": 17,
       "lines": 71,
       "header": 13
@@ -821,7 +821,7 @@
       "lines": 175,
       "header": 5
     },
-    "frontend/src/modules/products/components/shipping-quote/index.spec.tsx": {
+    "frontend/src/modules/products/components/shipping-quote/__tests__/index.unit.spec.tsx": {
       "comments": 14,
       "lines": 78,
       "header": 12
@@ -871,7 +871,7 @@
       "lines": 50,
       "header": 5
     },
-    "frontend/src/modules/skeletons/components/skeleton-product-preview/index.spec.tsx": {
+    "frontend/src/modules/skeletons/components/skeleton-product-preview/__tests__/index.unit.spec.tsx": {
       "comments": 23,
       "lines": 60,
       "header": 15
@@ -906,7 +906,7 @@
       "lines": 32,
       "header": 5
     },
-    "frontend/src/modules/store/components/filter-chips/index.spec.tsx": {
+    "frontend/src/modules/store/components/filter-chips/__tests__/index.unit.spec.tsx": {
       "comments": 8,
       "lines": 53,
       "header": 8
