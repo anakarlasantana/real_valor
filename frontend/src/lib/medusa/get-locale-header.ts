@@ -1,7 +1,7 @@
-import { getLocale } from "@lib/data/locale-actions"
+import { readLocale } from "./locale-cookie"
 
 export async function getLocaleHeader() {
-  const locale = await getLocale()
+  const locale = await readLocale()
   return {
     "x-medusa-locale": locale,
   } as const

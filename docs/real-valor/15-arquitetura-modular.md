@@ -46,7 +46,7 @@ Três consequências que a F0 tornou verificáveis:
    rota ela foi montada. Zero violações hoje (R-B) — a regra existe para o
    primeiro caso, não para o passado.
 3. **`lib/data` é o fundo da pilha.** Fora dele, ninguém em `lib` importa
-   `lib/data`; é a regra que impede o ciclo `dado ↔ utilidade` (2 casos, R-C).
+   `lib/data`; é a regra que impede o ciclo `dado ↔ utilidade` (1 caso vivo, R-C).
 
 ## 15.2 As regras, a guarda e as exceções vivas
 
@@ -57,13 +57,13 @@ isso estão no hook de commit (`.githooks/pre-commit`) e no job `guard` da CI.
 | :--- | :--- | :--- | ---: | :--- |
 | **R-A** | `lib` importa `modules` | `check-boundaries.mjs` | 3 | RV-048 (a F1 tirou os 2 do `SortOptions`) |
 | **R-B** | `lib`/`modules` importam `app` | `check-boundaries.mjs` | 0 | — (nasce verde) |
-| **R-C** | `lib` (fora de `lib/data`) importa `lib/data` | `check-boundaries.mjs` | 2 | 1 na F5 · 1 no RV-048 |
+| **R-C** | `lib` (fora de `lib/data`) importa `lib/data` | `check-boundaries.mjs` | 1 | RV-048 |
 | **R-D** | `modules/checkout` importa `@lib/payments/*` (subcaminho, em vez da fachada) | `check-boundaries.mjs` | 0 | — (a F2 zerou) |
-| **R-E** | ciclo de import de VALOR no storefront | `check-boundaries.mjs` | 6 | 3 na F5 · 3 no RV-048 |
+| **R-E** | ciclo de import de VALOR no storefront | `check-boundaries.mjs` | 3 | RV-048 (a F5 desmanchou os três do locale e do `account`) |
 | painel × backend | `admin/` importa VALOR do backend (só `import type`) | `check-boundaries.mjs` (R7) | 0 | — |
 | checkout × adapter | `modules/checkout` importa adapter ou SDK de pagamento | `check-boundaries.mjs` (RV-014) | 0 | — |
 | convenção de teste | spec fora de `__tests__/<alvo>.unit.spec.ts` ou `src/__checks__/` | `check-storefront-tests.mjs` | 0 | — (a F3 zerou) |
-| comentário | cabeçalho > 5 linhas, densidade > 12% (arquivo fora do baseline) | `check-comments.mjs` | 311 arquivos | F10 reduz |
+| comentário | cabeçalho > 5 linhas, densidade > 12% (arquivo fora do baseline) | `check-comments.mjs` | 309 arquivos | F10 reduz |
 
 **O baseline é a lista das exceções vivas, não uma licença.**
 (`scripts/baselines/boundaries.json`, `comments.json`, `storefront-tests.json`.)
@@ -79,7 +79,7 @@ reprovam o import. A guarda de camada não é linter de import quebrado; é a gu
 direção, e a direção só existe entre arquivos que existem.
 
 **O baseline é também o canário do detector**: se o `resolveSpecifier` deixar de
-resolver (um apelido renomeado no `tsconfig`, por exemplo), as 11 exceções viram
+resolver (um apelido renomeado no `tsconfig`, por exemplo), as 7 exceções viram
 entradas mortas de uma vez e a guarda reprova — uma guarda que para de ver não passa
 em silêncio. É o que o RV-049 transforma em teste próprio.
 
@@ -113,9 +113,14 @@ em silêncio. É o que o RV-049 transforma em teste próprio.
   verdade**: os quatro importam `@lib/payments`, a cópia local do
   `needsInlineInput` saiu, e a fachada passou a responder também o `paymentLabel`
   (que o resumo do pedido buscava no subcaminho).
-- **R-E (ciclos)**: os seis ciclos de valor medidos hoje estão no baseline com o marco
-  que os apaga. O `config → get-locale-header → locale-actions → config` é o que obriga
-  a F5 a existir: o SDK injeta o cabeçalho de locale e o dado do locale usa o SDK.
+- **R-E (ciclos)**: os ciclos de valor medidos na varredura estão no baseline com o marco
+  que os apaga. O `config → get-locale-header → locale-actions → config` foi o que
+  obrigou a F5 a existir: o SDK injeta o cabeçalho de locale e o dado do locale usa o
+  SDK. **A F5 o desmanchou** fazendo o locale virar FOLHA (`lib/medusa/locale-cookie.ts`,
+  que só importa `next/headers`): o SDK e o dado passaram a ler o cookie dela, e o meio
+  do ciclo deixou de ser o dado. O mesmo valeu para o `account`: a `enum LOGIN_VIEW` era
+  exportada pelo template que importa o formulário que a importa — e um `enum` é VALOR,
+  não tipo —, então ela foi para `modules/account/lib/login-view.ts`.
 - **convenção de teste**: o CRM já perdeu suíte por `testMatch` estreito (o spec
   continuou no disco, o `make test` continuou verde e passou a rodar menos — ver
   `check-panel-tests.mjs`). No storefront o glob padrão do vitest é largo, mas o lugar
@@ -134,7 +139,8 @@ O problema medido na varredura de 13/10/2026: **19.512 linhas de comentário** n
 (as três guardas novas e o `check-boundaries.mjs`) baixaram o total para 19.375 e os
 `scripts/` para 19,9%; a **F1**, apagando sete arquivos mortos, baixou para **19.334** e
 o baseline de 313 para **312** arquivos, e a **F2**, dissolvendo o `lib/util` e
-reancorando a catraca com as peças em casa nova, para **19.325** e **311** arquivos —
+reancorando a catraca com as peças em casa nova, para **19.325** e **311**; a **F4**
+(os tipos com dono) e a **F5** (os dois ciclos), para **19.305** e **309** arquivos —
 cada `--write` é parte do commit que mudou a forma. Os piores arquivos isolados:
 
 | Arquivo | Comentário | Linhas | Densidade |
@@ -204,7 +210,7 @@ que impede o refactor de ser um "depois eu volto".
 | **F2** (feita) | o `lib/util` (45 arquivos, 6.622 linhas) dissolvido por dono — `catalog`, `ui`, `content`, `checkout`, `payments` e `medusa`, com o `isEmpty` inline no seu único consumidor; o checkout passa a conhecer só a fachada `@lib/payments` e o `needsInlineInput` duplicado sai. A promessa de `R-C 2 → 1` era falsa: a exceção que sobra é o ciclo do locale, que é do F5 | R-D 4 → 0 | + `yarn build` · GET `/br` |
 | **F3** (feita) | convenção de teste: os 30 specs de unidade → `__tests__/<alvo>.unit.spec.ts` (colado no alvo) e os 2 de arquitetura → `src/__checks__/`; as 20 specs de `lib/` com import relativo passaram a `../<alvo>`, os cinco `index.spec.tsx` de componente a `from ".."`, e os dois `__checks__` tiveram os caminhos de leitura refeitos. O baseline da convenção ficou vazio | convenção 32 → 0 | `yarn test` (34) · `STOREFRONT_RUNNER=1` |
 | **F4** (feita) | `src/types` (2 arquivos) dissolvido: `VariantPrice`, `ProductColor` e `ProductEnrichment` para `lib/catalog/types.ts`, o `IconProps` para `lib/ui/types.ts` e o `StoreFreeShippingPrice` para `lib/checkout/types.ts`; os 19 imports do caminho NU (`from "types/global"`) passaram ao apelido, e os 4 adapters que subiam `../../types` a `@lib/payments/types` | R-A/R-C sem regressão | `make types` |
-| **F5** | os ciclos: `config ↔ locale` (o locale vira folha) e o `LOGIN_VIEW` do `account` | R-C 1 → 0 · R-E 6 → 3 | `make check` |
+| **F5** (feita) | os ciclos: o locale vira FOLHA (`lib/medusa/locale-cookie.ts`, que só importa `next/headers`) e o SDK e o dado passam a ler dela; a `enum LOGIN_VIEW` sai do template para `modules/account/lib/login-view.ts`. A promessa de `R-C 1 → 0` era falsa: a exceção que sobra é do adapter Stripe | R-C 2 → 1 · R-E 6 → 3 | `make check` |
 | **F6** | `brand.css` (5.248 linhas) partido em parciais + manifesto, com prova de concatenação byte a byte | catraca (`--write`) | `yarn build` · GET `/br` |
 | **F7** | CRM: `admin/src/admin/routes/content/` (23 arquivos + 3 diretórios) → `page.tsx` + `components/` + `hooks/` + `lib/`; `widgets/` só com entrypoint | `make build-admin` | smoke do painel |
 | **F8** | backend: `mercadopago/service.ts` (828), `api/admin/content/route.ts` (488), `scripts/seed.ts` (569); `api/store/custom/*` renomeado | `make test` (24 suítes) | smoke do pagamento |
@@ -242,7 +248,7 @@ no `make test`, e não no `make check`.
 
 | Dívida | Medido em 13/10/2026 | Apaga |
 | :--- | :--- | :--- |
-| Exceções de camada no baseline | 11 (4 na F5, 7 no RV-048; eram 17 antes da F1) | as fases |
+| Exceções de camada no baseline | 7 (todas do RV-048; eram 17 antes da F1) | ✅ F1–F5 — o que sobra sai no RV-048 |
 | Arquivos acima da política de comentário | 311 | F10 (meta: ≤12% e cabeçalho ≤5) |
 | Specs fora da convenção | 0 | ✅ F3 |
 | `lib/util` sem uma responsabilidade só | 45 arquivos · 6.622 linhas | ✅ F2 — dissolvido em `catalog`, `ui`, `content`, `checkout`, `payments` e `medusa` |

@@ -1,27 +1,13 @@
 "use server"
 
 import { sdk } from "@lib/config"
+import { LOCALE_COOKIE_NAME, readLocale } from "@lib/medusa/locale-cookie"
 import { revalidateTag } from "next/cache"
 import { cookies as nextCookies } from "next/headers"
 import { getAuthHeaders, getCacheTag, getCartId } from "./cookies"
 
-const LOCALE_COOKIE_NAME = "_medusa_locale"
+export const getLocale = async (): Promise<string | null> => readLocale()
 
-/**
- * Gets the current locale from cookies
- */
-export const getLocale = async (): Promise<string | null> => {
-  try {
-    const cookies = await nextCookies()
-    return cookies.get(LOCALE_COOKIE_NAME)?.value ?? null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Sets the locale cookie
- */
 export const setLocaleCookie = async (locale: string) => {
   const cookies = await nextCookies()
   cookies.set(LOCALE_COOKIE_NAME, locale, {

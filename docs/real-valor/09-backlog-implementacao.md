@@ -248,7 +248,7 @@ A pasta `src/types` (2 arquivos, 52 linhas) some: cada tipo vai para o dono do q
 descreve, e o caminho NU (`from "types/global"`, resolvido pelo `baseUrl`) vira o
 apelido que o resto do storefront já usa.
 
-### ✅ F4 · Os tipos com dono — **FEITO** (hash na entrada da F5: um commit não carrega o próprio hash)
+### ✅ F4 · Os tipos com dono — **FEITO** (`52646a480d`)
 
 **O que foi feito:**
 
@@ -283,6 +283,49 @@ a exceção de ninguém e coube no teto) e a §15.1 do doc 15, que perde a linha
 (4), `scripts/baselines/comments.json`, este doc e o doc 15 · *removidos:*
 `types/global.ts`, `types/icon.ts`.
 **Pré-requisito:** F3
+
+---
+
+## Fase 5 — Os dois ciclos
+
+O grafo de valor do storefront fica sem ciclo: o locale vira **folha** (um módulo que
+não importa nada do projeto) e a `enum` do `account` sai do template. R-C 2 → 1 e
+R-E 6 → 3 — e as sete exceções que sobram são todas do RV-048 (o adapter Stripe).
+
+### ✅ F5 · Os dois ciclos — **FEITO** (hash na entrada da F6: um commit não carrega o próprio hash)
+
+**O que foi feito:**
+
+- `lib/medusa/locale-cookie.ts` (novo, folha): o nome do cookie e o `readLocale()` — só
+  `next/headers`, nenhum import do projeto. O `get-locale-header` (que está na cadeia do
+  SDK) e o `locale-actions` (o dado, que importa o SDK) passaram a ler a folha: o ciclo
+  `config → locale-header → locale-actions → config` desmancha porque o **meio** dele
+  deixou de ser o dado.
+- `modules/account/lib/login-view.ts` (novo, folha): a `enum LOGIN_VIEW`, que era
+  exportada pelo `login-template`. Um `enum` é **valor** de execução, não tipo — então o
+  template importava o formulário que importava o template. O template e os dois
+  formulários (`login`, `register`) passaram a ler a folha.
+- `boundaries.json`: as quatro exceções que a fase prometia apagar saíram — a R-C do
+  locale e os três ciclos R-E (o do locale e os dois do `LOGIN_VIEW`). A guarda as
+  apontou como mortas na primeira execução, e é isso que a lista só-encolhe verifica.
+- A catraca foi reancorada para baixo (`--write`, previsto no §15.4 para quem desmancha
+  ciclo): o `locale-actions` perdeu **6 linhas de comentário que só repetiam o nome**
+  (`getLocale`, `setLocaleCookie` — a política manda cortar isso, e a folha nova já
+  documenta a leitura). Sem esse corte a árvore subiria 3 linhas com as duas folhas.
+
+**Medido (13/10/2026, pós-F5):** exceções de camada 11 → **7** (R-A 3 · R-C 1 · R-E 3,
+todas do RV-048); comentário em `frontend/src` 9.773 → 9.770; baseline da catraca 310 →
+309 arquivos; R-D 0 e convenção 0 intactos.
+
+**Guarda que fica verde:** R-C e R-E — os dois ciclos que davam nome à fase deixam de
+existir, e as exceções que os registravam saem do baseline.
+**Gate:** `make check` · `make types` · `yarn test` (34 arquivos/466 testes).
+**Arquivos:** *novos:* `lib/medusa/locale-cookie.ts`,
+`modules/account/lib/login-view.ts` · *alterados:* `lib/medusa/get-locale-header.ts`,
+`lib/data/locale-actions.ts`, `modules/account/templates/login-template.tsx`,
+`modules/account/components/{login,register}/index.tsx`,
+`scripts/baselines/{boundaries,comments}.json`, este doc e o doc 15.
+**Pré-requisito:** F4
 
 ---
 

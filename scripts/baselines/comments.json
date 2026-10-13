@@ -5,8 +5,8 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37588,
-      "comments": 9773
+      "lines": 37590,
+      "comments": 9770
     },
     "admin/src": {
       "lines": 7098,
@@ -334,11 +334,6 @@
     "frontend/src/lib/data/cookies.ts": {
       "comments": 56,
       "lines": 168,
-      "header": 5
-    },
-    "frontend/src/lib/data/locale-actions.ts": {
-      "comments": 14,
-      "lines": 75,
       "header": 5
     },
     "frontend/src/lib/data/pages.ts": {
