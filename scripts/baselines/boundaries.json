@@ -1,0 +1,139 @@
+{
+  "note": "As violações CONHECIDAS das regras R-A…R-E (scripts/check-boundaries.mjs). A lista só ENCOLHE: cada entrada tem de continuar sendo uma violação de verdade — se não for, a guarda reprova e pede a remoção. O porquê de cada regra e o mapa das camadas estão em docs/real-valor/15-arquitetura-modular.md.",
+  "exceptions": [
+    {
+      "rule": "R-A",
+      "file": "frontend/src/lib/data/products.ts",
+      "specifier": "@modules/store/components/refinement-list/sort-products",
+      "why": "o dado importa `SortOptions` do componente que monta a consulta",
+      "diesIn": "F2 — o tipo vai para `lib/catalog/types.ts`"
+    },
+    {
+      "rule": "R-A",
+      "file": "frontend/src/lib/util/sort-products.ts",
+      "specifier": "@modules/store/components/refinement-list/sort-products",
+      "why": "mesmo `SortOptions`, pelo utilitário de ordenação",
+      "diesIn": "F2 — idem (o utilitário também sai de `lib/util`)"
+    },
+    {
+      "rule": "R-A",
+      "file": "frontend/src/lib/payments/adapters/stripe/payment-button.tsx",
+      "specifier": "@modules/checkout/components/error-message",
+      "why": "UI de provedor que reaproveita o aviso de erro do checkout",
+      "diesIn": "RV-048 — o diretório do adapter Stripe inteiro sai"
+    },
+    {
+      "rule": "R-A",
+      "file": "frontend/src/lib/payments/adapters/stripe/card-container.tsx",
+      "specifier": "@modules/checkout/components/payment-container",
+      "why": "UI de provedor que reaproveita o contêiner do checkout",
+      "diesIn": "RV-048"
+    },
+    {
+      "rule": "R-A",
+      "file": "frontend/src/lib/payments/adapters/stripe/card-container.tsx",
+      "specifier": "@modules/skeletons/components/skeleton-card-details",
+      "why": "UI de provedor que reaproveita o esqueleto do checkout",
+      "diesIn": "RV-048"
+    },
+    {
+      "rule": "R-C",
+      "file": "frontend/src/lib/util/get-locale-header.ts",
+      "specifier": "@lib/data/locale-actions",
+      "why": "o cabeçalho de locale pergunta o idioma ao dado — é o meio do ciclo `config → locale-header → locale-actions → config`",
+      "diesIn": "F5 — o locale vira folha (`lib/medusa/locale*`) e o ciclo desmancha"
+    },
+    {
+      "rule": "R-C",
+      "file": "frontend/src/lib/payments/adapters/stripe/payment-button.tsx",
+      "specifier": "@lib/data/cart",
+      "why": "o botão do provedor fecha o pedido pelo dado do carrinho",
+      "diesIn": "RV-048"
+    },
+    {
+      "rule": "R-D",
+      "file": "frontend/src/modules/checkout/components/payment/index.tsx",
+      "specifier": "@lib/payments/registry",
+      "why": "o componente pergunta ao registry direto, em vez da fachada `@lib/payments`",
+      "diesIn": "F2 — passa a importar `@lib/payments`"
+    },
+    {
+      "rule": "R-D",
+      "file": "frontend/src/modules/checkout/components/payment-button/index.tsx",
+      "specifier": "@lib/payments/registry",
+      "why": "idem",
+      "diesIn": "F2"
+    },
+    {
+      "rule": "R-D",
+      "file": "frontend/src/modules/checkout/components/payment-container/index.tsx",
+      "specifier": "@lib/payments/registry",
+      "why": "idem",
+      "diesIn": "F2"
+    },
+    {
+      "rule": "R-D",
+      "file": "frontend/src/modules/checkout/components/payment-wrapper/index.tsx",
+      "specifier": "@lib/payments/registry",
+      "why": "idem",
+      "diesIn": "F2"
+    },
+    {
+      "rule": "R-E",
+      "cycle": [
+        "frontend/src/lib/config.ts",
+        "frontend/src/lib/util/get-locale-header.ts",
+        "frontend/src/lib/data/locale-actions.ts"
+      ],
+      "why": "o SDK injeta o cabeçalho de locale e o dado do locale usa o SDK — o ciclo é a razão de o F5 existir",
+      "diesIn": "F5"
+    },
+    {
+      "rule": "R-E",
+      "cycle": [
+        "frontend/src/lib/payments/adapters/stripe/card-container.tsx",
+        "frontend/src/modules/checkout/components/payment-container/index.tsx",
+        "frontend/src/lib/payments/registry.ts",
+        "frontend/src/lib/payments/adapters/stripe/index.tsx"
+      ],
+      "why": "o contêiner do checkout importa o registry, que importa o adapter, cujo cartão importa o contêiner — o ciclo atravessa a fronteira do pagamento",
+      "diesIn": "RV-048 — o diretório do adapter Stripe inteiro sai"
+    },
+    {
+      "rule": "R-E",
+      "cycle": [
+        "frontend/src/lib/payments/adapters/stripe/card-container.tsx",
+        "frontend/src/lib/payments/adapters/stripe/index.tsx"
+      ],
+      "why": "o `index` do adapter monta a UI e o cartão pede o contexto de volta a ele",
+      "diesIn": "RV-048"
+    },
+    {
+      "rule": "R-E",
+      "cycle": [
+        "frontend/src/lib/payments/adapters/stripe/index.tsx",
+        "frontend/src/lib/payments/adapters/stripe/payment-button.tsx"
+      ],
+      "why": "o mesmo ciclo do cartão, pelo botão (`useStripeElements`)",
+      "diesIn": "RV-048"
+    },
+    {
+      "rule": "R-E",
+      "cycle": [
+        "frontend/src/modules/account/components/register/index.tsx",
+        "frontend/src/modules/account/templates/login-template.tsx"
+      ],
+      "why": "`LOGIN_VIEW` (enum: valor de execução) mora no template, que importa o formulário que o importa",
+      "diesIn": "F5 — a enum vira folha do módulo `account`"
+    },
+    {
+      "rule": "R-E",
+      "cycle": [
+        "frontend/src/modules/account/components/login/index.tsx",
+        "frontend/src/modules/account/templates/login-template.tsx"
+      ],
+      "why": "idem, pelo formulário de login",
+      "diesIn": "F5"
+    }
+  ]
+}

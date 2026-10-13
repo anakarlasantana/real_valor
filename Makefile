@@ -390,14 +390,23 @@ doctor:
 # `guard` da CI nao instala `node_modules` nenhum — este alvo tem que continuar
 # rodando em segundos, sem instalacao. Ela roda no `make test`, que e' onde a
 # suite roda e onde as dependencias existem.
+#
+# As tres guardas da F0 (13/10/2026) sao do mesmo tipo — Node puro, sem framework,
+# sem `node_modules` — e por isso moram aqui: `check-boundaries.mjs` ganhou as
+# camadas do storefront (R-A…R-E), `check-comments.mjs` e a catraca do comentario e
+# `check-storefront-tests.mjs` e a convencao de teste. O porque de cada regra, o
+# mapa das camadas e a politica de comentario:
+# docs/real-valor/15-arquitetura-modular.md
 gen:
 	@node scripts/gen-content.mjs
 
 check:
 	@node scripts/gen-content.mjs --check
 	@node scripts/check-boundaries.mjs
+	@node scripts/check-comments.mjs
+	@node scripts/check-storefront-tests.mjs
 	@echo ""
-	@echo "  Artefato e fronteira conferidos."
+	@echo "  Artefato, fronteira, camadas, comentario e convencao de teste conferidos."
 
 # ---------------------------------------------------------------------------
 # Build do admin: o gate de quem mexe no CRM
@@ -535,11 +544,19 @@ build-admin:
 # de la, sem mudanca: os specs compartilham o `MetadataStorage` global do
 # MikroORM, entao arquivo em paralelo e' corrida entre arquivos. `--silent`
 # esconde o log de aplicacao para a falha aparecer sozinha no terminal.
+#
+# A ultima linha e' a convencao de teste do storefront em modo RUNNER
+# (`STOREFRONT_RUNNER=1`): ela pergunta ao vitest o que ele vai rodar (`vitest
+# list`, sem rodar nada) e compara com os specs do disco. E' a mesma pergunta que
+# o `check-panel-tests.mjs` faz ao jest do CRM, e ela mora aqui — e nao no
+# `make check` — pelo mesmo motivo: precisa das dependencias. Sem a variavel, o
+# script so confere a convencao (e e' assim que ele roda no `make check`).
 test:
 	@cd backend && TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules ../node_modules/.bin/jest --silent --runInBand --forceExit
 	@cd admin && ../node_modules/.bin/jest -c jest.config.js
 	@node scripts/check-panel-tests.mjs
 	@cd frontend && ./node_modules/.bin/vitest run
+	@STOREFRONT_RUNNER=1 node scripts/check-storefront-tests.mjs
 	@echo ""
 	@echo "  Testes conferidos nos tres pacotes (backend, CRM e storefront)."
 

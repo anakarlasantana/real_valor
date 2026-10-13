@@ -1,0 +1,1595 @@
+{
+  "note": "Catraca do comentário (scripts/check-comments.mjs). Só DESCE: entrada frouxa (≥10%) ou órfã reprova a guarda. `--write` quando a forma dos arquivos mudar de propósito. Política: docs/real-valor/15-arquitetura-modular.md",
+  "ceiling": 0.12,
+  "floor": 6,
+  "headerMax": 5,
+  "scopes": {
+    "frontend/src": {
+      "lines": 37898,
+      "comments": 9840
+    },
+    "admin/src": {
+      "lines": 7098,
+      "comments": 2030
+    },
+    "backend/src": {
+      "lines": 15981,
+      "comments": 5115
+    },
+    "packages/contrato/src": {
+      "lines": 3817,
+      "comments": 2084
+    },
+    "scripts": {
+      "lines": 1539,
+      "comments": 306
+    }
+  },
+  "files": {
+    "frontend/src/app/[countryCode]/(checkout)/layout.tsx": {
+      "comments": 11,
+      "lines": 73,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(checkout)/not-found.tsx": {
+      "comments": 8,
+      "lines": 35,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/[slug]/page.tsx": {
+      "comments": 66,
+      "lines": 120,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/cart/not-found.tsx": {
+      "comments": 8,
+      "lines": 35,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/categories/[...category]/page.tsx": {
+      "comments": 16,
+      "lines": 77,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/collections/[handle]/page.tsx": {
+      "comments": 12,
+      "lines": 73,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/not-found.tsx": {
+      "comments": 22,
+      "lines": 84,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/page.tsx": {
+      "comments": 28,
+      "lines": 85,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/paginas/page.tsx": {
+      "comments": 25,
+      "lines": 89,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/pedido/confirmacao/page.tsx": {
+      "comments": 43,
+      "lines": 168,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/products/[handle]/page.tsx": {
+      "comments": 24,
+      "lines": 117,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/rastreio/page.tsx": {
+      "comments": 16,
+      "lines": 29,
+      "header": 5
+    },
+    "frontend/src/app/[countryCode]/(main)/search/page.tsx": {
+      "comments": 15,
+      "lines": 52,
+      "header": 5
+    },
+    "frontend/src/app/api/pedido/status/route.ts": {
+      "comments": 48,
+      "lines": 130,
+      "header": 32
+    },
+    "frontend/src/app/api/revalidate/route.ts": {
+      "comments": 50,
+      "lines": 157,
+      "header": 34
+    },
+    "frontend/src/app/layout.tsx": {
+      "comments": 18,
+      "lines": 89,
+      "header": 5
+    },
+    "frontend/src/app/robots.ts": {
+      "comments": 21,
+      "lines": 46,
+      "header": 5
+    },
+    "frontend/src/app/sitemap.ts": {
+      "comments": 26,
+      "lines": 50,
+      "header": 5
+    },
+    "frontend/src/lib/constants.tsx": {
+      "comments": 15,
+      "lines": 47,
+      "header": 14
+    },
+    "frontend/src/lib/content/appearance.ts": {
+      "comments": 52,
+      "lines": 104,
+      "header": 5
+    },
+    "frontend/src/lib/content/cache.ts": {
+      "comments": 22,
+      "lines": 26,
+      "header": 21
+    },
+    "frontend/src/lib/content/home-sections.ts": {
+      "comments": 40,
+      "lines": 87,
+      "header": 15
+    },
+    "frontend/src/lib/content/icons.ts": {
+      "comments": 26,
+      "lines": 77,
+      "header": 5
+    },
+    "frontend/src/lib/content/markdown.spec.tsx": {
+      "comments": 27,
+      "lines": 230,
+      "header": 15
+    },
+    "frontend/src/lib/content/markdown.tsx": {
+      "comments": 125,
+      "lines": 316,
+      "header": 41
+    },
+    "frontend/src/lib/content/page-seo.spec.ts": {
+      "comments": 61,
+      "lines": 286,
+      "header": 20
+    },
+    "frontend/src/lib/content/page-seo.ts": {
+      "comments": 78,
+      "lines": 168,
+      "header": 14
+    },
+    "frontend/src/lib/content/page-surfaces.spec.ts": {
+      "comments": 146,
+      "lines": 390,
+      "header": 23
+    },
+    "frontend/src/lib/data/__tests__/catalog-cache.unit.spec.ts": {
+      "comments": 40,
+      "lines": 103,
+      "header": 26
+    },
+    "frontend/src/lib/data/__tests__/tracking.unit.spec.ts": {
+      "comments": 34,
+      "lines": 180,
+      "header": 14
+    },
+    "frontend/src/lib/data/content.ts": {
+      "comments": 73,
+      "lines": 138,
+      "header": 5
+    },
+    "frontend/src/lib/data/cookies.ts": {
+      "comments": 56,
+      "lines": 168,
+      "header": 5
+    },
+    "frontend/src/lib/data/locale-actions.ts": {
+      "comments": 14,
+      "lines": 75,
+      "header": 5
+    },
+    "frontend/src/lib/data/pages.ts": {
+      "comments": 31,
+      "lines": 66,
+      "header": 5
+    },
+    "frontend/src/lib/data/product-fields.ts": {
+      "comments": 60,
+      "lines": 65,
+      "header": 60
+    },
+    "frontend/src/lib/data/products.ts": {
+      "comments": 41,
+      "lines": 181,
+      "header": 5
+    },
+    "frontend/src/lib/data/supported-sections.spec.ts": {
+      "comments": 29,
+      "lines": 121,
+      "header": 9
+    },
+    "frontend/src/lib/data/supported-sections.ts": {
+      "comments": 23,
+      "lines": 51,
+      "header": 10
+    },
+    "frontend/src/lib/data/theme.ts": {
+      "comments": 36,
+      "lines": 79,
+      "header": 5
+    },
+    "frontend/src/lib/data/tracking-types.ts": {
+      "comments": 12,
+      "lines": 43,
+      "header": 11
+    },
+    "frontend/src/lib/data/tracking.ts": {
+      "comments": 59,
+      "lines": 131,
+      "header": 25
+    },
+    "frontend/src/lib/hooks/use-toggle-state.tsx": {
+      "comments": 12,
+      "lines": 47,
+      "header": 5
+    },
+    "frontend/src/lib/payments/adapters/manual.ts": {
+      "comments": 21,
+      "lines": 37,
+      "header": 17
+    },
+    "frontend/src/lib/payments/adapters/mercadopago/index.tsx": {
+      "comments": 46,
+      "lines": 88,
+      "header": 5
+    },
+    "frontend/src/lib/payments/adapters/mercadopago/payment-button.tsx": {
+      "comments": 46,
+      "lines": 95,
+      "header": 5
+    },
+    "frontend/src/lib/payments/adapters/stripe/card-container.tsx": {
+      "comments": 31,
+      "lines": 97,
+      "header": 5
+    },
+    "frontend/src/lib/payments/adapters/stripe/index.tsx": {
+      "comments": 54,
+      "lines": 142,
+      "header": 5
+    },
+    "frontend/src/lib/payments/adapters/unsupported.ts": {
+      "comments": 23,
+      "lines": 41,
+      "header": 14
+    },
+    "frontend/src/lib/payments/index.ts": {
+      "comments": 24,
+      "lines": 42,
+      "header": 12
+    },
+    "frontend/src/lib/payments/labels.ts": {
+      "comments": 32,
+      "lines": 73,
+      "header": 17
+    },
+    "frontend/src/lib/payments/registry.spec.ts": {
+      "comments": 46,
+      "lines": 243,
+      "header": 15
+    },
+    "frontend/src/lib/payments/registry.ts": {
+      "comments": 62,
+      "lines": 120,
+      "header": 16
+    },
+    "frontend/src/lib/payments/types.ts": {
+      "comments": 78,
+      "lines": 133,
+      "header": 10
+    },
+    "frontend/src/lib/theme.spec.ts": {
+      "comments": 21,
+      "lines": 149,
+      "header": 14
+    },
+    "frontend/src/lib/theme.ts": {
+      "comments": 93,
+      "lines": 268,
+      "header": 5
+    },
+    "frontend/src/lib/util/carousel.spec.ts": {
+      "comments": 54,
+      "lines": 252,
+      "header": 23
+    },
+    "frontend/src/lib/util/carousel.ts": {
+      "comments": 134,
+      "lines": 245,
+      "header": 33
+    },
+    "frontend/src/lib/util/catalog-filters.spec.ts": {
+      "comments": 15,
+      "lines": 356,
+      "header": 8
+    },
+    "frontend/src/lib/util/catalog-filters.ts": {
+      "comments": 187,
+      "lines": 666,
+      "header": 28
+    },
+    "frontend/src/lib/util/category-tabs.ts": {
+      "comments": 19,
+      "lines": 75,
+      "header": 5
+    },
+    "frontend/src/lib/util/filter-chips.spec.ts": {
+      "comments": 23,
+      "lines": 129,
+      "header": 14
+    },
+    "frontend/src/lib/util/filter-chips.ts": {
+      "comments": 37,
+      "lines": 88,
+      "header": 19
+    },
+    "frontend/src/lib/util/get-percentage-diff.ts": {
+      "comments": 11,
+      "lines": 22,
+      "header": 11
+    },
+    "frontend/src/lib/util/get-product-price.spec.ts": {
+      "comments": 19,
+      "lines": 114,
+      "header": 16
+    },
+    "frontend/src/lib/util/get-product-price.ts": {
+      "comments": 13,
+      "lines": 93,
+      "header": 5
+    },
+    "frontend/src/lib/util/hero.spec.ts": {
+      "comments": 22,
+      "lines": 116,
+      "header": 18
+    },
+    "frontend/src/lib/util/hero.ts": {
+      "comments": 37,
+      "lines": 80,
+      "header": 25
+    },
+    "frontend/src/lib/util/installments.spec.ts": {
+      "comments": 24,
+      "lines": 118,
+      "header": 15
+    },
+    "frontend/src/lib/util/installments.ts": {
+      "comments": 48,
+      "lines": 93,
+      "header": 26
+    },
+    "frontend/src/lib/util/launches.spec.ts": {
+      "comments": 27,
+      "lines": 102,
+      "header": 22
+    },
+    "frontend/src/lib/util/launches.ts": {
+      "comments": 39,
+      "lines": 61,
+      "header": 27
+    },
+    "frontend/src/lib/util/marquee.spec.ts": {
+      "comments": 49,
+      "lines": 225,
+      "header": 21
+    },
+    "frontend/src/lib/util/marquee.ts": {
+      "comments": 117,
+      "lines": 174,
+      "header": 50
+    },
+    "frontend/src/lib/util/media-wiring.spec.ts": {
+      "comments": 99,
+      "lines": 251,
+      "header": 34
+    },
+    "frontend/src/lib/util/media.spec.ts": {
+      "comments": 39,
+      "lines": 160,
+      "header": 15
+    },
+    "frontend/src/lib/util/media.ts": {
+      "comments": 120,
+      "lines": 190,
+      "header": 51
+    },
+    "frontend/src/lib/util/money.ts": {
+      "comments": 11,
+      "lines": 38,
+      "header": 5
+    },
+    "frontend/src/lib/util/motion.spec.ts": {
+      "comments": 17,
+      "lines": 84,
+      "header": 14
+    },
+    "frontend/src/lib/util/motion.ts": {
+      "comments": 61,
+      "lines": 87,
+      "header": 29
+    },
+    "frontend/src/lib/util/product-availability.spec.ts": {
+      "comments": 41,
+      "lines": 301,
+      "header": 21
+    },
+    "frontend/src/lib/util/product-availability.ts": {
+      "comments": 139,
+      "lines": 271,
+      "header": 28
+    },
+    "frontend/src/lib/util/product-enrichment.spec.ts": {
+      "comments": 76,
+      "lines": 524,
+      "header": 23
+    },
+    "frontend/src/lib/util/product-enrichment.ts": {
+      "comments": 128,
+      "lines": 300,
+      "header": 23
+    },
+    "frontend/src/lib/util/product-rating.spec.ts": {
+      "comments": 21,
+      "lines": 146,
+      "header": 16
+    },
+    "frontend/src/lib/util/product-rating.ts": {
+      "comments": 67,
+      "lines": 152,
+      "header": 21
+    },
+    "frontend/src/lib/util/product-sections.spec.ts": {
+      "comments": 17,
+      "lines": 147,
+      "header": 13
+    },
+    "frontend/src/lib/util/product-sections.ts": {
+      "comments": 49,
+      "lines": 176,
+      "header": 23
+    },
+    "frontend/src/lib/util/shipping-quote.spec.ts": {
+      "comments": 17,
+      "lines": 137,
+      "header": 16
+    },
+    "frontend/src/lib/util/shipping-quote.ts": {
+      "comments": 64,
+      "lines": 124,
+      "header": 21
+    },
+    "frontend/src/lib/util/sort-products.ts": {
+      "comments": 8,
+      "lines": 51,
+      "header": 5
+    },
+    "frontend/src/lib/util/ticker.spec.ts": {
+      "comments": 49,
+      "lines": 227,
+      "header": 24
+    },
+    "frontend/src/lib/util/ticker.ts": {
+      "comments": 103,
+      "lines": 164,
+      "header": 35
+    },
+    "frontend/src/middleware.ts": {
+      "comments": 44,
+      "lines": 196,
+      "header": 5
+    },
+    "frontend/src/modules/account/components/account-nav/index.tsx": {
+      "comments": 19,
+      "lines": 91,
+      "header": 5
+    },
+    "frontend/src/modules/account/templates/account-layout.tsx": {
+      "comments": 16,
+      "lines": 59,
+      "header": 5
+    },
+    "frontend/src/modules/cart/components/empty-cart-message/index.tsx": {
+      "comments": 10,
+      "lines": 32,
+      "header": 5
+    },
+    "frontend/src/modules/cart/components/item/index.tsx": {
+      "comments": 21,
+      "lines": 164,
+      "header": 5
+    },
+    "frontend/src/modules/cart/components/sign-in-prompt/index.tsx": {
+      "comments": 8,
+      "lines": 42,
+      "header": 5
+    },
+    "frontend/src/modules/cart/templates/index.tsx": {
+      "comments": 17,
+      "lines": 66,
+      "header": 5
+    },
+    "frontend/src/modules/cart/templates/items.tsx": {
+      "comments": 14,
+      "lines": 54,
+      "header": 5
+    },
+    "frontend/src/modules/cart/templates/preview.tsx": {
+      "comments": 12,
+      "lines": 61,
+      "header": 5
+    },
+    "frontend/src/modules/cart/templates/summary.tsx": {
+      "comments": 26,
+      "lines": 87,
+      "header": 5
+    },
+    "frontend/src/modules/categories/templates/index.tsx": {
+      "comments": 16,
+      "lines": 101,
+      "header": 5
+    },
+    "frontend/src/modules/checkout/components/address-select/index.tsx": {
+      "comments": 17,
+      "lines": 124,
+      "header": 5
+    },
+    "frontend/src/modules/checkout/components/country-select/index.tsx": {
+      "comments": 14,
+      "lines": 74,
+      "header": 5
+    },
+    "frontend/src/modules/checkout/components/error-message/index.tsx": {
+      "comments": 12,
+      "lines": 32,
+      "header": 12
+    },
+    "frontend/src/modules/checkout/components/payment/index.tsx": {
+      "comments": 37,
+      "lines": 277,
+      "header": 5
+    },
+    "frontend/src/modules/checkout/components/payment-button/index.tsx": {
+      "comments": 27,
+      "lines": 117,
+      "header": 5
+    },
+    "frontend/src/modules/checkout/components/payment-container/index.tsx": {
+      "comments": 22,
+      "lines": 87,
+      "header": 5
+    },
+    "frontend/src/modules/checkout/components/payment-test/index.tsx": {
+      "comments": 16,
+      "lines": 27,
+      "header": 16
+    },
+    "frontend/src/modules/checkout/components/payment-wrapper/index.tsx": {
+      "comments": 16,
+      "lines": 49,
+      "header": 5
+    },
+    "frontend/src/modules/checkout/components/review/index.tsx": {
+      "comments": 15,
+      "lines": 52,
+      "header": 5
+    },
+    "frontend/src/modules/checkout/components/submit-button/index.tsx": {
+      "comments": 16,
+      "lines": 60,
+      "header": 5
+    },
+    "frontend/src/modules/checkout/templates/checkout-form/index.tsx": {
+      "comments": 15,
+      "lines": 61,
+      "header": 5
+    },
+    "frontend/src/modules/checkout/templates/checkout-summary/index.tsx": {
+      "comments": 15,
+      "lines": 53,
+      "header": 5
+    },
+    "frontend/src/modules/collections/templates/index.tsx": {
+      "comments": 10,
+      "lines": 55,
+      "header": 5
+    },
+    "frontend/src/modules/common/components/arrow-icon/index.tsx": {
+      "comments": 15,
+      "lines": 43,
+      "header": 15
+    },
+    "frontend/src/modules/common/components/breadcrumb/index.tsx": {
+      "comments": 12,
+      "lines": 55,
+      "header": 5
+    },
+    "frontend/src/modules/common/components/cart-totals/index.tsx": {
+      "comments": 13,
+      "lines": 95,
+      "header": 5
+    },
+    "frontend/src/modules/common/components/empty-state/index.tsx": {
+      "comments": 21,
+      "lines": 46,
+      "header": 5
+    },
+    "frontend/src/modules/common/components/reveal/index.tsx": {
+      "comments": 37,
+      "lines": 90,
+      "header": 5
+    },
+    "frontend/src/modules/content/faq.spec.tsx": {
+      "comments": 40,
+      "lines": 194,
+      "header": 20
+    },
+    "frontend/src/modules/content/faq.tsx": {
+      "comments": 66,
+      "lines": 114,
+      "header": 5
+    },
+    "frontend/src/modules/content/prose.spec.tsx": {
+      "comments": 48,
+      "lines": 222,
+      "header": 18
+    },
+    "frontend/src/modules/content/prose.tsx": {
+      "comments": 68,
+      "lines": 160,
+      "header": 5
+    },
+    "frontend/src/modules/content/render-section.tsx": {
+      "comments": 87,
+      "lines": 191,
+      "header": 34
+    },
+    "frontend/src/modules/home/components/announcement-bar/index.tsx": {
+      "comments": 111,
+      "lines": 234,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/benefits-bar/index.tsx": {
+      "comments": 29,
+      "lines": 79,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/collection-highlights/index.tsx": {
+      "comments": 43,
+      "lines": 147,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/editorial-banner/index.tsx": {
+      "comments": 24,
+      "lines": 111,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/editorial-callout/index.tsx": {
+      "comments": 33,
+      "lines": 100,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/featured-products/index.tsx": {
+      "comments": 77,
+      "lines": 218,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/hero/carousel.tsx": {
+      "comments": 105,
+      "lines": 308,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/hero/index.tsx": {
+      "comments": 109,
+      "lines": 227,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/instagram-grid/index.tsx": {
+      "comments": 53,
+      "lines": 93,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/instagram-grid/strip.tsx": {
+      "comments": 101,
+      "lines": 236,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/instagram-grid/tile.tsx": {
+      "comments": 20,
+      "lines": 45,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/launches-rail/index.tsx": {
+      "comments": 71,
+      "lines": 159,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/product-carousel/index.tsx": {
+      "comments": 166,
+      "lines": 516,
+      "header": 5
+    },
+    "frontend/src/modules/home/components/ruler.spec.ts": {
+      "comments": 172,
+      "lines": 396,
+      "header": 56
+    },
+    "frontend/src/modules/layout/components/cart-button/index.tsx": {
+      "comments": 7,
+      "lines": 22,
+      "header": 5
+    },
+    "frontend/src/modules/layout/components/footer-column/index.tsx": {
+      "comments": 72,
+      "lines": 273,
+      "header": 5
+    },
+    "frontend/src/modules/layout/components/nav-link/index.tsx": {
+      "comments": 46,
+      "lines": 204,
+      "header": 5
+    },
+    "frontend/src/modules/layout/components/side-menu/index.tsx": {
+      "comments": 25,
+      "lines": 196,
+      "header": 5
+    },
+    "frontend/src/modules/layout/components/social-links/index.tsx": {
+      "comments": 42,
+      "lines": 114,
+      "header": 5
+    },
+    "frontend/src/modules/layout/templates/footer/index.tsx": {
+      "comments": 52,
+      "lines": 174,
+      "header": 5
+    },
+    "frontend/src/modules/layout/templates/nav/index.tsx": {
+      "comments": 34,
+      "lines": 131,
+      "header": 5
+    },
+    "frontend/src/modules/order/templates/order-completed-template.tsx": {
+      "comments": 20,
+      "lines": 85,
+      "header": 5
+    },
+    "frontend/src/modules/payment/components/installment-info/index.spec.tsx": {
+      "comments": 13,
+      "lines": 72,
+      "header": 10
+    },
+    "frontend/src/modules/payment/components/installment-info/index.tsx": {
+      "comments": 29,
+      "lines": 58,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/image-gallery/index.tsx": {
+      "comments": 37,
+      "lines": 77,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/product-actions/index.tsx": {
+      "comments": 37,
+      "lines": 216,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/product-actions/option-select.tsx": {
+      "comments": 41,
+      "lines": 122,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/product-preview/color-swatches.tsx": {
+      "comments": 28,
+      "lines": 75,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/product-preview/index.tsx": {
+      "comments": 86,
+      "lines": 148,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/product-preview/price.tsx": {
+      "comments": 35,
+      "lines": 68,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/product-price/index.tsx": {
+      "comments": 25,
+      "lines": 96,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/product-rating/index.spec.tsx": {
+      "comments": 17,
+      "lines": 71,
+      "header": 13
+    },
+    "frontend/src/modules/products/components/product-rating/index.tsx": {
+      "comments": 26,
+      "lines": 77,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/product-status-chip/index.tsx": {
+      "comments": 26,
+      "lines": 67,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/product-tabs/index.tsx": {
+      "comments": 30,
+      "lines": 175,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/shipping-quote/index.spec.tsx": {
+      "comments": 14,
+      "lines": 78,
+      "header": 12
+    },
+    "frontend/src/modules/products/components/shipping-quote/index.tsx": {
+      "comments": 27,
+      "lines": 77,
+      "header": 5
+    },
+    "frontend/src/modules/products/components/thumbnail/index.tsx": {
+      "comments": 74,
+      "lines": 180,
+      "header": 5
+    },
+    "frontend/src/modules/products/templates/index.tsx": {
+      "comments": 44,
+      "lines": 137,
+      "header": 5
+    },
+    "frontend/src/modules/products/templates/product-info/index.tsx": {
+      "comments": 20,
+      "lines": 61,
+      "header": 5
+    },
+    "frontend/src/modules/search/components/search-empty/index.tsx": {
+      "comments": 17,
+      "lines": 51,
+      "header": 5
+    },
+    "frontend/src/modules/search/components/search-field/index.tsx": {
+      "comments": 44,
+      "lines": 124,
+      "header": 5
+    },
+    "frontend/src/modules/search/templates/index.tsx": {
+      "comments": 45,
+      "lines": 122,
+      "header": 5
+    },
+    "frontend/src/modules/search/templates/results.tsx": {
+      "comments": 27,
+      "lines": 101,
+      "header": 5
+    },
+    "frontend/src/modules/skeletons/components/skeleton-cart-item/index.tsx": {
+      "comments": 12,
+      "lines": 50,
+      "header": 5
+    },
+    "frontend/src/modules/skeletons/components/skeleton-product-preview/index.spec.tsx": {
+      "comments": 23,
+      "lines": 60,
+      "header": 15
+    },
+    "frontend/src/modules/skeletons/components/skeleton-product-preview/index.tsx": {
+      "comments": 24,
+      "lines": 41,
+      "header": 16
+    },
+    "frontend/src/modules/skeletons/templates/skeleton-product-grid/index.tsx": {
+      "comments": 11,
+      "lines": 37,
+      "header": 5
+    },
+    "frontend/src/modules/store/components/catalog-skeleton/index.tsx": {
+      "comments": 12,
+      "lines": 39,
+      "header": 5
+    },
+    "frontend/src/modules/store/components/catalog-toolbar/index.tsx": {
+      "comments": 24,
+      "lines": 121,
+      "header": 5
+    },
+    "frontend/src/modules/store/components/category-tabs/index.tsx": {
+      "comments": 21,
+      "lines": 61,
+      "header": 5
+    },
+    "frontend/src/modules/store/components/clear-filters/index.tsx": {
+      "comments": 12,
+      "lines": 32,
+      "header": 5
+    },
+    "frontend/src/modules/store/components/filter-chips/index.spec.tsx": {
+      "comments": 8,
+      "lines": 53,
+      "header": 8
+    },
+    "frontend/src/modules/store/components/filter-chips/index.tsx": {
+      "comments": 18,
+      "lines": 46,
+      "header": 5
+    },
+    "frontend/src/modules/store/components/filter-panel/index.tsx": {
+      "comments": 42,
+      "lines": 149,
+      "header": 5
+    },
+    "frontend/src/modules/store/components/refinement-list/sort-products/index.tsx": {
+      "comments": 17,
+      "lines": 75,
+      "header": 5
+    },
+    "frontend/src/modules/store/templates/index.tsx": {
+      "comments": 18,
+      "lines": 75,
+      "header": 5
+    },
+    "frontend/src/modules/store/templates/paginated-products.tsx": {
+      "comments": 31,
+      "lines": 196,
+      "header": 5
+    },
+    "frontend/src/modules/tracking/templates/index.tsx": {
+      "comments": 40,
+      "lines": 234,
+      "header": 18
+    },
+    "frontend/src/styles/brand.css": {
+      "comments": 2039,
+      "lines": 5248,
+      "header": 40
+    },
+    "frontend/src/styles/tokens.generated.css": {
+      "comments": 19,
+      "lines": 30,
+      "header": 18
+    },
+    "frontend/src/types/global.ts": {
+      "comments": 19,
+      "lines": 56,
+      "header": 5
+    },
+    "admin/src/admin/lib/__tests__/api-url.unit.spec.ts": {
+      "comments": 40,
+      "lines": 116,
+      "header": 25
+    },
+    "admin/src/admin/lib/api-url.ts": {
+      "comments": 67,
+      "lines": 87,
+      "header": 33
+    },
+    "admin/src/admin/routes/content/OrderDirtyBar.tsx": {
+      "comments": 8,
+      "lines": 50,
+      "header": 8
+    },
+    "admin/src/admin/routes/content/PageAccordionItem.tsx": {
+      "comments": 17,
+      "lines": 160,
+      "header": 13
+    },
+    "admin/src/admin/routes/content/PageSectionsPanel.tsx": {
+      "comments": 13,
+      "lines": 47,
+      "header": 13
+    },
+    "admin/src/admin/routes/content/PagesAccordion.tsx": {
+      "comments": 9,
+      "lines": 40,
+      "header": 8
+    },
+    "admin/src/admin/routes/content/SectionCreator.tsx": {
+      "comments": 36,
+      "lines": 175,
+      "header": 13
+    },
+    "admin/src/admin/routes/content/SectionRow.tsx": {
+      "comments": 51,
+      "lines": 248,
+      "header": 16
+    },
+    "admin/src/admin/routes/content/SurfaceSectionsPanel.tsx": {
+      "comments": 36,
+      "lines": 178,
+      "header": 17
+    },
+    "admin/src/admin/routes/content/__tests__/form-draft.unit.spec.ts": {
+      "comments": 34,
+      "lines": 160,
+      "header": 8
+    },
+    "admin/src/admin/routes/content/__tests__/list-order.unit.spec.ts": {
+      "comments": 21,
+      "lines": 124,
+      "header": 18
+    },
+    "admin/src/admin/routes/content/__tests__/markdown-bar.unit.spec.ts": {
+      "comments": 22,
+      "lines": 108,
+      "header": 13
+    },
+    "admin/src/admin/routes/content/__tests__/panel-wiring.unit.spec.ts": {
+      "comments": 127,
+      "lines": 305,
+      "header": 37
+    },
+    "admin/src/admin/routes/content/__tests__/section-creator.unit.spec.ts": {
+      "comments": 22,
+      "lines": 50,
+      "header": 18
+    },
+    "admin/src/admin/routes/content/__tests__/utils.unit.spec.ts": {
+      "comments": 34,
+      "lines": 198,
+      "header": 17
+    },
+    "admin/src/admin/routes/content/appearance-controls.tsx": {
+      "comments": 102,
+      "lines": 278,
+      "header": 27
+    },
+    "admin/src/admin/routes/content/appearance.css": {
+      "comments": 51,
+      "lines": 211,
+      "header": 15
+    },
+    "admin/src/admin/routes/content/document-input.tsx": {
+      "comments": 42,
+      "lines": 163,
+      "header": 29
+    },
+    "admin/src/admin/routes/content/field-input.tsx": {
+      "comments": 327,
+      "lines": 1119,
+      "header": 21
+    },
+    "admin/src/admin/routes/content/form-draft.ts": {
+      "comments": 64,
+      "lines": 114,
+      "header": 21
+    },
+    "admin/src/admin/routes/content/hooks/useSurfaceSections.ts": {
+      "comments": 132,
+      "lines": 503,
+      "header": 19
+    },
+    "admin/src/admin/routes/content/href-input.tsx": {
+      "comments": 42,
+      "lines": 78,
+      "header": 32
+    },
+    "admin/src/admin/routes/content/image-input.tsx": {
+      "comments": 58,
+      "lines": 207,
+      "header": 21
+    },
+    "admin/src/admin/routes/content/list-order.ts": {
+      "comments": 59,
+      "lines": 134,
+      "header": 25
+    },
+    "admin/src/admin/routes/content/markdown-bar.ts": {
+      "comments": 59,
+      "lines": 107,
+      "header": 19
+    },
+    "admin/src/admin/routes/content/navigation.ts": {
+      "comments": 17,
+      "lines": 42,
+      "header": 8
+    },
+    "admin/src/admin/routes/content/page.tsx": {
+      "comments": 42,
+      "lines": 145,
+      "header": 21
+    },
+    "admin/src/admin/routes/content/pages-view.tsx": {
+      "comments": 40,
+      "lines": 168,
+      "header": 29
+    },
+    "admin/src/admin/routes/content/types.ts": {
+      "comments": 46,
+      "lines": 110,
+      "header": 13
+    },
+    "admin/src/admin/routes/content/utils.ts": {
+      "comments": 93,
+      "lines": 196,
+      "header": 17
+    },
+    "admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts": {
+      "comments": 25,
+      "lines": 151,
+      "header": 18
+    },
+    "admin/src/admin/routes/shipping/envio-form.ts": {
+      "comments": 32,
+      "lines": 92,
+      "header": 18
+    },
+    "admin/src/admin/routes/shipping/page.tsx": {
+      "comments": 29,
+      "lines": 322,
+      "header": 20
+    },
+    "admin/src/admin/routes/shipping/types.ts": {
+      "comments": 9,
+      "lines": 27,
+      "header": 9
+    },
+    "admin/src/admin/widgets/__tests__/enriquecimento-form.unit.spec.ts": {
+      "comments": 33,
+      "lines": 238,
+      "header": 14
+    },
+    "admin/src/admin/widgets/enriquecimento-form.tsx": {
+      "comments": 126,
+      "lines": 286,
+      "header": 62
+    },
+    "admin/src/admin/widgets/product-enrichment.tsx": {
+      "comments": 57,
+      "lines": 322,
+      "header": 37
+    },
+    "backend/src/api/admin/content/order/route.ts": {
+      "comments": 21,
+      "lines": 62,
+      "header": 17
+    },
+    "backend/src/api/admin/content/pages/route.ts": {
+      "comments": 33,
+      "lines": 56,
+      "header": 23
+    },
+    "backend/src/api/admin/content/restore/route.ts": {
+      "comments": 10,
+      "lines": 47,
+      "header": 8
+    },
+    "backend/src/api/admin/content/route.ts": {
+      "comments": 137,
+      "lines": 489,
+      "header": 5
+    },
+    "backend/src/api/admin/shipping/[id]/route.ts": {
+      "comments": 23,
+      "lines": 100,
+      "header": 16
+    },
+    "backend/src/api/admin/shipping/route.ts": {
+      "comments": 23,
+      "lines": 73,
+      "header": 20
+    },
+    "backend/src/api/hooks/payment/[provider]/route.ts": {
+      "comments": 47,
+      "lines": 63,
+      "header": 40
+    },
+    "backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts": {
+      "comments": 58,
+      "lines": 346,
+      "header": 25
+    },
+    "backend/src/api/internal/orders/by-cart/route.ts": {
+      "comments": 74,
+      "lines": 174,
+      "header": 30
+    },
+    "backend/src/api/store/content/pages/route.ts": {
+      "comments": 24,
+      "lines": 47,
+      "header": 24
+    },
+    "backend/src/api/store/content/route.ts": {
+      "comments": 38,
+      "lines": 99,
+      "header": 5
+    },
+    "backend/src/api/webhooks/mercadopago/[metodo]/route.ts": {
+      "comments": 21,
+      "lines": 43,
+      "header": 21
+    },
+    "backend/src/api/webhooks/mercadopago/route.ts": {
+      "comments": 20,
+      "lines": 31,
+      "header": 20
+    },
+    "backend/src/links/content-section-category.ts": {
+      "comments": 56,
+      "lines": 75,
+      "header": 5
+    },
+    "backend/src/links/content-section-product.ts": {
+      "comments": 58,
+      "lines": 76,
+      "header": 5
+    },
+    "backend/src/modules/content/__tests__/assets.unit.spec.ts": {
+      "comments": 24,
+      "lines": 298,
+      "header": 22
+    },
+    "backend/src/modules/content/__tests__/contract.unit.spec.ts": {
+      "comments": 101,
+      "lines": 479,
+      "header": 11
+    },
+    "backend/src/modules/content/__tests__/curation.unit.spec.ts": {
+      "comments": 34,
+      "lines": 236,
+      "header": 18
+    },
+    "backend/src/modules/content/__tests__/defaults.unit.spec.ts": {
+      "comments": 28,
+      "lines": 135,
+      "header": 5
+    },
+    "backend/src/modules/content/__tests__/filters.unit.spec.ts": {
+      "comments": 49,
+      "lines": 417,
+      "header": 18
+    },
+    "backend/src/modules/content/__tests__/order.unit.spec.ts": {
+      "comments": 63,
+      "lines": 385,
+      "header": 21
+    },
+    "backend/src/modules/content/__tests__/pages.unit.spec.ts": {
+      "comments": 68,
+      "lines": 337,
+      "header": 25
+    },
+    "backend/src/modules/content/__tests__/payload.unit.spec.ts": {
+      "comments": 39,
+      "lines": 143,
+      "header": 19
+    },
+    "backend/src/modules/content/__tests__/restore.unit.spec.ts": {
+      "comments": 89,
+      "lines": 363,
+      "header": 15
+    },
+    "backend/src/modules/content/__tests__/revalidate.unit.spec.ts": {
+      "comments": 37,
+      "lines": 198,
+      "header": 25
+    },
+    "backend/src/modules/content/__tests__/schema-record.unit.spec.ts": {
+      "comments": 16,
+      "lines": 193,
+      "header": 10
+    },
+    "backend/src/modules/content/__tests__/themes.unit.spec.ts": {
+      "comments": 20,
+      "lines": 188,
+      "header": 14
+    },
+    "backend/src/modules/content/__tests__/validation.unit.spec.ts": {
+      "comments": 65,
+      "lines": 410,
+      "header": 22
+    },
+    "backend/src/modules/content/__tests__/wiring.unit.spec.ts": {
+      "comments": 73,
+      "lines": 307,
+      "header": 25
+    },
+    "backend/src/modules/content/contract.ts": {
+      "comments": 13,
+      "lines": 15,
+      "header": 13
+    },
+    "backend/src/modules/content/curation.ts": {
+      "comments": 108,
+      "lines": 226,
+      "header": 39
+    },
+    "backend/src/modules/content/defaults.ts": {
+      "comments": 9,
+      "lines": 11,
+      "header": 9
+    },
+    "backend/src/modules/content/filters.ts": {
+      "comments": 216,
+      "lines": 506,
+      "header": 42
+    },
+    "backend/src/modules/content/migrations/Migration20260929204616.ts": {
+      "comments": 41,
+      "lines": 69,
+      "header": 5
+    },
+    "backend/src/modules/content/migrations/Migration20260929211634.ts": {
+      "comments": 26,
+      "lines": 42,
+      "header": 5
+    },
+    "backend/src/modules/content/migrations/Migration20260930120000.ts": {
+      "comments": 33,
+      "lines": 53,
+      "header": 5
+    },
+    "backend/src/modules/content/models/content-contract.ts": {
+      "comments": 47,
+      "lines": 59,
+      "header": 5
+    },
+    "backend/src/modules/content/models/content-section.ts": {
+      "comments": 63,
+      "lines": 83,
+      "header": 5
+    },
+    "backend/src/modules/content/order.ts": {
+      "comments": 224,
+      "lines": 437,
+      "header": 49
+    },
+    "backend/src/modules/content/pages.ts": {
+      "comments": 87,
+      "lines": 156,
+      "header": 26
+    },
+    "backend/src/modules/content/payload.ts": {
+      "comments": 88,
+      "lines": 149,
+      "header": 45
+    },
+    "backend/src/modules/content/resolvers.ts": {
+      "comments": 85,
+      "lines": 221,
+      "header": 26
+    },
+    "backend/src/modules/content/restore.ts": {
+      "comments": 114,
+      "lines": 230,
+      "header": 36
+    },
+    "backend/src/modules/content/revalidate.ts": {
+      "comments": 66,
+      "lines": 123,
+      "header": 37
+    },
+    "backend/src/modules/content/schema.ts": {
+      "comments": 8,
+      "lines": 10,
+      "header": 8
+    },
+    "backend/src/modules/content/service.ts": {
+      "comments": 63,
+      "lines": 133,
+      "header": 5
+    },
+    "backend/src/modules/content/themes.ts": {
+      "comments": 103,
+      "lines": 223,
+      "header": 5
+    },
+    "backend/src/modules/content/validation.ts": {
+      "comments": 143,
+      "lines": 316,
+      "header": 32
+    },
+    "backend/src/modules/content/view.ts": {
+      "comments": 19,
+      "lines": 37,
+      "header": 19
+    },
+    "backend/src/modules/fulfillment/tabela/__tests__/registro.unit.spec.ts": {
+      "comments": 67,
+      "lines": 161,
+      "header": 29
+    },
+    "backend/src/modules/fulfillment/tabela/__tests__/tabela.unit.spec.ts": {
+      "comments": 48,
+      "lines": 186,
+      "header": 18
+    },
+    "backend/src/modules/fulfillment/tabela/index.ts": {
+      "comments": 12,
+      "lines": 20,
+      "header": 5
+    },
+    "backend/src/modules/fulfillment/tabela/service.ts": {
+      "comments": 69,
+      "lines": 164,
+      "header": 5
+    },
+    "backend/src/modules/fulfillment/tabela/tabela.ts": {
+      "comments": 76,
+      "lines": 204,
+      "header": 23
+    },
+    "backend/src/modules/payment/mercadopago/__tests__/assinatura.unit.spec.ts": {
+      "comments": 38,
+      "lines": 447,
+      "header": 13
+    },
+    "backend/src/modules/payment/mercadopago/__tests__/credenciais.unit.spec.ts": {
+      "comments": 117,
+      "lines": 406,
+      "header": 28
+    },
+    "backend/src/modules/payment/mercadopago/__tests__/preferencia.unit.spec.ts": {
+      "comments": 30,
+      "lines": 177,
+      "header": 10
+    },
+    "backend/src/modules/payment/mercadopago/__tests__/registro.unit.spec.ts": {
+      "comments": 77,
+      "lines": 228,
+      "header": 27
+    },
+    "backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts": {
+      "comments": 63,
+      "lines": 446,
+      "header": 17
+    },
+    "backend/src/modules/payment/mercadopago/assinatura.ts": {
+      "comments": 108,
+      "lines": 254,
+      "header": 42
+    },
+    "backend/src/modules/payment/mercadopago/cartao/index.ts": {
+      "comments": 15,
+      "lines": 32,
+      "header": 5
+    },
+    "backend/src/modules/payment/mercadopago/cliente.ts": {
+      "comments": 86,
+      "lines": 222,
+      "header": 23
+    },
+    "backend/src/modules/payment/mercadopago/contexto.ts": {
+      "comments": 61,
+      "lines": 77,
+      "header": 28
+    },
+    "backend/src/modules/payment/mercadopago/credenciais.ts": {
+      "comments": 248,
+      "lines": 416,
+      "header": 20
+    },
+    "backend/src/modules/payment/mercadopago/pix/index.ts": {
+      "comments": 23,
+      "lines": 40,
+      "header": 5
+    },
+    "backend/src/modules/payment/mercadopago/preferencia.ts": {
+      "comments": 102,
+      "lines": 219,
+      "header": 22
+    },
+    "backend/src/modules/payment/mercadopago/redigir.ts": {
+      "comments": 86,
+      "lines": 233,
+      "header": 29
+    },
+    "backend/src/modules/payment/mercadopago/service.ts": {
+      "comments": 316,
+      "lines": 829,
+      "header": 32
+    },
+    "backend/src/modules/payment/mercadopago/webhook.ts": {
+      "comments": 130,
+      "lines": 391,
+      "header": 30
+    },
+    "backend/src/modules/shipping/__tests__/tracking.unit.spec.ts": {
+      "comments": 20,
+      "lines": 221,
+      "header": 13
+    },
+    "backend/src/modules/shipping/tracking.ts": {
+      "comments": 64,
+      "lines": 208,
+      "header": 21
+    },
+    "backend/src/scripts/flags.ts": {
+      "comments": 17,
+      "lines": 23,
+      "header": 17
+    },
+    "backend/src/scripts/seed-content.ts": {
+      "comments": 53,
+      "lines": 129,
+      "header": 5
+    },
+    "backend/src/scripts/seed-schema.ts": {
+      "comments": 26,
+      "lines": 117,
+      "header": 5
+    },
+    "backend/src/scripts/seed.ts": {
+      "comments": 129,
+      "lines": 570,
+      "header": 26
+    },
+    "backend/src/subscribers/__tests__/catalog-revalidate.unit.spec.ts": {
+      "comments": 45,
+      "lines": 207,
+      "header": 26
+    },
+    "backend/src/subscribers/catalog-revalidate.ts": {
+      "comments": 54,
+      "lines": 96,
+      "header": 5
+    },
+    "backend/src/subscribers/order-customer-indexer.ts": {
+      "comments": 16,
+      "lines": 111,
+      "header": 5
+    },
+    "packages/contrato/src/contract.ts": {
+      "comments": 1340,
+      "lines": 2633,
+      "header": 19
+    },
+    "packages/contrato/src/defaults.ts": {
+      "comments": 257,
+      "lines": 562,
+      "header": 5
+    },
+    "packages/contrato/src/index.ts": {
+      "comments": 21,
+      "lines": 25,
+      "header": 21
+    },
+    "packages/contrato/src/payment.ts": {
+      "comments": 95,
+      "lines": 145,
+      "header": 19
+    },
+    "packages/contrato/src/schema.ts": {
+      "comments": 371,
+      "lines": 452,
+      "header": 15
+    },
+    "scripts/check-admin-modules.mjs": {
+      "comments": 43,
+      "lines": 132,
+      "header": 36
+    },
+    "scripts/check-panel-tests.mjs": {
+      "comments": 40,
+      "lines": 114,
+      "header": 33
+    },
+    "scripts/gen-content.mjs": {
+      "comments": 57,
+      "lines": 153,
+      "header": 29
+    },
+    "scripts/lib/load-export.mjs": {
+      "comments": 51,
+      "lines": 123,
+      "header": 25
+    },
+    "scripts/vendor-fonts.mjs": {
+      "comments": 37,
+      "lines": 189,
+      "header": 5
+    }
+  }
+}

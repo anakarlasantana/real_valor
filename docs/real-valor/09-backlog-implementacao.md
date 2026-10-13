@@ -11,6 +11,59 @@ impactados · critérios de aceite · complexidade · pré-requisitos.
 
 Pré-requisito de tudo. Curta, e cria a estrutura que os itens seguintes consomem.
 
+### ✅ F0 · Fundação modular — guardas, catraca e doc 15 — **FEITO** (hash na entrada da F1: um commit não carrega o próprio hash)
+
+**O que foi feito:** três guardas novas de Node puro e a doutrina num doc. O `check-boundaries.mjs`
+ganhou as camadas do storefront — **R-A** (`lib` ↛ `modules`), **R-B** (`lib`/`modules` ↛ `app`),
+**R-C** (`lib` fora de `lib/data` ↛ `lib/data`), **R-D** (o checkout só conhece a fachada
+`@lib/payments`) e **R-E** (ciclo de import de valor) — com as exceções vivas em
+`scripts/baselines/boundaries.json`: 17 entradas, cada uma com `why` e `diesIn`, sob a regra de
+ouro "a lista só encolhe" (violação corrigida sem remover a entrada reprova a guarda). Nasceram
+`check-comments.mjs` (catraca do comentário: cabeçalho ≤5 linhas, densidade ≤12% para arquivo novo,
+baseline versionado de 313 arquivos, `--report` para os piores, `--write` para reancorar) e
+`check-storefront-tests.mjs` (convenção `__tests__/<alvo>.unit.spec.ts` e `src/__checks__/`; com
+`STOREFRONT_RUNNER=1` no `make test` ele compara disco × runner: 34 × 34). As três entraram no
+`make check` — Node puro, sem `node_modules`, no hook de commit e no job `guard` da CI. O doc 15
+nasce como dono da narrativa: o cabeçalho do `check-boundaries.mjs` caiu de 34 para 5 linhas e o
+arquivo SAIU do baseline de comentário (142 → 23 linhas de comentário).
+
+**Medido na varredura (13/10/2026):** 17 violações de camada vivas (6 morrem na F2, 4 na F5, 7 no
+RV-048) · **6 ciclos reais**, dos quais 4 não estavam no inventário e só apareceram quando a guarda
+passou a rodar (2 no adapter Stripe, 2 no `modules/account`, por causa do `enum LOGIN_VIEW` que mora
+no template) · 19.512 linhas de comentário nas cinco árvores (contrato 54,6%, backend
+32,0%, scripts 30,4%, CRM 28,6%, storefront 26,0% — 19.375 depois dos cortes da própria
+F0) · 32 specs fora da convenção · `lib/util` com 45
+arquivos e 6.622 linhas.
+
+**Verificação de duas vias (11 sondas, injetadas e removidas na mesma execução):** R-A, R-B, R-D e
+R-E reprovam com a violação injetada e voltam verdes sem ela; uma exceção viva removida do baseline
+reprova (a lista só encolhe); um spec fora de `__tests__` reprova; um cabeçalho de 8 linhas em
+arquivo novo reprova. `make check` verde e `make test` verde com a linha nova (24 suítes/424 no
+backend, 9/104 no CRM, 34/466 no storefront).
+
+**Arquivos:** *novos:* `scripts/lib/imports.mjs`, `scripts/lib/comments.mjs`,
+`scripts/check-comments.mjs`, `scripts/check-storefront-tests.mjs`,
+`scripts/baselines/{boundaries,comments,storefront-tests}.json`,
+`docs/real-valor/15-arquitetura-modular.md`
+· *alterados:* `scripts/check-boundaries.mjs`, `Makefile` (alvos `check` e `test`),
+`.github/workflows/check.yml` (job `guard`; e os números das suítes, que estavam obsoletos)
+
+**Guarda que fica verde:** as quatro guardas do `make check` + a convenção no `make test`
+**Pré-requisito:** nenhum — é a fundação
+**F1–F10:** o que cada fase move e a guarda que ela deixa mais verde está no doc 15 §15.6; a
+dívida que cada uma apaga, no §15.8.
+
+### RV-049 · Teste negativo versionado das guardas de camada
+
+**Descrição:** a F0 verificou as guardas nos dois sentidos com sondas descartáveis (injetar a
+violação, rodar, remover). Versionar isso faz a guarda se provar sozinha: hoje, se o
+`resolveSpecifier` deixar de resolver (um apelido renomeado no `tsconfig`, por exemplo), as 17
+exceções viram entradas mortas e `check-boundaries.mjs` reprova — o baseline é o canário —, mas
+R-B, que nasce com zero violação, poderia parar de ver em silêncio.
+**Tipo:** arquitetura · **Prioridade:** MÉDIA · **Complexidade:** baixa
+**Depende de:** F0 · **Arquivos:** novo `scripts/check-boundaries.negative.mjs`
+**Aceite:** um alvo roda as sondas e reprova se alguma guarda deixar de reprovar
+
 ### ✅ RV-001 · Camada de abstração de pagamento — **FEITO** (`73ed719544`)
 
 **O que foi feito:** contrato `packages/contrato/src/payment.ts` (`FulfillmentMode`, `PaymentResult`,

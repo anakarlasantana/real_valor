@@ -1,65 +1,30 @@
-/**
- * Guarda da fronteira entre o CRM e o backend.
- * -----------------------------------------------------------------
- * Desde a R7 o CRM mora em `admin/`, um pacote IRMÃO de `backend/`: React 18,
- * bundle e `tsconfig` próprios, compilado pelo Vite do backend (a fonte entra
- * pelo `admin.sources` do `backend/medusa-config.ts`). A fronteira que esta
- * guarda defende é uma só:
- *
- *   o painel importa TIPO do backend (`import type`), nunca VALOR.
- *
- * Por que isso precisa de guarda: importar valor **compila**. O último caso foi a
- * numeração da ordem da vitrine (`positionFor`/`renumber`/`nextPosition`, tirados
- * na R6.5): a conta era feita dentro do navegador e a gravação saía como N
- * `PATCH`es — uma segunda resposta para "que número esta seção recebe", que volta
- * em silêncio porque nada quebra. O que a tela precisa chega pelo payload da API
- * (`order` em `GET /admin/content`, a publicação em `POST /admin/content/order`).
- *
- * A verificação nasceu dentro do `check-contract-parity.mjs` (a R6.5 a somou ali),
- * a R7 a herdou aqui — junto com o código que mudou de casa — e o G4 apagou o
- * arquivo de origem: ela é, hoje, a razão de existir deste script.
- *
- * A R2 não mudou a regra — mudou a FORMA do caminho: o painel deixou de chegar ao
- * backend subindo cinco níveis de `..` e passou a chegar pelo apelido
- * `@conteudo/*`. Como o alvo do apelido só existe no `tsconfig.json` do painel, a
- * verificação passou a LER o apelido de lá (`panelBackendAliases`) em vez de
- * repetir o prefixo aqui: apelido renomeado (ou um segundo apontando para o
- * backend) continua sendo vigiado.
- *
- * Rode com:
- *   node scripts/check-boundaries.mjs
- *
- * Não usa framework de teste de propósito: ele atravessa dois pacotes lendo
- * arquivos, e a saída tem de caber no hook de commit (segundos, sem instalar).
- */
+// Fronteiras e camadas: painel × backend (R7), checkout × adapter (RV-014) e as
+// camadas do storefront (R-A…R-E, F0). O porquê de cada regra, com o caso medido,
+// e o mapa das camadas: docs/real-valor/15-arquitetura-modular.md
+//
+//   node scripts/check-boundaries.mjs        (Node puro: cabe no hook de commit)
 
-import { readdirSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import {
+  SOURCE_EXTENSIONS,
+  findCycles,
+  layerOf,
+  loadAliases,
+  normalizeCycle,
+  readImports,
+  resolveSpecifier,
+  toRepoPath,
+  walk,
+} from "./lib/imports.mjs"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, "..")
 const PANEL = join(root, "admin")
 const BACKEND = join(root, "backend")
-
-function walk(dir, extensions) {
-  const found = []
-
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name)
-
-    // `node_modules` não existe no CRM hoje (as dependências são as do
-    // backend), mas um dia pode existir: varre-lo seria lento e cheio de
-    // falso positivo.
-    if (entry.isDirectory() && entry.name !== "node_modules") {
-      found.push(...walk(path, extensions))
-    } else if (extensions.some((extension) => entry.name.endsWith(extension))) {
-      found.push(path)
-    }
-  }
-
-  return found
-}
+const STOREFRONT = join(root, "frontend", "src")
+const BASELINE = join(here, "baselines", "boundaries.json")
 
 const failures = []
 
@@ -72,26 +37,7 @@ function assert(label, condition, detail = "") {
   }
 }
 
-/**
- * `(?:^|\n)[ \t]*import` ancora o começo da **declaração** (o Prettier quebra o
- * import em várias linhas, e um `import` de dentro de um comentário não tem esse
- * alinhamento); o `(?!type\b)` separa o que é permitido — `import type { … }`,
- * que não existe no bundle — do que não é; e o `(?:(?!\bimport\b)[\s\S])*?`
- * impede que o casamento atravesse a declaração seguinte (era o falso positivo
- * do `@medusajs/ui` antes de um `modules/content` mais abaixo no arquivo).
- */
-const VALUE_IMPORT =
-  /(?:^|\n)[ \t]*import\s+(?!type\b)(?:(?!\bimport\b)[\s\S])*?from\s+"([^"]*)"/g
-
-/**
- * O import aponta para dentro de `backend/`? Relativo, por apelido ou por texto.
- *
- * Desde a R2 o painel não chega mais ao módulo por caminho relativo: chega pelo
- * apelido `@conteudo/*`, declarado no `tsconfig.json` dele. O apelido é lido do
- * próprio tsconfig em vez de repetido aqui de propósito — renomear o apelido (ou
- * somar outro que aponte para o backend) não pode abrir buraco na verificação, e
- * é o arquivo que declara o vínculo que responde por ele.
- */
+/** Os apelidos do tsconfig do painel que apontam para o backend (R2). */
 function panelBackendAliases() {
   const tsconfig = readFileSync(join(PANEL, "tsconfig.json"), "utf8")
 
@@ -110,40 +56,27 @@ function panelBackendAliases() {
 
 const BACKEND_ALIASES = panelBackendAliases()
 
+/** O import aponta para dentro de `backend/`? Relativo, por apelido ou por texto. */
 function targetsBackend(file, specifier) {
+  // Um relativo que escapa do CRM denuncia a fronteira pela forma
+  // (`../../../../backend/src/modules/…`).
   if (specifier.startsWith(".")) {
-    // Um relativo que escapa do CRM denuncia a fronteira pela própria forma
-    // (`../../../../backend/src/modules/…`): resolve-se o alvo e compara-se
-    // com o diretório do backend.
-    const fromBackend = relative(BACKEND, resolve(dirname(file), specifier))
-
-    return !fromBackend.startsWith("..")
+    return !relative(BACKEND, resolve(dirname(file), specifier)).startsWith("..")
   }
 
-  // O apelido declarado pelo painel vale como caminho para o backend: um
-  // `import` de VALOR por `@conteudo/…` é o mesmo defeito da numeração na R6.5,
-  // escrito numa forma que não se parece com um caminho.
-  if (BACKEND_ALIASES.some((alias) => specifier.startsWith(alias))) {
-    return true
-  }
-
-  // O que não resolve por sistema de arquivos (apelido, nome de pacote) ainda é
-  // suspeito quando carrega o segmento do contrato.
-  return specifier.includes("/modules/")
+  // O apelido vale como caminho para o backend; o que não resolve por sistema de
+  // arquivos ainda é suspeito quando carrega o segmento do contrato.
+  return (
+    BACKEND_ALIASES.some((alias) => specifier.startsWith(alias)) ||
+    specifier.includes("/modules/")
+  )
 }
 
-const panelValueImports = walk(PANEL, [".ts", ".tsx"]).flatMap((file) => {
-  const source = readFileSync(file, "utf8")
-
-  return [...source.matchAll(VALUE_IMPORT)]
-    .filter((match) => targetsBackend(file, match[1]))
-    .map((match) => {
-      const file_ = relative(root, file)
-      const statement = match[0].trim().split("\n")[0]
-
-      return `${file_}: ${statement}`
-    })
-})
+const panelValueImports = walk(PANEL, SOURCE_EXTENSIONS).flatMap((file) =>
+  readImports(readFileSync(file, "utf8"))
+    .filter((entry) => entry.kind === "value" && targetsBackend(file, entry.specifier))
+    .map((entry) => `${toRepoPath(root, file)}: ${entry.statement}`)
+)
 
 assert(
   "o painel do CRM não importa valor do backend (só `import type`)",
@@ -153,44 +86,23 @@ assert(
 )
 
 // ---------------------------------------------------------------------------
-// A fronteira do pagamento (RV-014).
-//
-// `modules/checkout/` pergunta ao REGISTRO quem responde por um `provider_id` —
-// e não pode importá-lo. Sem esta verificação, o primeiro adapter escrito "só
-// para não perder tempo" importa direto do componente, e no quarto provedor o
-// `switch` volta: é o que o RV-001 desfez e o que voltaria sem um guarda.
-//
-// A regra é mais estrita que a do painel: aqui **nenhum** import de adapter
-// passa, nem por tipo. O checkout só conhece `@lib/payments` (o registry).
-//
-// Há uma exceção, e ela é o que prova que a regra funciona: os dois arquivos
-// do cartão e do botão do Stripe foram MOVIDOS para dentro do adapter
-// (`lib/payments/adapters/stripe/`). Eles eram UI de provedor usado no
-// checkout — que é o acoplamento. O RV-048 apaga esse diretório inteiro e a
-// exceção desaparece com ele.
+// A fronteira do pagamento (RV-014). `modules/checkout/` pergunta ao REGISTRO
+// quem responde por um `provider_id` — e não pode importá-lo: aqui nenhum import
+// de adapter passa, nem por tipo. O histórico e o caso medido: doc 15.
 // ---------------------------------------------------------------------------
 const CHECKOUT = join(root, "frontend/src/modules/checkout")
 const ADAPTER_PREFIX = "@lib/payments/adapters"
 const STRIPE_PACKAGES = ["@stripe/react-stripe-js", "@stripe/stripe-js"]
 
-const checkoutLeaks = walk(CHECKOUT, [".ts", ".tsx"]).flatMap((file) => {
-  const source = readFileSync(file, "utf8")
-  const file_ = relative(root, file)
-
-  return [...source.matchAll(VALUE_IMPORT)]
-    .filter((match) => {
-      const specifier = match[1]
-
-      if (specifier.includes(ADAPTER_PREFIX)) {
-        return true
-      }
-
-      // O SDK do Stripe é a mesma coisa pelo outro lado: um `import` dele no
-      // checkout significa que um componente de pagamento conhece um provedor.
-      return STRIPE_PACKAGES.some((pkg) => specifier.startsWith(pkg))
-    })
-    .map((match) => `${file_}: ${match[0].trim().split("\n")[0]}`)
-})
+const checkoutLeaks = walk(CHECKOUT, SOURCE_EXTENSIONS).flatMap((file) =>
+  readImports(readFileSync(file, "utf8"))
+    .filter(
+      (entry) =>
+        entry.specifier.includes(ADAPTER_PREFIX) ||
+        STRIPE_PACKAGES.some((pkg) => entry.specifier.startsWith(pkg))
+    )
+    .map((entry) => `${toRepoPath(root, file)}: ${entry.statement}`)
+)
 
 assert(
   "o checkout não importa adapter nem SDK de pagamento (só o registry)",
@@ -201,13 +113,109 @@ assert(
 )
 
 
+// ---------------------------------------------------------------------------
+// As camadas do storefront (F0) — R-A, R-B, R-C, R-D e R-E. O mapa das camadas,
+// o porquê de cada regra com o caso medido que a motivou e as exceções vivas
+// (com o marco que as apaga): docs/real-valor/15-arquitetura-modular.md
+// ---------------------------------------------------------------------------
+const SRCFILES = walk(STOREFRONT, SOURCE_EXTENSIONS)
+const ALIASES = loadAliases(join(root, "frontend", "tsconfig.json"))
+const EXCEPTIONS = JSON.parse(readFileSync(BASELINE, "utf8")).exceptions
+
+/** A camada de um caminho (`lib/data/cart.ts` → `lib`). */
+function layer(file) {
+  return layerOf(relative(STOREFRONT, file).split("\\").join("/"))
+}
+
+/** Os imports de um arquivo do storefront que apontam para dentro do `src/`. */
+function internalImports(file) {
+  return readImports(readFileSync(file, "utf8")).flatMap((entry) => {
+    const target = resolveSpecifier(file, entry.specifier, ALIASES)
+
+    return target ? [{ specifier: entry.specifier, target }] : []
+  })
+}
+
+const RULES = {
+  "R-A": "a camada `lib` não importa `modules` (o tipo caminha com o dono)",
+  "R-B": "`lib` e `modules` não importam `app` (a direção é app → modules → lib)",
+  "R-C": "fora de `lib/data`, `lib` não importa `lib/data`",
+  "R-D": "o checkout só conhece o pagamento pela fachada `@lib/payments`",
+  "R-E": "o grafo de imports de valor do storefront não tem ciclo",
+}
+
+const violations = { "R-A": [], "R-B": [], "R-C": [], "R-D": [], "R-E": [] }
+const isData = (path) => path.startsWith("frontend/src/lib/data/")
+
+for (const file of SRCFILES) {
+  const from = toRepoPath(root, file)
+  const inCheckout = from.startsWith("frontend/src/modules/checkout/")
+
+  for (const entry of internalImports(file)) {
+    const to = toRepoPath(root, entry.target)
+    const record = { file: from, specifier: entry.specifier }
+
+    if (layer(file) === "lib" && layer(entry.target) === "modules") {
+      violations["R-A"].push(record)
+    }
+
+    if (["lib", "modules"].includes(layer(file)) && layer(entry.target) === "app") {
+      violations["R-B"].push(record)
+    }
+
+    if (layer(file) === "lib" && !isData(from) && isData(to)) {
+      violations["R-C"].push(record)
+    }
+
+    if (inCheckout && entry.specifier.startsWith("@lib/payments/")) {
+      violations["R-D"].push(record)
+    }
+  }
+}
+
+for (const cycle of findCycles(SRCFILES, ALIASES)) {
+  violations["R-E"].push({ cycle: normalizeCycle(cycle.map((file) => toRepoPath(root, file))) })
+}
+
+const keyOf = (rule, entry) =>
+  rule === "R-E"
+    ? `${rule}|${entry.cycle.join(" → ")}`
+    : `${rule}|${entry.file}|${entry.specifier}`
+
+const listed = new Set(EXCEPTIONS.map((entry) => keyOf(entry.rule, entry)))
+const detailOf = (entry) =>
+  entry.cycle ? entry.cycle.join(" → ") : `${entry.file}: ${entry.specifier}`
+
+for (const [rule, label] of Object.entries(RULES)) {
+  const unlisted = violations[rule].filter((entry) => !listed.has(keyOf(rule, entry)))
+
+  assert(
+    `${rule} — ${label}`,
+    unlisted.length === 0,
+    `${unlisted.map(detailOf).join("; ")} — ver docs/real-valor/15-arquitetura-modular.md`
+  )
+}
+
+const dead = EXCEPTIONS.filter(
+  (entry) =>
+    !violations[entry.rule].some((live) => keyOf(entry.rule, live) === keyOf(entry.rule, entry))
+)
+
+assert(
+  "nenhuma exceção de camada está morta (a lista só encolhe)",
+  dead.length === 0,
+  `${dead.map((entry) => `${entry.rule} ${detailOf(entry)} (${entry.diesIn})`).join("; ")} ` +
+    "— remova do baseline: a violação não existe mais"
+)
+
 if (failures.length) {
   console.log(`\n${failures.length} verificação(ões) falharam.`)
   console.log(
-    "A fronteira é essa: `admin/` (navegador) chama a API; quem decide número, " +
-      "ordem e validação é `backend/`."
+    "A fronteira é essa: `admin/` (navegador) chama a API, quem decide número, " +
+      "ordem e validação é `backend/`, e no storefront a direção é " +
+      "`app → modules → lib → contrato` (doc 15)."
   )
   process.exit(1)
 }
 
-console.log("\nFronteira em dia.")
+console.log("\nFronteira e camadas em dia.")

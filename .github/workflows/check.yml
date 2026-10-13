@@ -13,13 +13,14 @@
 #
 # Cinco jobs, porque as dependências não são as mesmas:
 #
-#   guard  — `make check`: o artefato gerado em dia (`gen-content.mjs --check`)
-#            e a fronteira do painel (`check-boundaries.mjs`). NÃO instala nada:
-#            os scripts leem arquivos com Node puro (é por isso que o hook de
-#            commit roda em segundos). A paridade do contrato e a verificação da
-#            suíte do CRM não cabem aqui (dependem do jest) — elas rodam no job
-#            `testes`, dentro do `make test`. Até o G4 havia uma terceira
-#            linha aqui: a guarda de paridade (114 asserções de texto).
+#   guard  — `make check`: o artefato gerado em dia (`gen-content.mjs --check`), a
+#            fronteira do painel e as camadas do storefront (`check-boundaries.mjs`,
+#            R-A…R-E), a catraca do comentário (`check-comments.mjs`) e a convenção
+#            de teste do storefront (`check-storefront-tests.mjs`). NÃO instala nada:
+#            os scripts leem arquivos com Node puro (é por isso que o hook de commit
+#            roda em segundos). A paridade do contrato e a verificação da suíte do CRM
+#            não cabem aqui (dependem do jest) — elas rodam no job `testes`, dentro do
+#            `make test`. Ver docs/real-valor/15-arquitetura-modular.md.
 #   types  — `make types`: `tsc` dos dois pacotes. Precisa de `yarn install`.
 #   schema — o registro do `content_schema` conferido contra o contrato, num
 #            Postgres efêmero. Verifica **dado**, que é o que nenhuma linguagem
@@ -27,11 +28,12 @@
 #   build  — `next build`, que tem de passar **sem infra** (o build não pode
 #            depender de API no ar; ver o item 3.2 do registro de débito).
 #
-#   testes — `make test`: o jest do backend (12 suites / 210 testes), o jest do
-#            CRM (`admin/jest.config.js`, desde a R2: 2 suites / 19 testes, mais
+#   testes — `make test`: o jest do backend (24 suites / 424 testes), o jest do
+#            CRM (`admin/jest.config.js`, desde a R2: 9 suites / 104 testes, mais
 #            `scripts/check-panel-tests.mjs` conferindo que a suíte no disco do
-#            CRM é a que o runner dele roda) e o vitest do storefront (7 arquivos
-#            / 81 testes). São de unidade: não abrem banco nem precisam da stack —
+#            CRM é a que o runner dele roda) e o vitest do storefront (34 arquivos
+#            / 466 testes), com `STOREFRONT_RUNNER=1` conferindo a mesma coisa lá.
+#            São de unidade: não abrem banco nem precisam da stack —
 #            a mesma propriedade do `guard`. Desde o G4 é aqui que roda a
 #            paridade do contrato que era da guarda de texto: os espelhos do
 #            painel (`panel-wiring.unit.spec.ts`), a fiação da API
