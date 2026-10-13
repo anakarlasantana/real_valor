@@ -17,6 +17,7 @@ import { useEffect, useState } from "react"
 
 import type { ContentSurfaceSpec } from "@conteudo/contract"
 
+import { apiUrl } from "../../lib/api-url"
 import { PageSectionsPanel } from "./PageSectionsPanel"
 import type { Schema, Section } from "./types"
 
@@ -57,7 +58,7 @@ export function PageAccordionItem({
 
       try {
         const res = await fetch(
-          `/admin/content?surface=${encodeURIComponent(surface.id)}`,
+          apiUrl(`/admin/content?surface=${encodeURIComponent(surface.id)}`),
           { credentials: "include" }
         )
         const json = await res.json()

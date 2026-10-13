@@ -11,7 +11,8 @@
  * de aba que já existe (`switchSurface`, na tela de conteúdo). Uma rota própria
  * teria de carregar a URL do painel junto para linkar de volta — e o painel não
  * conhece essa URL: `MEDUSA_ADMIN_PATH` é configuração (hoje `/painel`), e o
- * único endereço que o CRM escreve é o da **API** (`/admin/...`, absoluto). Uma
+ * único endereço que o CRM escreve é o da **API**, montado pelo `apiUrl`
+ * (`src/admin/lib/api-url.ts`) — nunca o do painel. Uma
  * segunda tela seria também um segundo lugar para manter em dia com as abas.
  *
  * **O estado não é calculado aqui.** Ele chega pronto (`rows.state`) da mesma
@@ -33,6 +34,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 // painel: o valor chega pela API, o nome do campo é conferido pelo compilador.
 import type { PageStateSpec } from "@conteudo/contract"
 
+import { apiUrl, readJson } from "../../lib/api-url"
+
 /** Uma linha do índice, como a API a manda. */
 type PageRow = {
   id: string
@@ -53,10 +56,13 @@ export function PagesView({ onOpen }: { onOpen: (id: string) => void }) {
     setLoading(true)
 
     try {
-      const res = await fetch("/admin/content/pages", {
+      const res = await fetch(apiUrl("/admin/content/pages"), {
         credentials: "include",
       })
-      const json = await res.json()
+      // `readJson`, e não `res.json()`: um corpo que não é JSON (o HTML de um
+      // 404, o interstitial de um túnel) vira `{}` em vez de `SyntaxError`, e
+      // quem decide a mensagem continua sendo o `res.ok` abaixo.
+      const json = await readJson(res)
 
       if (!res.ok) {
         toast.error(json.message ?? "Falha ao carregar as páginas.")

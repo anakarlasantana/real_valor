@@ -24,6 +24,7 @@ import { SquaresPlus } from "@medusajs/icons"
 import { Button, Container, Text, toast } from "@medusajs/ui"
 import { useEffect, useState } from "react"
 
+import { apiUrl, readJson } from "../../lib/api-url"
 import type { Schema, ViewMode } from "./types"
 import { MAIN_NAVIGATION, getPageSurfaces } from "./navigation"
 import { VitrineSections } from "./VitrineSections"
@@ -50,10 +51,13 @@ const ContentPage = () => {
   useEffect(() => {
     const loadSchema = async () => {
       try {
-        const res = await fetch("/admin/content?surface=home", {
+        const res = await fetch(apiUrl("/admin/content?surface=home"), {
           credentials: "include",
         })
-        const json = await res.json()
+        // `readJson`, e não `res.json()`: um corpo que não é JSON (o HTML de um
+        // 404, o interstitial de um túnel) vira `{}` em vez de `SyntaxError`, e
+        // quem decide a mensagem continua sendo o `res.ok` abaixo.
+        const json = await readJson(res)
 
         if (res.ok) {
           setSchema(json.schema ?? null)

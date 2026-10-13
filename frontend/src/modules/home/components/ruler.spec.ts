@@ -34,6 +34,11 @@
  *      anima nada por conta própria — um `requestAnimationFrame` ou um
  *      `scrollLeft` aqui seria a segunda régua do mesmo movimento).
  *
+ *      O carrossel da vitrine entrou pelo mesmo caminho: a seta dele é ancorada na
+ *      **borda da tela** (a conta `50% - 50vw` do trilho, com o vão fluido do
+ *      `--rv-arrow-inset`), e o defeito é a seta parada no vazio de uma tela larga
+ *      — sem erro nenhum, e invisível para quem conferir a 1440.
+ *
  *   2. **a cor que não chega.** O eyebrow e a linha de apoio da capa usavam a
  *      classe de cor **herdada** e a faixa não tinha cor própria: o que chegava
  *      era o grafite do `body`, texto escuro sobre foto escura, na primeira
@@ -201,6 +206,74 @@ describe("a régua das seções da abertura", () => {
     expect(secao).toContain("rv-insta-grid")
   })
 
+  it("a volta do ticker cobre a tela: a lista repetida e o piso da régua", () => {
+    const barra = semComentarios(componente("announcement-bar"))
+
+    /*
+     * O `translateX(-50%)` do `.rv-marquee-track` leva **uma volta** pela tela, e
+     * o laço só fecha sem buraco se a volta for mais larga que ela: com o
+     * conteúdo que está no ar (duas mensagens curtas), a volta tinha ~560px e a
+     * faixa preta aparecia à direita, com a mensagem seguinte nascendo no meio da
+     * barra em vez de entrar pela borda. As duas metades da correção são estas:
+     *
+     *   - a **conta** é do util (`tickerCopies`), e é a barra que a chama. Escrever
+     *     a repetição no `className`/`map` do componente seria a segunda régua do
+     *     mesmo laço — a que ninguém atualiza quando a medida muda;
+     *   - o **piso** é do `brand.css`, porque é o CSS quem mede a tela: uma
+     *     mensagem curta demais reabriria o vão mesmo repetida.
+     */
+    expect(barra).toContain("tickerCopies(")
+    expect(barra).toContain("tickerLapSeconds(")
+    // A marca desta faixa (a do Instagram é `rv-insta-strip`) é o que dá ao piso
+    // um lugar que não é o grupo compartilhado.
+    expect(barra).toContain("rv-marquee rv-announce-strip")
+    // E as repetições que passam da primeira lista saem da leitura — e da tela,
+    // quando a faixa está parada (`rv-marquee-repeat`, no bloco de movimento
+    // reduzido): o leitor de tela, e o olho de quem pediu menos movimento, ficam
+    // com as mensagens que o lojista escreveu, uma vez cada.
+    expect(barra).toContain("index >= messages.length")
+    expect(barra).toContain("aria-hidden={repeat || undefined}")
+    expect(barra).toContain("rv-marquee-repeat")
+
+    const volta = bloco(".rv-announce-strip .rv-marquee-group")
+
+    expect(volta).toContain("min-width: 100vw")
+    // A sobra é distribuída, e não acumulada no fim: meio vão em cada ponta da
+    // volta, que as duas pontas encostadas somam no vão inteiro das outras
+    // junções — a emenda deixa de ser um lugar diferente da faixa.
+    expect(volta).toContain("justify-content: space-around")
+    // E o piso **não** mora no `.rv-marquee-group` sozinho, que é dividido com a
+    // faixa do Instagram: lá o quadro tem largura fixa, e um mínimo de tela no
+    // grupo daria ao quadro um lugar que ele não pediu.
+    expect(bloco(".rv-marquee-group")).not.toContain("100vw")
+  })
+
+  it("o piso da volta sai no movimento reduzido (a lista parada é a leitura)", () => {
+    const semMovimento = CSS.slice(
+      CSS.indexOf("@media (prefers-reduced-motion: reduce) {")
+    )
+
+    // Com a animação fora, o trilho já é a tela inteira (`width: 100%`) e o grupo
+    // volta a ser a lista: o `100vw` ali dentro seria a segunda cópia da mesma
+    // largura, e a lista quebrada em linhas transbordaria a barra.
+    expect(semMovimento).toContain(".rv-announce-strip .rv-marquee-group {")
+    expect(semMovimento).toContain("min-width: 0")
+    // O `justify-content` tem de voltar junto, e por especificidade: o seletor do
+    // piso (duas classes) ganha do `.rv-marquee-group` sozinho do bloco base, e
+    // sem esta linha a lista parada apareceria espalhada pela barra.
+    const parado = semMovimento.slice(
+      semMovimento.indexOf(".rv-announce-strip .rv-marquee-group {")
+    )
+
+    expect(parado.slice(0, parado.indexOf("}"))).toContain(
+      "justify-content: center"
+    )
+    // E as repetições da volta somem com o movimento: parada, a faixa não tem vão
+    // para tapar, e a lista visível volta a ser só as mensagens do lojista.
+    expect(semMovimento).toContain(".rv-announce-strip .rv-marquee-repeat")
+    expect(semMovimento).toContain("display: none")
+  })
+
   it("a faixa do Instagram sangra: ela é irmã do container, e não filha", () => {
     const secao = semComentarios(componente("instagram-grid"))
     const onde = secao.indexOf("<InstagramStrip")
@@ -276,6 +349,34 @@ describe("a régua das seções da abertura", () => {
     const acima = CSS.slice(Math.max(0, onde - 260), onde)
 
     expect(acima).toContain(':root[data-theme="default"]')
+  })
+
+  it("a seta do carrossel se ancora na borda da tela, e não na do contêiner", () => {
+    // A conta é a mesma que sangra o trilho (`margin-inline: calc(50% - 50vw)`):
+    // o `50%` é o centro do carrossel, e o carrossel mora dentro de um contêiner
+    // **centrado** — o centro dele é o centro da tela em qualquer largura. De lá,
+    // o `-50vw` chega à borda. Ancorada no contêiner (1440px com 3rem de respiro),
+    // a seta ficava a 64px da borda numa tela de 1440 e a ~300px numa de 1920:
+    // parada no vazio, enquanto as peças atravessavam a tela de ponta a ponta.
+    expect(bloco(".rv-carousel-arrow-prev")).toContain(
+      "left: calc(50% - 50vw + var(--rv-arrow-inset, 0.5rem))"
+    )
+    expect(bloco(".rv-carousel-arrow-next")).toContain(
+      "right: calc(50% - 50vw + var(--rv-arrow-inset, 0.5rem))"
+    )
+    // E o vão é **fluido**: quem cresce com a largura da tela é o token, com os
+    // dois extremos segurados pelo `clamp` — 8px no celular (a seta é o único
+    // controle lá) e 20px numa tela de 2560.
+    expect(CSS).toContain("--rv-arrow-inset: clamp(0.5rem, 1vw, 1.25rem)")
+    // Nenhuma media query reescreve a âncora depois das duas regras: o degrau de
+    // desktop que havia aqui (`left`/`right: 1rem` a partir de 1024px) reprovaria
+    // este teste, porque um degrau fixo ao lado de um valor fluido é a segunda
+    // régua do mesmo vão — e a que fica velha primeiro.
+    const setas = CSS.slice(CSS.indexOf(".rv-carousel-arrow-next"))
+
+    expect(setas.slice(0, setas.indexOf(".rv-carousel-dots"))).not.toContain(
+      "min-width: 1024px"
+    )
   })
 })
 

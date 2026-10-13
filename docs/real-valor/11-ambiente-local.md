@@ -366,7 +366,7 @@ Por isso o `make tunnel` grava `MEDUSA_BACKEND_URL=https://<endereço>/painel-ap
 backend**, que é quem lê o valor. As chamadas do painel passam a sair na **mesma origem** da página
 (sem CORS, sem preflight) e a reescrita tira o prefixo antes de entregar ao Medusa.
 
-### As duas armadilhas que fazem isso falhar em silêncio
+### As três armadilhas que fazem isso falhar em silêncio
 
 1. **O caminho tem de ser o mesmo dos dois lados.** `admin.path` é o `base` do Vite do painel
    (`getViteConfig`, `@medusajs/admin-bundler`). A reescrita troca **só o hospedeiro**, de propósito:
@@ -384,6 +384,25 @@ backend**, que é quem lê o valor. As chamadas do painel passam a sair na **mes
    dois túneis da §11.6, em que o agente aponta para `:9000`). Do outro lado, `localhost`, `127.0.0.1`
    e `::1` continuam valendo **antes** de a lista ser consultada (medido em `isHostAllowedWithoutCache`,
    `vite/dist/node`): é por isso que `:9000/painel` responde **200** sem configuração nenhuma.
+3. **As telas custom do CRM chamavam a API por caminho relativo à raiz.** Um `fetch` com o caminho
+   `"/admin/content"` é resolvido contra o endereço que **serve a página**, e isso só vale enquanto é o
+   backend que a serve. Publicado pelo storefront, a chamada cai na armadilha 1 antes de chegar ao
+   Medusa: o middleware prefixa o país (**307** para `/br/admin/content`) e o destino responde **404**
+   com `Content-Type: text/html` — o `res.json()` da tela estoura um `SyntaxError` **antes** de o
+   `res.ok` ser lido, então a tela diz "Não foi possível carregar o schema." e o status, que é a pista
+   de verdade, morre dentro do erro de parse. Medido com o painel publicado:
+   `GET :8000/admin/content?surface=home` → **307** → `/br/admin/content?surface=home` → **404** (HTML da
+   vitrine), enquanto `GET :8000/painel-api/admin/content?surface=home` → **401 JSON** e
+   `GET :9000/admin/content?surface=home` → **401 JSON** (o local nunca quebrou). O conserto é o
+   endereço que o dashboard instalado sempre usou: as **15** chamadas do CRM passam a sair por `apiUrl`
+   (`admin/src/admin/lib/api-url.ts`), montado sobre o `__BACKEND_URL__` do bundle — o mesmo valor desta
+   variável. As guardas rodam no runner do CRM: `admin/src/admin/lib/__tests__/api-url.unit.spec.ts`
+   prende a montagem da base (com e sem barra no fim, `/painel-api`, base vazia) e
+   `panel-wiring.unit.spec.ts` passou a reprovar `fetch` com caminho relativo à raiz em todo o
+   `admin/src`. No mesmo módulo, o `readJson` impede que um corpo que não é JSON seja lido como falha de
+   rede. A base chega por dois caminhos, e os dois foram medidos: no **build**, o Vite troca a constante
+   por um literal; no **dev server** — que é o painel que o túnel publica —, o `env.mjs` do próprio Vite
+   materializa o `define` no objeto global (`window.__BACKEND_URL__` no navegador = o valor do `.env`).
 
 ### Medido
 
@@ -403,6 +422,23 @@ backend**, que é quem lê o valor. As chamadas do painel passam a sair na **mes
 | **Navegador de verdade** (Chrome headless + CDP) abrindo `https://<endereço>/painel/login` | a página monta; `__BACKEND_URL__` resolvido no browser = `https://<endereço>/painel-api`; **165 requisições, todas no host público, zero `localhost:9000`**; nenhuma exceção, nenhum erro de console, nenhum módulo 404 |
 | O mesmo navegador, preenchendo e-mail e senha | `POST …/painel-api/auth/user/emailpass` → **401** (senha vazia) e **200** → termina em `https://<endereço>/painel/orders` ("Orders - Medusa"): **a cliente entra no painel** |
 | Carga autenticada (`/painel/orders`, Vite quente) | **207 requisições** (33 para a API), zero `localhost:9000`, zero falhas |
+| `GET https://<endereço>/admin/content?surface=home` (**antes** do `apiUrl`) | **307** `location: /br/admin/content?surface=home` — a rota sem país que o middleware desvia |
+| `GET https://<endereço>/br/admin/content?surface=home` | **404** `Content-Type: text/html` (a vitrine) — é este corpo que estourava o `res.json()` da tela de conteúdo |
+| `GET https://<endereço>/painel-api/admin/content?surface=home` (sem cookie) | **401** `{"message":"Unauthorized"}` — o caminho que a tela passa a chamar; o 401 é a resposta da **rota**, e não a de outro endereço |
+| `GET http://localhost:9000/admin/content?surface=home` (sem cookie) | **401** JSON — o painel local nunca quebrou |
+| console do navegador em `/painel/content` (**antes**) | `SyntaxError: Unexpected token '<'` no `res.json()` + `404 /br/admin/content?surface=home` — os **dois últimos** dos seis recados da lista |
+| **Navegador de verdade** (Chrome headless + CDP): login no painel publicado e `/painel/content` | a tela carrega os blocos (`Seções de Conteúdo da vitrine`, `Nova seção`, `Restaurar padrão`) e a aba "Páginas" responde `Sobre · Publicada · /sobre · 1 bloco · 1 publicado`; **4** `GET /painel-api/admin/content?surface=home` → **200 JSON** (o schema e as três superfícies); **191** requisições, **zero** em `/br/`, **zero** exceção, **zero** falha — e `__BACKEND_URL__` no browser = `https://<endereço>/painel-api` |
+
+> **O que aquela medição de navegador não cobria — e o que a armadilha 3 custou.** As duas cargas acima
+> abriram `/painel/login` e `/painel/orders`: telas do **dashboard**, que já chamam a API pelo
+> `__BACKEND_URL__` do bundle. Nenhuma tela **custom** do CRM foi aberta, e eram elas que chamavam a API
+> por caminho relativo à raiz — então 165 requisições verdes, todas no host público, não disseram nada
+> sobre `/painel/content`. Fechar o ciclo é abrir a tela: `http://localhost:9000/painel/content` (local)
+> e `https://<endereço>/painel/content` (publicado) têm de mostrar os blocos, e não "Não foi possível
+> carregar o schema." Na lista de seis recados do console, só os dois últimos eram deste defeito: os
+> outros quatro são ruído de terceiros — um aviso do React Router e o pedido da fonte Roboto Mono, os
+> dois do dashboard instalado — e o HMR, que não passa no túnel e já está declarado nos *Limites*
+> abaixo.
 
 Depois de publicar, o próprio `make tunnel` fecha a conta: `GET /painel` (espera **200**; **403**
 significa a armadilha 2, **307** significa que `painel` não está na exclusão do `matcher`),
@@ -448,7 +484,7 @@ nasce (passo 5–6 do roteiro da §11.6).
 | Plano gratuito do ngrok: um domínio e uma cota mensal de requisições — **medido**: 165 requisições na página de login e 207 numa carga autenticada do painel (Vite quente; a primeira carga é maior, porque o Vite compila e serve os módulos sob demanda) | o painel publicado serve para **conferir**, não para trabalhar o dia inteiro: cada carga consome ~200 da cota, então a conta fecha em poucas dezenas de cargas por mês |
 | O HMR do Vite (`:9001`) não passa no túnel | o painel publicado não recarrega sozinho ao salvar um arquivo; o local continua com HMR |
 | Interstitial do plano gratuito ("Visit Site") | quem abre a URL no navegador vê a página de aviso uma vez; um cliente HTTP (o provedor de pagamento) não passa por ela |
-| `http://localhost:8000/painel` (painel pelo storefront local) | a página chega, mas o bundle chama a API em `localhost:9000` (o valor do `.env`): outra origem, e o login passa a depender de `ADMIN_CORS`. Em local use `:9000/painel`; de fora, o endereço do túnel |
+| `http://localhost:8000/painel` (painel pelo storefront local) | a página chega, mas o bundle chama a API em `localhost:9000` (o valor do `.env`) — e agora **todas** as telas saem por lá, as custom do CRM inclusive (era o defeito da armadilha 3): outra origem, e o login passa a depender de `ADMIN_CORS`. Em local use `:9000/painel`; de fora, o endereço do túnel |
 | `make down` / `make tunnel-stop` | o painel publicado deixa de existir junto com o endereço — é o mesmo endereço |
 | PROD (`make up PROD=1`) | fora do escopo deste caminho: o `.env` do túnel vale para o runtime, mas `NEXT_PUBLIC_*` é inlinado no build (ver a nota da §11.6.1) |
 

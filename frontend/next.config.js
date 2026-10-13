@@ -48,6 +48,17 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
+    /**
+     * ⚠️ O host de terceiro que aparece no **conteúdo** (a foto que a lojista
+     * cola, como a do site antigo da loja) **não** entra aqui: o
+     * `mediaImageProps` (`src/lib/util/media.ts`) entrega essa foto sem otimizar,
+     * e é o que impede uma imagem de derrubar a página — o `defaultLoader` do
+     * `next/image` lança para host não liberado, o erro sobe do SSR e medido com
+     * uma foto de `cdn.awsli.com.br` a home respondia **HTTP 500** inteira.
+     *
+     * Esta lista continua sendo a dos arquivos que o otimizador **busca**: as
+     * fotos de produto que a API devolve de S3, por exemplo.
+     */
     remotePatterns: [
       {
         protocol: "http",

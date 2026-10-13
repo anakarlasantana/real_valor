@@ -1,5 +1,5 @@
 import { type BannerSection } from "@lib/content/home-sections"
-import { resolveMediaUrl } from "@lib/util/media"
+import { mediaImageProps } from "@lib/util/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 import { type CSSProperties } from "react"
@@ -30,9 +30,11 @@ import { type CSSProperties } from "react"
  * onde não há texto. Ela chega inline, em `--rv-callout-veil`, e a classe
  * `.rv-callout-veil` só a aplica — mesma arquitetura dos dois véus da capa.
  *
- * A foto passa por `resolveMediaUrl` (ver `lib/util/media.ts`): a imagem
+ * A foto passa por `mediaImageProps` (ver `lib/util/media.ts`): a imagem
  * enviada pelo CRM chega como chave do provider e é traduzida aqui, como no
- * hero e no manifesto. Sem imagem não há faixa (o campo é obrigatório na API),
+ * hero e no manifesto — e, vinda de fora (a colada do site antigo da loja), é
+ * entregue sem otimizar em vez de derrubar a página. Sem imagem não há faixa (o
+ * campo é obrigatório na API),
  * então a seção desenha o fundo cacau em vez de um buraco.
  */
 const VEIL = "linear-gradient(90deg, rgba(23,23,23,0.75), transparent 70%)"
@@ -42,7 +44,7 @@ export default function EditorialCallout({
 }: {
   section: BannerSection
 }) {
-  const image = resolveMediaUrl(section.imageUrl)
+  const image = mediaImageProps(section.imageUrl)
 
   return (
     <section
@@ -51,7 +53,7 @@ export default function EditorialCallout({
     >
       {image && (
         <Image
-          src={image}
+          {...image}
           alt={section.imageAlt}
           fill
           sizes="100vw"

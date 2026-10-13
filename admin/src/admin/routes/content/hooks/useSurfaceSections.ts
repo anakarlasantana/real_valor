@@ -23,6 +23,7 @@ import { toast } from "@medusajs/ui"
 import type { CategoryRef } from "@conteudo/contract"
 import type { OrderFaixa } from "@conteudo/order"
 
+import { apiUrl } from "../../../lib/api-url"
 import { wireValue } from "../form-draft"
 import type { Draft, Schema, Section } from "../types"
 
@@ -56,7 +57,7 @@ export function useSurfaceSections(
   const load = useCallback(async () => {
     try {
       const res = await fetch(
-        `/admin/content?surface=${encodeURIComponent(surfaceId)}`,
+        apiUrl(`/admin/content?surface=${encodeURIComponent(surfaceId)}`),
         { credentials: "include" }
       )
       const json = await res.json()
@@ -175,7 +176,7 @@ export function useSurfaceSections(
       setWorking("create")
 
       try {
-        const res = await fetch("/admin/content", {
+        const res = await fetch(apiUrl("/admin/content"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -260,12 +261,15 @@ export function useSurfaceSections(
       setSavingId(id)
 
       try {
-        const res = await fetch(`/admin/content?id=${encodeURIComponent(id)}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(body),
-        })
+        const res = await fetch(
+          apiUrl(`/admin/content?id=${encodeURIComponent(id)}`),
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(body),
+          }
+        )
         const json = await res.json()
 
         if (!res.ok) {
@@ -308,10 +312,13 @@ export function useSurfaceSections(
       setWorking(id)
 
       try {
-        const res = await fetch(`/admin/content?id=${encodeURIComponent(id)}`, {
-          method: "DELETE",
-          credentials: "include",
-        })
+        const res = await fetch(
+          apiUrl(`/admin/content?id=${encodeURIComponent(id)}`),
+          {
+            method: "DELETE",
+            credentials: "include",
+          }
+        )
         const json = await res.json().catch(() => ({}))
 
         if (!res.ok) {
@@ -357,7 +364,9 @@ export function useSurfaceSections(
 
       try {
         const res = await fetch(
-          `/admin/content/restore?surface=${encodeURIComponent(surfaceId)}`,
+          apiUrl(
+            `/admin/content/restore?surface=${encodeURIComponent(surfaceId)}`
+          ),
           { method: "POST", credentials: "include" }
         )
         const json = await res.json().catch(() => ({}))
@@ -432,7 +441,7 @@ export function useSurfaceSections(
     setWorking("order")
 
     try {
-      const res = await fetch("/admin/content/order", {
+      const res = await fetch(apiUrl("/admin/content/order"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

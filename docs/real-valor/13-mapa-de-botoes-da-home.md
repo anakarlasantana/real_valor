@@ -142,6 +142,16 @@ Notas que a tabela não cabe:
   dois casos é o arrasto. Com **uma** foto só não há laço e ela volta a ser a grade parada, no respiro
   da página. O que **não** mudou é a falta que esta tabela registra: o `@realvalor` e as fotos
   continuam sem `<a>` — clicar numa foto segue não levando a lugar nenhum.
+- **A volta do ticker cobre a tela** (2026-10-13, casa 1). O laço da barra de anúncio é o mesmo da casa
+  11 — o trilho recebe a lista duas vezes e anda metade da própria largura —, e ele só fecha sem buraco
+  se a volta for mais larga que a tela. Com as duas mensagens que estão no ar a volta tinha ~560px: a
+  faixa preta aparecia à direita e a mensagem seguinte nascia no meio da barra, em toda tela de desktop
+  — e em nenhuma de celular. Hoje a lista se repete dentro da volta (`tickerCopies`, em
+  `lib/util/ticker.ts`) e a volta tem um piso de tela (`.rv-announce-strip .rv-marquee-group`, no
+  `brand.css`). A duração acompanha a volta (`tickerLapSeconds`), então `speedSeconds` continua sendo
+  **segundos por volta da lista**: o campo do CRM não mudou de significado, e o rótulo dele segue
+  verdadeiro. As repetições que existem só para a volta chegar à borda saem da leitura (`aria-hidden`)
+  e somem da tela no movimento reduzido — parada, a barra é só a lista de mensagens do lojista.
 
 ## 13.5 Sacola — os botões que o CMS não desenha
 

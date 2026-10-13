@@ -32,6 +32,7 @@ import {
 } from "@medusajs/ui"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { apiUrl, readJson } from "../../lib/api-url"
 import {
   corpoDoEnvio,
   estadoDoResumo,
@@ -58,8 +59,13 @@ function ShippingPage() {
     setCarregando(true)
 
     try {
-      const res = await fetch("/admin/shipping", { credentials: "include" })
-      const json = await res.json()
+      const res = await fetch(apiUrl("/admin/shipping"), {
+        credentials: "include",
+      })
+      // `readJson`, e não `res.json()`: um corpo que não é JSON (o HTML de um
+      // 404, o interstitial de um túnel) vira `{}` em vez de `SyntaxError`, e
+      // quem decide a mensagem continua sendo o `res.ok` abaixo.
+      const json = await readJson(res)
 
       if (!res.ok) {
         // A tela mostra a mensagem e para. Um erro silencioso aqui seria
@@ -120,7 +126,7 @@ function ShippingPage() {
     setSalvando(true)
 
     try {
-      const res = await fetch(`/admin/shipping/${aberto.pedido.id}`, {
+      const res = await fetch(apiUrl(`/admin/shipping/${aberto.pedido.id}`), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

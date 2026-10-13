@@ -1,6 +1,6 @@
 import { type HeroSection } from "@lib/content/home-sections"
 import { heroSlides, type HeroSlide } from "@lib/util/hero"
-import { resolveMediaUrl } from "@lib/util/media"
+import { mediaImageProps } from "@lib/util/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 import { type CSSProperties } from "react"
@@ -28,10 +28,12 @@ import HeroCarousel from "./carousel"
  * conteúdo que o lojista escreve — um nono campo no formulário da capa para um
  * ajuste que ninguém pede. O valor é o que estava no ar quando o campo saiu.
  *
- * A foto passa por `resolveMediaUrl`, então a imagem enviada pelo CRM (chave
- * crua do provider) e a URL absoluta do backend chegam as duas ao
- * `/uploads/...` do próprio storefront — a única forma que o otimizador de
- * imagem consegue buscar de dentro do contêiner. Ver `lib/util/media.ts`.
+ * A foto passa por `mediaImageProps` (`lib/util/media.ts`), que resolve o
+ * endereço — a imagem enviada pelo CRM (chave crua do provider) e a URL absoluta
+ * do backend chegam as duas ao `/uploads/...` do próprio storefront, a única
+ * forma que o otimizador consegue buscar de dentro do contêiner — **e decide se
+ * dá para otimizar**: foto de host de terceiro (a colada do site antigo da loja)
+ * vai como veio, em vez de derrubar a home com o erro de host não liberado.
  *
  * **Com dois slides ou mais, a capa vira carrossel** — e o carrossel é uma
  * ilha de cliente (`./carousel.tsx`): o rodízio precisa de relógio e o ponto
@@ -173,13 +175,13 @@ function HeroPane({
   overlay: number
   priority?: boolean
 }) {
-  const image = resolveMediaUrl(slide.imageUrl)
+  const image = mediaImageProps(slide.imageUrl)
 
   return (
     <div className="rv-hero">
       {image && (
         <Image
-          src={image}
+          {...image}
           alt={slide.imageAlt}
           fill
           priority={priority}

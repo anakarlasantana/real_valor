@@ -141,6 +141,35 @@ com três valores diferentes, e a unifycação **não moveu um pixel**.
 | Gap da grade | `gap-x-6 gap-y-8` (verificado em `paginated-products.tsx:72`) |
 | Padding de container | `.content-container` / `.rv-container` |
 | Padding de card | `p-4` (16px) |
+| Vão da seta do carrossel até a **borda da tela** | `--rv-arrow-inset` — `clamp(0.5rem, 1vw, 1.25rem)` |
+| Volta da barra de anúncio **cobrir a tela** | `tickerCopies` (lista repetida) + `min-width: 100vw` na volta |
+
+**Nota (carrossel da vitrine):** a seta do carrossel (`product-carousel`, as seções *Peças em destaque*
+e *Lançamentos*) é ancorada na **borda da tela**, e não na borda do contêiner: `left`/`right:
+calc(50% - 50vw + var(--rv-arrow-inset))` — a mesma conta que sangra o trilho (`.rv-carousel-track`,
+`margin-inline: calc(50% - 50vw)`). Ancorada no contêiner (que para em 1440px com 3rem de respiro), a
+seta aparecia a 64px da borda numa tela de 1440 e a ~300px numa de 1920 — parada no vazio, enquanto as
+peças atravessavam a tela de ponta a ponta. O vão é fluido (`1vw` com os extremos segurados pelo
+`clamp`) para acompanhar a largura da tela, em vez de um degrau por ponto de quebra — o degrau de
+desktop que existia ali (`1rem` a partir de 1024px) é hoje o teto do token.
+
+**Nota (barra de anúncio):** o ticker da barra (`announcement-bar`) anda **uma volta** por ciclo
+(`translateX(-50%)`, o mesmo mecanismo da faixa do Instagram), e o laço só fecha sem emenda se a volta
+for mais larga que a tela. Com o conteúdo que está no ar — duas mensagens curtas, ~560px — a volta
+cobria um terço de uma tela de 1440: o texto saía pela esquerda e o vão entrava pela direita antes de a
+cópia chegar, com a faixa preta à vista em todo desktop e **nenhum** buraco no celular (abaixo de ~560px
+a volta já cobria a tela — é a assinatura do defeito). São duas metades, e as duas têm uma razão de ser:
+as **cópias** (`tickerCopies`, `lib/util/ticker.ts`) repetem a lista dentro da volta sem mudar o vão
+entre mensagens, e a duração da volta passa a ser `speedSeconds × cópias` (`tickerLapSeconds`) — o que
+mantém o rótulo do contrato verdadeiro, porque a mensagem continua reaparecendo a cada `speedSeconds`;
+e o **piso** (`.rv-announce-strip .rv-marquee-group { min-width: 100vw }`, com `justify-content:
+space-around` para distribuir a sobra e a emenda ficar com o mesmo vão das outras junções) cobre o caso
+em que nem as cópias chegam — o de uma mensagem curta demais. O piso mora na classe da barra, e não no
+`.rv-marquee-group`, que é dividido com a faixa do Instagram: lá o quadro tem largura fixa e não precisa
+do mínimo. No movimento reduzido o piso sai (`min-width: 0`) e as repetições somem (`rv-marquee-repeat`,
+`display: none`): sem movimento não há vão para tapar, e a barra volta a ser a lista de mensagens do
+lojista, centrada — o mesmo movimento que as regras do bloco de `prefers-reduced-motion` fazem com o
+trilho.
 
 **Lacuna:** não há escala de espaçamento pontual (dentro de um componente). Um novo componente escolhe
 `p-3` ou `p-5` por conta própria.
@@ -207,6 +236,10 @@ Sombras **muito suaves**, coerentes com a paleta clara. **Manter.**
 > A faixa do Instagram acrescentou **uma** regra ao bloco, e ela é do mesmo assunto: o arrasto da faixa
 > é um *seek* da animação que este bloco desliga (ver a nota da casa 11 no doc 13), então sem relógio
 > não há gesto — o cursor `grab` volta a `default` ali, para o ponteiro não prometer o que não anda.
+> E a barra de anúncio acrescentou **uma** no mesmo dia: `.rv-announce-strip .rv-marquee-repeat` tira da
+> tela as repetições da volta, que só existem para tapar a largura com a faixa **andando**. Parada não há
+> vão para tapar, e a lista visível volta a ser exatamente as mensagens do lojista — a mesma informação
+> que o `aria-hidden` dessas cópias já dá ao leitor de tela, aplicada ao olho (ver a nota do §6.3).
 >
 > **O princípio está certo e registrado no arquivo:** *"quem pediu menos movimento pediu menos
 > movimento, não menos informação"* — nenhum item do RV-017 mexe nesse bloco, que já estava pronto e

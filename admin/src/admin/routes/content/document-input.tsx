@@ -30,6 +30,8 @@
 import { Button, Input, Text, toast } from "@medusajs/ui"
 import { useRef, useState } from "react"
 
+import { apiUrl } from "../../lib/api-url"
+
 /**
  * O que `POST /admin/uploads` devolve por arquivo (`file-module-service` põe a
  * chave do provider no `id`).
@@ -69,9 +71,11 @@ export const DocumentInput = ({
       const body = new FormData()
       body.append("files", file)
 
-      // `fetch` relativo como o resto da página (`/admin/content`): o painel é
-      // servido pelo próprio backend, então a sessão do admin vai no cookie.
-      const res = await fetch("/admin/uploads", {
+      // O envio sai pelo `apiUrl`, como todo o resto do painel: o endereço da
+      // API é o que o bundle recebeu (`__BACKEND_URL__`), e não a origem da
+      // página — publicado pelo storefront, `"/admin/uploads"` não chega à API
+      // (ver `src/admin/lib/api-url.ts` e a medição da §11.6.2).
+      const res = await fetch(apiUrl("/admin/uploads"), {
         method: "POST",
         credentials: "include",
         body,

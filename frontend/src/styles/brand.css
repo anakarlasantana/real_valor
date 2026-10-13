@@ -215,6 +215,22 @@
    */
   --rv-page-space: clamp(4.5rem, 8vw, 8rem);
 
+  /*
+   * O vão entre a seta do carrossel e a **borda da tela** — e não a borda do
+   * contêiner (que para em 1440px).
+   *
+   * Presa ao contêiner, a seta aparecia a 64px da borda numa tela de 1440 e a
+   * ~300px numa de 1920: parada no vazio, enquanto as peças do trilho atravessam
+   * a tela de ponta a ponta. O vão agora é **fluido** em vez de um degrau por
+   * ponto de quebra porque o problema **é** a largura da tela: `1vw` cresce com
+   * ela e o `clamp` segura as duas pontas — nunca menos de 8px (no celular, onde
+   * a seta é o único controle, ela não cola na borda nem briga com o arrasto) nem
+   * mais de 20px (numa tela de 2560 ela não se perde de novo). O degrau de
+   * desktop que ele substitui (`left`/`right: 1rem` a partir de 1024px) é o teto
+   * deste `clamp`.
+   */
+  --rv-arrow-inset: clamp(0.5rem, 1vw, 1.25rem);
+
   /* Anel de foco do teclado (ver a regra de `:focus-visible` no fim
    * deste arquivo). Rosa forte, e não o rosa de assinatura, porque o
    * anel precisa contrastar com o fundo claro **e** com a própria cor
@@ -457,9 +473,11 @@ body {
  * mesmo `map` sobre a mesma lista, e a segunda sai com `aria-hidden` (o
  * leitor de tela lê as mensagens **uma vez**, não duas).
  *
- * `--rv-marquee-duration` chega inline, do campo `speedSeconds`
- * (`lib/util/ticker.ts`), com o mesmo padrão do contrato no fallback do
- * `var()`: sem a variável, a barra anima em 24s como o conteúdo padrão.
+ * `--rv-marquee-duration` chega inline, da conta de `lib/util/ticker.ts`:
+ * `speedSeconds × cópias` (`tickerLapSeconds`), porque o que a animação leva
+ * pela tela é a **volta** — a lista repetida —, e não a lista uma vez. O
+ * fallback do `var()` continua sendo o padrão do contrato: sem a variável, a
+ * barra anima em 24s como o conteúdo padrão.
  *
  * A rolagem para no mouse e no teclado (`:hover` / `:focus-within`): quem
  * está lendo a linha, ou navegando por Tab dentro dela, não tem o texto
@@ -502,6 +520,42 @@ body {
   to {
     transform: translateX(-50%);
   }
+}
+
+/*
+ * A volta do ticker cobre a tela
+ * ---------------------------------------------------------------
+ * O keyframe acima leva **uma volta** pela tela, e o laço só fecha sem emenda se
+ * a volta for mais larga que ela. Mais estreita, o texto sai pela esquerda e o
+ * vão entra pela direita **antes** de a cópia chegar: a mensagem seguinte
+ * aparece no meio da barra em vez de entrar pela borda, uma vez por volta. Com o
+ * conteúdo que está no ar (duas mensagens curtas) a volta tinha ~560px — buraco
+ * em toda tela de desktop, e nenhum no celular. É a mesma falha que a faixa do
+ * Instagram resolve com `marqueeCopies` (ver `lib/util/marquee.ts`).
+ *
+ * São duas metades, e as duas moram aqui porque o CSS é quem mede a tela:
+ *
+ *   - as **cópias** (`tickerCopies`, no componente) repetem a lista dentro da
+ *     volta. É o ritmo, e ele não muda: com duas cópias, quatro ou oito, o vão
+ *     entre uma mensagem e a seguinte continua sendo o mesmo `px-6` de sempre;
+ *   - o **piso** (`min-width: 100vw`) é a garantia para os casos em que nem as
+ *     cópias chegam: o de uma mensagem patologicamente curta (um "Oi" repetido
+ *     oito vezes ainda seria uma volta de ~400px, com buraco) e o de uma tela mais
+ *     larga que a volta cheia — num monitor de 2560, oito mensagens (~2240px de
+ *     conteúdo) ainda ficam devendo à tela, e quem paga é o piso.
+ *
+ * Com a volta mais larga que a tela não sobra espaço nenhum, e o `space-around`
+ * não tem o que distribuir: o desenho é o de antes do piso.
+ *
+ * A sobra é distribuída, e **não** acumulada no fim (`flex-start` deixaria todo o
+ * vão numa junção só). O `space-around` põe meio vão em cada ponta da volta, e as
+ * duas pontas encostadas — a costura entre uma volta e a seguinte — somam o vão
+ * inteiro: o mesmo das outras junções, que é o que o olho lê como ausência de
+ * emenda.
+ */
+.rv-announce-strip .rv-marquee-group {
+  min-width: 100vw;
+  justify-content: space-around;
 }
 
 /*
@@ -903,12 +957,26 @@ body {
     border-color var(--rv-motion-fast) var(--rv-ease-out);
 }
 
+/*
+ * Ancoradas na **borda da tela**, e não na do contêiner.
+ *
+ * A conta é a mesma que sangra o `.rv-carousel-track`: o `50%` é o centro do
+ * carrossel, e o carrossel mora dentro de um contêiner **centrado** — o centro
+ * dele é o centro da tela em qualquer largura. De lá, `-50vw` chega à borda
+ * (esquerda no `left`, direita no `right`) e o `--rv-arrow-inset` devolve a seta
+ * para dentro, com um vão que cresce com a tela. Era o que faltava para a seta
+ * acompanhar o trilho, que já atravessa a tela de ponta a ponta: presa ao
+ * contêiner, ela ficava a 64px da borda numa tela de 1440 e a ~300px numa de
+ * 1920 — no meio do vazio. O vão que a devolve para dentro é fluido
+ * (`--rv-arrow-inset`, em `:root`): um degrau fixo ao lado de um valor fluido
+ * seria a segunda régua do mesmo vão.
+ */
 .rv-carousel-arrow-prev {
-  left: 0.5rem;
+  left: calc(50% - 50vw + var(--rv-arrow-inset, 0.5rem));
 }
 
 .rv-carousel-arrow-next {
-  right: 0.5rem;
+  right: calc(50% - 50vw + var(--rv-arrow-inset, 0.5rem));
 }
 
 .rv-carousel-arrow:hover {
@@ -932,16 +1000,6 @@ body {
   .rv-carousel-arrow:focus-visible {
     opacity: 1;
     pointer-events: auto;
-  }
-}
-
-@media (min-width: 1024px) {
-  .rv-carousel-arrow-prev {
-    left: 1rem;
-  }
-
-  .rv-carousel-arrow-next {
-    right: 1rem;
   }
 }
 
@@ -3816,6 +3874,36 @@ body {
     flex-wrap: wrap;
     justify-content: center;
     row-gap: 0.25rem;
+  }
+
+  /*
+   * E o piso da volta do ticker não vale aqui: com a animação fora o trilho já é
+   * a tela inteira (`width: 100%`, acima) e o grupo volta a ser a lista — uma
+   * `min-width` de `100vw` dentro dele seria a segunda cópia da mesma largura, e
+   * a lista quebrada em linhas transbordaria a barra.
+   *
+   * O `justify-content` volta a `center` junto porque **precisa** voltar: o
+   * seletor do piso (`.rv-announce-strip .rv-marquee-group`, duas classes) ganha
+   * do `.rv-marquee-group` sozinho do bloco acima, e sem esta linha a lista
+   * parada ficaria espalhada pela barra em vez de centrada.
+   */
+  .rv-announce-strip .rv-marquee-group {
+    min-width: 0;
+    justify-content: center;
+  }
+
+  /*
+   * E as repetições da volta somem **da tela** junto: elas existem para tapar a
+   * largura enquanto a faixa anda, e com a faixa parada a lista é só a lista — as
+   * mensagens do lojista, centradas, sem as quatro cópias que o movimento pedia.
+   *
+   * A marca é do componente (`rv-marquee-repeat` no item), e vem do mesmo lugar
+   * que o `aria-hidden` dele: a primeira lista é a mensagem, o resto é a volta.
+   * Sem isso, quem pediu menos movimento receberia a informação uma vez e as
+   * cópias visíveis — o oposto do que a preferência pede.
+   */
+  .rv-announce-strip .rv-marquee-repeat {
+    display: none;
   }
 
   .rv-marquee-clone {

@@ -23,6 +23,14 @@
  * já deslocado pelo `scroll-padding-inline`, e o primeiro `onScroll` marcava
  * `setStopped(true)` — estado que não volta atrás. Rodízio morto antes de
  * arrancar, sem erro nenhum.
+ *
+ * O terceiro caso é o mesmo sintoma com outro dono: a foto **colada de fora** (o
+ * site antigo da loja). Ninguém a resolve no caminho — `resolveMediaUrl` a
+ * devolve intacta, de propósito —, e o `defaultLoader` do `next/image` a recusa
+ * **lançando** durante o SSR. Não é a foto que quebra: é a página, que responde
+ * **HTTP 500** inteira. Por isso a segunda conferência deste arquivo é sobre o
+ * `mediaImageProps`, o par que resolve **e** decide não otimizar o que não é do
+ * site.
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -141,6 +149,64 @@ describe("componentes que entregam src ao next/image", () => {
       expect(uso).toMatch(/image=\{resolvedHover\}/)
     }
   })
+})
+
+/**
+ * A outra ponta da mesma ligação: o `src` que **não** é do site.
+ *
+ * `resolveMediaUrl` faz o certo ao devolver a foto de fora intacta — é a foto que
+ * a lojista colou. O que faltava era a segunda decisão: o `defaultLoader` do
+ * `next/image` **lança** para um host que não está em `images.remotePatterns`, e
+ * ele roda na renderização, no servidor. O erro sobe do SSR: medido com o
+ * conteúdo real da loja, a foto de `cdn.awsli.com.br` no bloco de coleções fazia
+ * a **home inteira** responder HTTP 500. Quem fecha isso é o `mediaImageProps`
+ * (`lib/util/media.ts`), e é ele que os blocos de conteúdo têm de chamar.
+ */
+describe("foto de conteúdo de host de terceiro não derruba a página", () => {
+  /**
+   * Cada bloco de **conteúdo** que desenha foto — os cinco que o CRM alimenta.
+   * A lista é a lista: um bloco novo que entregue `src` cru ao `<Image>` reprova
+   * aqui, que é o ponto.
+   */
+  const blocos = [
+    { arquivo: "modules/home/components/hero/index.tsx", quem: "a capa" },
+    {
+      arquivo: "modules/home/components/collection-highlights/index.tsx",
+      quem: "o bloco de coleções (onde o 500 foi medido)",
+    },
+    {
+      arquivo: "modules/home/components/editorial-banner/index.tsx",
+      quem: "a faixa editorial",
+    },
+    {
+      arquivo: "modules/home/components/editorial-callout/index.tsx",
+      quem: "a faixa de chamada",
+    },
+    {
+      arquivo: "modules/home/components/instagram-grid/tile.tsx",
+      quem: "o quadro do Instagram",
+    },
+  ]
+
+  for (const { arquivo, quem } of blocos) {
+    it(`${quem} passa a foto pelo mediaImageProps`, () => {
+      const codigo = src("..", "..", arquivo)
+
+      // A função precisa entrar na conta do valor entregue...
+      expect(codigo).toMatch(/mediaImageProps\(/)
+
+      // ...e o valor entregue é o par inteiro, não só o endereço: `src={...}`
+      // montado à mão é o que volta a levar um host de terceiro ao otimizador.
+      const imagens = collect(codigo, /<Image[\s\S]*?\/>/g)
+
+      expect(imagens.length).toBeGreaterThan(0)
+
+      for (const imagem of imagens) {
+        expect(imagem).not.toMatch(/src=\{/)
+        expect(imagem).toMatch(/\{\.\.\./)
+      }
+    })
+  }
 })
 
 describe("o rodízio do carrossel não morre na largada", () => {

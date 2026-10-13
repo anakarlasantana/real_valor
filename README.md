@@ -344,6 +344,12 @@ reescrito para o backend em `frontend/next.config.js`. Mesmo origem é o que faz
 próprio container. Trocar por S3 é trocar o `providers` do módulo `file` em
 `backend/medusa-config.ts` — o banco guarda a chave, então nenhum conteúdo precisa migrar.
 
+**A foto colada de fora** (a que a lojista copia do site antigo) sai intacta e é entregue
+**sem otimizar** (`mediaImageProps`, em `frontend/src/lib/util/media.ts`): o otimizador do
+`next/image` só busca arquivo do próprio site, e um host que ele não conhece **lança** dentro do
+SSR — medido com uma foto de `cdn.awsli.com.br` no bloco de coleções, a home inteira respondia
+**HTTP 500**. É por isso que nenhum host de terceiro precisa entrar em `images.remotePatterns`.
+
 **Ao salvar, a loja atualiza na hora.** O backend avisa o storefront
 (`POST /api/revalidate?tag=content`) usando `FRONTEND_URL` e o **mesmo** `REVALIDATE_SECRET` do
 frontend. Sem essas duas variáveis o aviso é pulado e nada quebra: a loja se atualiza sozinha

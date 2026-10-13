@@ -9,7 +9,10 @@
  *   - a barra que some: uma base antiga só tem `text` (a mensagem única), e ler
  *     só `messages` apagaria a mensagem que está lá desde o começo;
  *   - a velocidade fora da faixa: 0 roda a linha como um borrão, e um valor
- *     ausente animando "sem limite" é o mesmo borrão por outro caminho.
+ *     ausente animando "sem limite" é o mesmo borrão por outro caminho;
+ *   - a volta mais estreita que a tela: o `translateX(-50%)` do laço leva uma
+ *     volta inteira pela tela, e uma volta curta deixa o vão da emenda à vista —
+ *     a mensagem seguinte aparece no meio da barra e a faixa preta fica exposta.
  *
  * A faixa e o padrão são espelho do contrato (`SECTION_FIELDS.announcement` e o
  * `speedSeconds` do conteúdo padrão), e o espelho é conferido **aqui**: o
@@ -24,9 +27,12 @@ import { describe, expect, it } from "vitest"
 import { DEFAULT_HOME_SECTIONS, SECTION_FIELDS } from "@rv/contrato"
 
 import {
+  ANNOUNCEMENT_MIN_MESSAGES,
   ANNOUNCEMENT_SPEED_DEFAULT,
   ANNOUNCEMENT_SPEED_MAX,
   ANNOUNCEMENT_SPEED_MIN,
+  tickerCopies,
+  tickerLapSeconds,
   tickerMessages,
   tickerSeconds,
 } from "./ticker"
@@ -110,6 +116,68 @@ describe("tickerSeconds", () => {
   })
 })
 
+describe("tickerCopies", () => {
+  it("a lista se repete até a volta passar da largura da tela", () => {
+    // Oito mensagens é o mínimo que a volta precisa ter: com quatro mensagens,
+    // duas repetições; com duas — que é o conteúdo que está no ar —, quatro.
+    expect(tickerCopies(2)).toBe(4)
+    expect(tickerCopies(3)).toBe(3)
+    expect(tickerCopies(4)).toBe(2)
+    expect(tickerCopies(8)).toBe(1)
+  })
+
+  it("lista longa não vira volta vazia (a volta tem as mensagens que tem)", () => {
+    expect(tickerCopies(9)).toBe(1)
+    expect(tickerCopies(24)).toBe(1)
+  })
+
+  it("a propriedade que fecha o laço: a volta cobre o piso de mensagens", () => {
+    // É esta conta que tira o vão da emenda do caminho — e ela **não** o fecha
+    // sozinha: o piso de `100vw` (`.rv-announce-strip .rv-marquee-group`, no
+    // `brand.css`) é quem garante o caso da mensagem curta demais, em que nem
+    // oito delas enchem a tela.
+    for (let messages = 2; messages <= 40; messages++) {
+      expect(messages * tickerCopies(messages)).toBeGreaterThanOrEqual(
+        ANNOUNCEMENT_MIN_MESSAGES
+      )
+    }
+  })
+
+  it("com uma mensagem só não há laço: uma volta, uma cópia", () => {
+    // A barra não desenha a faixa nesse caso (é o `<p>` centrado, e quem pinta a
+    // largura inteira é o fundo da seção): o valor existe para a conta não ter um
+    // ramo que ninguém testa.
+    expect(tickerCopies(1)).toBe(1)
+    expect(tickerCopies(0)).toBe(1)
+  })
+
+  it("contagem que não é número não estoura (a volta nunca é vazia)", () => {
+    expect(tickerCopies(Number.NaN)).toBe(1)
+    expect(tickerCopies(Number.POSITIVE_INFINITY)).toBe(1)
+  })
+})
+
+describe("tickerLapSeconds", () => {
+  it("a duração é a da volta: o ritmo do campo, vezes as cópias", () => {
+    // Duas mensagens, quatro cópias, 24s por volta da lista: a volta cheia leva
+    // 96s — e a mensagem continua reaparecendo a cada 24s, que é o que o rótulo
+    // do contrato promete.
+    expect(tickerLapSeconds(2, 24)).toBe(96)
+  })
+
+  it("com uma lista que já cobre a tela, a duração é a do campo", () => {
+    expect(tickerLapSeconds(8, 30)).toBe(30)
+  })
+
+  it("o campo continua sendo lido pela faixa do contrato", () => {
+    // Sem o campo, o padrão do conteúdo padrão — e a multiplicação não o
+    // transforma em 0 nem em `NaN`; fora da faixa, quem manda é o limite.
+    expect(tickerLapSeconds(2, undefined)).toBe(ANNOUNCEMENT_SPEED_DEFAULT * 4)
+    expect(tickerLapSeconds(2, 0)).toBe(ANNOUNCEMENT_SPEED_MIN * 4)
+    expect(tickerLapSeconds(2, 600)).toBe(ANNOUNCEMENT_SPEED_MAX * 4)
+  })
+})
+
 describe("o espelho do contrato", () => {
   // A faixa que a função aplica é a do campo que o CRM desenha e a API valida;
   // o padrão é o `speedSeconds` da seção no conteúdo padrão. Divergência aqui é
@@ -147,5 +215,12 @@ describe("o espelho do contrato", () => {
     expect(
       (messages as string[]).filter((message) => message.includes(","))
     ).toEqual([])
+  })
+
+  it("o mínimo de mensagens por volta é o que a medida de layout diz", () => {
+    // O número não é campo de CMS: é a medida que impede o buraco na emenda, e
+    // quem a prende é este teste — um dia alguém o copia trocado e a barra volta
+    // a ter o vão à vista, sem erro nenhum no console.
+    expect(ANNOUNCEMENT_MIN_MESSAGES).toBe(8)
   })
 })

@@ -48,6 +48,7 @@ import {
 } from "@medusajs/ui"
 import { useCallback, useEffect, useState } from "react"
 
+import { apiUrl } from "../lib/api-url"
 import {
   CAMPOS_DO_PRODUTO,
   CHAVES_DE_TEXTO,
@@ -101,7 +102,7 @@ function InformacoesDaPecaWidget({ data }: Props) {
 
     try {
       const res = await fetch(
-        `/admin/products/${productId}?fields=${CAMPOS_DO_PRODUTO}`,
+        apiUrl(`/admin/products/${productId}?fields=${CAMPOS_DO_PRODUTO}`),
         { credentials: "include" }
       )
       const json = await res.json()
@@ -156,7 +157,7 @@ function InformacoesDaPecaWidget({ data }: Props) {
     setSalvando(true)
 
     try {
-      const res = await fetch(`/admin/products/${produto.id}`, {
+      const res = await fetch(apiUrl(`/admin/products/${produto.id}`), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

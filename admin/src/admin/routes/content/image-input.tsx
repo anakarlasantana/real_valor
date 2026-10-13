@@ -12,11 +12,17 @@
  * passaria a apontar para `http://localhost:9000` e quebraria no dia em que a
  * loja for para outro domínio. Quem traduz chave → endereço é o storefront
  * (`resolveMediaUrl`, em `frontend/src/lib/util/media.ts`) — e é por isso que
- * este arquivo não precisa saber o endereço do backend para a prévia: o painel
- * é servido PELO backend, então `/static/<chave>` resolve aqui dentro.
+ * este arquivo não precisa saber o endereço do backend para a prévia: a chave
+ * vira `/static/<chave>`, que responde nos **dois** endereços do painel — no
+ * local, no próprio backend, e no publicado, pela reescrita `/static/:path*` do
+ * storefront (`frontend/next.config.js`, que já exclui `static` do `matcher` do
+ * middleware; ver §11.6.2 de `docs/real-valor/11-ambiente-local.md`). É o
+ * contraste com o `fetch` abaixo, que **precisa** do endereço da API.
  */
 import { Button, Input, Text, toast } from "@medusajs/ui"
 import { useRef, useState } from "react"
+
+import { apiUrl } from "../../lib/api-url"
 
 /**
  * O que `POST /admin/uploads` devolve por arquivo (`file-module-service` põe a
@@ -77,9 +83,11 @@ export const ImageInput = ({
       const body = new FormData()
       body.append("files", file)
 
-      // `fetch` relativo como o resto da página (`/admin/content`): o painel é
-      // servido pelo próprio backend, então a sessão do admin vai no cookie.
-      const res = await fetch("/admin/uploads", {
+      // O envio sai pelo `apiUrl`, como todo o resto do painel: o endereço da
+      // API é o que o bundle recebeu (`__BACKEND_URL__`), e não a origem da
+      // página — publicado pelo storefront, `"/admin/uploads"` não chega à API
+      // (ver `src/admin/lib/api-url.ts` e a medição da §11.6.2).
+      const res = await fetch(apiUrl("/admin/uploads"), {
         method: "POST",
         credentials: "include",
         body,
@@ -171,10 +179,12 @@ export const ImageInput = ({
 /**
  * O `src` da prévia a partir do valor gravado.
  *
- * O painel é servido pelo backend, então a rota `/static/<chave>` resolve no
- * mesmo origem daqui — esta é a diferença em relação ao storefront, que serve
- * a mesma imagem em `/uploads/...` (o rewrite do `next.config.js`). Um valor
- * que já é caminho (`/brand/...`) ou URL passa como está; o resto é chave.
+ * O `/static/<chave>` responde nos **dois** endereços do painel: no local, no
+ * próprio backend, e no publicado, pela reescrita `/static/:path*` do storefront
+ * — o mesmo `next.config.js` que serve as imagens da loja em `/uploads/...`. Por
+ * isso a prévia pode continuar relativa à origem da página, ao contrário do
+ * `fetch`, que precisa do endereço da API (`apiUrl`). Um valor que já é caminho
+ * (`/brand/...`) ou URL passa como está; o resto é chave.
  */
 function previewFromValue(value: string): string | undefined {
   const src = value.trim()

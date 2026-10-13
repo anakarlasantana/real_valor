@@ -1245,9 +1245,11 @@ transforma em link quebrado (14.16).
 - **A tela é um modo, não uma rota.** O atalho "Editar blocos" é a troca de aba que já existia
   (`openSurface` → `switchSurface`). Uma rota nova teria de linkar de volta para `/painel/content`, e o
   painel **não conhece a própria URL**: `MEDUSA_ADMIN_PATH` é configuração (`/painel` hoje, e o Medusa
-  documenta trocá-la), enquanto o único endereço que o CRM escreve é o da **API** (`/admin/...`,
-  absoluto). Uma segunda tela seria também um segundo lugar para manter a lista de páginas em dia com as
-  abas — o contrato faz isso sozinho quando o índice é um modo do mesmo payload.
+  documenta trocá-la), enquanto o único endereço que o CRM escreve é o da **API**, montado pelo `apiUrl`
+  sobre o `__BACKEND_URL__` do bundle (`admin/src/admin/lib/api-url.ts`; era relativo à raiz, e é o
+  defeito que a armadilha 3 da §11.6.2 de `docs/real-valor/11-ambiente-local.md` fecha). Uma segunda tela
+  seria também um segundo lugar para manter a lista de páginas em dia com as abas — o contrato faz isso
+  sozinho quando o índice é um modo do mesmo payload.
 - **O índice não publica nem despublica página.** Ligar/desligar página inteira é um dos três gatilhos da
   F3b (14.6.4) — é a única coisa que F1–F3a não entregam, e o que a lojista pediria se quisesse
   autonomia total. O estado desta tela é **leitura**: o que se edita continua sendo o bloco, na aba dele.

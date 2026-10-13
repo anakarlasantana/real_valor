@@ -16,6 +16,15 @@
  *     silêncio, sem erro em lugar nenhum;
  *   - o seletor de superfície e o numeral da ordem pendente, que vêm do payload.
  *
+ * Desde o defeito do painel publicado (§11.6.2 de
+ * `docs/real-valor/11-ambiente-local.md`), a suíte prende também uma ligação que
+ * não é de paridade e que **nenhum tipo alcança**: o endereço das chamadas à API.
+ * Um `fetch("/admin/...")` é relativo à raiz do endereço que serve a página —
+ * funciona no painel local e vira `307 → /br/admin/... → 404` (HTML) no painel
+ * publicado pelo storefront, onde a tela morre no `res.json()` sem dizer o
+ * status. Quem monta a base é o `apiUrl` (`src/admin/lib/api-url.ts`), e a
+ * varredura proíbe a forma relativa.
+ *
  * A varredura é o pacote inteiro (menos `__tests__`): até a R2 ela lia dois
  * arquivos, e uma cópia da forma num terceiro passava pelas duas — a asserção
  * era mais estreita que a frase que ela imprime.
@@ -27,7 +36,7 @@
  * do `admin/jest.config.js`).
  */
 import { readdirSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { join, relative } from "node:path"
 
 /** `admin/src` — o código do painel, sem `__tests__`. */
 const PANEL_SRC = join(__dirname, "..", "..", "..", "..")
@@ -58,8 +67,11 @@ const hook = readFileSync(
   "utf8"
 )
 
-function panelSources(): string[] {
-  const found: string[] = []
+/** Um arquivo do painel: o caminho (para a falha nomear o culpado) e o texto. */
+type PanelFile = { path: string; source: string }
+
+function panelFiles(): PanelFile[] {
+  const found: PanelFile[] = []
 
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -74,7 +86,10 @@ function panelSources(): string[] {
           walk(path)
         }
       } else if (/\.tsx?$/.test(entry.name)) {
-        found.push(readFileSync(path, "utf8"))
+        found.push({
+          path: relative(PANEL_SRC, path),
+          source: readFileSync(path, "utf8"),
+        })
       }
     }
   }
@@ -82,6 +97,11 @@ function panelSources(): string[] {
   walk(PANEL_SRC)
 
   return found
+}
+
+/** O texto de cada arquivo, para as asserções que não dependem de nome. */
+function panelSources(): string[] {
+  return panelFiles().map((file) => file.source)
 }
 
 describe("o painel não declara o contrato", () => {
@@ -210,7 +230,7 @@ describe("o painel lê o schema", () => {
     // — não N `PATCH`es, um por seção.
     expect(surfacePanel).toContain("numeralFor(place, order)")
     expect(utils).toContain("order.reserved")
-    expect(hook).toContain('"/admin/content/order"')
+    expect(hook).toContain('apiUrl("/admin/content/order")')
   })
 
   it('a tela "Páginas" lê o índice da API — e não conta nada no navegador', () => {
@@ -221,7 +241,7 @@ describe("o painel lê o schema", () => {
     // o 404. A tela desenha o que chega. Se ela contasse seção, haveria uma
     // segunda resposta para "esta página está no ar" — e a resposta que a
     // cliente vê é a da loja.
-    expect(pagesView).toContain('"/admin/content/pages"')
+    expect(pagesView).toContain('apiUrl("/admin/content/pages")')
     expect(pagesView).toContain("json.pageStates")
     expect(pagesView).toContain("state?.label")
     // A prova de que ela não conta: não há o que contar. A tela não recebe seção
@@ -254,5 +274,31 @@ describe("a exaustividade por `kind`", () => {
       /type UnhandledKind = Exclude<FieldKind, HandledKind>/
     )
     expect(fieldInput).toContain("UNHANDLED_KINDS")
+  })
+})
+
+describe("as chamadas do painel à API", () => {
+  it("nenhuma aponta para a raiz do endereço (`/admin/...`)", () => {
+    // O proibido é a FORMA relativa: `fetch("/admin/content")` só chega à API
+    // quando é ela que serve a página. Publicado pelo storefront, o middleware
+    // da loja prefixa o país na rota (**307**) e o destino responde **404
+    // HTML** — o `res.json()` da tela estoura antes de o `res.ok` ser lido, e o
+    // status, que é a pista de verdade, morre dentro do erro de parse. A medição
+    // e a base estão em `src/admin/lib/api-url.ts` e na §11.6.2 de
+    // `docs/real-valor/11-ambiente-local.md`.
+    //
+    // A varredura pega também a forma quebrada em várias linhas — é assim que
+    // ficam as queries com `${…}` —, daí o `\s*` entre o `fetch(` e a aspa: um
+    // `toContain('fetch("/admin')` só cobriria as chamadas de uma linha só. E é
+    // de CÓDIGO: o `api-url.ts` cita o caminho errado na prosa que o explica, mas
+    // sem a sintaxe da chamada — a forma completa num comentário reprova aqui,
+    // como reprovaria na tela.
+    const RELATIVE_TO_ROOT = /fetch\(\s*["'`]\/admin/
+
+    expect(
+      panelFiles()
+        .filter((file) => RELATIVE_TO_ROOT.test(file.source))
+        .map((file) => file.path)
+    ).toEqual([])
   })
 })

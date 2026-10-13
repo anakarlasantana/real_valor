@@ -56,7 +56,7 @@ export const INSTAGRAM_SPEED_MIN = 3
 export const INSTAGRAM_SPEED_MAX = 12
 
 /** A velocidade quando a seção não diz: a mesma do conteúdo padrão (6s). */
-export const INSTAGRAM_SPEED_DEFAULT = 12
+export const INSTAGRAM_SPEED_DEFAULT = 6
 
 /**
  * Quantos quadros uma volta precisa ter, no mínimo, para cobrir a tela.

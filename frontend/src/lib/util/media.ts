@@ -20,6 +20,8 @@
  *                           publicada por um endereço só (`make tunnel`): o
  *                           backend passa a se ver nesse endereço, com o prefixo
  *                           do painel na frente — idem;
+ *   `https://cdn.awsli.com.br/...`          a foto colada do **site antigo da
+ *                           loja** no CRM: terceiro, sai intacta e sem otimizar;
  *   `https://images.unsplash.com/...`       imagem de terceiro, colada à mão,
  *                           que sai daqui intacta.
  *
@@ -71,9 +73,10 @@ export function resolveMediaUrl(value: unknown): string | undefined {
 
   // URL absoluta. A do backend vira o caminho canônico do site — `/uploads/`,
   // que é o que a loja grava, e não `/static/`: uma forma só para o que a loja
-  // usa e o que ela grava. Um CDN de terceiro fica intacto: os hosts liberados
-  // estão em `images.remotePatterns`, e reescrever um deles trocaria um erro
-  // previsível ("host não liberado") por uma imagem que some sem explicação.
+  // usa e o que ela grava. Um CDN de terceiro fica intacto, e reescrevê-lo
+  // esconderia a foto que o lojista escolheu. É o `mediaImageProps` abaixo — e
+  // não esta função — que responde o que fazer com ele: um host que o otimizador
+  // do `next/image` não conhece **lança** no SSR e derrubava a página inteira.
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(src)) {
     const url = safeUrl(src)
 
@@ -96,6 +99,44 @@ export function resolveMediaUrl(value: unknown): string | undefined {
 
   // Sobrou a chave crua do provider de arquivos.
   return `${UPLOAD_PATH}${src}`
+}
+
+/**
+ * O `src` e a decisão de otimização de uma imagem do **conteúdo**.
+ * -------------------------------------------------------------------------
+ * É o par que todo bloco da vitrine espalha no `<Image>`:
+ *
+ *     const image = mediaImageProps(section.imageUrl)
+ *     {image && <Image {...image} alt={...} fill sizes={...} />}
+ *
+ * `undefined` quando não há endereço — o bloco continua de pé, com o fundo da
+ * régua no lugar da foto, que é a degradação de sempre. Com endereço, o objeto
+ * diz também se o otimizador do `next/image` **pode** buscá-lo.
+ *
+ * **Por que a segunda metade existe.** O `defaultLoader` do `next/image` não
+ * devolve a URL de um host que não está em `images.remotePatterns`
+ * (`frontend/next.config.js`): ele **lança** — `Invalid src prop (...) is not
+ * configured under images`. E ele roda no servidor, durante a renderização: o
+ * estrago não é daquela foto, é da **página**. Medido com o conteúdo real da
+ * loja: uma foto colada do site antigo (`https://cdn.awsli.com.br/...`, no bloco
+ * de coleções) fazia a home inteira responder **HTTP 500**. Um campo que o CRM
+ * aceita digitar não pode ter esse poder.
+ *
+ * A regra é a mais estreita que resolve, e é a que o otimizador consegue cumprir
+ * sem host nenhum liberado: **arquivo do próprio site é otimizado**
+ * (`/uploads/...`, `/brand/...` — o que a função acima existe para produzir) e
+ * **o resto vai como veio** (`unoptimized`), buscado pelo navegador de quem
+ * visita. A foto aparece, a página fica de pé, e o que se perde é só o
+ * redimensionamento de um arquivo que já vem pronto do site antigo.
+ */
+export function mediaImageProps(
+  value: unknown
+): { src: string; unoptimized: boolean } | undefined {
+  const src = resolveMediaUrl(value)
+
+  return src === undefined
+    ? undefined
+    : { src, unoptimized: !canOptimize(src) }
 }
 
 /**
@@ -129,4 +170,20 @@ function safeUrl(src: string): URL | null {
   } catch {
     return null
   }
+}
+
+/**
+ * O otimizador do `next/image` alcança o arquivo deste endereço?
+ *
+ * Caminho do próprio site é o que ele alcança: `/uploads/...` (o rewrite de
+ * `next.config.js` traz o arquivo do backend) e `/brand/...` (vem no
+ * repositório). É para eles que a otimização existe, e é o que a loja grava.
+ *
+ * As **duas** barras na frente são o caso que passaria por "caminho do site" e
+ * não é: `//cdn.externo.com/foto.jpg` é host de terceiro sem esquema. O
+ * `resolveMediaUrl` o devolve intacto — ele começa com `/` —, e o loader do
+ * `next/image` o trata como externo, com a mesma exceção de host não liberado.
+ */
+function canOptimize(src: string): boolean {
+  return src.startsWith("/") && !src.startsWith("//")
 }

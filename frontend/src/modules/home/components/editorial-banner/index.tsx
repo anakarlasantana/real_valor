@@ -1,5 +1,5 @@
 import { type EditorialSection } from "@lib/content/home-sections"
-import { resolveMediaUrl } from "@lib/util/media"
+import { mediaImageProps } from "@lib/util/media"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 
@@ -20,9 +20,11 @@ import Image from "next/image"
  * `grid-cols-2`) e o `brand.css` não tinha um `rv-manifesto`: era a "segunda
  * régua" que o `ruler.spec.ts` prende, e o teste novo de lá cobre esta seção.
  *
- * A foto passa por `resolveMediaUrl` (ver `lib/util/media.ts`): a imagem enviada
+ * A foto passa por `mediaImageProps` (ver `lib/util/media.ts`): a imagem enviada
  * pelo CRM chega como chave do provider e é traduzida aqui, como no hero, na
- * capa e na faixa editorial. O fundo da caixa é o dourado a 20% (em `color-mix`,
+ * capa e na faixa editorial — e, vinda de fora (a colada do site antigo da
+ * loja), é entregue sem otimizar em vez de derrubar a página. O fundo da caixa é
+ * o dourado a 20% (em `color-mix`,
  * para compor sobre o fundo que o lojista escolheu para a seção).
  */
 export default function EditorialBanner({
@@ -31,13 +33,13 @@ export default function EditorialBanner({
   section: EditorialSection
 }) {
   const imageFirst = section.imagePosition === "left"
-  const image = resolveMediaUrl(section.imageUrl)
+  const image = mediaImageProps(section.imageUrl)
 
   const media = (
     <div className="rv-manifesto-media">
       {image && (
         <Image
-          src={image}
+          {...image}
           alt={section.imageAlt}
           fill
           sizes="(min-width: 1024px) 50vw, 100vw"
