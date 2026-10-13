@@ -2,6 +2,8 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
+import { DEFAULT_SORT, type SortOptions } from "@lib/catalog/types"
+
 /**
  * A ordem do catálogo — agora um `<select>`, e não uma lista de rádios.
  *
@@ -19,10 +21,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
  * limpo (sem `sortBy`), porque é o mesmo que a página faz quando ninguém escolheu
  * nada: dois endereços para a mesma lista é o defeito de duas verdades.
  */
-export type SortOptions = "price_asc" | "price_desc" | "created_at"
-
-export const DEFAULT_SORT: SortOptions = "created_at"
-
 const sortOptions: { value: SortOptions; label: string }[] = [
   { value: "created_at", label: "Mais recentes" },
   { value: "price_asc", label: "Menor preço" },

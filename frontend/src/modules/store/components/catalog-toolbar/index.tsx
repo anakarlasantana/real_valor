@@ -4,10 +4,11 @@ import { Popover, Transition } from "@headlessui/react"
 import { Plus, XMark } from "@medusajs/icons"
 import { Fragment } from "react"
 
+import type { SortOptions } from "@lib/catalog/types"
 import type { Faceta } from "@lib/util/catalog-filters"
 
 import FilterPanel from "../filter-panel"
-import SortProducts, { type SortOptions } from "../refinement-list/sort-products"
+import SortProducts from "../refinement-list/sort-products"
 
 /**
  * A barra de ferramentas do catálogo: a contagem, os filtros e a ordem.

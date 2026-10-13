@@ -11,7 +11,7 @@ impactados · critérios de aceite · complexidade · pré-requisitos.
 
 Pré-requisito de tudo. Curta, e cria a estrutura que os itens seguintes consomem.
 
-### ✅ F0 · Fundação modular — guardas, catraca e doc 15 — **FEITO** (hash na entrada da F1: um commit não carrega o próprio hash)
+### ✅ F0 · Fundação modular — guardas, catraca e doc 15 — **FEITO** (`9fd1c79826`)
 
 **O que foi feito:** três guardas novas de Node puro e a doutrina num doc. O `check-boundaries.mjs`
 ganhou as camadas do storefront — **R-A** (`lib` ↛ `modules`), **R-B** (`lib`/`modules` ↛ `app`),
@@ -63,6 +63,56 @@ R-B, que nasce com zero violação, poderia parar de ver em silêncio.
 **Tipo:** arquitetura · **Prioridade:** MÉDIA · **Complexidade:** baixa
 **Depende de:** F0 · **Arquivos:** novo `scripts/check-boundaries.negative.mjs`
 **Aceite:** um alvo roda as sondas e reprova se alguma guarda deixar de reprovar
+
+## Fase 1 — Código morto
+
+Um commit: o que ninguém chama sai do repositório, e o que parecia morto e não era fica
+registrado com o porquê. A guarda que fica mais verde é a R-A (5 → 3): o `SortOptions`
+sai do componente e o dono do vocabulário passa a ser o dado.
+
+### ✅ F1 · Código morto — **FEITO** (hash na entrada da F2: um commit não carrega o próprio hash)
+
+**O que foi feito:** sete arquivos apagados — `lib/constants.tsx`, o diretório `medusa-cta/` e
+cinco ícones órfãos do starter (`bancontact`, `ideal`, `paypal`, `medusa`, `nextjs`) —, o tipo
+`FeaturedProduct`, a função `retrieveCollection` e as quatro funções mortas de `lib/data/cart.ts`
+(`applyGiftCard`, `removeDiscount`, `removeGiftCard`, `submitPromotionForm`: 55 linhas, a maior
+parte comentada). Três nomes perderam o `export` e continuaram vivos como privados —
+`themeFromRow` (usado por `themesFromRows`), `isObject`/`isArray` (por `isEmpty`) e `DEFAULT_SORT`
+(pelo próprio seletor). E o `SortOptions` mudou de casa: nasceu
+`frontend/src/lib/catalog/types.ts` com o tipo **e** o `DEFAULT_SORT` — o valor `"created_at"`
+estava digitado em **cinco** lugares (o seletor, três templates e o dado) e agora tem um dono;
+dez consumidores passaram a importar de lá. **R-A 5 → 3**.
+
+**O que parecia morto e não está** (medido antes de apagar, e por isso **não** foi tocado):
+`lib/util/isEmpty.ts` está vivo (`money.ts`, 17 consumidores), `lib/util/repeat.ts` tem 6
+(esqueletos, carrinho e pedido), e `getOrSetCart`/`updateCart` são usados dentro do próprio
+`cart.ts` (`addToCart`, `setAddresses`, `updateRegion`) — "zero importadores" contando só de fora
+do arquivo engana. Os falsos positivos que a varredura já tinha achado seguem de pé (`schema.ts`
+por `export *`; `backend/src/{links,scripts}` carregados por caminho).
+
+**Lido integralmente na fase:** `lib/constants.tsx`, `lib/theme.ts`, `lib/theme.spec.ts`,
+`lib/util/{isEmpty,money,repeat,sort-products}.ts`, `lib/data/{cart,collections,products}.ts`,
+`types/global.ts`, `medusa-cta/index.tsx`, `sort-products/index.tsx` e os 10 consumidores do
+`SortOptions` (`app/…/{store,collections,categories}`, `modules/{store,categories,collections}/templates`,
+`catalog-toolbar`).
+
+**Medido (13/10/2026, pós-F1):** comentário em `frontend/src` 9.840 → 9.799 linhas (37.898 →
+37.621); baseline 313 → 312 arquivos; `modules/` 171 → 165 arquivos (16.962 → 16.804 linhas);
+`lib/` 12.912 → 12.806; `types/` 59 → 52; `lib/data/cart.ts` 476 → 421; exceções de camada
+17 → 15 (restam 4 na F2, 4 na F5 e 7 no RV-048).
+
+**Guarda que fica verde:** R-A 5 → 3 — as duas exceções do `SortOptions` saíram do baseline (a
+lista só encolhe, e a guarda reprova se uma exceção morta ficar) — e a catraca do comentário
+reancorada para baixo (o `--write` no mesmo commit).
+**Gate:** `make check` · `make types` · `yarn test` — os três verdes (34 arquivos/466 testes no
+storefront) e o hook de commit rodando o `make check`.
+**Arquivos:** *novo:* `frontend/src/lib/catalog/types.ts` · *alterados:*
+`lib/{data/cart,data/collections,data/products,theme,util/isEmpty,util/sort-products}.ts`,
+`types/global.ts`, os 10 consumidores do `SortOptions`,
+`scripts/baselines/{boundaries,comments}.json` e o doc 15 · *removidos:* os sete arquivos mortos.
+**Pré-requisito:** F0
+
+---
 
 ### ✅ RV-001 · Camada de abstração de pagamento — **FEITO** (`73ed719544`)
 
@@ -154,7 +204,7 @@ Ver a correção em `04-requisitos-funcionais.md`.
 **Arquivos a alterar:**
 - `payment-container/index.tsx` — remover `StripeCardContainer`, manter o wrapper
 - `payment-button/index.tsx` — já reescrito pelo RV-002
-- `lib/constants.tsx` — remover `isStripeLike`, `isPaypal`; `paymentInfoMap` passa a ser do MP
+- ~~`lib/constants.tsx`~~ — **saiu inteiro na F1**: o RV-001 já tinha tirado o registro de pagamento (`paymentInfoMap`, `isStripeLike`, `isPaypal`) e sobrara só `noDivisionCurrencies`, sem um único consumidor
 - `order/payment-details/index.tsx` — remover o `card_last4` (não existe no MP)
 
 **Aceite:**

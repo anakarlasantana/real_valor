@@ -1,11 +1,11 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
+import { SortOptions } from "@lib/catalog/types"
 import { getCollectionByHandle } from "@lib/data/collections"
 import { selecaoDaUrl } from "@lib/util/catalog-filters"
 import { StoreCollection } from "@medusajs/types"
 import CollectionTemplate from "@modules/collections/templates"
-import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 
 type Props = {
   params: Promise<{ handle: string; countryCode: string }>

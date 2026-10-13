@@ -19,9 +19,9 @@ página conhece quem está mais longe dela; o contrário nunca.
 | Camada | Papel | Pode importar | Medido (13/10/2026) |
 | :--- | :--- | :--- | ---: |
 | `app/` | rota, layout, `page.tsx`, `metadata`: composição e fronteira HTTP | `modules`, `lib`, contrato | 38 arquivos · 2.067 linhas |
-| `modules/` | UI e comportamento de um domínio (`store`, `products`, `checkout`, `account`, `home`, `content`, `skeletons`, `common`) | `lib`, contrato | 171 arquivos · 16.962 linhas |
-| `lib/` | dado, regra e integração, sem React de tela (`data`, `payments`, `content`, `theme`, `config`, `util`) | contrato | 97 arquivos · 12.912 linhas |
-| `types/` | tipo sem dono de camada (candidato a virar dono: F4) | contrato | 2 arquivos · 59 linhas |
+| `modules/` | UI e comportamento de um domínio (`store`, `products`, `checkout`, `account`, `home`, `content`, `skeletons`, `common`) | `lib`, contrato | 165 arquivos · 16.804 linhas |
+| `lib/` | dado, regra e integração, sem React de tela (`catalog`, `data`, `payments`, `content`, `theme`, `config`, `util`) | contrato | 97 arquivos · 12.806 linhas |
+| `types/` | tipo sem dono de camada (candidato a virar dono: F4) | contrato | 2 arquivos · 52 linhas |
 | `packages/contrato` | tipo e schema compartilhados pelos três runtimes (`@rv/contrato`) | — é folha | 3.817 linhas |
 | `styles/` | CSS (`brand.css` e parciais: F6) | — | 5.248 linhas |
 
@@ -29,7 +29,9 @@ Três consequências que a F0 tornou verificáveis:
 
 1. **`lib` não conhece `modules`.** O tipo também caminha junto com o dono: se o
    dado precisa de `SortOptions`, o tipo mora em `lib/`, não no componente que o
-   usa. É a inversão que mais apareceu na varredura (5 casos, R-A).
+   usa. É a inversão que mais apareceu na varredura (5 casos, R-A) — a F1 fez o
+   `SortOptions` caminhar para `lib/catalog/types.ts` e dos 5 sobraram 3, todos no
+   RV-048.
 2. **`modules` e `lib` não conhecem `app`.** A rota compõe; a peça não sabe em que
    rota ela foi montada. Zero violações hoje (R-B) — a regra existe para o
    primeiro caso, não para o passado.
@@ -43,7 +45,7 @@ isso estão no hook de commit (`.githooks/pre-commit`) e no job `guard` da CI.
 
 | Regra | O que proíbe | Guarda | Exceções vivas | Morrem em |
 | :--- | :--- | :--- | ---: | :--- |
-| **R-A** | `lib` importa `modules` | `check-boundaries.mjs` | 5 | 2 na F2 · 3 no RV-048 |
+| **R-A** | `lib` importa `modules` | `check-boundaries.mjs` | 3 | RV-048 (a F1 tirou os 2 do `SortOptions`) |
 | **R-B** | `lib`/`modules` importam `app` | `check-boundaries.mjs` | 0 | — (nasce verde) |
 | **R-C** | `lib` (fora de `lib/data`) importa `lib/data` | `check-boundaries.mjs` | 2 | 1 na F5 · 1 no RV-048 |
 | **R-D** | `modules/checkout` importa `@lib/payments/*` (subcaminho, em vez da fachada) | `check-boundaries.mjs` | 4 | F2 |
@@ -51,7 +53,7 @@ isso estão no hook de commit (`.githooks/pre-commit`) e no job `guard` da CI.
 | painel × backend | `admin/` importa VALOR do backend (só `import type`) | `check-boundaries.mjs` (R7) | 0 | — |
 | checkout × adapter | `modules/checkout` importa adapter ou SDK de pagamento | `check-boundaries.mjs` (RV-014) | 0 | — |
 | convenção de teste | spec fora de `__tests__/<alvo>.unit.spec.ts` ou `src/__checks__/` | `check-storefront-tests.mjs` | 32 | F3 zera |
-| comentário | cabeçalho > 5 linhas, densidade > 12% (arquivo fora do baseline) | `check-comments.mjs` | 313 arquivos | F10 reduz |
+| comentário | cabeçalho > 5 linhas, densidade > 12% (arquivo fora do baseline) | `check-comments.mjs` | 312 arquivos | F10 reduz |
 
 **O baseline é a lista das exceções vivas, não uma licença.**
 (`scripts/baselines/boundaries.json`, `comments.json`, `storefront-tests.json`.)
@@ -67,7 +69,7 @@ reprovam o import. A guarda de camada não é linter de import quebrado; é a gu
 direção, e a direção só existe entre arquivos que existem.
 
 **O baseline é também o canário do detector**: se o `resolveSpecifier` deixar de
-resolver (um apelido renomeado no `tsconfig`, por exemplo), as 17 exceções viram
+resolver (um apelido renomeado no `tsconfig`, por exemplo), as 15 exceções viram
 entradas mortas de uma vez e a guarda reprova — uma guarda que para de ver não passa
 em silêncio. É o que o RV-049 transforma em teste próprio.
 
@@ -89,8 +91,10 @@ em silêncio. É o que o RV-049 transforma em teste próprio.
   O RV-048 apaga o diretório inteiro e as exceções com ele.
 - **R-A/R-C (camadas)**: o dado importando o tipo do componente é a inversão que
   parece inofensiva (é só um `type`) e amarra o `lib/` ao `modules/` para sempre.
-  R-C guarda o fundo da pilha: `lib/util/sort-products.ts` importando `lib/data` fecha
-  o ciclo que R-E acusa.
+  Foi o caso do `SortOptions`, que a F1 fez o tipo caminhar para
+  `lib/catalog/types.ts`; os 3 que restam em R-A são o adapter do Stripe, que sai
+  no RV-048 inteiro. R-C guarda o fundo da pilha: `lib/util/sort-products.ts`
+  importando `lib/data` fecha o ciclo que R-E acusa.
 - **R-D (a fachada)**: medido em 13/10/2026 — `lib/payments/index.ts` tem **zero**
   importadores, e o checkout chega ao `registry` por subcaminho em 4 arquivos
   (`payment`, `payment-button`, `payment-container`, `payment-wrapper`). Pior: o
@@ -110,9 +114,11 @@ em silêncio. É o que o RV-049 transforma em teste próprio.
 
 O problema medido na varredura de 13/10/2026: **19.512 linhas de comentário** nas cinco
 árvores de fonte — `packages/contrato/src` em **54,6%**, `backend/src` em 32,0%,
-`scripts/` 30,4%, `admin/src` 28,6%, `frontend/src` 26,0%. Só os cortes da própria F0
-(as três guardas novas e o `check-boundaries.mjs`) já baixaram o total para 19.375 e os
-`scripts/` para 19,9% — a catraca registra o resto. Os piores arquivos isolados:
+`scripts/` 30,4%, `admin/src` 28,6%, `frontend/src` 26,0%. Os cortes da própria F0
+(as três guardas novas e o `check-boundaries.mjs`) baixaram o total para 19.375 e os
+`scripts/` para 19,9%; a **F1**, apagando sete arquivos mortos e reancorando a catraca,
+baixou para **19.334** e o baseline de 313 para **312** arquivos — cada `--write` é
+parte do commit que mudou a forma. Os piores arquivos isolados:
 
 | Arquivo | Comentário | Linhas | Densidade |
 | :--- | ---: | ---: | ---: |
@@ -147,7 +153,7 @@ O problema medido na varredura de 13/10/2026: **19.512 linhas de comentário** n
 | :--- | :--- |
 | Cabeçalho (o primeiro bloco de comentário, antes da primeira linha de código) | ≤ 5 linhas |
 | Densidade de um arquivo que **não** está no baseline | ≤ 12% das linhas, com piso de 6 |
-| Baseline (`scripts/baselines/comments.json`) | 314 arquivos + o total por árvore |
+| Baseline (`scripts/baselines/comments.json`) | 312 arquivos + o total por árvore |
 | Folga tolerada de uma entrada | < 10% (e < 3 linhas): acima disso a entrada é frouxa |
 
 A catraca só desce: um arquivo que já está no baseline não pode ganhar comentário, um
@@ -177,8 +183,8 @@ que impede o refactor de ser um "depois eu volto".
 | Fase | O que faz | A guarda que fica mais verde | Gate |
 | :--- | :--- | :--- | :--- |
 | **F0** (esta) | R-A…R-E, a catraca de comentário, a convenção de teste e este doc | as guardas nascem com baseline | `make check` |
-| **F1** | código morto: `lib/constants.tsx`, `lib/util/isEmpty.ts`, `lib/util/repeat.ts`, `retrieveCollection`, `themeFromRow`, `FeaturedProduct`, `medusa-cta/` + ícones órfãos; as funções mortas de `lib/data/cart.ts` (476 linhas); `SortOptions` sai do componente | R-A 5 → 3 | `make check` · `make types` · `yarn test` |
-| **F2** | dissolve `lib/util` (45 arquivos, 6.622 linhas) por dono; o checkout passa a conhecer só a fachada `@lib/payments`; o `needsInlineInput` duplicado sai | R-A 3 → 0 · R-C 2 → 1 · R-D 4 → 0 | + `yarn build` · GET `/br` |
+| **F1** (feita) | código morto: `lib/constants.tsx`, `medusa-cta/` + 5 ícones órfãos, `retrieveCollection`, o `export` de `themeFromRow`, `FeaturedProduct` e as 4 funções mortas de `lib/data/cart.ts`; o `SortOptions` **e** o `DEFAULT_SORT` (que existia em 5 lugares) para `lib/catalog/types.ts`. **Não** foram tocados, apesar da lista: `isEmpty.ts` (vivo por `money.ts`), `repeat.ts` (6 consumidores) e `getOrSetCart`/`updateCart` (usados dentro do `cart.ts`) | R-A 5 → 3 | `make check` · `make types` · `yarn test` |
+| **F2** | dissolve `lib/util` (45 arquivos, 6.622 linhas) por dono; o checkout passa a conhecer só a fachada `@lib/payments`; o `needsInlineInput` duplicado sai | R-C 2 → 1 · R-D 4 → 0 (a R-A fica em 3: as três são do adapter Stripe) | + `yarn build` · GET `/br` |
 | **F3** | convenção de teste: 30 specs → `__tests__/<alvo>.unit.spec.ts`, os 2 de arquitetura → `src/__checks__/` | convenção 32 → 0 | `yarn test` (34) · `STOREFRONT_RUNNER=1` |
 | **F4** | `src/types` → `lib/{catalog,ui,checkout}/types.ts`; os imports por caminho nu → apelido | R-A/R-C sem regressão | `make types` |
 | **F5** | os ciclos: `config ↔ locale` (o locale vira folha) e o `LOGIN_VIEW` do `account` | R-C 1 → 0 · R-E 6 → 3 | `make check` |
@@ -219,11 +225,11 @@ no `make test`, e não no `make check`.
 
 | Dívida | Medido em 13/10/2026 | Apaga |
 | :--- | :--- | :--- |
-| Exceções de camada no baseline | 17 (6 na F2, 4 na F5, 7 no RV-048) | as fases |
-| Arquivos acima da política de comentário | 313 | F10 (meta: ≤12% e cabeçalho ≤5) |
+| Exceções de camada no baseline | 15 (4 na F2, 4 na F5, 7 no RV-048; eram 17 antes da F1) | as fases |
+| Arquivos acima da política de comentário | 312 | F10 (meta: ≤12% e cabeçalho ≤5) |
 | Specs fora da convenção | 32 | F3 |
 | `lib/util` sem uma responsabilidade só | 45 arquivos · 6.622 linhas | F2 |
-| `lib/data/cart.ts` | 476 linhas | F1 (funções mortas) |
+| `lib/data/cart.ts` | 421 linhas (eram 476: a F1 tirou as 4 funções mortas) | ✅ F1 |
 | `brand.css` | 5.248 linhas, 2.039 de comentário | F6 |
 
 Fora deste lote (não é F0–F10, e não entra no meio de uma fase): o push do `develop`

@@ -5,8 +5,8 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37898,
-      "comments": 9840
+      "lines": 37621,
+      "comments": 9799
     },
     "admin/src": {
       "lines": 7098,
@@ -115,11 +115,6 @@
       "comments": 26,
       "lines": 50,
       "header": 5
-    },
-    "frontend/src/lib/constants.tsx": {
-      "comments": 15,
-      "lines": 47,
-      "header": 14
     },
     "frontend/src/lib/content/appearance.ts": {
       "comments": 52,
@@ -903,7 +898,7 @@
     },
     "frontend/src/modules/store/components/catalog-toolbar/index.tsx": {
       "comments": 24,
-      "lines": 121,
+      "lines": 122,
       "header": 5
     },
     "frontend/src/modules/store/components/category-tabs/index.tsx": {
@@ -933,7 +928,7 @@
     },
     "frontend/src/modules/store/components/refinement-list/sort-products/index.tsx": {
       "comments": 17,
-      "lines": 75,
+      "lines": 73,
       "header": 5
     },
     "frontend/src/modules/store/templates/index.tsx": {
@@ -963,7 +958,7 @@
     },
     "frontend/src/types/global.ts": {
       "comments": 19,
-      "lines": 56,
+      "lines": 49,
       "header": 5
     },
     "admin/src/admin/lib/__tests__/api-url.unit.spec.ts": {

@@ -1,12 +1,5 @@
 import { StorePrice } from "@medusajs/types"
 
-export type FeaturedProduct = {
-  id: string
-  title: string
-  handle: string
-  thumbnail?: string
-}
-
 export type VariantPrice = {
   calculated_price_number: number
   calculated_price: string

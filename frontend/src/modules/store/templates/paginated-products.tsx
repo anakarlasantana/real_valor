@@ -1,5 +1,6 @@
 import { Tag } from "@medusajs/icons"
 
+import { DEFAULT_SORT, SortOptions } from "@lib/catalog/types"
 import { listProductsWithSort } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
 import {
@@ -16,7 +17,6 @@ import ClearFilters from "../components/clear-filters"
 import FilterChips from "../components/filter-chips"
 import FilterPanel from "../components/filter-panel"
 import { Pagination } from "../components/pagination"
-import { SortOptions } from "../components/refinement-list/sort-products"
 
 /**
  * A página do catálogo — a moldura em volta do que `listProductsWithSort`
@@ -124,7 +124,7 @@ export default async function PaginatedProducts({
       <div className="rv-container">
         <CatalogToolbar
           count={count}
-          sortBy={sortBy ?? "created_at"}
+          sortBy={sortBy ?? DEFAULT_SORT}
           facets={facets}
           ativos={ativos}
         />

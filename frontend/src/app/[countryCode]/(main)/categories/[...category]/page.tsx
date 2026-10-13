@@ -1,10 +1,10 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
+import { SortOptions } from "@lib/catalog/types"
 import { getCategoryByHandle } from "@lib/data/categories"
 import { selecaoDaUrl } from "@lib/util/catalog-filters"
 import CategoryTemplate from "@modules/categories/templates"
-import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 
 type Props = {
   params: Promise<{ category: string[]; countryCode: string }>

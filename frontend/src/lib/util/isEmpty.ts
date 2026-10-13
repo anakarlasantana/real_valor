@@ -1,5 +1,5 @@
-export const isObject = (input: any) => input instanceof Object
-export const isArray = (input: any) => Array.isArray(input)
+const isObject = (input: any) => input instanceof Object
+const isArray = (input: any) => Array.isArray(input)
 export const isEmpty = (input: any) => {
   return (
     input === null ||

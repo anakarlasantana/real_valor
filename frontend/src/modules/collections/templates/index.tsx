@@ -1,9 +1,9 @@
 import { Suspense } from "react"
 
+import { DEFAULT_SORT, SortOptions } from "@lib/catalog/types"
 import { type SelecaoDoCatalogo } from "@lib/util/catalog-filters"
 import { HttpTypes } from "@medusajs/types"
 import CatalogSkeleton from "@modules/store/components/catalog-skeleton"
-import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import PaginatedProducts from "@modules/store/templates/paginated-products"
 
 /**
@@ -30,7 +30,7 @@ export default function CollectionTemplate({
   selecao?: SelecaoDoCatalogo
 }) {
   const pageNumber = page ? parseInt(page) : 1
-  const sort = sortBy || "created_at"
+  const sort = sortBy || DEFAULT_SORT
 
   return (
     <main>

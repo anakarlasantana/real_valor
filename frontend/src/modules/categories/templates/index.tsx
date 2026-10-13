@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 
+import { DEFAULT_SORT, SortOptions } from "@lib/catalog/types"
 import { listCategories } from "@lib/data/categories"
 import { abasDoCatalogo } from "@lib/util/category-tabs"
 import { type SelecaoDoCatalogo } from "@lib/util/catalog-filters"
@@ -10,7 +11,6 @@ import Breadcrumb, {
 } from "@modules/common/components/breadcrumb"
 import CatalogSkeleton from "@modules/store/components/catalog-skeleton"
 import CategoryTabs from "@modules/store/components/category-tabs"
-import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import PaginatedProducts from "@modules/store/templates/paginated-products"
 
 /**
@@ -43,7 +43,7 @@ export default async function CategoryTemplate({
   selecao?: SelecaoDoCatalogo
 }) {
   const pageNumber = page ? parseInt(page) : 1
-  const sort = sortBy || "created_at"
+  const sort = sortBy || DEFAULT_SORT
 
   if (!category || !countryCode) notFound()
 

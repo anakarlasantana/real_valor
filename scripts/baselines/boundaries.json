@@ -3,20 +3,6 @@
   "exceptions": [
     {
       "rule": "R-A",
-      "file": "frontend/src/lib/data/products.ts",
-      "specifier": "@modules/store/components/refinement-list/sort-products",
-      "why": "o dado importa `SortOptions` do componente que monta a consulta",
-      "diesIn": "F2 — o tipo vai para `lib/catalog/types.ts`"
-    },
-    {
-      "rule": "R-A",
-      "file": "frontend/src/lib/util/sort-products.ts",
-      "specifier": "@modules/store/components/refinement-list/sort-products",
-      "why": "mesmo `SortOptions`, pelo utilitário de ordenação",
-      "diesIn": "F2 — idem (o utilitário também sai de `lib/util`)"
-    },
-    {
-      "rule": "R-A",
       "file": "frontend/src/lib/payments/adapters/stripe/payment-button.tsx",
       "specifier": "@modules/checkout/components/error-message",
       "why": "UI de provedor que reaproveita o aviso de erro do checkout",

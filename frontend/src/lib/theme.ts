@@ -85,7 +85,7 @@ const DEFAULT_THEME_ID = DEFAULT_THEME.id
  * Campo ausente é "herda o padrão" — a estação declara só o que troca —, e é o
  * `normalizeTheme` abaixo que completa o que falta com o tema `default`.
  */
-export function themeFromRow(row: unknown): Theme | null {
+function themeFromRow(row: unknown): Theme | null {
   const source = (row ?? {}) as Record<string, unknown>
   const id = typeof source.id === "string" ? source.id : ""
 
