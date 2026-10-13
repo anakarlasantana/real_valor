@@ -292,7 +292,7 @@ O grafo de valor do storefront fica sem ciclo: o locale vira **folha** (um módu
 não importa nada do projeto) e a `enum` do `account` sai do template. R-C 2 → 1 e
 R-E 6 → 3 — e as sete exceções que sobram são todas do RV-048 (o adapter Stripe).
 
-### ✅ F5 · Os dois ciclos — **FEITO** (hash na entrada da F6: um commit não carrega o próprio hash)
+### ✅ F5 · Os dois ciclos — **FEITO** (`1c6d6e3c60`)
 
 **O que foi feito:**
 
@@ -326,6 +326,94 @@ existir, e as exceções que os registravam saem do baseline.
 `modules/account/components/{login,register}/index.tsx`,
 `scripts/baselines/{boundaries,comments}.json`, este doc e o doc 15.
 **Pré-requisito:** F4
+
+---
+
+## Fase 6 — A régua partida
+
+O `brand.css` (5.248 linhas, 2.039 de comentário) deixa de ser um arquivo e passa a ser um
+**manifesto**: dezoito parciais em `styles/brand/`, na ordem do cascade, e a prova de que a
+concatenação dos dezoito devolve o arquivo original **byte a byte**.
+
+### ✅ F6 · A régua partida — **FEITO** (hash na entrada da F7: um commit não carrega o próprio hash)
+
+**O que foi feito:**
+
+- `frontend/src/styles/brand/` (novo): dezoito parciais cortados nas costuras que o próprio arquivo
+  já tinha — os 23 banners `/* --- … */` (1438–3779) e os blocos de doc-comment das seções que não
+  tinham banner. Todo corte é `}` / linha vazia / abre-comentário, e o parcial seguinte leva o seu
+  bloco de comentário consigo: `01-tokens` (os tokens e o degrau de desktop do ritmo), `02-base`,
+  `03-faixas` (o ticker e a faixa do Instagram), `04-trilho`, `05-card-vitrine`, `06-cromo`,
+  `07-navegacao`, `08-catalogo`, `09-produto`, `10-sacola`, `11-checkout`, `12-conta`, `13-rodape`,
+  `14-acessibilidade`, `15-card-home`, `16-home`, `17-vitrine-secoes` e `18-prose`.
+- `brand.css` passa a ser o manifesto: dezoito `@import`, na ordem do cascade, e mais nada — **sem
+  uma linha de comentário**. Um ponteiro de uma linha já levantaria o total da árvore, e a narrativa
+  da partição é deste doc e do doc 15: é a política da casa aplicada ao pé da letra. O nome e o lugar
+  dele em `globals.css` **não mudam**, e é por isso que as referências em prosa ao `brand.css`
+  espalhadas pelo código (o `theme.ts`, o `motion.ts`, o contrato, os testes do carrossel e da
+  régua) continuam verdadeiras: o bundler vê o mesmo arquivo, na mesma posição.
+- Os **dois leitores por caminho** que a F3 já tinha mapeado foram reancorados: a régua do storefront
+  (`src/__checks__/ruler.spec.ts`, que lia o `brand.css` inteiro e fatiava a partir de um `@media`)
+  e o CSS de aparência do backend
+  (`backend/src/modules/content/__tests__/assets.unit.spec.ts`, que confere variável escrita ×
+  consumida). Os dois passaram a ler o manifesto e a concatenar os parciais — a string é a mesma de
+  antes, byte a byte —, e a emenda não gastou uma linha de comentário nova em nenhum deles (a catraca
+  veria).
+- A catraca foi reancorada (`--write`, o caso que o §15.4 nomeia): a entrada do `brand.css` (2.039
+  comentários) sai, as dezoito dos parciais entram — arquivo novo não herda exceção de ninguém, e a
+  régua é densa em todas as dezoito —, e o **total da árvore não muda**: 9.770 → 9.770.
+
+**A prova de concatenação byte a byte:**
+
+- **na fonte:** a soma dos dezoito parciais, na ordem do manifesto, é o arquivo original —
+  `sha256 fd0471f4b3a88b4b9a21a9e9c498b7bc69d6c2f0d8e9cf9b59d1d0001abb5983`, 173.662 bytes nos dois
+  lados; e o contador da casa fecha a partição (197+87+154+…+57 = **2.039** linhas de comentário, a
+  conta exata do arquivo de antes).
+- **no bundle:** com o container reiniciado em cada estado — o monolítico e o particionado —, o CSS
+  que o Turbopack serve tem as **5.028 regras na mesma ordem**; normalizando o que o dev acrescenta
+  por módulo (um cabeçalho `/* [project]/… (css) */` e uma linha vazia por arquivo importado: 6 no
+  monolítico, 24 no particionado) e a linha `sourceMappingURL` (que carrega o hash do chunk, por
+  construção), os dois lados dão
+  `sha256 0bd4f6297e0f9f2b60db0b7ceb50e73cf9c516832209813d8e312aa6fea7bac1`.
+
+**Medido (13/10/2026, pós-F6):** `brand.css` 5.248 → 19 linhas e 2.039 → 0 comentários;
+`styles/brand/` 18 arquivos (5.265 linhas medidas — os dezoito parciais, cada um fechando em `\n`);
+comentário em `frontend/src` 9.770 → **9.770**; baseline da catraca 309 → **326** arquivos (a dívida
+do §15.8 muda de forma, não de tamanho); camadas intactas (R-A 3 · R-C 1 · R-E 3, todas do RV-048;
+R-B e R-D 0) e convenção 0.
+
+**Guarda que fica verde:** a catraca do comentário, reancorada no mesmo commit com o total da árvore
+**igual** — a régua partiu sem acrescentar narrativa —, e os dois specs que leem a régua por caminho,
+que passaram a ler o manifesto (o `ruler.spec.ts` verde: 34 arquivos/466 testes como antes).
+**Gate:** `make check` · `make types` · `make test` (24 suítes/424 no backend, 9/104 no CRM, 34/466 no
+storefront) · GET `/br`, `/br/store` e `/br/account` = 200, com os parciais no CSS servido (regras dos
+parciais 1, 3, 17 e 18 presentes, e **zero** `@import` cru). ⚠️ O `yarn build` de produção **não
+fecha** — e não por esta fase: é o RV-050, abaixo, reproduzido com a árvore limpa.
+**Arquivos:** *novos:* os dezoito de `frontend/src/styles/brand/` ·
+*alterados:* `frontend/src/styles/brand.css` (vira o manifesto),
+`frontend/src/__checks__/ruler.spec.ts`,
+`backend/src/modules/content/__tests__/assets.unit.spec.ts`,
+`scripts/baselines/comments.json`, este doc e o doc 15.
+**Pré-requisito:** F5
+
+### RV-050 · O `yarn build` de produção não fecha (`next/headers` no bundle de cliente) — **ABERTO**
+
+**Descrição:** o `next build` reprova em `src/lib/medusa/locale-cookie.ts` com `You're importing a
+component that needs "next/headers"` — o `next/headers` alcança um bundle **de cliente** pela cadeia
+`lib/config.ts` → `lib/data/tracking.ts` → `modules/tracking/templates/index.tsx` (o `"use client"`
+da cadeia). O webpack morre antes de emitir CSS, e é por isso que o gate de build da F6 não pôde ser
+fechado.
+**Medido (13/10/2026, na F6):** reprodutível **no HEAD da F5** — `git stash` das mudanças da F6 e
+`next build` de novo dá o mesmo erro, o mesmo trace e a árvore limpa —, e a cadeia é anterior à F5:
+o `lib/config.ts` já importava o `getLocaleHeader` no commit da F4. A F6 não toca em nenhum arquivo
+da cadeia (só CSS e dois specs).
+**Tipo:** defeito · **Prioridade:** ALTA · **Complexidade:** baixa–média
+**Depende de:** nenhuma
+**Arquivos:** `frontend/src/lib/config.ts`, `frontend/src/lib/data/tracking.ts`,
+`frontend/src/modules/tracking/templates/index.tsx`, `frontend/src/lib/medusa/locale-cookie.ts`
+**Aceite:** `next build` verde com a régua partida — a prova de concatenação da F6 já está feita nos
+outros dois níveis (a fonte e o bundle do dev), e é este o gate que sobra
+**Pré-requisito:** nenhum — achado na F6 e registrado aqui como manda a regra do lote (§15.6)
 
 ---
 

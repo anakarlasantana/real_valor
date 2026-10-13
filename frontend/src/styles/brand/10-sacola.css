@@ -1,0 +1,245 @@
+/* --- Sacola e resumo ---------------------------------------------------- */
+
+/*
+ * O cabeçalho de uma página interna **sem faixa**: o título centralizado, no
+ * corpo de capa, com o respiro grande em cima e embaixo. A contagem dos itens vai
+ * dentro do `h1`, em `em`, num corpo menor e em cinza — ela é informação
+ * secundária, e o título continua sendo "Sacola".
+ */
+.rv-page-heading-block {
+  margin-bottom: 3.5rem;
+  text-align: center;
+}
+
+.rv-page-heading-block h1 {
+  margin-top: 0.8rem;
+  font-family: var(--rv-font-display);
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  line-height: 1.02;
+  color: var(--rv-fg-strong);
+}
+
+.rv-page-heading-block h1 em {
+  color: var(--rv-muted);
+  font-size: 0.42em;
+  font-style: normal;
+}
+
+/*
+ * A lista de itens e o resumo, lado a lado. O resumo é mais estreito do que a
+ * lista porque ele é curto — cinco linhas — e a lista carrega foto e nome; é a
+ * mesma proporção da referência (1,5 para 0,8).
+ */
+.rv-cart-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .rv-cart-layout {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.8fr);
+    gap: 4rem;
+  }
+}
+
+.rv-cart-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+}
+
+/*
+ * A linha da sacola: foto, informações e preço. No celular o preço desce para a
+ * coluna do texto (duas colunas em vez de três), porque a foto de 150px ao lado
+ * de duas colunas de texto não caberia em 360px de tela.
+ */
+.rv-cart-item {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 1rem;
+  padding-bottom: 1.8rem;
+  border-bottom: 1px solid var(--rv-border);
+}
+
+@media (min-width: 640px) {
+  .rv-cart-item {
+    grid-template-columns: 9.5rem minmax(0, 1fr) auto;
+    gap: 1.5rem;
+  }
+}
+
+.rv-cart-item-media {
+  display: block;
+}
+
+.rv-cart-item-info h3 {
+  margin-block: 0.5rem;
+  font-family: var(--rv-font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--rv-fg-strong);
+}
+
+.rv-cart-item-info p {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+}
+
+/*
+ * O passo da quantidade: dois botões com o número no meio, dentro de uma moldura
+ * de 1px. É o controle da referência e **é ele quem escreve no carrinho** — os
+ * dois botões chamam a mesma action que o seletor antigo chamava.
+ */
+.rv-cart-quantity {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  margin-top: 1.5rem;
+  border: 1px solid var(--rv-border);
+}
+
+.rv-cart-quantity button {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--rv-fg);
+  cursor: pointer;
+  transition: color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-cart-quantity button:hover:not(:disabled) {
+  color: var(--rv-rose);
+}
+
+.rv-cart-quantity button:disabled {
+  color: var(--rv-border);
+  cursor: not-allowed;
+}
+
+.rv-cart-quantity > span {
+  width: 2.125rem;
+  text-align: center;
+  font-size: var(--rv-text-sm);
+}
+
+.rv-cart-item-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  font-weight: 600;
+  color: var(--rv-fg-strong);
+}
+
+@media (max-width: 639px) {
+  .rv-cart-item-price {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+/* "Remover" é texto, e não um ícone de lixeira: a ação é destrutiva, e nomeá-la
+ * é o que impede o clique por engano. */
+.rv-cart-remove button {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-cart-remove button:hover {
+  color: var(--rv-rose-strong);
+}
+
+/*
+ * O resumo do pedido: uma caixa elevada, com o título separado por um filete e
+ * as linhas de valor embaixo. Ele **acompanha a rolagem** no desktop, para o
+ * botão de fechar a compra estar à vista enquanto a cliente confere a lista.
+ */
+.rv-order-summary {
+  padding: 2rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-surface);
+  box-shadow: var(--rv-shadow-card);
+}
+
+@media (min-width: 1024px) {
+  .rv-order-summary {
+    position: sticky;
+    top: 6rem;
+  }
+}
+
+.rv-order-summary h2,
+.rv-order-summary h3 {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rv-border);
+  font-family: var(--rv-font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--rv-fg-strong);
+}
+
+/* As linhas de valor: rótulo à esquerda, número à direita. */
+.rv-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.2rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+}
+
+.rv-summary-row .rv-success {
+  color: var(--rv-success);
+}
+
+.rv-summary-total {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rv-border);
+  color: var(--rv-fg);
+  font-size: var(--rv-text-sm);
+}
+
+.rv-summary-total strong {
+  font-family: var(--rv-font-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--rv-fg-strong);
+}
+
+/*
+ * O parcelamento e o Pix no resumo da sacola: **o mesmo componente** do bloco do
+ * preço (`InstallmentInfo`), na coluna que fica logo abaixo do total.
+ *
+ * A coluna se alinha pela ponta direita para ficar debaixo do número do total, e o
+ * corpo é o das linhas de valor acima (`.rv-summary-row`) — a linha do Pix continua
+ * sendo a única verde, pela regra compartilhada do `.rv-installments b`.
+ */
+.rv-order-summary > .rv-installments {
+  margin-top: 0.75rem;
+  align-items: flex-end;
+  font-size: var(--rv-text-eyebrow);
+}
+
+/* O aviso de compra segura, no pé do resumo. */
+.rv-secure-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+}
+

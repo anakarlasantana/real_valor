@@ -40,6 +40,12 @@ const root = join(here, "../../../../..")
 const read = (...parts: string[]) => readFileSync(join(root, ...parts), "utf8")
 
 const brandCss = read("frontend", "src", "styles", "brand.css")
+  .split("\n")
+  .filter((linha) => linha.startsWith("@import"))
+  .map((linha) =>
+    read("frontend", "src", ...linha.slice('@import "'.length, -2).split("/"))
+  )
+  .join("")
 const appearanceSource = read("frontend", "src", "lib", "content", "appearance.ts")
 const iconsSource = read("frontend", "src", "lib", "content", "icons.ts")
 const socialSource = read("frontend", "src", "lib", "content", "social-icons.tsx")

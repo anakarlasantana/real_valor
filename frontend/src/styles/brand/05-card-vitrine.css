@@ -1,0 +1,286 @@
+/*
+ * O preço e o convite do card
+ * ---------------------------------------------------------------
+ * O card lista a peça em todos os lugares (vitrine, trilho, catálogo,
+ * relacionados), e depois do título ele mostrava duas coisas quietas: o preço em
+ * `--rv-muted` — cinza, do mesmo tamanho do texto de apoio — e o "Comprar" em
+ * letra miúda rosa. Quem abria a vitrine não via nem **quanto custa** nem **onde
+ * clica**; a promessa da seção ("preço sempre visível") era justamente essa.
+ *
+ * Aqui as duas coisas passam a ser lidas na ordem em que importam:
+ *
+ *   1. `.rv-price` — o preço em `--rv-fg-strong` (preto: 16:1 sobre o off white
+ *      da página, 17,4:1 sobre a superfície do card), 1.125rem e semibold. É o
+ *      maior peso tipográfico do bloco de informação, e o primeiro número que o
+ *      olho encontra depois do título.
+ *   2. `.rv-card-cta` — o "Comprar" deixa de ser uma linha de texto e vira um
+ *      **botão** de largura inteira: cheio de grafite, texto off white (11,7:1),
+ *      cerca de 2,6rem de altura. É o único elemento cheio do card, e é para
+ *      onde o olho vai. Não é `<button>`: o card inteiro já é um link, e um
+ *      controle dentro de outro seria HTML inválido (e dois alvos para o mesmo
+ *      toque) — o que ele empresta do botão é a moldura, o alvo e a promessa de
+ *      clique.
+ *
+ * **As cores são medidas, não escolhidas no olho.** A regra de acessibilidade
+ * deste arquivo (o rosa da marca dá 3,1:1 sobre o off white e só serve para
+ * preenchimento, borda, ícone ou texto ≥24px) vale aqui:
+ *
+ *   - o preço comum vai em `--rv-fg-strong`, e não em rosa (16:1);
+ *   - o preço **em oferta** usa `--rv-rose-strong`, e não o rosa de assinatura:
+ *     4,80:1 sobre a superfície do card e 4,42:1 sobre o off white da página,
+ *     onde o número mora — três centésimos abaixo do 4,5 que o texto normal
+ *     pede, e ainda assim o melhor preço em oferta que este card já teve (o rosa
+ *     de assinatura dava 3,39:1 e 3,12:1 nos mesmos dois fundos);
+ *   - o botão em repouso é grafite; no hover ele passa a `--rv-rose-strong`, e o
+ *     texto off white sobre ele mede 4,42:1 — o rosa de assinatura daria 3,12:1
+ *     e não serviria para um rótulo de 11px.
+ *
+ * **O convite não troca de cor no ponteiro, e quem decide é o desenho novo.** Ele
+ * era acendido em `--rv-rose-strong` quando o ponteiro chegava no card, o que fazia
+ * sentido enquanto o botão estava **sempre visível** e a cor era o que respondia ao
+ * ponteiro. No card do redesenho o convite **nasce do hover** (ver o bloco do card,
+ * no fim deste arquivo): ele só existe enquanto o ponteiro está ali, e uma cor que
+ * muda no mesmo instante em que ele aparece seria sempre a mesma cor — a de hover —
+ * e o grafite da régua nunca apareceria. Quem responde ao ponteiro é o movimento: o
+ * zoom da foto e a chegada do convite.
+ */
+.rv-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.625rem;
+}
+
+.rv-price-value {
+  font-family: var(--rv-font-sans);
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--rv-fg-strong);
+}
+
+/* O preço que a peça tinha: riscado, menor e quieto — quem fala é o de agora. */
+.rv-price-was {
+  font-size: 0.875rem;
+  color: var(--rv-muted);
+  text-decoration: line-through;
+}
+
+.rv-price-sale {
+  color: var(--rv-rose-strong);
+}
+
+.rv-card-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.8125rem 1.25rem;
+  border: 1px solid var(--rv-grafite);
+  background-color: var(--rv-grafite);
+  color: var(--rv-offwhite);
+  transition: background-color var(--rv-motion-fast) var(--rv-ease-out),
+    border-color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+/*
+ * O convite não tem estado de hover próprio: a cor é a mesma em repouso e com o
+ * ponteiro em cima (a régua escreve a barra escura e pronto), e o que o ponteiro
+ * acrescenta é ele **aparecer** — ver o bloco do card, no fim deste arquivo.
+ */
+
+/*
+ * Chip de estado da peça
+ * ---------------------------------------------------------------
+ * "Pronta entrega", "Sob demanda", "Últimas peças", "Esgotado" — o
+ * vocabulário de quem está olhando a peça, e não o de quem a cadastrou. Quem
+ * decide **qual** dos quatro é `lib/util/product-availability.ts`; aqui está
+ * só o desenho.
+ *
+ * As três variáveis (`--rv-chip-color`, `--rv-chip-border`, `--rv-chip-bg`)
+ * existem para que um dia o fundo escuro possa vestir o chip sem reescrever
+ * estas regras: um contexto escuro sobrescreve as três e o chip acompanha,
+ * como o `.rv-section-*` já faz. Sem ninguém sobrescrever, os padrões abaixo
+ * valem, e são eles que estão em uso.
+ *
+ * **A regra de acessibilidade do arquivo manda aqui.** O rosa da marca tem
+ * ~3.4:1 sobre o off white e só pode ser preenchimento, borda, ícone ou texto
+ * grande (≥24px) — então o chip não é texto rosa: ele é **borda** rosa com
+ * texto grafite (11:1), e o único estado que se enche de rosa é o "últimas",
+ * que é justamente o que precisa gritar, com o texto em `--rv-primary-fg`.
+ * É o que dá a hierarquia de leitura: esgotado é o mais quieto da lista e
+ * últimas o mais alto.
+ */
+.rv-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--rv-chip-border, var(--rv-border));
+  border-radius: var(--rv-radius-sm);
+  background-color: var(--rv-chip-bg, transparent);
+  color: var(--rv-chip-color, var(--rv-grafite));
+  font-family: var(--rv-font-sans);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  line-height: 1.4;
+  padding: 0.25rem 0.625rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/*
+ * **O chip é escuro.** Saiu do contorno claro sobre a foto para um fundo
+ * cacau/preto com texto offwhite, e a peça do pedido era a posição: o chip
+ * desceu para a linha do preço, abaixo da foto, onde ele é lido como
+ * informação da peça e não como selo grudado na imagem.
+ *
+ * O ganho não é só de contraste — é de **hierarquia**. Sobre a foto, o chip
+ * disputava atenção com a peça e com o botão; ao lado do preço, ele entra na
+ * mesma frase ("Pronta entrega · R$ 249,90") e some quando não tem o que dizer.
+ *
+ * Todos os quatro estados compartilham o fundo escuro, e o que os separa é a
+ * **borda** — o acento da marca, não o fundo. Assim nenhum estado pede mais
+ * atenção que outro, e a peça esgotada não grita.
+ */
+
+/* Pronta entrega: borda rose, texto offwhite — o positivo, discreto. */
+.rv-chip-pronta-entrega {
+  --rv-chip-border: var(--rv-rose);
+  --rv-chip-bg: var(--rv-cacao);
+  --rv-chip-color: var(--rv-offwhite);
+}
+
+/* Sob demanda: dourado de detalhe — o tom de "sob encomenda". */
+.rv-chip-sob-demanda {
+  --rv-chip-border: var(--rv-dourado);
+  --rv-chip-bg: var(--rv-cacao);
+  --rv-chip-color: var(--rv-offwhite);
+}
+
+/*
+ * Últimas peças: borda dourada, que é o acento de urgência da marca. A borda
+ * rose é da marca inteira, e "acabando" é um tom de aviso — dourado diz isso
+ * sem gritar como o rosa-filled faria sobre fundo escuro.
+ */
+.rv-chip-ultimas {
+  --rv-chip-border: var(--rv-dourado);
+  --rv-chip-bg: var(--rv-cacao);
+  --rv-chip-color: var(--rv-offwhite);
+}
+
+/*
+ * Esgotado: o mais baixo da hierarquia. Fica escuro e **sem pulso** — um chip
+ * pedindo atenção numa peça que não pode ser comprada seria o oposto de
+ * honesto. O `is_enabled`-like da informação está em `pulses()`
+ * (`lib/util/motion.ts`), e "esgotado" não está nela.
+ */
+.rv-chip-esgotado {
+  --rv-chip-border: var(--rv-border);
+  --rv-chip-bg: var(--rv-grafite);
+  --rv-chip-color: var(--rv-muted);
+}
+
+/*
+ * Quem pulsa
+ * ---------------------------------------------------------------
+ * A hierarquia de leitura acima é **cor**: os quatro estados são escuros e o
+ * que os separa é a borda. Aqui ela vira **movimento**, e **só um estado se
+ * mexe** — "últimas peças".
+ *
+ * Eram dois, e a loja pediu um depois de ver a vitrine: com toda peça em
+ * estoque pulsando, o movimento deixa de ser informação e vira ruído — e uma
+ * dobra mostra dez peças ao mesmo tempo. "Últimas peças" é o único estado em
+ * que o movimento carrega algo que o texto não carrega: **acaba**. "Pronta
+ * entrega" não precisa de animação para dizer que está disponível, e "esgotado"
+ * jamais deveria — um chip pedindo atenção numa peça que não pode ser comprada
+ * é o oposto de honesto.
+ *
+ * O desenho é um **halo dourado** que sai da borda e some, em 4,2s: lento e
+ * contínuo, lido como "está vivo" sem piscar. A WCAG 2.3.1 proíbe mais de três
+ * lampejos por segundo, mas esse é o piso legal, não o alvo — aqui a leitura
+ * pretendida é calma, e é o ciclo longo que a produz.
+ *
+ * Quem decide ** qual** estado pulsa é `pulses` (`lib/util/motion.ts`, com
+ * teste); o desenho do pulso é desta folha, porque desenho é aqui.
+ *
+ * Com `prefers-reduced-motion`, a guarda global do fim deste arquivo zera a
+ * duração e a repetição: o chip fica parado no estado final (o anel some), e
+ * nada mais muda na página.
+ */
+.rv-chip-pulse {
+  position: relative;
+}
+
+/*
+ * O pulso é um **halo** que sai da borda do chip e some, e só existe em
+ * "últimas peças" (quem decide é `pulses()`, em `lib/util/motion.ts`).
+ *
+ * Lento e contínuo de propósito: um ciclo de 4,2s com opacidade baixa é
+ * lido como "está vivo" sem nunca piscar rápido. A WCAG 2.3.1 proíbe mais de
+ * três lampejos por segundo, e um chip de vitrine não tem por que chegar perto
+ * disso — mas o limite é o piso, não o alvo: aqui a leitura pretendida é calma,
+ * e é o movimento lento que dá isso.
+ */
+.rv-chip-pulse::after {
+  content: "";
+  position: absolute;
+  border: 1px solid var(--rv-dourado);
+  border-radius: var(--rv-radius-sm);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rv-chip-pulse.rv-chip-ultimas::after {
+  inset: 0;
+  animation: rv-chip-radar 4.2s var(--rv-ease-out) infinite;
+}
+
+@keyframes rv-chip-radar {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.28);
+  }
+}
+
+/*
+ * A entrada em cena dos cards
+ * ---------------------------------------------------------------
+ * `.rv-reveal` é o estado de espera, `.rv-reveal-in` o de chegado, e a segunda
+ * classe é posta pelo JavaScript (`modules/common/components/reveal/index.tsx`)
+ * quando o bloco aparece na tela. O atraso entre um card e o outro chega inline,
+ * do compasso de `lib/util/motion.ts`.
+ *
+ * **As duas condições do `@media` são a segurança desta regra.** Uma classe que
+ * esconde conteúdo é uma promessa, e uma promessa quebrada deixa um buraco na
+ * página: se o JavaScript não rodar, ou se falhar antes de observar o bloco, o
+ * card não aparece nunca. Por isso a espera só vale quando o navegador diz que
+ * **tem JavaScript** (`scripting: enabled`) e que o visitante **não pediu menos
+ * movimento** — nas outras combinações a regra não existe, o card nasce visível
+ * e a vitrine é a de sempre.
+ *
+ * O movimento é de `transform` e `opacity`, os dois únicos que o navegador
+ * compõe sem refazer o layout: rolar a página com dez cards entrando continua
+ * sendo rolar a página.
+ */
+@media (prefers-reduced-motion: no-preference) and (scripting: enabled) {
+  .rv-reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity var(--rv-motion-slow) var(--rv-ease-out),
+      transform var(--rv-motion-slow) var(--rv-ease-out);
+  }
+
+  .rv-reveal-in {
+    opacity: 1;
+    transform: none;
+  }
+}
+

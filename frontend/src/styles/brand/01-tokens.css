@@ -1,0 +1,264 @@
+/*
+ * Real Valor — Design Tokens
+ * ---------------------------------------------------------------
+ * Source of truth: ./Downloads/identidade_realvalor (brand guide)
+ *
+ * Palette (as printed on the guide, 6 core colors): NÃO está aqui.
+ * Ela é `THEME_COLOR_HEXES` (`backend/src/modules/content/contract.ts`)
+ * — a mesma lista que o CRM usa para a bolinha de cor da prévia —, e o
+ * gerador a escreve em `styles/tokens.generated.css`, que o `globals.css`
+ * importa ANTES deste arquivo. Era a terceira cópia dos mesmos hex
+ * (contrato, `themes/default/theme.json`, aqui) e a única que a guarda
+ * precisava comparar: a R3-lite a gerou, e não há mais o que comparar.
+ *
+ *   Rosa Queimado  #B97872  cor assinatura
+ *   Off White      #F7F1E8  fundos
+ *   Marrom Cacau   #4A3531  apoio
+ *   Grafite        #303033  textos
+ *   Preto          #171717  contraste
+ *   Dourado Rosé   #D4B19A  detalhes
+ *
+ * Typography (as printed on the guide, 3 families):
+ *   Playfair Display  titulos e destaques
+ *   Montserrat        textos e interface
+ *   Allura            assinaturas e frases
+ *
+ * As três seguem aqui digitadas de propósito: o valor delas é o
+ * `var(--font-*)` que o `localFont` do Next publica no layout (a família
+ * real é hasheada pelo Next), e isso é ligação do storefront, não dado de
+ * tema. O que o contrato garante — a **pilha de fallback** de cada papel,
+ * `THEME_FONTS[role].fallback` — é conferido por `assets.unit.spec.ts`
+ * ("o fallback de cada `--rv-font-*` do brand.css é o do contrato").
+ *
+ * Accessibility rule: rv-rose on rv-offwhite is ~3.4:1, so rose is
+ * only used for fills, borders, icons and large (>=24px) text.
+ * Body copy always uses rv-grafite (~11:1).
+ *
+ * Every token below can be overridden per seasonal theme by the
+ * inline CSS variables produced by lib/theme.ts (Fase 5 of the
+ * technical doc) — no rebuild required.
+ */
+
+:root,
+:root[data-theme="default"] {
+  /* --- Derived (not in the guide, computed from the palette) --- */
+  --rv-rose-strong: #9e5f58; /* hover / active on rose fills */
+  --rv-rose-soft: #e3c9c4; /* rose at low emphasis on off-white */
+  --rv-surface: #fdfbf8; /* elevated card, slightly lifted off-white */
+  --rv-border: #e5dacd; /* hairline dividers */
+  --rv-muted: #6f6a66; /* secondary text, still AA on off-white */
+
+  /*
+   * Texto e traço sobre preto — o rodapé, e o que mais vier.
+   *
+   * O redesenho (a referência de layout) escrevia estes cinzas à mão em
+   * cada regra (`#aaa`, `#bbb`, `#777`) e usava `#555` na borda do campo.
+   * Não foram portados como estão, por dois motivos: cor solta não segue o
+   * tema sazonal, e o `#555` do protótipo dá 2,4:1 contra o preto — abaixo
+   * dos 3:1 que a WCAG pede para a borda de um componente.
+   *
+   *   --rv-ondark        off-white cheio: título e texto de leitura
+   *   --rv-ondark-muted  off-white a 68% sobre o preto → 8,0:1 (AA folgado)
+   *   --rv-ondark-line   filete interno das faixas do rodapé
+   *   --rv-ondark-field  borda de campo → 3,3:1, o mínimo legível
+   */
+  --rv-ondark: var(--rv-offwhite);
+  --rv-ondark-muted: #afaba5;
+  --rv-ondark-line: rgba(255, 255, 255, 0.14);
+  --rv-ondark-field: rgba(255, 255, 255, 0.35);
+
+  /* --- Semantic mapping --- */
+  --rv-bg: var(--rv-offwhite);
+  --rv-fg: var(--rv-grafite);
+  --rv-fg-strong: var(--rv-preto);
+  --rv-primary: var(--rv-rose);
+  --rv-primary-fg: #ffffff;
+  --rv-accent: var(--rv-dourado);
+  --rv-secondary: var(--rv-cacao);
+
+  /* --- Typography --- */
+  --rv-font-display: var(--font-playfair), Georgia, serif;
+  --rv-font-sans: var(--font-montserrat), system-ui, sans-serif;
+  --rv-font-script: var(--font-allura), cursive;
+
+  /*
+   * Escala tipográfica
+   * ---------------------------------------------------------------
+   * Antes os tamanhos viviam soltos em utilitários Tailwind (`text-lg`,
+   * `text-2xl`, `text-3xl`…) espalhados pelos componentes. Nomes para a
+   * escala é o que permite dizer "isto é um subtítulo" em vez de "isto é
+   * `text-xl`", e é o que impede um componente novo de escolher o tamanho
+   * por adivinhação.
+   *
+   * A ESCALA é a mesma dos utilitários que já eram usados — trocar o token
+   * pelo utilitário equivalente não move um pixel. O que muda é a lista:
+   * `eyebrow` (11px) é o corpo dos rótulos `.rv-eyebrow`, que antes
+   * dependia de a classe acertar o tamanho.
+   */
+  --rv-text-eyebrow: 0.6875rem; /* 11px — rótulos, `.rv-eyebrow` */
+  --rv-text-xs: 0.75rem; /* 12px — apoio, chips, legendas */
+  --rv-text-sm: 0.875rem; /* 14px — texto secundário */
+  --rv-text-base: 1rem; /* 16px — corpo */
+  --rv-text-lg: 1.125rem; /* 18px — preço */
+  --rv-text-xl: 1.25rem; /* 20px — subtítulo */
+  --rv-text-2xl: 1.5rem; /* 24px — título de seção */
+  --rv-text-3xl: 1.875rem; /* 30px — título de página */
+  --rv-text-4xl: 2.25rem; /* 36px — capa */
+
+  /*
+   * Cores de estado
+   * ---------------------------------------------------------------
+   * Faltavam: os componentes usavam cor literal ou a paleta do `@medusajs/ui`,
+   * e cada um inventava a sua. Com o badge de desconto, o chip de erro do
+   * checkout e o aviso de estoque chegando, isso ia virar três definições
+   * diferentes para "erro".
+   *
+   * Escolhas deliberadas, na linha da paleta:
+   *  - o verde e o vermelho são **dessaturados**, para conviver com o rosa
+   *    queimado sem competir com ele;
+   *  - `--rv-info` REAPROVEITA o cacau em vez de introduzir azul — um azul
+   *    quebraria a paleta terrosa e recairia no clichê de interface
+   *    corporativa que a marca evita;
+   *  - o `--rv-*-bg` é a versão de baixa ênfase, para fundo de chip.
+   *
+   * Contraste — MEDIDO (WCAG 2.1, razão sobre o fundo claro e sobre o
+   * próprio `-bg` do estado):
+   *
+   *   danger   6.10 / 5.93   — AA para texto normal
+   *   info     9.72          — AA para texto normal (reaproveita o cacau)
+   *   success  5.12 / 5.10   — AA para texto normal
+   *   warning  4.80 / 4.89   — AA para texto normal
+   *
+   * O verde e o âmbar começaram mais claros e foram ESCURECIDOS até passar:
+   * `#4a7c59` dava 4.33 e `#a8752a` dava 3.57 — abaixo de AA para texto
+   * normal, o que obrigaria a restringi-los a texto grande. Escurecer é
+   * melhor do que documentar a limitação: quem usa `--rv-warning` num chip
+   * pequeno não deveria ter que saber dessa regra.
+   *
+   * Os `-bg` continuam sendo a versão de baixa ênfase — para fundo de chip,
+   * borda ou preenchimento; texto sobre eles usa o `-*` correspondente.
+   */
+  --rv-success: #41704f;
+  --rv-success-bg: #edf3ee;
+  --rv-warning: #8f611f;
+  --rv-warning-bg: #fbf3e6;
+  --rv-danger: #9b3b32;
+  --rv-danger-bg: #f8ecea;
+  --rv-info: var(--rv-cacao);
+  --rv-info-bg: #f2ece8;
+
+  /* --- Shape & depth --- */
+  --rv-radius-sm: 2px;
+  --rv-radius: 4px;
+  --rv-radius-lg: 8px;
+  --rv-radius-xl: 16px;
+  --rv-shadow-card: 0 1px 2px rgba(48, 48, 51, 0.04),
+    0 4px 12px rgba(48, 48, 51, 0.06);
+  --rv-shadow-card-hover: 0 2px 4px rgba(48, 48, 51, 0.06),
+    0 12px 28px rgba(48, 48, 51, 0.12);
+  /* O redesenho dá dois nomes à mesma profundidade (`--rv-shadow-card` e
+   * `--rv-shadow-hover`); os valores são idênticos aos de cima. O alias
+   * existe para o cromo novo não precisar escolher entre os dois nomes —
+   * a profundidade é uma só, os nomes é que eram dois. */
+  --rv-shadow-hover: var(--rv-shadow-card-hover);
+
+  /*
+   * Movimento
+   * ---------------------------------------------------------------
+   * Duas escalas, e nenhuma delas passa de 640ms: a loja é uma vitrine de roupa,
+   * e animação aqui existe para o olho acompanhar a troca — não para ser vista.
+   * `--rv-duration` (200ms) é a escala antiga, das cores e das sombras dos cards,
+   * e continua sendo a mais usada; as três novas são do movimento maior (a
+   * entrada em cena, a troca de página do carrossel, o pulso do chip).
+   *
+   * Duas curvas: `--rv-ease-out` é a de quem chega (entra rápido, para devagar)
+   * e `--rv-ease-soft` a de quem respira (simétrica, para o laço do chip não ter
+   * ponto de virada brusco). Uma escala de duração e duas curvas são o
+   * suficiente para a vitrine inteira parecer a mesma loja.
+   */
+  --rv-ease: cubic-bezier(0.5, 0, 0.5, 1);
+  --rv-duration: 200ms;
+  --rv-motion-fast: 180ms;
+  --rv-motion: 320ms;
+  --rv-motion-slow: 640ms;
+  --rv-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --rv-ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /*
+   * Ritmo vertical das seções da vitrine — o respiro entre um bloco e o
+   * seguinte, em um lugar só.
+   *
+   * Nasceu de três utilitários Tailwind repetidos em seis arquivos
+   * (`py-16 small:py-24` e um `py-16 small:py-20` no trilho), e a diferença
+   * entre eles não era intenção: era rastro. Com o token, mudar o respiro da
+   * vitrine inteira é uma linha aqui — e o trilho de lançamentos, que é uma
+   * faixa mais estreita **de propósito**, tem o token próprio em vez de um
+   * valor solto (`-tight`, 5rem contra 6rem).
+   *
+   * Os valores são exatamente os que os utilitários já davam (4rem, e 6rem /
+   * 5rem a partir de 1024px — o `small` do Tailwind), então a troca não move
+   * um pixel: é o mesmo layout com uma fonte só.
+   */
+  --rv-section-space: 4rem;
+  --rv-section-space-tight: 4rem;
+
+  /*
+   * O mesmo ritmo, um degrau mais largo — e só para as páginas internas
+   * (busca, catálogo, produto, sacola, conta).
+   *
+   * `--rv-section-space` acima é o respiro da **vitrine**, e os 4rem/6rem
+   * dele são o que a home já tem: mexer nele moveria a página inicial
+   * inteira. O redesenho usa um valor único, mais generoso
+   * (`clamp(4.5rem, 8vw, 8rem)`), nas telas que não são a home — que é
+   * exatamente o que este token é. Duas réguas de propósito: a vitrine é
+   * uma sequência de faixas, a página interna é um documento.
+   */
+  --rv-page-space: clamp(4.5rem, 8vw, 8rem);
+
+  /*
+   * O vão entre a seta do carrossel e a **borda da tela** — e não a borda do
+   * contêiner (que para em 1440px).
+   *
+   * Presa ao contêiner, a seta aparecia a 64px da borda numa tela de 1440 e a
+   * ~300px numa de 1920: parada no vazio, enquanto as peças do trilho atravessam
+   * a tela de ponta a ponta. O vão agora é **fluido** em vez de um degrau por
+   * ponto de quebra porque o problema **é** a largura da tela: `1vw` cresce com
+   * ela e o `clamp` segura as duas pontas — nunca menos de 8px (no celular, onde
+   * a seta é o único controle, ela não cola na borda nem briga com o arrasto) nem
+   * mais de 20px (numa tela de 2560 ela não se perde de novo). O degrau de
+   * desktop que ele substitui (`left`/`right: 1rem` a partir de 1024px) é o teto
+   * deste `clamp`.
+   */
+  --rv-arrow-inset: clamp(0.5rem, 1vw, 1.25rem);
+
+  /* Anel de foco do teclado (ver a regra de `:focus-visible` no fim
+   * deste arquivo). Rosa forte, e não o rosa de assinatura, porque o
+   * anel precisa contrastar com o fundo claro **e** com a própria cor
+   * de destaque dos links — sobre um link rosa, um anel rosa sumiria. */
+  --rv-focus-ring: var(--rv-rose-strong);
+}
+
+/*
+ * O degrau de desktop do ritmo da vitrine.
+ *
+ * **O seletor repete o da base de propósito** — e é uma correção, não um
+ * capricho. O bloco de cima abre com `:root, :root[data-theme="default"]`, e o
+ * `data-theme` que o tema escreve no `<html>` faz a **segunda** metade da lista
+ * casar com o mesmo elemento: quem manda ali é a maior especificidade (0,2,0),
+ * não a ordem do arquivo. Com um `:root` sozinho aqui (0,1,0) esta media query
+ * perdia para a base **em qualquer largura**, e o ritmo de desktop nunca
+ * aconteceu: medido a 1440, `--rv-section-space` respondia 4rem e as seções da
+ * home tinham 64px de respiro onde o comentário acima promete 96px.
+ *
+ * Repetir a lista empata a especificidade (0,2,0) e devolve a decisão à ordem —
+ * que é a ordem certa: o degrau vale a partir de 1024px, no resto do arquivo e
+ * não no `:root` do tema.
+ */
+@media (min-width: 1024px) {
+  :root,
+  :root[data-theme="default"] {
+    --rv-section-space: 6rem;
+    --rv-section-space-tight: 5rem;
+  }
+}
+

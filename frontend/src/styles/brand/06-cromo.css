@@ -1,0 +1,221 @@
+/*
+ * A fundação do cromo novo
+ * ---------------------------------------------------------------
+ * O que segue veio do redesenho (a referência de layout) e é a
+ * **linguagem comum** do cabeçalho, do menu lateral, do rodapé e das
+ * páginas internas: botão, ação de ícone, contador da sacola, assinatura
+ * da marca, gaveta, respiro de página e a faixa de novidades.
+ *
+ * Duas regras de tradução valem para o bloco inteiro, e as duas são sobre
+ * o que **não** foi portado:
+ *
+ *   1. Nenhuma cor solta. Onde a referência escrevia o cinza à mão
+ *      (`#aaa`, `#bbb`, `#777`, `#555`), aqui entra um token — do bloco
+ *      "on-dark", lá em cima — para o tema sazonal recoloriar o rodapé
+ *      junto com a loja em vez de deixá-lo para trás. O valor do token
+ *      foi conferido contra o preto, coisa que o protótipo não fazia: o
+ *      `#555` dele dá 2,4:1 e reprova.
+ *
+ *   2. `var(--rv-motion)` é **duração** neste arquivo; na referência o
+ *      mesmo nome carrega a curva junto. Toda transição daqui escreve as
+ *      duas partes: `var(--rv-motion) var(--rv-ease-out)`.
+ *
+ * E vale a regra da casa que o resto do arquivo já repete: `brand.css` é
+ * importado **antes** dos utilitários (`globals.css`), então um `bg-*` ou
+ * `text-*` esquecido no elemento ganha destas classes. Quem adota uma
+ * classe daqui **remove** o utilitário equivalente — nunca soma os dois.
+ * A exceção é a cor de contexto, que é intencional: o mesmo
+ * `.rv-brand-lockup` veste o cabeçalho e o rodapé porque lá um
+ * `text-rv-offwhite` (utilitário, portanto posterior) assume a frente.
+ */
+
+/* --- Botão ------------------------------------------------------------- */
+
+/*
+ * `.rv-btn` é o corpo; as variantes, a roupa:
+ *
+ *   `.rv-btn-primary`    a ação de avançar (o rosa da marca, cheio)
+ *   `.rv-btn-secondary`  a ação de contorno, sobre fundo claro
+ *   `.rv-btn-ghost`      sem caixa nenhuma: continua um botão pelo
+ *   `.rv-btn-text`       comportamento e pelo foco, não pela forma
+ *
+ * `ghost` e `text` só diferem no corpo da letra — o `text` é o mais
+ * discreto, para o "Ver tudo" ao lado de um título. A caixa some nas
+ * duas, e é isso que as separa do par de cima.
+ *
+ * O `min-height: 3rem` não é estética: é o alvo de toque confortável e é
+ * o que mantém uma fileira de botões alinhada com o campo de formulário
+ * ao lado. O `gap` existe para o ícone, que nestes botões vem colado ao
+ * rótulo.
+ */
+.rv-btn {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding-inline: 1.6rem;
+  border: 0;
+  font-family: var(--rv-font-sans);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--rv-motion) var(--rv-ease-out),
+    background-color var(--rv-motion) var(--rv-ease-out),
+    border-color var(--rv-motion) var(--rv-ease-out),
+    transform var(--rv-motion) var(--rv-ease-out);
+}
+
+/*
+ * O erguer de 1px no hover. Com "menos movimento" pedido, a regra de
+ * `prefers-reduced-motion` do topo do arquivo zera a transição e o que
+ * sobra é um deslocamento instantâneo de 1px — um piscar, não uma
+ * animação. É o que a referência faz, e por isso ficou.
+ */
+.rv-btn:hover {
+  transform: translateY(-1px);
+}
+
+.rv-btn-primary {
+  background-color: var(--rv-primary);
+  color: var(--rv-primary-fg);
+}
+
+.rv-btn-primary:hover {
+  background-color: var(--rv-rose-strong);
+}
+
+/* A borda é declarada em `--rv-fg-strong` (e não `currentColor`) para o
+ * contorno continuar existindo no hover: com `currentColor` a borda
+ * viraria off-white sobre o preenchimento e sumiria. */
+.rv-btn-secondary {
+  border: 1px solid var(--rv-fg-strong);
+  background-color: transparent;
+  color: var(--rv-fg-strong);
+}
+
+.rv-btn-secondary:hover {
+  background-color: var(--rv-fg-strong);
+  color: var(--rv-offwhite);
+}
+
+.rv-btn-ghost,
+.rv-btn-text {
+  min-height: 2.5rem;
+  padding-inline: 0;
+  background-color: transparent;
+  color: inherit;
+}
+
+.rv-btn-text {
+  font-size: 0.5625rem;
+}
+
+.rv-btn-text:hover {
+  color: var(--rv-rose-strong);
+}
+
+/* --- Ação de ícone ----------------------------------------------------- */
+
+/*
+ * A ação sem rótulo — a lupa, a pessoa, a sacola. O quadrado de 42px é a
+ * área de toque; o glifo dentro fica com o tamanho que o componente
+ * escolher. O `position: relative` é o que ancora o contador abaixo.
+ *
+ * O anel de foco **não** é escrito aqui de propósito: a regra de
+ * `:focus-visible` do fim deste arquivo é a única da casa e vale para
+ * qualquer elemento focável — um `outline: none` local a anularia.
+ */
+.rv-icon-btn {
+  position: relative;
+  display: inline-flex;
+  width: 2.625rem;
+  height: 2.625rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: var(--rv-fg);
+  transition: color var(--rv-motion) var(--rv-ease-out);
+}
+
+.rv-icon-btn:hover {
+  color: var(--rv-rose);
+}
+
+/*
+ * O contador da sacola, ancorado no canto do alvo de 42px. O fundo é o
+ * rosa cheio — a única mancha de cor do cabeçalho.
+ *
+ * A letra de 8px é pequena de propósito e não é um problema de leitura: o
+ * número é reforço visual. O nome acessível do link já carrega a
+ * contagem ("Sacola (3)"), então quem ouve a página recebe o dado
+ * inteiro.
+ *
+ * `min-width` (e não `width`) para o terceiro dígito caber: com largura
+ * fixa, uma sacola de dez itens viraria um borrão fora do círculo.
+ */
+.rv-cart-badge {
+  position: absolute;
+  right: 0.125rem;
+  top: 0.125rem;
+  display: grid;
+  place-items: center;
+  min-width: 1.0625rem;
+  height: 1.0625rem;
+  padding-inline: 0.125rem;
+  border-radius: 9999px;
+  background-color: var(--rv-rose);
+  color: var(--rv-primary-fg);
+  font-size: 0.5rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* --- Assinatura da marca ---------------------------------------------- */
+
+/*
+ * O conjunto "REAL VALOR / Alfaiataria feminina", em coluna.
+ *
+ * O mesmo bloco aparece no cabeçalho e no rodapé, e é por isso que ele
+ * mora aqui: o que muda entre os dois é só a cor, que vem do contexto —
+ * o `cacao` desta regra no cabeçalho, o `text-rv-offwhite` do rodapé. O
+ * nome **não** declara cor nenhuma: ele herda do bloco, e é isso que faz
+ * a mesma classe servir ao fundo claro e ao escuro.
+ */
+.rv-brand-lockup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--rv-cacao);
+}
+
+.rv-brand-lockup-name {
+  font-family: var(--rv-font-display);
+  font-size: 1.125rem;
+  letter-spacing: 0.23em;
+  line-height: 1;
+}
+
+@media (min-width: 1024px) {
+  .rv-brand-lockup-name {
+    font-size: 1.5rem;
+  }
+}
+
+/*
+ * A fileira de ações do cabeçalho, encostada na direita da sua coluna. O
+ * `flex-wrap: nowrap` é o que impede a sacola de cair para a linha de
+ * baixo quando a marca ocupa toda a largura da coluna dela.
+ */
+.rv-header-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.125rem;
+}
+

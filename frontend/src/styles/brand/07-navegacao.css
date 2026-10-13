@@ -1,0 +1,163 @@
+/* --- Gaveta ------------------------------------------------------------ */
+
+/*
+ * A gaveta lateral: o menu do celular agora e, adiante, os filtros do
+ * catálogo. As duas telas têm a **mesma** geometria no redesenho — trilho
+ * pela esquerda, `88vw` até 420px, topo e base colados na tela — e é por
+ * isso que a classe é uma só: quem quiser mudar a largura das duas muda
+ * um número, aqui.
+ *
+ * O `z-index` fica acima do cabeçalho (`z-50`): a gaveta nasce de um
+ * botão que mora dentro dele, então precisa cobri-lo.
+ *
+ * O `overflow-y: auto` não é detalhe. Um menu de oito itens num celular
+ * de 600px de altura passa da tela, e sem ele os últimos destinos
+ * ficariam inalcançáveis — no menu, um beco sem saída.
+ */
+.rv-drawer-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  background-color: rgba(23, 23, 23, 0.5);
+}
+
+.rv-drawer {
+  position: fixed;
+  z-index: 81;
+  inset-block: 0;
+  left: 0;
+  width: min(88vw, 420px);
+  overflow-y: auto;
+  padding: 1.5rem;
+  background-color: var(--rv-surface);
+  box-shadow: var(--rv-shadow-hover);
+}
+
+/* O topo da gaveta: o rótulo de um lado, o fechar do outro, e o filete
+ * embaixo separando o cabeçalho do conteúdo. */
+.rv-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rv-border);
+}
+
+/* A lista de destinos: um por linha, com o filete em cada um. */
+.rv-drawer-links {
+  display: flex;
+  flex-direction: column;
+  margin-block: 0.5rem 1.5rem;
+}
+
+/*
+ * A linha de destino. O `min-height` de 56px é o alvo de toque de um
+ * celular, e o filete embaixo é a única separação entre os itens — sem
+ * ele a lista vira um bloco de texto.
+ *
+ * A letra é a de display, 18px e **sem** caixa alta: aqui o item é um
+ * destino, não um rótulo, e a caixa alta brigaria com o nome da marca no
+ * topo da gaveta. A cor sai do token, não do `text-rv-grafite` que a
+ * marca usa nos títulos — sobre o fundo elevado, o cacao é o tom de
+ * leitura da casa.
+ *
+ * A transição e o realce do hover **não** estão aqui: eles vêm do
+ * `transition-colors hover:text-rv-rose` que o `nav-link` põe em todo
+ * link de texto. Repetir o par seria escrever a mesma coisa duas vezes, e
+ * a segunda perderia a disputa de qualquer jeito.
+ */
+.rv-drawer-link {
+  display: flex;
+  width: 100%;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--rv-border);
+  font-family: var(--rv-font-display);
+  font-size: 1.125rem;
+  color: var(--rv-cacao);
+}
+
+/* --- Respiro das páginas internas ------------------------------------- */
+
+/*
+ * A régua das telas que **não** são a home: busca, catálogo, produto,
+ * sacola, conta.
+ *
+ * Nada aqui é usado ainda. As classes entram agora, junto com o cromo,
+ * para que a etapa seguinte não invente um terceiro jeito de fazer o
+ * mesmo respiro — e para que os dois caminhos de layout (a vitrine, que é
+ * uma sequência de faixas, e a página interna, que é um documento) já
+ * estejam separados por nome.
+ */
+
+/* O respiro vertical, só: para quem já tem trilho. */
+.rv-page-pad {
+  padding-block: var(--rv-page-space);
+}
+
+/* A casca da página de texto, no trilho estreito do redesenho. */
+.rv-page-shell {
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-block: clamp(4rem, 7vw, 7rem) var(--rv-page-space);
+}
+
+/* O título de uma seção de página: display, no tamanho de um título. */
+.rv-page-heading {
+  font-family: var(--rv-font-display);
+  font-size: clamp(2rem, 3.5vw, 3.25rem);
+  line-height: 1.08;
+  color: var(--rv-fg-strong);
+}
+
+/*
+ * A abertura da página: faixa elevada, texto centralizado e o título
+ * grande o bastante para anunciar que a página começou. O `h1` e o
+ * parágrafo ficam limitados pela mesma régua de leitura, o que mantém o
+ * bloco alinhado pelo centro.
+ */
+.rv-page-intro {
+  padding-block: var(--rv-page-space);
+  background-color: var(--rv-surface);
+  text-align: center;
+}
+
+.rv-page-intro > * {
+  max-width: 37.5rem;
+  margin-inline: auto;
+}
+
+.rv-page-intro h1 {
+  margin-block: 1rem 1.4rem;
+  font-size: clamp(3rem, 5.5vw, 5.5rem);
+  line-height: 1;
+}
+
+/* O caminho de volta: discreto, em caixa alta, acima do título. */
+.rv-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--rv-muted);
+  font-size: 0.5625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/*
+ * A metade realçada do título da abertura. O `em` do navegador é só
+ * itálico; aqui ele também **colore**, e é o rosa de assinatura — a mesma
+ * escolha do redesenho.
+ *
+ * A regra de acessibilidade deste arquivo permite: o título de abertura
+ * mede de 3rem para cima, muito acima dos 24px em que o rosa passa a
+ * valer como cor de texto (a conta está no topo do arquivo). Num corpo de
+ * 11px o mesmo rosa reprovaria.
+ */
+.rv-page-intro h1 em {
+  color: var(--rv-rose);
+  font-style: italic;
+}
+

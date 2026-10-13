@@ -62,8 +62,12 @@ import { describe, expect, it } from "vitest"
 const fonte = (...partes: string[]) =>
   readFileSync(join(__dirname, ...partes), "utf8")
 
-/** O `brand.css` — a régua das quatro seções. */
+/** O `brand.css` — a régua das quatro seções: o manifesto e os parciais dele. */
 const CSS = fonte("..", "styles", "brand.css")
+  .split("\n")
+  .filter((linha) => linha.startsWith("@import"))
+  .map((linha) => fonte("..", ...linha.slice('@import "'.length, -2).split("/")))
+  .join("")
 
 /** O código de um componente desta pasta. */
 const componente = (pasta: string) =>

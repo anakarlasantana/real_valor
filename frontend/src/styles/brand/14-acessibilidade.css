@@ -1,0 +1,130 @@
+/*
+ * Foco de teclado
+ * ---------------------------------------------------------------
+ * Regra da casa, e não a do navegador: o anel padrão do Chrome/`outline:
+ * auto` aparece colado na borda e é invisível sobre o preto da barra de
+ * anúncio e do rodapé. Aqui ele fica em rosa forte, com 2px de folga, e
+ * acompanha o `border-radius` do elemento (o `outline` moderno desenha
+ * arredondado sozinho — não há o que repetir).
+ *
+ * `:focus-visible`, e não `:focus`: quem clica não ganha anel, quem navega
+ * por Tab ganha. É a diferença que faz o anel ser sinal e não ruído.
+ *
+ * Nenhum componente da loja escreve `outline: none` — se algum dia
+ * precisar, o substituto é este anel, nunca a ausência dele.
+ */
+:focus-visible {
+  outline: 2px solid var(--rv-focus-ring);
+  outline-offset: 2px;
+}
+
+/*
+ * Movimento reduzido — a preferência do sistema vale para a loja inteira
+ * ---------------------------------------------------------------
+ * Quem pede menos movimento no sistema operacional
+ * (`prefers-reduced-motion: reduce`) recebe, em geral por enjoo ou
+ * vertigem, a página praticamente parada: as transições e animações do
+ * site caem para um quadro só (0,01ms) e terminam no estado final, em vez
+ * de não acontecerem e deixarem um elemento a meio caminho.
+ *
+ * É o piso, não a solução: uma animação que **depende** do movimento para
+ * fazer sentido tem tratamento próprio, mais abaixo nestas regras (o
+ * ticker da barra de anúncio é o caso — ver `.rv-marquee`). Um
+ * `animation-iteration-count: 1` sozinho deixaria o trilho do ticker
+ * parado no fim do curso, com o texto fora da tela.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /*
+   * O ticker é o caso em que a regra acima **não** basta: parar a animação
+   * no fim do curso deixaria o trilho deslocado meia largura, com a última
+   * mensagem fora da tela. Aqui a animação sai inteira, a cópia duplicada
+   * some (ela só existe para o laço) e o grupo volta a ser o que é: uma
+   * lista de mensagens, centrada e quebrada em linhas se não couber.
+   *
+   * Nenhuma mensagem se perde — quem pediu menos movimento pediu menos
+   * movimento, não menos informação.
+   */
+  .rv-marquee-track {
+    width: 100%;
+    justify-content: center;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .rv-marquee-group {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 0.25rem;
+  }
+
+  /*
+   * E o piso da volta do ticker não vale aqui: com a animação fora o trilho já é
+   * a tela inteira (`width: 100%`, acima) e o grupo volta a ser a lista — uma
+   * `min-width` de `100vw` dentro dele seria a segunda cópia da mesma largura, e
+   * a lista quebrada em linhas transbordaria a barra.
+   *
+   * O `justify-content` volta a `center` junto porque **precisa** voltar: o
+   * seletor do piso (`.rv-announce-strip .rv-marquee-group`, duas classes) ganha
+   * do `.rv-marquee-group` sozinho do bloco acima, e sem esta linha a lista
+   * parada ficaria espalhada pela barra em vez de centrada.
+   */
+  .rv-announce-strip .rv-marquee-group {
+    min-width: 0;
+    justify-content: center;
+  }
+
+  /*
+   * E as repetições da volta somem **da tela** junto: elas existem para tapar a
+   * largura enquanto a faixa anda, e com a faixa parada a lista é só a lista — as
+   * mensagens do lojista, centradas, sem as quatro cópias que o movimento pedia.
+   *
+   * A marca é do componente (`rv-marquee-repeat` no item), e vem do mesmo lugar
+   * que o `aria-hidden` dele: a primeira lista é a mensagem, o resto é a volta.
+   * Sem isso, quem pediu menos movimento receberia a informação uma vez e as
+   * cópias visíveis — o oposto do que a preferência pede.
+   */
+  .rv-announce-strip .rv-marquee-repeat {
+    display: none;
+  }
+
+  .rv-marquee-clone {
+    display: none !important;
+  }
+
+  /*
+   * E a faixa do Instagram **não se arrasta** aqui: o arrasto é um *seek* da
+   * mesma animação que este bloco desliga (`animation: none !important`, acima),
+   * então não há relógio para mover — e o cursor não pode prometer um gesto que
+   * não anda. O `grabbing` do arrasto entra na **mesma lista** de propósito: a
+   * classe sozinha tem especificidade maior que um `.rv-insta-strip` só, e sem
+   * repeti-la aqui o cursor de "pega" voltaria justamente no modo em que o gesto
+   * não move nada. A faixa continua inteira: o grupo volta a ser a lista de fotos,
+   * como o de mensagens, e nenhuma foto se perde.
+   */
+  .rv-insta-strip,
+  .rv-insta-strip.rv-insta-dragging {
+    cursor: default;
+  }
+
+  /*
+   * Os carrosséis continuam funcionando (é rolagem, não animação), mas pulam
+   * direto para a página em vez de deslizar até ela. Os dois componentes já
+   * pedem `behavior: "auto"` quando a preferência está ligada — esta regra é o
+   * cinto junto com o suspensório, e vale para qualquer rolagem suave que o
+   * navegador resolva fazer por conta própria (o `snap`, por exemplo).
+   */
+  .rv-hero-track,
+  .rv-carousel-track {
+    scroll-behavior: auto !important;
+  }
+}
+

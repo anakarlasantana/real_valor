@@ -5,7 +5,7 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37590,
+      "lines": 37630,
       "comments": 9770
     },
     "admin/src": {
@@ -13,7 +13,7 @@
       "comments": 2030
     },
     "backend/src": {
-      "lines": 15981,
+      "lines": 15987,
       "comments": 5115
     },
     "packages/contrato/src": {
@@ -33,7 +33,7 @@
     },
     "frontend/src/__checks__/ruler.spec.ts": {
       "comments": 172,
-      "lines": 403,
+      "lines": 407,
       "header": 56
     },
     "frontend/src/app/[countryCode]/(checkout)/layout.tsx": {
@@ -936,10 +936,95 @@
       "lines": 234,
       "header": 18
     },
-    "frontend/src/styles/brand.css": {
-      "comments": 2039,
-      "lines": 5248,
+    "frontend/src/styles/brand/01-tokens.css": {
+      "comments": 197,
+      "lines": 265,
       "header": 40
+    },
+    "frontend/src/styles/brand/02-base.css": {
+      "comments": 87,
+      "lines": 198,
+      "header": 1
+    },
+    "frontend/src/styles/brand/03-faixas.css": {
+      "comments": 154,
+      "lines": 253,
+      "header": 33
+    },
+    "frontend/src/styles/brand/04-trilho.css": {
+      "comments": 207,
+      "lines": 408,
+      "header": 21
+    },
+    "frontend/src/styles/brand/05-card-vitrine.css": {
+      "comments": 158,
+      "lines": 287,
+      "header": 46
+    },
+    "frontend/src/styles/brand/06-cromo.css": {
+      "comments": 94,
+      "lines": 222,
+      "header": 30
+    },
+    "frontend/src/styles/brand/07-navegacao.css": {
+      "comments": 65,
+      "lines": 164,
+      "header": 1
+    },
+    "frontend/src/styles/brand/08-catalogo.css": {
+      "comments": 129,
+      "lines": 403,
+      "header": 1
+    },
+    "frontend/src/styles/brand/09-produto.css": {
+      "comments": 133,
+      "lines": 462,
+      "header": 1
+    },
+    "frontend/src/styles/brand/10-sacola.css": {
+      "comments": 39,
+      "lines": 246,
+      "header": 1
+    },
+    "frontend/src/styles/brand/11-checkout.css": {
+      "comments": 132,
+      "lines": 672,
+      "header": 1
+    },
+    "frontend/src/styles/brand/12-conta.css": {
+      "comments": 26,
+      "lines": 122,
+      "header": 1
+    },
+    "frontend/src/styles/brand/13-rodape.css": {
+      "comments": 34,
+      "lines": 121,
+      "header": 1
+    },
+    "frontend/src/styles/brand/14-acessibilidade.css": {
+      "comments": 78,
+      "lines": 131,
+      "header": 15
+    },
+    "frontend/src/styles/brand/15-card-home.css": {
+      "comments": 158,
+      "lines": 291,
+      "header": 59
+    },
+    "frontend/src/styles/brand/16-home.css": {
+      "comments": 143,
+      "lines": 405,
+      "header": 40
+    },
+    "frontend/src/styles/brand/17-vitrine-secoes.css": {
+      "comments": 148,
+      "lines": 438,
+      "header": 41
+    },
+    "frontend/src/styles/brand/18-prose.css": {
+      "comments": 57,
+      "lines": 177,
+      "header": 23
     },
     "frontend/src/styles/tokens.generated.css": {
       "comments": 19,
@@ -1208,7 +1293,7 @@
     },
     "backend/src/modules/content/__tests__/assets.unit.spec.ts": {
       "comments": 24,
-      "lines": 298,
+      "lines": 304,
       "header": 22
     },
     "backend/src/modules/content/__tests__/contract.unit.spec.ts": {

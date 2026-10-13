@@ -1,0 +1,121 @@
+/* --- Confirmação do pedido --------------------------------------------- */
+
+/*
+ * O fecho da compra: a única tela da loja em que a emoção vem antes do dado. Por
+ * isso ela é uma faixa elevada inteira, com a marca, o agradecimento e — só
+ * depois — o número do pedido e os dados da entrega.
+ *
+ * A marca é um círculo com o verde da loja (`--rv-success-bg` / `--rv-success`),
+ * e não o rosa: verde aqui não é decoração, é o sinal de "deu certo" que a
+ * cliente reconhece antes de ler qualquer palavra.
+ */
+.rv-confirmation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-block: clamp(3rem, 6vw, 5rem);
+  background-color: var(--rv-surface);
+  text-align: center;
+}
+
+.rv-confirmation-mark {
+  display: grid;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-bottom: 1.5rem;
+  place-items: center;
+  border-radius: 9999px;
+  background-color: var(--rv-success-bg);
+  color: var(--rv-success);
+}
+
+.rv-confirmation h1 {
+  margin-block: 1rem 1.3rem;
+  font-family: var(--rv-font-display);
+  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  line-height: 1.05;
+  color: var(--rv-fg-strong);
+}
+
+.rv-confirmation h1 em {
+  color: var(--rv-rose);
+  font-style: italic;
+}
+
+.rv-confirmation > p {
+  max-width: 32.5rem;
+  color: var(--rv-muted);
+  line-height: 1.7;
+}
+
+/* --- Minha conta -------------------------------------------------------- */
+
+/*
+ * A conta: a coluna de navegação à esquerda (220px) e o conteúdo à direita.
+ * Abaixo de 1024px a navegação **vai para o topo** e rola na horizontal — quatro
+ * destinos curtos numa linha são mais rápidos de alcançar do que uma lista
+ * vertical que empurra o conteúdo para fora da primeira tela.
+ */
+.rv-account-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  padding-block: clamp(2.5rem, 5vw, 4rem) var(--rv-section-space);
+}
+
+@media (min-width: 1024px) {
+  .rv-account-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 4rem;
+    align-items: start;
+  }
+}
+
+/*
+ * A navegação da conta. Cada destino é um botão de largura inteira, alinhado à
+ * esquerda, separado do próximo por um filete — e o ativo ganha o traço rosa na
+ * esquerda, que é como a referência marca onde se está.
+ */
+.rv-account-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow-x: auto;
+}
+
+.rv-account-nav .rv-btn {
+  min-height: 3rem;
+  justify-content: flex-start;
+  padding-inline: 1rem;
+  border-bottom: 1px solid var(--rv-border);
+  /* O traço do ativo é do mesmo lugar em todos os itens, e é por isso que ele
+   * existe desde o repouso (transparente): sem ele, o texto andaria 2px ao
+   * mudar de página. */
+  border-left: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.rv-account-nav .rv-btn.active {
+  color: var(--rv-rose-strong);
+  border-left-color: var(--rv-rose);
+}
+
+@media (max-width: 1023px) {
+  .rv-account-nav {
+    flex-direction: row;
+    gap: 0;
+  }
+}
+
+/* O bloco de atendimento, no pé da conta. */
+.rv-account-help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-top: 4rem;
+  padding-top: 3rem;
+  border-top: 1px solid var(--rv-border);
+}
+

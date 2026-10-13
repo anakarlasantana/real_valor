@@ -1,0 +1,461 @@
+/* --- Página da peça ----------------------------------------------------- */
+
+/*
+ * A galeria à esquerda, o resumo à direita. É o desenho da referência, e a
+ * proporção (1,45 para a foto, 0,75 para o texto) é a que dá à imagem o peso de
+ * quem vende roupa — a coluna de texto não precisa de mais do que isso para
+ * caber título, preço, tamanhos e o botão.
+ *
+ * `minmax(0, ...)` nas duas colunas pelo mesmo motivo do catálogo: sem o zero, a
+ * largura mínima automática de um título comprido empurraria a página para o
+ * lado.
+ */
+.rv-product-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  padding-block: 1.5rem var(--rv-section-space);
+}
+
+@media (min-width: 1024px) {
+  .rv-product-detail {
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.75fr);
+    gap: clamp(2rem, 6vw, 6rem);
+  }
+}
+
+/*
+ * A galeria: a primeira foto ocupa a largura toda e as outras entram duas a
+ * duas. O fundo rosado é o mesmo do card (a cor que aparece enquanto a foto
+ * carrega), para a página da peça e a vitrine terem o mesmo "vazio".
+ */
+.rv-product-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-content: start;
+}
+
+.rv-product-gallery > * {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--rv-rose-soft);
+}
+
+.rv-gallery-main {
+  grid-column: 1 / -1;
+  height: min(78vh, 53rem);
+}
+
+.rv-gallery-item {
+  height: clamp(14rem, 26vw, 26rem);
+}
+
+/*
+ * O resumo. Ele **acompanha** a rolagem no desktop (`sticky`), porque a decisão
+ * de compra é tomada ao lado da foto e não depois dela: preço e tamanhos têm de
+ * estar à vista quando a cliente está olhando o caimento.
+ *
+ * O `top` é 6rem, e não os 2rem da referência: aqui o cabeçalho é `sticky` e mede
+ * 5rem — com 2rem de folga o título da peça entraria debaixo dele.
+ */
+.rv-product-summary {
+  align-self: start;
+  padding-top: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .rv-product-summary {
+    position: sticky;
+    top: 6rem;
+  }
+}
+
+/*
+ * As estrelas de avaliação, **acima do título** — a ordem da referência
+ * (estrelas → categoria → nome), e a que responde "esta peça é confiável?" antes
+ * de "que peça é esta?".
+ *
+ * **As estrelas são forma, o número é que informa.** O rosa da marca não serve
+ * para texto neste corpo (3,4:1 — a regra está no topo deste arquivo), então o
+ * glifo fica em rosa e a nota com a contagem vão em `--rv-muted`, o corpo de
+ * apoio da casa. Quem ouve a página lê a frase uma vez só: no componente as
+ * estrelas saem com `aria-hidden`, e é o texto que carrega a informação.
+ *
+ * O bloco inteiro **não existe** enquanto o catálogo não tiver avaliação — o
+ * componente devolve `null`. Nota inventada seria a loja afirmando o que ninguém
+ * disse, e é a primeira coisa que a cliente confere depois de comprar.
+ */
+.rv-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.4rem;
+  color: var(--rv-rose);
+  font-size: var(--rv-text-xs);
+  letter-spacing: 0.15em;
+}
+
+/* As cinco estrelas, encostadas uma na outra como um grupo de glifos. */
+.rv-rating-stars {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.rv-rating-star {
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+/* A estrela que a nota não alcançou: o rosa da marca em baixa ênfase, e não um
+ * cinza — o grupo continua sendo um só. */
+.rv-rating-star-vazia {
+  color: var(--rv-rose-soft);
+}
+
+.rv-rating-count {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+  letter-spacing: 0;
+}
+
+/* O título da peça, no corpo de display e no tamanho de capa. */
+.rv-product-title {
+  margin-block: 0.8rem 1rem;
+  font-family: var(--rv-font-display);
+  font-size: clamp(2rem, 3.6vw, 3.25rem);
+  line-height: 1.06;
+  color: var(--rv-fg-strong);
+}
+
+.rv-product-description {
+  color: var(--rv-muted);
+  line-height: 1.7;
+}
+
+/*
+ * O bloco do preço: uma faixa entre dois filetes, com o número à esquerda e o
+ * "De/Por" à direita.
+ *
+ * O número grande é da **display**, e não da sans do resto da interface: é o
+ * mesmo tratamento que a capa e o título dão ao que é importante, e é o que faz
+ * o preço ser lido antes de qualquer outra coisa na coluna.
+ */
+.rv-price-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  /* O respiro de baixo é menor que o de cima: logo abaixo vem o chip de estado,
+   * que é a continuação da mesma informação ("quanto custa" → "tem pronta
+   * entrega?"), e não um bloco novo. */
+  margin-block: 1.8rem 0.9rem;
+  padding-block: 1.4rem;
+  border-block: 1px solid var(--rv-border);
+}
+
+.rv-price-block > strong {
+  font-family: var(--rv-font-display);
+  font-size: 1.5625rem;
+  font-weight: 500;
+  color: var(--rv-fg-strong);
+}
+
+.rv-price-block small {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+  text-align: right;
+}
+
+/*
+ * O parcelamento e o Pix, dentro do bloco do preço.
+ *
+ * O `small` do bloco já era uma coluna (o "De/Por" empilhado); o que entra aqui
+ * são as duas linhas da referência, na mesma coluna e no mesmo corpo miúdo:
+ *
+ *   6x de R$ 124,90 sem juros
+ *   R$ 464,55 no Pix
+ *
+ * Quem escreve as duas é o `InstallmentInfo`, e **só com dado do provedor**: o
+ * Medusa não tem parcelamento (quem sabe é o meio de pagamento, no checkout) e o
+ * valor do Pix é regra de desconto que a loja ainda não cadastrou. Sem dado, o
+ * bloco do preço é exatamente o que sempre foi — ver o comentário do componente.
+ *
+ * O Pix é o único verde do bloco, e o verde é o de estado da casa (5,12:1 sobre o
+ * fundo claro): ele diz "esta é a melhor das condições do mesmo valor". O
+ * seletor vale também fora do bloco do preço porque o resumo da sacola monta a
+ * mesma linha na coluna dele.
+ */
+.rv-installments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+}
+
+.rv-price-block small b,
+.rv-installments b {
+  color: var(--rv-success);
+  font-weight: 600;
+}
+
+/*
+ * No celular o bloco empilha: o preço em cima, as condições embaixo, alinhadas à
+ * esquerda. É o desenho da referência em tela estreita, e é o que dá largura à
+ * linha de parcelas sem espremer o número do preço, que é a informação que a
+ * cliente veio buscar.
+ */
+@media (max-width: 639px) {
+  .rv-price-block {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rv-price-block small {
+    text-align: left;
+  }
+}
+
+/* --- Seletores (cor e tamanho) ----------------------------------------- */
+
+.rv-selector-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block: 1.3rem 0.8rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+}
+
+.rv-selector-head strong {
+  color: var(--rv-fg-strong);
+  font-weight: 600;
+}
+
+.rv-swatches,
+.rv-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+/*
+ * A amostra de cor: o círculo cheio, com a borda na cor da superfície — que é o
+ * que cria o anel de folga entre a cor e o fundo — e o anel de 1px por fora. A
+ * selecionada troca o anel fino pelo rosa de 2px.
+ */
+.rv-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 4px solid var(--rv-surface);
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1px var(--rv-border);
+  font-size: 0.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rv-swatch.active {
+  box-shadow: 0 0 0 2px var(--rv-rose);
+}
+
+/* O tamanho: um quadrado de 44px, que é o alvo de toque mínimo confortável. */
+.rv-size {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.25rem;
+  height: 2.75rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-offwhite);
+  color: var(--rv-fg-strong);
+  font-size: var(--rv-text-eyebrow);
+  cursor: pointer;
+  transition: background-color var(--rv-motion-fast) var(--rv-ease-out),
+    color var(--rv-motion-fast) var(--rv-ease-out),
+    border-color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-size:hover {
+  border-color: var(--rv-fg-strong);
+}
+
+.rv-size.active {
+  border-color: var(--rv-preto);
+  background-color: var(--rv-preto);
+  color: var(--rv-offwhite);
+}
+
+/*
+ * O botão de comprar: a largura da coluna, e a única mancha de rosa cheio do
+ * resumo. O respiro de cima é maior do que o do resto do bloco de propósito —
+ * ele é o fim da decisão, e não mais uma linha de informação.
+ */
+.rv-add-button {
+  width: 100%;
+  margin-top: 1.7rem;
+}
+
+/* --- Frete e prazo (a caixa do CEP) ------------------------------------- */
+
+/*
+ * A caixa do frete, logo abaixo do botão de comprar: é a última pergunta de quem
+ * decide ("chega até mim?"), e ela vem **depois** do botão porque não é uma
+ * pergunta que a loja precise responder para vender.
+ *
+ * A caixa só existe com **opção de entrega real** — a lista calculada para o CEP
+ * informado. Sem ela o componente devolve `null`, e não uma caixa vazia: um campo
+ * que responde "3 a 5 dias úteis, grátis" para qualquer CEP digitado é a promessa
+ * por escrito que a página da peça já recusou uma vez (o registro está no
+ * `product-actions`).
+ *
+ * As classes do campo e da validação ficam prontas aqui porque são as do
+ * formulário da casa — borda `--rv-border`, e o campo aceso com a borda em rosa e
+ * o halo `--rv-rose-soft`, exatamente como o `form-grid` da referência. Quem as
+ * usa ao digitar é a ilha de cliente do próximo lote; a lista de opções, que é
+ * dado, é o que este componente desenha hoje.
+ */
+.rv-shipping-quote {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1.2rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-surface);
+}
+
+.rv-shipping-quote > svg {
+  flex: none;
+  color: var(--rv-rose);
+}
+
+.rv-shipping-quote-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.rv-shipping-quote-text > strong {
+  color: var(--rv-preto);
+  font-size: var(--rv-text-eyebrow);
+}
+
+.rv-shipping-quote-text > span {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+}
+
+/* Uma linha por modalidade calculada. O verde é o de "boa notícia" do resto do
+ * arquivo — e o mesmo da linha do Pix, que é a outra resposta de dinheiro. */
+.rv-shipping-quote-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.rv-shipping-quote-result {
+  color: var(--rv-success);
+  font-size: var(--rv-text-xs);
+}
+
+/* O par campo + botão do CEP. */
+.rv-shipping-quote-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/*
+ * O campo rebaixa para o off-white: a caixa é `--rv-surface`, que é **mais clara**
+ * que a página — um campo da cor da caixa sumiria dentro dela.
+ *
+ * O `min-height` de 44px é o alvo de toque da casa (o mesmo do seletor de
+ * tamanho), e ele alinha o campo com o botão ao lado, que desce dos 48px do
+ * `.rv-btn` para os mesmos 44px nesta linha.
+ */
+.rv-shipping-quote-row input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-offwhite);
+  color: var(--rv-preto);
+  font-family: var(--rv-font-sans);
+  font-size: var(--rv-text-sm);
+}
+
+.rv-shipping-quote-row .rv-btn {
+  min-height: 2.75rem;
+}
+
+/* O campo aceso. O anel de foco do teclado continua sendo o global (nenhuma
+ * regra local escreve `outline: none`); o que se acrescenta é o halo suave da
+ * referência, que também aparece para quem chegou de mouse. */
+.rv-shipping-quote-row:focus-within input {
+  border-color: var(--rv-rose);
+  box-shadow: 0 0 0 2px var(--rv-rose-soft);
+}
+
+/* O CEP que não é CEP: a mensagem de estado no mesmo lugar em que apareceria o
+ * resultado — a lista só troca de cor e de frase. */
+.rv-shipping-quote-validation {
+  color: var(--rv-danger);
+  font-size: var(--rv-text-xs);
+}
+
+/* --- Detalhes da peça (os acordeões) ------------------------------------ */
+
+/*
+ * O corpo do acordeão é texto de apoio — o mesmo corpo miúdo e quieto da
+ * referência —, porque aqui dentro mora composição, medidas e cuidados:
+ * informação para conferir, e não para ler de ponta a ponta.
+ */
+.rv-product-accordions {
+  margin-top: 1.2rem;
+}
+
+.rv-accordion-body {
+  padding-bottom: 1rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+  line-height: 1.7;
+}
+
+/* A ficha técnica é rótulo e valor, um por linha: `dt` em preto para o rótulo
+ * ser encontrado no meio do texto. */
+.rv-accordion-body dl {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.rv-accordion-body dt {
+  color: var(--rv-fg-strong);
+  font-weight: 600;
+}
+
+.rv-accordion-body a {
+  color: var(--rv-cacao);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rv-accordion-body a:hover {
+  color: var(--rv-rose);
+}
+

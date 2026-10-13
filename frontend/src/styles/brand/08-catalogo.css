@@ -1,0 +1,402 @@
+/* --- Busca -------------------------------------------------------------- */
+
+/*
+ * O campo da busca: uma linha embaixo, larga e funda, com o ícone e a
+ * letra no corpo de display. É o único campo da loja que **não** tem
+ * caixa — de propósito, porque ele é o assunto da faixa em que mora, e
+ * não mais um dado de um formulário.
+ *
+ * O tamanho da letra é a metade do que a referência desenha
+ * (`clamp(1.6rem, 3vw, 2.5rem)`): lá o campo ocupa a tela inteira de uma
+ * sobreposição de 850px, aqui ele divide a faixa com um título de 5rem e
+ * para nos mesmos 600px da régua de leitura. Na escala da referência o
+ * campo ficaria maior do que o título.
+ *
+ * O `outline: 0` da referência **não** foi portado: a regra de
+ * `:focus-visible` do fim deste arquivo é a única da casa, e um campo de
+ * texto é justamente onde o foco precisa aparecer. O que a referência dava
+ * a entender com ele — "este elemento está aceso" — está no traço que
+ * muda de cor abaixo.
+ */
+.rv-search-field {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 4.5rem;
+  margin-top: 1rem;
+  border-bottom: 1px solid var(--rv-preto);
+}
+
+.rv-search-field svg {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--rv-muted);
+}
+
+.rv-search-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background-color: transparent;
+  color: var(--rv-preto);
+  font-family: var(--rv-font-display);
+  font-size: clamp(1.15rem, 2.2vw, 2rem);
+  /* A faixa centraliza tudo; o campo é a exceção, porque texto de campo
+   * alinhado ao centro muda de lugar a cada letra digitada. */
+  text-align: left;
+}
+
+/*
+ * O campo aceso. O traço é a única pista de que ali se digita, então ele
+ * engrossa para o rosa — cor de borda, uso permitido pela regra da casa —
+ * e a transição é a da casa, com as duas partes (`--rv-motion` é só a
+ * duração).
+ */
+.rv-search-field:focus-within {
+  border-bottom-color: var(--rv-rose);
+  transition: border-color var(--rv-motion) var(--rv-ease-out);
+}
+
+/*
+ * A linha de sugestões, no lugar em que a referência a desenha: logo
+ * abaixo do campo, miúda e em caixa alta.
+ *
+ * Uma diferença deliberada: na referência ela é **texto morto** ("Sugestões:
+ * blazer, vestido, alfaiataria"). Aqui cada termo é um link para a mesma
+ * busca já feita, porque uma sugestão que não se clica é uma promessa sem
+ * botão — e o sublinhado é o que separa a sugestão do resto da frase.
+ */
+.rv-search-suggestions {
+  margin-top: 1rem;
+  color: var(--rv-muted);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rv-search-suggestion {
+  color: var(--rv-cacao);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--rv-motion) var(--rv-ease-out);
+}
+
+.rv-search-suggestion:hover {
+  color: var(--rv-rose);
+}
+
+/* --- Vazio -------------------------------------------------------------- */
+
+/*
+ * O estado vazio — a resposta que a página dá quando não tem o que
+ * mostrar: a busca sem resultado, e (adiante) a sacola sem item.
+ *
+ * Ele é uma **faixa elevada**, e não um parágrafo solto. Um "nada
+ * encontrado" que se lê como nota de pé de página parece falha de
+ * carregamento; centralizado e com 400px de altura mínima, ele se
+ * apresenta como a resposta da página — que é o que ele é.
+ *
+ * As três partes são as da referência: o ícone (em rosa — ícone é um dos
+ * usos que a regra da casa permite), o título em display e a frase de
+ * apoio em `--rv-muted`. O peso 500 do título é declarado aqui porque, ao
+ * contrário da referência, o storefront não tem um `h2 { font-weight }`
+ * global: sem ele o navegador desenharia o negrito do `h2`.
+ */
+.rv-empty-state {
+  display: flex;
+  min-height: 25rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2.5rem 1.5rem;
+  background-color: var(--rv-surface);
+  text-align: center;
+}
+
+.rv-empty-state svg {
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--rv-rose);
+}
+
+.rv-empty-state h2 {
+  font-family: var(--rv-font-display);
+  font-size: var(--rv-text-3xl);
+  font-weight: 500;
+  color: var(--rv-fg-strong);
+}
+
+.rv-empty-state p {
+  max-width: 32rem;
+  color: var(--rv-muted);
+  line-height: 1.6;
+}
+
+/* --- Catálogo ----------------------------------------------------------- */
+
+/*
+ * A barra de abas de categoria. Como a faixa de abertura, ela é uma faixa
+ * inteira (fundo elevado) com a fileira dentro do mesmo trilho do resto da
+ * página — por isso o `rv-container` entra por dentro, no componente: sem ele, a
+ * última aba de uma tela larga ficaria fora do alinhamento da grade abaixo.
+ *
+ * A referência desenha o filete em cima **e** embaixo; aqui só embaixo. A faixa
+ * de abertura (que vem logo acima) tem o mesmo fundo elevado, e um filete entre
+ * duas faixas da mesma cor lê como costura, não como divisão.
+ */
+.rv-category-tabs {
+  background-color: var(--rv-surface);
+  border-bottom: 1px solid var(--rv-border);
+  padding-block: 0.8rem;
+  overflow-x: auto;
+}
+
+.rv-category-tabs .rv-btn-text {
+  min-height: 2.5rem;
+  border-bottom: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.rv-category-tabs .active {
+  color: var(--rv-rose-strong);
+  border-bottom-color: var(--rv-rose);
+}
+
+/*
+ * O respiro do miolo do catálogo. Ele é menor em cima do que o de uma página
+ * nova (`--rv-page-space`) porque a faixa de abertura já deu o respiro grande:
+ * o que vem depois dela é continuação, não começo. Embaixo, o respiro é o da
+ * seção — a grade precisa de ar antes do rodapé.
+ */
+.rv-catalog-pad {
+  padding-block: clamp(2rem, 4vw, 3rem) var(--rv-section-space);
+}
+
+/* --- Barra de ferramentas ---------------------------------------------- */
+
+.rv-catalog-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.rv-catalog-count {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+}
+
+/*
+ * O seletor de ordem. Ele é um `<select>` nativo de propósito: a lista suspensa
+ * do sistema é a que funciona no teclado, no leitor de tela e no celular sem uma
+ * linha de JavaScript — e a ordem tem três opções, que é o tamanho de lista em
+ * que um seletor nativo ganha de um menu próprio.
+ */
+.rv-sort {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--rv-muted);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rv-sort select {
+  border: 0;
+  border-bottom: 1px solid var(--rv-border);
+  padding: 0.6rem 1.6rem 0.6rem 0.4rem;
+  background-color: transparent;
+  color: var(--rv-preto);
+  font-size: var(--rv-text-eyebrow);
+  /* A caixa alta do rótulo não desce para o valor do seletor: "ORDENAR POR" é
+   * rótulo, "Menor preço" é o que está escolhido. */
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* --- Filtros e grade ---------------------------------------------------- */
+
+/*
+ * A coluna de filtros e a grade. No celular não há coluna: os filtros vivem na
+ * gaveta (o botão "Filtros (n)" da barra de ferramentas), e aqui o que sobra é
+ * uma coisa em cima da outra.
+ *
+ * `minmax(0, 1fr)` no lugar de `1fr`: a coluna da grade é a que pode encolher
+ * abaixo do conteúdo dela, e com `1fr` a largura mínima automática do grid
+ * empurraria a página para o lado quando o título de uma peça fosse comprido.
+ */
+.rv-catalog-layout {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .rv-catalog-layout {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 3rem;
+    align-items: start;
+  }
+}
+
+.rv-catalog-filters {
+  margin-bottom: 2.5rem;
+}
+
+/* A grade do catálogo: três colunas ao lado da barra de filtros, duas abaixo. */
+.rv-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.8rem, 1.6vw, 1.6rem);
+  row-gap: 3.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .rv-catalog-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* --- Filtros aplicados (os chips) --------------------------------------- */
+
+/*
+ * A fileira dos filtros que estão valendo, logo abaixo da barra de ferramentas.
+ *
+ * Cada chip é um **`.rv-chip`** — a mesma peça do estado da peça no card, e não
+ * uma segunda forma para "etiqueta" — com o título da faceta e o valor marcado
+ * ("Cor: Preto"). A fileira é a resposta curta para "por que esta grade tem 4
+ * peças?", e no celular, onde a barra lateral de filtros não existe, é a única
+ * coisa que lembra a cliente do que ela marcou.
+ *
+ * Ela **não é desenhada** sem filtro aplicado (o componente devolve `null`), e o
+ * chip ainda não é clicável: desfazer um filtro é escrever na URL, e esse passo é
+ * da ilha de cliente do próximo lote. Até lá a fileira informa — quem desfaz é o
+ * painel, que já está na página, com "Limpar filtros" no vazio.
+ */
+.rv-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* --- Painel de filtros -------------------------------------------------- */
+
+/*
+ * O acordeão — a **mesma** forma para os filtros do catálogo e para os detalhes
+ * da peça, como no desenho de referência: o `<details>` nativo guarda o estado de
+ * aberto (é teclado, é leitor de tela e é o "Ctrl+F" do navegador achando o texto
+ * dentro da seção fechada), o marcador nativo sai e o glifo do desenho é o `+`
+ * do próprio `summary`.
+ *
+ * Uma forma, dois donos — e é por isso que **os dois rótulos aparecem juntos em
+ * toda regra daqui**: os detalhes da peça raizam em `.rv-accordion` e o painel de
+ * filtros em `.rv-filter-panel` (o `filter-panel` é montado duas vezes na página e
+ * tem raiz própria), e um segundo estilo de acordeão na mesma loja seria a segunda
+ * gramática para a mesma pergunta ("o que tem aí dentro?").
+ */
+.rv-accordion details,
+.rv-filter-panel details {
+  border-bottom: 1px solid var(--rv-border);
+}
+
+.rv-accordion summary,
+.rv-filter-panel summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 1.2rem;
+  color: var(--rv-preto);
+  font-size: var(--rv-text-eyebrow);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.rv-accordion summary::-webkit-details-marker,
+.rv-filter-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+/* O `+` que vira `×` quando a seção abre: é a única pista de que ela fecha. */
+.rv-accordion .rv-accordion-icon,
+.rv-filter-panel .rv-filter-icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--rv-muted);
+  transition: transform var(--rv-motion) var(--rv-ease-out);
+}
+
+.rv-accordion details[open] .rv-accordion-icon,
+.rv-filter-panel details[open] .rv-filter-icon {
+  transform: rotate(45deg);
+}
+
+.rv-filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding-bottom: 1.2rem;
+}
+
+.rv-filter-options label {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-eyebrow);
+  cursor: pointer;
+  transition: color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-filter-options label:hover {
+  color: var(--rv-rose-strong);
+}
+
+/* O rosa da marca como preenchimento do controle — uso permitido pela regra de
+ * acessibilidade deste arquivo: a caixa marcada é forma, não texto. */
+.rv-filter-options input {
+  flex: none;
+  accent-color: var(--rv-rose);
+}
+
+/*
+ * A opção que a combinação marcada não alcança. Ela fica no lugar, esmaecida e
+ * sem o realce do ponteiro: o rótulo diz "existe, não neste recorte", e o zero ao
+ * lado confirma.
+ */
+.rv-filter-options label[data-vazio] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rv-filter-options label[data-vazio]:hover {
+  color: var(--rv-muted);
+}
+
+/* No celular a ordem encosta na direita da barra; numa tela estreita de verdade
+ * ela ocupa a linha inteira, porque um seletor de doze caracteres ao lado de
+ * "Filtros (2)" não cabe. */
+@media (max-width: 1023px) {
+  .rv-sort {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 639px) {
+  .rv-sort {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+

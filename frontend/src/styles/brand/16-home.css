@@ -1,0 +1,404 @@
+/*
+ * A abertura da home — a capa e a faixa de benefícios
+ * ---------------------------------------------------------------
+ * As duas seções que abrem a página, na régua do redesenho. O que muda é o que
+ * a régua mede — a estrutura (foto, véu, cópia) é a que já estava no ar:
+ *
+ *   1. **a capa passa a ter altura de capa**: `min(77vh, 760px)` com piso de
+ *      610px, contra os 580px fixos de antes. A foto era um quadro da largura da
+ *      tela com a altura de um painel; agora ela ocupa a primeira dobra, que é o
+ *      que uma capa faz. No celular a régua pede `72vh` com piso de 570px: a
+ *      mesma ideia, um degrau menor.
+ *
+ *   2. **a cópia da capa é branca** — e este era um defeito visível, e não um
+ *      ajuste de desenho: o eyebrow e a linha de apoio usavam
+ *      `rv-section-text-inherit` (a cor herdada) e a faixa não tinha cor
+ *      própria, então o que chegava era o **grafite do `body`**: texto escuro
+ *      sobre foto escura, quase ilegível na primeira dobra. A régua escreve
+ *      `color: white` na faixa inteira, e é o que `.rv-hero` faz abaixo: a cópia
+ *      herda o branco — inclusive o `em` do título, que sobre foto é branco na
+ *      régua e era o dourado das outras seções.
+ *
+ *   3. **a cópia desencosta do container.** O bloco de texto era filho do
+ *      `.rv-container` (o respiro de 3rem da página) com um `rv-section-pad` em
+ *      volta. A régua ancora a cópia em `clamp(1.5rem, 8vw, 8.5rem)` — 8.5rem a
+ *      1440 — e a centra na vertical da faixa: a capa não é uma seção da coluna
+ *      de conteúdo, é uma faixa, e a cópia dela não anda na mesma régua lateral
+ *      das outras.
+ *
+ *   4. **no celular a cópia desce para o pé da foto**, com o véu deitado de
+ *      baixo para cima, e a nota do canto some — ela mora exatamente onde o
+ *      botão passa a terminar.
+ *
+ * O véu continua sendo a constante `SCRIM` do componente, e não um campo do CRM
+ * (a força é valor de desenho, ver o cabeçalho de `hero/index.tsx`). O que a
+ * classe `.rv-hero-scrim` faz é escolher **qual dos dois gradientes** — o deitado
+ * do desktop, o em pé do celular — o número do componente pinta: os dois chegam
+ * inline, em variáveis, e a media query decide qual vale. Sem isso, ou o celular
+ * ficaria com o texto sobre o lado claro da foto, ou o número da força viraria
+ * dois.
+ */
+.rv-hero {
+  position: relative;
+  height: min(77vh, 760px);
+  min-height: 610px;
+  overflow: hidden;
+  background-color: var(--rv-cacao);
+  /* A faixa inteira é branca: é daqui que a cópia herda (ver o item 2). */
+  color: #fff;
+}
+
+/*
+ * O recorte da foto: alto, com o enquadramento acima do meio (`center 34%`) —
+ * é onde o rosto de um retrato de moda está, e é o que a régua enquadra.
+ */
+.rv-hero-photo {
+  object-position: center 34%;
+}
+
+/* O véu: os dois gradientes chegam inline (`--rv-hero-scrim-x` e `-y`), porque
+ * quem tem o número da força é o componente. */
+.rv-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background-image: var(--rv-hero-scrim-x);
+}
+
+/* A cópia: encostada à esquerda, centrada na vertical da faixa. */
+.rv-hero-copy {
+  position: absolute;
+  left: clamp(1.5rem, 8vw, 8.5rem);
+  right: 1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 680px;
+}
+
+/* O eyebrow: dourado e um degrau menor que o `.rv-eyebrow` da casa — 10px
+ * contra 11px, com peso de rótulo. A régua chama esta cor de "light". */
+.rv-hero-eyebrow {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--rv-dourado);
+}
+
+/*
+ * O título: `clamp(3.1rem, 6vw, 5.8rem)` — 86px a 1440, contra os 54px de antes.
+ * Entrelinha .98 e `letter-spacing` fechado: em tamanho de cartaz, as duas linhas
+ * quase se tocam, que é o desenho da régua.
+ */
+.rv-hero-title {
+  margin: 1.25rem 0 1.35rem;
+  font-size: clamp(3.1rem, 6vw, 5.8rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  color: #fff;
+}
+
+.rv-hero-title em {
+  color: #fff;
+  font-style: italic;
+}
+
+/* A linha de apoio: na display, e não na sans — a régua põe a serifa também
+ * aqui, em `clamp(1rem, 1.5vw, 1.25rem)`. */
+.rv-hero-lede {
+  max-width: 500px;
+  font-family: var(--rv-font-display);
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  line-height: 1.6;
+  color: #fff;
+}
+
+/*
+ * O botão da capa: o `.button--primary` da régua — 3rem de altura, 1.6rem de
+ * respiro lateral, caixa alta de 10px com .11em, **sem raio** (a régua não tem
+ * raio em botão nenhum) e o rosa forte no hover.
+ */
+.rv-hero-cta {
+  margin-top: 2.4rem;
+  min-height: 3rem;
+  padding-inline: 1.6rem;
+  border-radius: 0;
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  transition: background-color var(--rv-duration) var(--rv-ease-out);
+}
+
+.rv-hero-cta:hover {
+  background-color: var(--rv-rose-strong);
+}
+
+/* A nota do canto: 13px em itálico, alinhada à direita, a 3rem da borda. */
+.rv-hero-note {
+  position: absolute;
+  right: 3rem;
+  bottom: 2rem;
+  z-index: 10;
+  display: none;
+  max-width: 260px;
+  text-align: right;
+  font-family: var(--rv-font-display);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
+  color: #fff;
+}
+
+/* Os pontos do carrossel andam na régua da cópia (o mesmo 8vw da faixa). */
+.rv-hero-dots {
+  position: absolute;
+  left: clamp(1.5rem, 8vw, 8.5rem);
+  right: 1.5rem;
+  bottom: 2rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  /* A nota só existe onde há canto sobrando — a régua a esconde abaixo de 900px;
+   * aqui o degrau da casa é o `small` (1024px). */
+  .rv-hero-note {
+    display: block;
+  }
+}
+
+@media (max-width: 1023px) {
+  .rv-hero {
+    height: 72vh;
+    min-height: 570px;
+  }
+
+  .rv-hero-photo {
+    object-position: 60% center;
+  }
+
+  /* O véu deita: a cópia está no pé da foto e precisa do escuro embaixo. */
+  .rv-hero-scrim {
+    background-image: var(--rv-hero-scrim-y);
+  }
+
+  .rv-hero-copy {
+    left: 1.5rem;
+    right: 1.5rem;
+    top: auto;
+    bottom: 3rem;
+    transform: none;
+    max-width: none;
+  }
+
+  .rv-hero-title {
+    font-size: clamp(2.8rem, 12vw, 4.6rem);
+  }
+
+  .rv-hero-lede {
+    max-width: 380px;
+    font-size: 0.875rem;
+  }
+
+  /* Os pontos sobem para o alto da faixa: no celular a cópia mora no pé (a régua
+   * a mudou de lugar) e o rodapé da foto é dela. A coluna é a mesma da cópia —
+   * 1.5rem, e não os 8vw do desktop, que aqui valem 31px e desalinhariam os dois. */
+  .rv-hero-dots {
+    left: 1.5rem;
+    right: 1.5rem;
+    top: 1.25rem;
+    bottom: auto;
+  }
+}
+
+@media (max-width: 559px) {
+  /* A régua: no polegar, o botão da capa é a largura inteira. */
+  .rv-hero-cta {
+    width: 100%;
+  }
+}
+
+/*
+ * A faixa de benefícios
+ * ---------------------------------------------------------------
+ * A régua desenha a faixa como **tarja de três colunas iguais**, com o ícone
+ * **ao lado** do texto (e não acima dele) e o texto encostado à esquerda:
+ *
+ *   - `min-height: 6.25rem` (100px) e `padding: 1.2rem clamp(1.25rem, 8vw, 8.5rem)`
+ *     — a faixa respira o mesmo 8vw da capa, então o ícone do primeiro item nasce
+ *     na coluna em que o título da capa nasce;
+ *   - o item é uma linha flex, com 1rem entre o ícone e o bloco de texto, o título
+ *     em **display 14px** sobre o detalhe de 9px;
+ *   - no celular cada item ocupa a linha inteira (a régua: uma coluna), com o
+ *     conteúdo à esquerda — era centralizado com o ícone em cima.
+ *
+ * O que **não** vem da régua é o número de colunas: ela tem três itens fixos no
+ * código, e aqui a lista é do CRM (`BenefitsSection.items`), de um a nove. As
+ * divisórias continuam sendo o `gap` de 1px com o fio aparecendo — o mecanismo
+ * que já estava no lugar e que segue correto em qualquer contagem, nos dois
+ * eixos, depois que a linha quebra (ver o cabeçalho do componente). O que a
+ * régua dá é a **largura**: com três itens, cada um leva um terço da faixa, como
+ * no protótipo, e a partir de quatro a linha quebra mantendo o mesmo critério.
+ *
+ * O fundo do item lê `--rv-section-bg`: o lojista que escolheu uma cor de fundo
+ * para a seção no CRM continua mandando, e o fio da divisória continua sendo a
+ * borda do tema — é o que o `rv-section-bg-surface` do item fazia.
+ */
+.rv-benefits {
+  min-height: 6.25rem;
+  padding: 1.2rem clamp(1.25rem, 8vw, 8.5rem);
+  border-bottom: 1px solid var(--rv-border);
+}
+
+.rv-benefits-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background-color: var(--rv-border);
+}
+
+/* O fio da faixa é o fundo da lista aparecendo no `gap`: o item pinta o
+ * próprio fundo (o da seção, quando houve escolha). */
+.rv-benefit {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1rem;
+  padding: 1.2rem 0;
+  background-color: var(--rv-section-bg, var(--rv-surface));
+  text-align: left;
+}
+
+/* O ícone da vantagem: 20px, o mesmo tamanho do ícone da régua, e sem encolher
+ * quando o texto do item é comprido. */
+.rv-benefit-icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.rv-benefit-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/*
+ * Título e detalhe pedem as **mesmas variáveis** das classes `.rv-section-*`,
+ * com o valor da régua no fallback: a escolha de fonte e de cor que o lojista
+ * fez no CRM para esta seção continua valendo, e quem não escolheu nada vê o que
+ * a régua escreve (display 14px em preto, detalhe de 9px no cinza da casa).
+ */
+.rv-benefit-title {
+  font-family: var(--rv-section-heading-font, var(--rv-font-display));
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--rv-section-heading-color, var(--rv-preto));
+}
+
+.rv-benefit-detail {
+  font-family: var(--rv-section-text-font, var(--rv-font-sans));
+  font-size: 0.5625rem;
+  color: var(--rv-section-text-color, var(--rv-muted));
+}
+
+@media (min-width: 1024px) {
+  /* Três colunas iguais: o `grow` divide o que sobra depois da base de 11rem —
+   * com os três itens da régua, um terço da faixa para cada um. */
+  .rv-benefit {
+    flex-basis: 11rem;
+    justify-content: center;
+    padding: 0 0.75rem;
+  }
+}
+
+/*
+ * O cabeçalho de uma seção da vitrine
+ * ---------------------------------------------------------------
+ * A linha que a régua usa em "Chegou agora" — e em toda seção de vitrine com
+ * chamada à direita: o título ancorado à esquerda, o link "Ver tudo" à direita,
+ * os dois **alinhados pela base** (`align-items: flex-end`) e 2.6rem de respiro
+ * até o conteúdo.
+ *
+ * O tamanho do título é o da régua: `clamp(2rem, 3.5vw, 3.25rem)` — 50px a 1440,
+ * contra os 40px de antes —, com o `.7rem` entre o eyebrow e o título e o
+ * `.75rem` entre o título e a linha de apoio (eram 1rem e 1rem). Nada aqui é
+ * família nem cor: quem dá as duas ao título e ao texto continua sendo
+ * `.rv-section-heading` / `.rv-section-text`, e com elas o que o lojista
+ * escolheu no CRM.
+ *
+ * **O `max-width` do bloco de texto saiu.** Ele era 620px e a régua não tem
+ * nenhum: quem limita a largura é a própria linha do cabeçalho, que reserva o
+ * lugar do link e deixa o resto para o título e o subtítulo. É por isso que os
+ * dois cabem numa linha só em 1440. (O limite de 620px continua certo onde o
+ * texto **é** a coluna, como na capa e na faixa editorial.)
+ */
+.rv-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-bottom: 2.6rem;
+}
+
+.rv-section-title {
+  margin-top: 0.7rem;
+  font-size: clamp(2rem, 3.5vw, 3.25rem);
+  line-height: 1.08;
+}
+
+.rv-section-subtitle {
+  margin-top: 0.75rem;
+  line-height: 1.6;
+}
+
+/* O eyebrow da vitrine: 10px, .2em e peso de rótulo — o `.eyebrow` da régua. */
+.rv-section-eyebrow {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+/*
+ * O "Ver tudo" da vitrine — o `.button--text` da régua: caixa alta de 9px, o fio
+ * preto embaixo e o rosa forte no hover, com a seta ao lado.
+ *
+ * A cor é **herdada** (`inherit`), como na régua: este link não é acento, é a
+ * continuação do título. Ele era rosa com fio dourado — dois acentos para o
+ * mesmo gesto, e o rosa da casa dá 3,1:1 sobre o off-white, que é o limite para
+ * texto pequeno (a régua de contraste deste arquivo só libera o rosa em texto
+ * grande).
+ */
+.rv-section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.5rem;
+  border-bottom: 1px solid var(--rv-preto);
+  color: inherit;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color var(--rv-duration) var(--rv-ease-out),
+    transform var(--rv-duration) var(--rv-ease-out);
+}
+
+.rv-section-link:hover {
+  color: var(--rv-rose-strong);
+  transform: translateY(-1px);
+}
+
+/* O traço da seta: fino, no `currentColor` do texto ao lado — o mesmo desenho do
+ * ícone "arrow" da régua, e o mesmo do chevron do carrossel. */
+.rv-section-link-icon,
+.rv-collection-cta-icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+

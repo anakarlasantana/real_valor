@@ -1,0 +1,407 @@
+/*
+ * O trilho horizontal (a capa e o carrossel da vitrine)
+ * ---------------------------------------------------------------
+ * A navegação é a nativa: arrastar no dedo, rolar com a barra, girar a roda. As
+ * setas e os pontos do carrossel são a navegação **com estado** — elas sabem em
+ * que página a fila está (a ilha de cliente em
+ * `modules/home/components/product-carousel/index.tsx`, e a da capa em
+ * `hero/carousel.tsx`), e por isso podem existir. Antes disso não existia estado
+ * nenhum no cliente, e a barra de rolagem era a única pista de que havia mais
+ * peça à direita: uma seta "próximo" sem estado mentiria a partir do último card.
+ * Hoje a barra continua sendo a pista — mas ela é **aparência**, não o único
+ * caminho.
+ *
+ * A barra de rolagem **aparece no desktop**: é ela a pista de que há mais peça
+ * à direita, e é ela que o mouse arrasta. No celular ela some, porque lá o gesto
+ * de arrastar é o óbvio e uma barra fina embaixo do card é ruído.
+ *
+ * Fina e dourada: a espessura de 6px é a que dá para pegar sem parecer um
+ * controle de sistema, e a cor é o dourado de detalhe da marca — o mesmo tom
+ * das bordas que já aparecem na loja.
+ */
+@media (max-width: 1023px) {
+  .rv-rail {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .rv-rail::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .rv-rail {
+    scrollbar-color: var(--rv-dourado) transparent;
+    scrollbar-width: thin;
+  }
+
+  .rv-rail::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .rv-rail::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .rv-rail::-webkit-scrollbar-thumb {
+    background-color: var(--rv-dourado);
+    border-radius: 9999px;
+  }
+}
+
+/*
+ * O carrossel da vitrine ("Peças em destaque" e "Lançamentos")
+ * ---------------------------------------------------------------
+ * O trilho é o mesmo `.rv-rail` de sempre — quem rola é o dedo, a barra, a roda
+ * e o `scrollTo` da ilha de cliente (`product-carousel/index.tsx`) —, e o que
+ * estas regras acrescentam é a **régua**: quantos cards cabem na tela.
+ *
+ * A largura do card é uma fração da largura do trilho, e é daqui que sai a conta
+ * de páginas (medida no DOM por `lib/util/carousel.ts`):
+ *
+ *   celular             76%                -> cabe 1,29 card: um inteiro e o próximo de esguelha
+ *   a partir de 512px   calc(40% - .75rem) -> cabem 2,48: dois inteiros e **metade do terceiro**
+ *   a partir de 1024px  calc(30% - .75rem) -> cabem 3,29: três inteiros e o quarto de esguelha
+ *
+ * **O card do desktop encolheu de 40% para 30%, e o motivo é a foto.** Na régua
+ * antiga o card media 461,6px numa tela de 1280px e a foto dentro dele 429,6px
+ * de largura por 555px de altura: a peça ocupava a tela, e o preço e o convite
+ * ficavam abaixo da dobra. A 30% o mesmo card mede 343,2px e a foto 311px — a
+ * **mesma proporção**, e por isso o mesmo corte (0,7% no 3:4 do catálogo: o
+ * `inset-4` da moldura encolhe junto) com ~26% menos área de imagem.
+ *
+ * O `scrollTo` da virada de página anda uma largura de tela, e é a fração — e
+ * não um valor fixo — que faz essa conta fechar em qualquer tela. **Por que a
+ * fração, e não um teto em px:** com um `max-width` de 520px, por exemplo,
+ * sobraria vão à direita numa tela larga, a segunda página ficaria fora de
+ * alcance (o trilho não teria para onde rolar) e o segundo ponto nunca
+ * acenderia — é o caso que `pageIndexFromScroll` resolve para o fim do trilho.
+ *
+ * E **por que um pedaço do próximo card, e não uma conta exata:** a régua de 50%
+ * fechava a tela com dois cards e nenhum pedaço a mais — a seção parecia uma
+ * grade de dois, e a peça cortada pela borda é o que diz, sem uma palavra, que
+ * o trilho continua. No celular vale o mesmo com 1,29: o convite é o pedaço.
+ *
+ * **O que a régua de 30% custa hoje:** o catálogo tem três peças publicadas, e
+ * três cabem inteiras na tela do desktop (3,29 > 3). Sem página para trocar não
+ * há seta, ponto nem rodízio — é a regra do componente, medida no DOM (ver o
+ * item 2 de `product-carousel/index.tsx`), e não uma exceção: publicada a quarta
+ * peça, o pedaço de esguelha volta e com ele a segunda página e os controles. A
+ * régua de 40% mantinha dois pontos na tela **à custa** de um card que não cabia
+ * em si mesmo.
+ *
+ * O `gap` é lido pelo componente (`getComputedStyle(...).columnGap`), então
+ * mudar o vão aqui muda a conta lá: uma régua só.
+ */
+
+/*
+ * Quem hospeda o trilho sangrado: a **seção**.
+ *
+ * A sangria é do trilho (`100vw` com margens negativas, logo abaixo) e o que
+ * sobra dela para a seção é a barra de rolagem: num navegador de barra
+ * clássica, `100vw` é a largura da tela **incluindo** a barra, então o trilho
+ * fica uns 15px mais largo que a área visível e esses 15px virariam rolagem
+ * horizontal na página inteira. `overflow-x: clip` apara a sobra sem tocar na
+ * rolagem do trilho, que é outra coisa e acontece dentro dele.
+ *
+ * `clip`, e não `hidden`: um eixo em `hidden` obriga o outro a virar `auto`, e
+ * a seção passaria a rolar por dentro (um contêiner de rolagem a mais, no meio
+ * da página). `clip` corta e não cria contêiner nenhum — `overflow-y` continua
+ * `visible`, e o que a seção tem de sobra na vertical (sombra de card, o
+ * `translate` da entrada em cena) segue à vista.
+ */
+.rv-bleed {
+  overflow-x: clip;
+}
+
+.rv-carousel-track {
+  display: flex;
+  gap: 1.5rem;
+  /*
+   * A sangria: o trilho atravessa a tela de borda a borda, mesmo morando dentro
+   * do `rv-container` (que é centrado e para em 1440px). `100vw` de largura e
+   * margens negativas iguais ao que falta para o centro da tela põem o trilho
+   * exatamente sobre a tela, qualquer que seja ela — o `50%` é o centro do
+   * contêiner, e o contêiner é centrado.
+   *
+   * O respiro interno é o `--rv-gutter` do `rv-container` (mesma régua): o
+   * primeiro card nasce alinhado com o título da seção e, ao rolar, o último
+   * atravessa a borda em vez de parar antes dela. O `scroll-padding-inline`
+   * acompanha porque o `snap` mede pelo respiro: sem ele o card pararia no
+   * canto da tela e deslizaria 1rem para dentro ao assentá-lo.
+   */
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  padding-inline: var(--rv-gutter, 1rem);
+  scroll-padding-inline: var(--rv-gutter, 1rem);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  /* Rolagem presa ao trilho: o gesto não vira navegação do histórico. */
+  overscroll-behavior-x: contain;
+  /*
+   * O respiro de baixo é para a barra de rolagem — e é também o que impede o
+   * trilho de ganhar uma barra **vertical** que ninguém pediu: `overflow-x:
+   * auto` implica `overflow-y: auto`, e o card entra em cena deslocado 12px para
+   * baixo (`.rv-reveal`, mais abaixo). Com 1rem (16px) de respiro, o deslocamento
+   * cabe dentro da caixa e não há o que rolar na vertical; com os 0.5rem que a
+   * barra sozinha pediria, os 4px que sobram ligariam a barra vertical por um
+   * quadro em cada seção.
+   */
+  padding-bottom: 1rem;
+}
+
+.rv-carousel-item {
+  flex: none;
+  /*
+   * Celular: um card inteiro e **o próximo de esguelha na borda** — o pedaço
+   * que convida a arrastar é o mesmo desenho do desktop em escala menor.
+   */
+  width: 76%;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 512px) {
+  .rv-carousel-item {
+    /*
+     * 40% menos meio vão: dois cards inteiros, o vão entre eles e a **metade do
+     * terceiro** atravessando a borda direita (cabe 2,48 card). O pedaço não é
+     * sobra: é ele que diz que o trilho continua. É a régua do tablet.
+     */
+    width: calc(40% - 0.75rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .rv-carousel-item {
+    /*
+     * 30% menos meio vão: três cards inteiros, os vãos entre eles e o **pedaço do
+     * quarto** atravessando a borda direita (cabem 3,29). É a ideia da régua do
+     * tablet com uma peça a mais na tela, e existe porque a foto do card de 40%
+     * (ver o bloco "O carrossel da vitrine", acima) tomava a tela sozinha.
+     */
+    width: calc(30% - 0.75rem);
+  }
+}
+
+/*
+ * O holofote do ponteiro: o card apontado fica aceso e os irmãos recuam.
+ *
+ * `:has` no contêiner, e não `:hover` nele: com o `:hover` no carrossel inteiro,
+ * apontar a **seta** escureceria todos os cards — o oposto do que o gesto quer
+ * dizer. Onde o navegador não conhece `:has` (Safari < 15.4, Firefox < 121) a
+ * regra simplesmente não vale: nenhum card recua e nada quebra.
+ */
+@media (hover: hover) {
+  .rv-carousel-item {
+    transition: opacity var(--rv-motion) var(--rv-ease-out);
+  }
+
+  .rv-carousel:has(.rv-carousel-item:hover) .rv-carousel-item {
+    opacity: 0.7;
+  }
+
+  .rv-carousel:has(.rv-carousel-item:hover) .rv-carousel-item:hover {
+    opacity: 1;
+  }
+}
+
+/*
+ * As setas
+ * ---------------------------------------------------------------
+ * Círculo de 2.75rem (44px, o alvo que o dedo acerta sem mira) sobre a foto: o
+ * `top: 43%` é o meio da área da imagem no card do carrossel, e não o meio do
+ * card inteiro (que inclui título e preço embaixo).
+ *
+ * Onde há ponteiro, a seta aparece quando ele chega e some quando ele sai: dois
+ * círculos fixos sobre a foto pesariam numa vitrine que é feita de foto. Onde
+ * **não** há ponteiro (o celular, `hover: none`), ela fica visível — sem hover
+ * não haveria como descobri-la, e trocar de página depende do dedo.
+ *
+ * `pointer-events: none` na seta escondida é para ela não capturar o clique que
+ * era do card; o foco do teclado continua chegando nela (o `pointer-events` não
+ * bloqueia Tab) e o `:focus-visible` a traz de volta à tela.
+ */
+.rv-carousel-arrow {
+  position: absolute;
+  top: 43%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid var(--rv-border);
+  border-radius: 9999px;
+  background-color: var(--rv-surface);
+  color: var(--rv-grafite);
+  box-shadow: var(--rv-shadow-card);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: opacity var(--rv-motion) var(--rv-ease-out),
+    color var(--rv-motion-fast) var(--rv-ease-out),
+    border-color var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+/*
+ * Ancoradas na **borda da tela**, e não na do contêiner.
+ *
+ * A conta é a mesma que sangra o `.rv-carousel-track`: o `50%` é o centro do
+ * carrossel, e o carrossel mora dentro de um contêiner **centrado** — o centro
+ * dele é o centro da tela em qualquer largura. De lá, `-50vw` chega à borda
+ * (esquerda no `left`, direita no `right`) e o `--rv-arrow-inset` devolve a seta
+ * para dentro, com um vão que cresce com a tela. Era o que faltava para a seta
+ * acompanhar o trilho, que já atravessa a tela de ponta a ponta: presa ao
+ * contêiner, ela ficava a 64px da borda numa tela de 1440 e a ~300px numa de
+ * 1920 — no meio do vazio. O vão que a devolve para dentro é fluido
+ * (`--rv-arrow-inset`, em `:root`): um degrau fixo ao lado de um valor fluido
+ * seria a segunda régua do mesmo vão.
+ */
+.rv-carousel-arrow-prev {
+  left: calc(50% - 50vw + var(--rv-arrow-inset, 0.5rem));
+}
+
+.rv-carousel-arrow-next {
+  right: calc(50% - 50vw + var(--rv-arrow-inset, 0.5rem));
+}
+
+.rv-carousel-arrow:hover {
+  border-color: var(--rv-rose);
+  color: var(--rv-rose);
+}
+
+.rv-carousel-arrow-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+@media (hover: hover) {
+  .rv-carousel-arrow {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .rv-carousel:hover .rv-carousel-arrow,
+  .rv-carousel:focus-within .rv-carousel-arrow,
+  .rv-carousel-arrow:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/*
+ * Os pontos — um por página
+ * ---------------------------------------------------------------
+ * A bolinha de 8px é o desenho; o botão é o alvo, com 44px de largura por 28px de
+ * altura (a WCAG 2.2 pede 24px para um alvo de toque). O ponto fica pequeno no
+ * olho e grande no dedo, e o respiro entre um e outro vira área de toque em vez
+ * de espaço morto.
+ *
+ * Grafite e não off white: aqui eles ficam sobre o fundo claro da página, e não
+ * sobre a foto (como os da capa).
+ */
+.rv-carousel-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-top: 1.25rem;
+}
+
+.rv-carousel-dot {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.rv-carousel-dot::before {
+  content: "";
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--rv-muted);
+  border-radius: 9999px;
+  background-color: transparent;
+  transition: background-color var(--rv-motion-fast) var(--rv-ease-out),
+    border-color var(--rv-motion-fast) var(--rv-ease-out),
+    transform var(--rv-motion-fast) var(--rv-ease-out);
+}
+
+.rv-carousel-dot:hover::before,
+.rv-carousel-dot[aria-current="true"]::before {
+  border-color: var(--rv-rose);
+  background-color: var(--rv-rose);
+  transform: scale(1.25);
+}
+
+/*
+ * Os pontos da capa carrossel
+ * ---------------------------------------------------------------
+ * Cada ponto é um `<button>` (`hero/carousel.tsx`), e não o `<a
+ * href="#hero-slide-N">` de antes: quem decide o slide é a rolagem do trilho, e
+ * o ponto precisa saber onde ela está para acender — a âncora não sabia (o
+ * navegador rolava até o slide e nada mudava de aparência). Os `#hero-slide-N`
+ * continuam no HTML, então o endereço antigo de um slide ainda funciona.
+ *
+ * `aria-current="true"` é o aceso: o estado é do leitor de tela também, e a cor
+ * sai do atributo em vez de uma classe que só a tela lê. `appearance` e
+ * `padding` zerados porque um `<button>` traz a moldura e o respiro do
+ * navegador, e o alvo aqui é a mesma bolinha de 8px de antes.
+ *
+ * Off white, e não a cor da marca: os pontos ficam sobre a fotografia, e só a
+ * área escura do véu (o canto em que a cópia mora) garante contraste com
+ * qualquer foto. É lá que eles estão — no canto inferior esquerdo, na mesma
+ * faixa do `rv-container`.
+ */
+.rv-hero-dot {
+  appearance: none;
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  border: 1px solid var(--rv-offwhite);
+  border-radius: 9999px;
+  background-color: transparent;
+  cursor: pointer;
+  transition: background-color var(--rv-duration) var(--rv-ease);
+}
+
+.rv-hero-dot:hover,
+.rv-hero-dot[aria-current="true"] {
+  background-color: var(--rv-offwhite);
+}
+
+/*
+ * Onde está o mecanismo de parada do rodízio (WCAG 2.2.2)
+ * ---------------------------------------------------------------
+ * Aqui havia o estilo de um botão `Pausar`/`Retomar` que **nunca chegou ao
+ * HTML**: a classe `.rv-hero-pause` foi escrita junto com o carrossel da capa e
+ * nenhum componente a usou — um controle que não existia, e que um teste media
+ * sem que ninguém pudesse clicar nele. O que fecha o critério na capa é outra
+ * coisa, e está em `hero/carousel.tsx`:
+ *
+ *   - o clique no **ponto** para o rodízio de vez (`stopped`): no primeiro gesto
+ *     de navegação o visitante assume o volante, e a capa não volta a andar
+ *     sozinha;
+ *   - o ponteiro em cima e o foco do teclado seguram o rodízio enquanto estão lá;
+ *   - e `prefers-reduced-motion` o desliga por inteiro (ver o fim deste arquivo).
+ *
+ * O que continua faltando é um botão **visível** de pausa — o mesmo que a barra
+ * de anúncio espera (`.rv-marquee`) —, e ele põe um controle na moldura de todas
+ * as páginas: é decisão de produto, e não uma classe de CSS.
+ */
+
+/* O anel de foco do tema é rosa, e rosa sobre a foto não se vê. */
+.rv-hero-dot:focus-visible {
+  outline: 2px solid var(--rv-offwhite);
+  outline-offset: 2px;
+}
+

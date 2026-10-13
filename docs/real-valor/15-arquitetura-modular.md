@@ -23,7 +23,7 @@ página conhece quem está mais longe dela; o contrário nunca.
 | `lib/` | dado, regra e integração, sem React de tela (`catalog`, `ui`, `content`, `checkout`, `medusa`, `data`, `payments`, `theme`, `config`, `hooks`, `context`) | contrato | 97 arquivos · 12.583 linhas |
 | `src/__checks__/` | guarda de arquitetura: lê o FONTE do que confere, não renderiza (`media-wiring`, `ruler`) | `lib`, `modules` | 2 arquivos · 650 linhas |
 | `packages/contrato` | tipo e schema compartilhados pelos três runtimes (`@rv/contrato`) | — é folha | 3.817 linhas |
-| `styles/` | CSS (`brand.css` e parciais: F6) | — | 5.248 linhas |
+| `styles/` | CSS: o manifesto `brand.css` e os dezoito parciais de `brand/` (a F6 partiu a régua) | — | 19 arquivos · 5.265 linhas |
 
 A F2 dissolveu o `lib/util` (45 arquivos, 6.622 linhas) por dono, e é isso que `lib/`
 é hoje: **`catalog`** (a regra e a leitura da peça e do catálogo: facetas, chips,
@@ -141,11 +141,14 @@ O problema medido na varredura de 13/10/2026: **19.512 linhas de comentário** n
 o baseline de 313 para **312** arquivos, e a **F2**, dissolvendo o `lib/util` e
 reancorando a catraca com as peças em casa nova, para **19.325** e **311**; a **F4**
 (os tipos com dono) e a **F5** (os dois ciclos), para **19.305** e **309** arquivos —
-cada `--write` é parte do commit que mudou a forma. Os piores arquivos isolados:
+cada `--write` é parte do commit que mudou a forma. A **F6** não mexeu no total: partiu a
+régua em dezoito parciais sem escrever uma linha de comentário, e o baseline foi a **326**
+arquivos (as dezoito de `brand/` entram, a entrada do `brand.css` sai). Os piores arquivos
+isolados:
 
 | Arquivo | Comentário | Linhas | Densidade |
 | :--- | ---: | ---: | ---: |
-| `frontend/src/styles/brand.css` | 2.039 | 5.248 | 39% |
+| `frontend/src/styles/brand/04-trilho.css` | 207 | 408 | 51% |
 | `packages/contrato/src/contract.ts` | 1.340 | 2.633 | 51% |
 | `packages/contrato/src/schema.ts` | 371 | 452 | 82% |
 | `admin/src/admin/routes/content/field-input.tsx` | 327 | 1.119 | 29% |
@@ -182,8 +185,8 @@ cada `--write` é parte do commit que mudou a forma. Os piores arquivos isolados
 A catraca só desce: um arquivo que já está no baseline não pode ganhar comentário, um
 total de árvore não pode subir, e uma entrada frouxa ou órfã **reprova**. `--report`
 lista os piores (é o insumo da F10) e `--write` reancora o baseline — o `--write` é
-parte do commit que mudou a forma dos arquivos de propósito (a F6, ao partir o
-`brand.css`; a F5, ao desmanchar o ciclo), e o diff do baseline aparece na revisão.
+parte do commit que mudou a forma dos arquivos de propósito (a F6, que partiu a régua; a
+F5, que desmanchou o ciclo), e o diff do baseline aparece na revisão.
 
 ## 15.5 "Ler antes de mover"
 
@@ -211,7 +214,7 @@ que impede o refactor de ser um "depois eu volto".
 | **F3** (feita) | convenção de teste: os 30 specs de unidade → `__tests__/<alvo>.unit.spec.ts` (colado no alvo) e os 2 de arquitetura → `src/__checks__/`; as 20 specs de `lib/` com import relativo passaram a `../<alvo>`, os cinco `index.spec.tsx` de componente a `from ".."`, e os dois `__checks__` tiveram os caminhos de leitura refeitos. O baseline da convenção ficou vazio | convenção 32 → 0 | `yarn test` (34) · `STOREFRONT_RUNNER=1` |
 | **F4** (feita) | `src/types` (2 arquivos) dissolvido: `VariantPrice`, `ProductColor` e `ProductEnrichment` para `lib/catalog/types.ts`, o `IconProps` para `lib/ui/types.ts` e o `StoreFreeShippingPrice` para `lib/checkout/types.ts`; os 19 imports do caminho NU (`from "types/global"`) passaram ao apelido, e os 4 adapters que subiam `../../types` a `@lib/payments/types` | R-A/R-C sem regressão | `make types` |
 | **F5** (feita) | os ciclos: o locale vira FOLHA (`lib/medusa/locale-cookie.ts`, que só importa `next/headers`) e o SDK e o dado passam a ler dela; a `enum LOGIN_VIEW` sai do template para `modules/account/lib/login-view.ts`. A promessa de `R-C 1 → 0` era falsa: a exceção que sobra é do adapter Stripe | R-C 2 → 1 · R-E 6 → 3 | `make check` |
-| **F6** | `brand.css` (5.248 linhas) partido em parciais + manifesto, com prova de concatenação byte a byte | catraca (`--write`) | `yarn build` · GET `/br` |
+| **F6** | ✅ `brand.css` (5.248 linhas) partido em 18 parciais + manifesto, com prova de concatenação byte a byte (na fonte e no bundle) | catraca (`--write`) | GET `/br` · o `yarn build` **não fecha** por defeito anterior a ela (RV-050, no doc 09) |
 | **F7** | CRM: `admin/src/admin/routes/content/` (23 arquivos + 3 diretórios) → `page.tsx` + `components/` + `hooks/` + `lib/`; `widgets/` só com entrypoint | `make build-admin` | smoke do painel |
 | **F8** | backend: `mercadopago/service.ts` (828), `api/admin/content/route.ts` (488), `scripts/seed.ts` (569); `api/store/custom/*` renomeado | `make test` (24 suítes) | smoke do pagamento |
 | **F9** | docs: as citações de caminho e de linha reancoradas; o doc 09 ganha o "FEITO (hash)" de cada fase | — | revisão |
@@ -254,7 +257,8 @@ no `make test`, e não no `make check`.
 | `lib/util` sem uma responsabilidade só | 45 arquivos · 6.622 linhas | ✅ F2 — dissolvido em `catalog`, `ui`, `content`, `checkout`, `payments` e `medusa` |
 | `lib/data/cart.ts` | 421 linhas (eram 476: a F1 tirou as 4 funções mortas) | ✅ F1 |
 | `src/types` sem dono de camada | 2 arquivos · 52 linhas | ✅ F4 — os tipos foram para `lib/{catalog,ui,checkout}/types.ts` |
-| `brand.css` | 5.248 linhas, 2.039 de comentário | F6 |
+| `brand.css` | 5.248 linhas, 2.039 de comentário | ✅ F6 — virou dezoito parciais + manifesto, sem perder um byte; a narrativa da régua é do F10, que corta |
+| O `yarn build` de produção | achado na F6, mas **anterior** a ela: `next/headers` alcança um bundle de cliente (RV-050) | fora do lote — o item está no doc 09 |
 
 Fora deste lote (não é F0–F10, e não entra no meio de uma fase): o push do `develop`
 (o commit `c7df56fc85` está local), a migration pendente
