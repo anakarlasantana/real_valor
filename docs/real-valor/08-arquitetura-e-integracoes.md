@@ -34,7 +34,9 @@ de pagamento e frete.
 
 **Duas linhas precisam de confirmação antes de qualquer decisão:**
 - `/store/orders/track` — o backend expõe, mas **não localizei consumo no frontend**.
-- `/store/custom/checkout-info` — idem.
+- `/store/checkout/info` — idem. (Era `/store/custom/checkout-info` até a F8: o
+  `custom/` era o nome de exemplo do Medusa, e a rota passou a seguir a convenção
+  do repo — recurso primeiro.)
 
 Podem ser código morto ou consumo externo. **Não remover sem confirmar.**
 
@@ -320,6 +322,11 @@ A preparação de ambiente **já foi executada** (sem código de aplicação):
 | `mercadopago/contexto.ts` | o contrato rota ⇄ provider | ✅ |
 | `mercadopago/cliente.ts` | as duas chamadas HTTP (`preferences`, `payments`) | rede |
 | `mercadopago/service.ts` | o provider (`AbstractPaymentProvider`) | misto |
+| `mercadopago/decisao.ts` | as cinco checagens do webhook, na ordem, e a ação | misto |
+| `mercadopago/status.ts` | o mapa fechado status → ação e status → sessão | ✅ |
+| `mercadopago/notificacao.ts` | os leitores do corpo e dos headers | ✅ |
+| `mercadopago/estorno.ts` | o texto da recusa de estorno | ✅ |
+| `mercadopago/boot.ts` | o log de boot e o veredito da configuração | lê env |
 | `mercadopago/webhook.ts` | o handler compartilhado pelas rotas | misto |
 | `mercadopago/{pix,cartao}/index.ts` | os dois `ModuleProvider` | ✅ |
 | `api/webhooks/mercadopago/{route.ts,[metodo]/route.ts}` | as rotas públicas | HTTP |

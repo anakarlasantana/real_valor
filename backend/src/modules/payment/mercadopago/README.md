@@ -74,7 +74,12 @@ coisa em vez de duas que podem discordar.
 | `preferencia.ts` | o documento da cobrança: valor, meios, voltas | ✅ |
 | `contexto.ts` | o contrato rota ⇄ provider | ✅ |
 | `cliente.ts` | as **duas** chamadas HTTP, e onde o erro é redigido | rede |
-| `service.ts` | o provider: cria a preferência, decide o webhook | misto |
+| `service.ts` | o provider: cria a preferência, delega o webhook | misto |
+| `decisao.ts` | as **cinco checagens** do webhook, na ordem, e a ação | misto |
+| `status.ts` | o mapa fechado status → ação e status → sessão | ✅ |
+| `notificacao.ts` | os três leitores do corpo e dos headers | ✅ |
+| `estorno.ts` | o texto da recusa de estorno, com a instrução | ✅ |
+| `boot.ts` | o log de boot: o que está configurado e o veredito | lê env |
 | `webhook.ts` | o porteiro: assinatura, sessão, valor, evento | misto |
 | `pix/`, `cartao/` | qual meio cada registro é | ✅ |
 
@@ -181,7 +186,7 @@ produz.
 ## Testes
 
 ```bash
-cd backend && yarn test:unit          # 90 testes só deste módulo
+cd backend && yarn test:unit          # 96 testes só deste módulo
 cd backend && npx tsc --noEmit        # o registro é fiação de runtime: tsc não vê
 node scripts/check-boundaries.mjs
 ```

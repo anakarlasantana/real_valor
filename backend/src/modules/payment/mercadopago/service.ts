@@ -33,7 +33,6 @@
 import {
   AbstractPaymentProvider,
   MedusaError,
-  PaymentActions,
 } from "@medusajs/framework/utils"
 import type {
   AuthorizePaymentInput,
@@ -48,7 +47,6 @@ import type {
   GetPaymentStatusOutput,
   InitiatePaymentInput,
   InitiatePaymentOutput,
-  PaymentSessionStatus,
   ProviderWebhookPayload,
   RefundPaymentInput,
   RefundPaymentOutput,
@@ -59,138 +57,36 @@ import type {
   WebhookActionResult,
 } from "@medusajs/types"
 
-import {
-  HEADER_ASSINATURA,
-  HEADER_REQUISICAO,
-  validarAssinatura,
-} from "./assinatura"
+import { anunciarBoot, type Registrador } from "./boot"
 import {
   buscarPagamento,
   buscarPorReferencia,
   criarPreferencia,
   pontoDeInicio,
 } from "./cliente"
-import type { ContextoVerificado } from "./contexto"
 import {
-  alertaDaNotificacao,
-  descreverConfiguracao,
-  divergenciaDeAmbiente,
   pagamentoDisponivel,
-  segredosDoWebhook,
-  toleranciaSegundos,
   urlDeNotificacao,
   urlsDeRetorno,
 } from "./credenciais"
+import { decidirNotificacao } from "./decisao"
+import { instrucaoDeEstorno } from "./estorno"
 import {
   METODOS,
   construirPreferencia,
   emReais,
   type Metodo,
 } from "./preferencia"
-import { idMascarado, redigirPagamento, semPii } from "./redigir"
+import { idMascarado, redigirPagamento } from "./redigir"
+import { statusDaSessao } from "./status"
 
 /** O que o Medusa injeta no provider. Só `logger` é usado. */
 type Dependencias = {
-  logger: {
-    info: (m: string) => void
-    warn: (m: string) => void
-    error: (m: string) => void
-  }
+  logger: Registrador
 }
 
 /** A descrição que aparece no checkout, quando o carrinho não manda a sua. */
 const DESCRICAO_PADRAO = "Real Valor — pedido"
-
-/** Lê um header sem depender de o servidor ter baixado o nome para minúsculas. */
-function header(headers: Record<string, unknown>, nome: string): unknown {
-  if (headers[nome] !== undefined) {
-    return headers[nome]
-  }
-
-  const chave = Object.keys(headers).find(
-    (k) => k.toLowerCase() === nome.toLowerCase()
-  )
-
-  return chave === undefined ? undefined : headers[chave]
-}
-
-/**
- * O id do pagamento, no corpo da notificação.
- *
- * **Duas camadas, e é fácil errar.** O corpo é
- * `{ type: "payment", action: "payment.updated", data: { id: 123 } }`, e o
- * Medusa entrega esse corpo inteiro dentro de `payload.data` — então o id está
- * em `payload.data.data.id`. O `?? payload.data.id` existe porque nem todo
- * evento do provedor aninha igual, e procurar nos dois lugares custa uma linha
- * contra uma tarde de "por que a notificação não faz nada?".
- */
-function idDoPagamento(corpo: Record<string, unknown>): string | undefined {
-  const interno = (corpo?.data ?? {}) as Record<string, unknown>
-  const candidato = interno?.id ?? corpo?.id
-
-  if (candidato === undefined || candidato === null || String(candidato).trim() === "") {
-    return undefined
-  }
-
-  return String(candidato)
-}
-
-/** O `type` do evento, quando vem. `payment` é o único que nos interessa. */
-function tipoDoEvento(corpo: Record<string, unknown>): string {
-  return String(corpo?.type ?? corpo?.topic ?? "")
-}
-
-/**
- * Como um status do provedor é lido pelo **webhook**.
- *
- * Separado de `statusDaSessao` porque as duas perguntas são diferentes: aqui é
- * "o que faço com este evento?", e lá é "que estado a sessão está?". Juntar as
- * duas num mapa só foi o que produziu `approved` como status de sessão — que
- * não existe — e teria passado despercebido até a primeira confirmação.
- *
- * A lista é **fechada**: um status que o provedor invente cai em
- * `nao_tratado`, e "não sei o que isto significa" é a resposta certa para um
- * pagamento — ao contrário de `pending`, que faria o checkout dizer
- * "aguardando" para sempre.
- */
-function statusDoWebhook(
-  status: string
-): "approved" | "pending" | "canceled" | "nao_tratado" {
-  switch (status) {
-    case "approved":
-      return "approved"
-    case "pending":
-    case "in_process":
-    case "authorized":
-      return "pending"
-    case "cancelled":
-    case "rejected":
-      return "canceled"
-    default:
-      return "nao_tratado"
-  }
-}
-
-/**
- * Como um status do provedor é lido pela **sessão de pagamento** do Medusa.
- *
- * `approved` vira `captured` e não `authorized` de propósito: no Mercado Pago
- * (sem captura adiada) o dinheiro já entrou quando o status vira `approved`.
- * Dizer `authorized` faria o Medusa tratar como valor apenas reservado, e a
- * diferença aparece na conciliação — não no checkout.
- */
-function statusDaSessao(status: string): PaymentSessionStatus {
-  switch (statusDoWebhook(status)) {
-    case "approved":
-      return "captured"
-    case "pending":
-      return "pending"
-    case "canceled":
-      return "canceled"
-    default:
-      return "error"
-  }
-}
 
 /**
  * A base dos dois providers do Mercado Pago.
@@ -217,61 +113,17 @@ export abstract class MercadoPagoProvider extends AbstractPaymentProvider {
     return (this.constructor as typeof MercadoPagoProvider).metodo
   }
 
-  protected logger_: Dependencias["logger"]
+  protected logger_: Registrador
 
   constructor(container: Dependencias, options: Record<string, unknown>) {
     super(container as never, options)
 
     this.logger_ = container.logger
 
-    // O log de boot é o único lugar onde se descobre que a variável não chegou
-    // no container — e ele é **antes** de qualquer cliente tentar pagar. Só a
-    // presença e a forma saem daqui: ver `descreverConfiguracao`.
-    //
-    // ⚠️ Até a correção do switch de ambiente esta chamada **não existia**.
-    // `descreverConfiguracao` estava escrita e documentada desde o começo, e
-    // nenhum código a chamava: o construtor escrevia só "pronto.", e um token de
-    // conta de teste passava em silêncio. A promessa do comentário acima era
-    // falsa, e foi assim que "produção" apareceu no log para um token que não
-    // cobrava ninguém.
-    const rotulo = `[mercadopago/${this.metodo}] ${METODOS[this.metodo].rotulo}`
-
-    // Uma linha só, e não uma por variável: o boot já é barulhento, e o que se
-    // faz com isto é `grep mercadopago` no log.
-    this.logger_.info(
-      `${rotulo} ${Object.entries(descreverConfiguracao())
-        .map(([nome, valor]) => `${nome}=${valor}`)
-        .join(" · ")}`
-    )
-
-    // A divergência vem **antes** do veredito, e no nível do desfecho: um erro
-    // rebaixado a aviso seria lido como ruído, e este é o único lugar onde o
-    // caso caro — a loja que abre e não vende — aparece em voz alta.
-    const { erro, aviso } = divergenciaDeAmbiente()
-
-    if (erro) {
-      this.logger_.error(`${rotulo} CONFIGURAÇÃO RECUSADA — ${erro}`)
-    } else if (aviso) {
-      this.logger_.warn(`${rotulo} ${aviso}`)
-    }
-
-    // O alerta da URL de notificação é independente do veredito de pagamento, e
-    // é a independência que o torna perigoso: o checkout funciona com ela errada.
-    // Um endereço que não é o nosso não gera erro em lugar nenhum — nem no nosso
-    // log, nem no painel do provedor, que registra a entrega como bem-sucedida —
-    // e o pedido simplesmente não nasce. Ver `alertaDaNotificacao`.
-    const alertaNotificacao = alertaDaNotificacao()
-
-    if (alertaNotificacao) {
-      this.logger_.warn(`${rotulo} ${alertaNotificacao}`)
-    }
-
-    const configuracao = pagamentoDisponivel()
-
-    this.logger_.info(
-      `${rotulo} ` +
-        (configuracao.ok ? "pronto." : `INDISPONÍVEL — ${configuracao.motivo}`)
-    )
+    // O log de boot inteiro mora em `boot.ts`: é o único lugar onde se
+    // descobre que a variável não chegou no container, e ele é **antes** de
+    // qualquer cliente tentar pagar. Só a presença e a forma saem de lá.
+    anunciarBoot(this.logger_, this.metodo)
   }
 
   /** O `provider_id` que o Medusa registra e o storefront resolve. */
@@ -366,218 +218,22 @@ export abstract class MercadoPagoProvider extends AbstractPaymentProvider {
   }
 
   /**
-   * A decisão do webhook. **É aqui que um pedido pago pode nascer.**
+   * A decisão do webhook — **é aqui que um pedido pago pode nascer**.
    *
-   * Cinco checagens, nesta ordem, e todas fecham para o mesmo lado — "não faço
-   * nada":
-   *
-   * 1. **A assinatura confere?** Sem isso, o resto é irrelevante: qualquer um
-   *    pode mandar o corpo que quiser. Falha aqui é 401 do lado de quem chama
-   *    (a rota), e aqui é `not_supported`.
-   * 2. **O evento é sobre um pagamento?** Um `merchant_order` ou um evento de
-   *    plano não tem o que fazer neste provider.
-   * 3. **O provedor confirma?** `GET /v1/payments/{id}`. O status que decide é
-   *    esse, **nunca** o do corpo — o corpo é do remetente, e o remetente pode
-   *    estar errado ou mentindo.
-   * 4. **O valor bate com a sessão?** Um pagamento aprovado de R$ 1,00
-   *    notificado com o id da sessão de um pedido de R$ 1.000,00 seria um pedido
-   *    de mil reais pago com um real. A conferência é contra o valor que **nós**
-   *    gravamos, não contra o que o corpo diz.
-   * 5. **A sessão é deste provider?** O `external_reference` tem de apontar para
-   *    uma sessão de pagamento **deste** método. É o que impede que uma
-   *    notificação legítima do Pix seja processada pelo provider do cartão (e
-   *    vice-versa), e o que faz um id de pagamento alheio não ter efeito nenhum.
-   *
-   * **Por que a checagem 5 não é paranoia.** A rota escolhe o provider pelo
-   * caminho da URL — um valor que quem envia também controla. Validar de novo
-   * aqui é o que faz a rota poder ser burlada **sem consequência**: no máximo o
-   * evento cai no provider errado, e o provider errado o recusa.
-   *
-   * **O que sai daqui nunca veio do corpo.** `session_id` e `amount` são lidos do
-   * que temos gravado e do que o provedor respondeu. O corpo contribui com
-   * **um** dado: o id do pagamento, que é o que se precisa para perguntar o
-   * resto.
+   * O Medusa chama este método e espera a ação; as cinco checagens, na
+   * ordem, e o porquê de cada uma moram em `decisao.ts`. O contrato do
+   * método e o que ele pode devolver estão no README do módulo. Aqui só se
+   * entrega quem é este provider: o `metodo`, o `meuId` que a sessão precisa
+   * citar e o logger.
    */
   async getWebhookActionAndData(
     payload: ProviderWebhookPayload["payload"]
   ): Promise<WebhookActionResult> {
-    const corpo = (payload?.data ?? {}) as Record<string, unknown>
-    const cabecalhos = payload?.headers ?? {}
-
-    const veredito = validarAssinatura({
-      headerAssinatura: header(cabecalhos, HEADER_ASSINATURA),
-      requestId: header(cabecalhos, HEADER_REQUISICAO),
-      dataId: idDoPagamento(corpo),
-      segredos: segredosDoWebhook(),
-      toleranciaSegundos: toleranciaSegundos(),
+    return decidirNotificacao(payload, {
+      metodo: this.metodo,
+      meuId: this.meuId,
+      logger: this.logger_,
     })
-
-    if (!veredito.ok) {
-      // O motivo vai para o log e **nada** dele vai para a resposta: quem está
-      // sondando não descobre qual das cinco checagens falhou.
-      this.logger_.warn(
-        `[mercadopago/${this.metodo}] notificação recusada (${veredito.motivo})`
-      )
-
-      return { action: PaymentActions.NOT_SUPPORTED }
-    }
-
-    const tipo = tipoDoEvento(corpo)
-
-    // ---------------------------------------------------------------------
-    // O contexto que **só a nossa rota** pode produzir.
-    //
-    // Ele carrega o que o corpo não tem e o provider não pode descobrir
-    // sozinho: de qual sessão o pagamento é, quanto ela vale e de qual
-    // provider ela é. A rota o monta depois de conferir a assinatura e a
-    // sessão, e o provider **confere de novo** tudo o que dá para conferir.
-    //
-    // **Esta é a barreira contra a rota nativa.** O Medusa publica
-    // `POST /hooks/payment/:provider`, que emite exatamente o mesmo evento
-    // **sem** este contexto — e ele não valida assinatura nenhuma, porque não
-    // conhece nenhum provedor. Sem esta checagem, a rota nativa seria uma porta
-    // dos fundos: um POST sem assinatura chegaria ao `getWebhookActionAndData`
-    // e, se o provider confiasse no corpo, criaria um pedido pago. Com ela, o
-    // pior que acontece ali é um log e um 200 sem efeito.
-    // ---------------------------------------------------------------------
-    const contexto = (payload as { rv?: ContextoVerificado })?.rv
-    const id = idDoPagamento(corpo)
-
-    if (!contexto?.session_id || !id) {
-      this.logger_.warn(
-        `[mercadopago/${this.metodo}] evento sem contexto verificado — ` +
-          `ignorado (a rota nativa não é uma porta de entrada válida)`
-      )
-
-      return { action: PaymentActions.NOT_SUPPORTED }
-    }
-
-    if (String(contexto.provider_id) !== this.meuId) {
-      // O evento é do outro meio (ou de outro provedor inteiro). Recusar aqui, e
-      // não antes, é o que torna a checagem independente de quem chamou.
-      this.logger_.warn(
-        `[mercadopago/${this.metodo}] evento da sessão ` +
-          `${idMascarado(contexto.session_id)} é de outro provider — ignorado`
-      )
-
-      return { action: PaymentActions.NOT_SUPPORTED }
-    }
-
-    if (tipo && tipo !== "payment") {
-      this.logger_.info(
-        `[mercadopago/${this.metodo}] evento ignorado (tipo=${tipo})`
-      )
-
-      return { action: PaymentActions.NOT_SUPPORTED }
-    }
-
-    const pagamento = await buscarPagamento(id)
-    const referencia = String(pagamento?.external_reference ?? "")
-
-    if (!referencia) {
-      // Sem `external_reference` não há como ligar o pagamento a um carrinho —
-      // e um pagamento que não se liga a carrinho nenhum não pode criar pedido.
-      this.logger_.warn(
-        `[mercadopago/${this.metodo}] pagamento ${idMascarado(id)} sem external_reference`
-      )
-
-      return { action: PaymentActions.NOT_SUPPORTED }
-    }
-
-    if (referencia !== String(contexto.session_id)) {
-      // O pagamento que o provedor confirmou **não é** o da sessão que a rota
-      // verificou. Isto é o cenário de reaproveitar a notificação de um
-      // pagamento alheio: o id vem de um pagamento real (assinatura válida,
-      // porque o provedor o assinou), mas o `external_reference` dele aponta
-      // para outro carrinho. Sem esta linha, o corpo do atacante — que ele
-      // controla — decidiria de quem é o pagamento.
-      this.logger_.error(
-        `[mercadopago/${this.metodo}] DIVERGÊNCIA: o pagamento ${idMascarado(id)} ` +
-          `aponta para ${idMascarado(referencia)} e o evento para ` +
-          `${idMascarado(contexto.session_id)}. Nada será aplicado.`
-      )
-
-      return { action: PaymentActions.NOT_SUPPORTED }
-    }
-
-    const centavosDoProvedor = Math.round(
-      Number(pagamento?.transaction_amount) * 100
-    )
-    const centavosDaSessao = Math.round(Number(contexto.amount))
-
-    if (
-      !Number.isFinite(centavosDoProvedor) ||
-      !Number.isFinite(centavosDaSessao) ||
-      centavosDoProvedor !== centavosDaSessao
-    ) {
-      this.logger_.error(
-        `[mercadopago/${this.metodo}] VALOR DIVERGENTE no pagamento ` +
-          `${idMascarado(id)}: provedor=${centavosDoProvedor} ` +
-          `sessão=${centavosDaSessao}. O pagamento não será aplicado; confira ` +
-          `manualmente no painel do Mercado Pago.`
-      )
-
-      return { action: PaymentActions.NOT_SUPPORTED }
-    }
-
-    return this.decidir(pagamento, referencia, centavosDaSessao)
-  }
-
-  /**
-   * Traduz o status **já validado** na ação que o Medusa executa.
-   *
-   * Está separado de `getWebhookActionAndData` porque a decisão é a parte que
-   * interessa conferir: as cinco checagens lá são pré-condição, e misturar as
-   * duas coisas num `switch` de trinta linhas é como a checagem 4 some numa
-   * refatoração sem ninguém notar.
-   */
-  protected decidir(
-    pagamento: Record<string, unknown>,
-    referencia: string,
-    centavos: number
-  ): WebhookActionResult {
-    const status = String(pagamento?.status ?? "error")
-
-    this.logger_.info(
-      `[mercadopago/${this.metodo}] ${idMascarado(pagamento?.id)} · ${status} · ` +
-        `${emReais(centavos).toFixed(2)} BRL · sessão ${idMascarado(referencia)}`
-    )
-
-    switch (statusDoWebhook(status)) {
-      case "approved":
-        // `SUCCESSFUL` é o que faz o Medusa autorizar **e** capturar de uma vez.
-        // É o certo para o Mercado Pago: sem `capture: false` na preferência, o
-        // dinheiro já está capturado quando o status vira `approved`.
-        return {
-          action: PaymentActions.SUCCESSFUL,
-          data: { session_id: referencia, amount: centavos },
-        }
-
-      case "pending":
-        // **De propósito não faz nada.** Um `pending` do Pix é o instante em que
-        // o QR foi gerado. Deixar isto completar o carrinho criaria um pedido
-        // (com reserva de estoque) para cada Pix gerado **e abandonado** — que é
-        // a maioria deles. O pedido nasce quando o dinheiro entra.
-        return { action: PaymentActions.NOT_SUPPORTED }
-
-      case "canceled":
-        return {
-          action: PaymentActions.FAILED,
-          data: { session_id: referencia, amount: centavos },
-        }
-
-      default:
-        // `refunded` e `charged_back` caem aqui. Estorno **não** é automatizado
-        // neste provider: quem estorna é uma pessoa, no painel do Mercado Pago,
-        // e o registro é manual. Automatizar devolveria dinheiro a partir de uma
-        // notificação, e essa decisão não pertence a um webhook.
-        this.logger_.warn(
-          `[mercadopago/${this.metodo}] status "${status}" não tratado — ` +
-            `nenhuma ação tomada (${idMascarado(pagamento?.id)})`
-        )
-
-        return { action: PaymentActions.NOT_SUPPORTED }
-    }
   }
 
   /**
@@ -755,10 +411,7 @@ export abstract class MercadoPagoProvider extends AbstractPaymentProvider {
 
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      "O estorno é feito no painel do Mercado Pago. " +
-        `Procure o pagamento ${idMascarado(pagamento?.id)} (R$ ` +
-        `${Number(pagamento?.transaction_amount ?? 0).toFixed(2)}) em ` +
-        "Atividade → Pagamentos e estorne por lá."
+      instrucaoDeEstorno(pagamento)
     )
   }
 

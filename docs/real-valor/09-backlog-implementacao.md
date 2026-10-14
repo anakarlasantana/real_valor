@@ -486,7 +486,159 @@ desta fase, no mesmo lote de citações: `docs/plano-centralizacao.md` (não exi
 `frontend/src/lib/util/media.ts` (`components/image-input.tsx:14` — o dono é `lib/ui/media.ts` desde
 a F2).
 
+### ✅ F8 · O backend partido nos três alvos — **FEITO** (hash na entrada da F9: um commit não carrega o próprio hash)
 
+**F7 = `fd42c25831`** — o CRM partido (27 arquivos movidos e a árvore `content/` em `page.tsx` +
+`components/` + `hooks/` + `lib/`). O hash entra aqui pela mesma razão de sempre: quem commita não
+carrega o próprio hash.
+
+**Lido integralmente antes de mover (§15.5)** — a regra que a F3 e a F6 pagaram, e que nesta fase é o
+que separa "cortar por linha" de "cortar por decisão":
+
+- os **três alvos**, na íntegra: `modules/payment/mercadopago/service.ts` (828),
+  `api/admin/content/route.ts` (488) e `scripts/seed.ts` (569);
+- o alvo da renomeação: `api/store/custom/checkout-info/route.ts` (26) — e a confirmação de que **não
+  há consumidor** (o `grep` de `frontend/`, `admin/` e `packages/` continua vazio, como o doc 08 diz);
+- os irmãos que definem a **forma** de qualquer arquivo novo do módulo: `redigir.ts` (o cabeçalho com
+  a decisão), `preferencia.ts`, `contexto.ts`, `cliente.ts`, `credenciais.ts`, `webhook.ts`, os dois
+  `index.ts` (`pix/` e `cartao/`) e as cinco specs;
+- o que **prende** os alvos por fora: `modules/content/__tests__/wiring.unit.spec.ts` (306 linhas —
+  ela lê o `route.ts` como **fonte**, e é o contrato mais duro desta fase), o parágrafo "a rota é fina
+  de propósito" do `content/README.md`, a tabela de arquivos do `mercadopago/README.md`, o
+  `registro.unit.spec.ts` (config ⇄ classe ⇄ contrato) e, do lado das guardas, `check-comments.mjs`
+  com `lib/comments.mjs` (a política que dita o **formato** do arquivo novo: cabeçalho ≤5 linhas,
+  densidade ≤12%, e o total da árvore só desce) e `check-boundaries.mjs`;
+- `backend/jest.config.js` e os alvos do `Makefile` — para rodar o gate sem adivinhar comando.
+
+**O que foi feito:**
+
+- **`mercadopago/service.ts`: 828 → 481 linhas**, e o que saiu saiu **por dono**, não por tamanho:
+  - `decisao.ts` (212): as cinco checagens do webhook, na ordem, e a tradução do status em ação. O
+    método do Medusa (`getWebhookActionAndData`) virou três linhas de delegação, e o `decidir`
+    `protected` virou a função `acaoDoStatus`;
+  - `status.ts` (55): o mapa fechado status → ação do webhook e status → sessão. São duas perguntas
+    diferentes, e é por isso que o `approved` vira `captured` na sessão e não `authorized`;
+  - `notificacao.ts` (40): os três leitores do corpo e dos headers (`header`, `idDoPagamento`,
+    `tipoDoEvento`) — eles **localizam** o dado, não decidem nada com ele;
+  - `boot.ts` (57): o log de boot numa função (`anunciarBoot`), com o `Registrador` que era o tipo
+    anônimo inline do `Dependencias`;
+  - `estorno.ts` (14): o texto da recusa de estorno, com a instrução de onde fazê-lo.
+  O `semPii` que o `service.ts` importava **sem usar** saiu no mesmo movimento (ele é de
+  `cliente.ts` desde a F6 do pagamento) — achado da leitura integral, sem item novo no doc.
+- **`api/admin/content/route.ts`: 488 → 438 linhas**, com `lib/` na rota (o `lib/` que a F7 deu à
+  regra do CRM, aqui para o que é da **rota** e não do módulo):
+  - `lib/resposta.ts` (20): a forma `{ type, message }` das recusas — eram **doze** cópias de
+    `res.status(400).json({ type: "invalid_data", message })`, com o 500 de estado gravado e o 404
+    como os dois casos que não são 400;
+  - `lib/gravacao.ts` (64): a curadoria, os chips e a posição de um corpo, conferidos na ordem em que
+    a resposta os cobra. O `POST` e o `PATCH` tinham a mesma sequência em cópias — duas portas que
+    podem passar a aceitar o que a outra recusa.
+- **`scripts/seed.ts`: 569 → 87 linhas**, com o passo virando arquivo em `scripts/seed/`: `canais`
+  (109), `regiao` (72), `estoque` (87), `frete` (201), `chave` (99) e `vinculo` (29, o `linkOnce` com
+  o `LinkDefinition` do Medusa no lugar do `Parameters<typeof link.create>[0]`). A entrada ficou sendo
+  a **lista** do que a loja precisa, na ordem, com o id de um passo atravessando para o próximo — e a
+  lista passou a ter **sete** itens: o cabeçalho resumia em seis o que os comentários `// N.` do
+  arquivo antigo (movidos junto com o código) sempre disseram em sete.
+- **`api/store/custom/checkout-info/route.ts` → `api/store/checkout/info/route.ts`**, e o git
+  registrou como **rename** (`R`). A URL pública passa de `/store/custom/checkout-info` para
+  `/store/checkout/info`: o `custom/` era o nome de **exemplo** do Medusa e não dizia nada sobre o
+  recurso, enquanto a convenção viva do repositório é o recurso primeiro (`store/orders/track`,
+  `admin/content/order`). Saem o nível `custom/` e o diretório `checkout-info/`.
+
+**A prova de que o corte não mudou comportamento.** Duas coisas que nenhum `tsc` alcança ficaram
+presas por teste:
+
+- **a ordem das conferências.** No admin, um corpo com dois erros recebe **o primeiro** — e a ordem é
+  a mesma nas duas portas (curadoria → chips → posição) e a mesma de antes do corte; no webhook, as
+  cinco checagens continuam na ordem do README. É por isso que o `resolverReferencias` recebe
+  `curation`, `references` e `position` **já lidos** em vez de parsear o corpo: no `PATCH` o
+  `resolveSurface` é conferido **antes** das referências, e o helper não podia passar na frente dele;
+- **o módulo de pagamento tinha 96 asserções verdes antes e depois** (rodado duas vezes: no `HEAD` e
+  com o corte aplicado). A suíte de 446 linhas do webhook é a que importa aqui: ela exercita o
+  caminho real — 401 sem header, 401 com assinatura de outro segredo, aprovação que sela a sessão,
+  `pending` do Pix que não faz nada, valor divergente, `external_reference` de outro carrinho,
+  provedor fora com reentrega — com o `fetch` dublê, e nenhuma linha de teste precisou mudar.
+
+**Os leitores por caminho, um a um** (o risco que a F3 mapeou e a F6 pagou):
+
+- `modules/content/__tests__/wiring.unit.spec.ts` — o leitor que **morde**: ele lê o `route.ts` como
+  fonte e prende sete coisas (`service.getContract()`, `schema: stored.schema`,
+  `schemaVersion: stored.version`, `schemaSource: stored.source`, `order: orderFaixa(surface)`, o
+  `resolveSurface(` **duas** vezes — uma por porta — e a ausência de
+  `typeLabels:`/`itemFields:`/`singletonTypes:`/`surfaces:`). As sete continuam verdadeiras porque o
+  corte saiu para **fora** da rota, e não através dela: o `getContract()`, o `orderFaixa(surface)` e
+  as duas chamadas de `resolveSurface` ficaram exatamente onde estavam;
+- `registro.unit.spec.ts` — lê o `medusa-config.ts` e as duas classes; o `service.ts` mudou de
+  tamanho, não de contrato (`static identifier`, `static metodo`, `metodo` de instância e `meuId`);
+- `mercadopago/README.md` e `content/README.md` — as duas tabelas ganharam as linhas novas no mesmo
+  commit, e a contagem de testes do módulo (90 → 96) foi corrigida na seção de testes;
+- `docs/real-valor/08-arquitetura-e-integracoes.md` — a tabela do módulo (§8.4.1.1.1) ganhou os cinco
+  irmãos, e a citação da rota órfã virou `/store/checkout/info`, com a data da mudança para quem
+  chegar depois;
+- `docs/real-valor/15-arquitetura-modular.md` — a linha da fase (§15.6), o parágrafo e a tabela dos
+  "piores arquivos" (§15.4): o `service.ts` (316/828) **saiu** da tabela, e o pior do mesmo módulo
+  passa a ser o `credenciais.ts` (248/416).
+
+**A catraca (`--write`) e o que ela viu** — e esta fase teve um achado que virou correção. Antes do
+`--write`, o `make check` reprovou com **15 verificações**, em três grupos:
+
+- **duas esperadas**: `service.ts` e `seed.ts` ficaram "frouxos" no baseline antigo (têm 195 e 58
+  linhas de comentário contra 316 e 129) — apertar uma entrada frouxa é o que o `--write` faz, e é o
+  sinal de que o corte levou narrativa embora;
+- **treze de arquivo novo**: densidade acima de 12% ou cabeçalho acima de 5 linhas. É o comportamento
+  que a F6 estabeleceu como o **correto** para um split — o arquivo novo não herda a exceção de
+  ninguém —, e a narrativa medida que veio com o código entra no baseline pelo `--write` do mesmo
+  commit;
+- **uma que a fase corrigiu**: o **total da árvore tinha subido 118 linhas** (`backend/src: 5.233`
+  contra um baseline de 5.115). Não era narrativa movida — mover não muda o total —, era prosa
+  **nova**: cabeçalho de arquivo, doc de módulo e parágrafo de função explicando o que o README do
+  módulo e o doc 15 já dizem. Foram **127 linhas** cortadas (o cabeçalho do `boot.ts` de 18 para 4, o
+  do `decisao.ts` de 10 para 4, o doc das cinco checagens de 28 para 4 — ele é do README —, os seis
+  passos do `seed/` para uma linha cada), e o total fecha em **5.106**: **nove abaixo** do baseline,
+  que é o único sentido que a catraca tem.
+
+**Medido (13/10/2026, pós-F8):** os três alvos encolheram **828 → 481**, **488 → 438** e **569 → 87**
+linhas; treze arquivos novos (cinco no módulo de pagamento, dois no `lib/` da rota do admin, seis em
+`scripts/seed/`), um rename e três arquivos de código alterados; `backend/src` foi de 15.987 para
+16.180 linhas de fonte com o comentário em **5.115 → 5.106** (a árvore ganhou 193 linhas de código e
+**perdeu** 9 de narrativa); o baseline foi de **326 para 334** arquivos; e o módulo de pagamento
+ficou com o maior arquivo em 481 linhas (era 828) e o mais denso em 60% (`credenciais.ts`, anterior à
+fase).
+
+**Gate:** `make check` (as cinco guardas verdes, com o `--write` reancorado no mesmo commit) ·
+`make types` (o `tsc` do backend; CRM e storefront não são tocados nesta fase) · `make test` (**24
+suítes/424 testes** no backend — as 96 do pagamento entre elas — mais o jest do CRM, a convenção do
+painel e o vitest do storefront) · o **smoke do pagamento** é a suíte do módulo: os cinco specs
+exercitam o caminho real do webhook com o `fetch` dublê (o smoke contra o provedor pede credencial e
+servidor, e não é executável aqui — fica para quem tem a conta).
+**Arquivos:** *criados:* 13 (`mercadopago/{decisao,status,notificacao,estorno,boot}.ts`,
+`api/admin/content/lib/{resposta,gravacao}.ts`,
+`scripts/seed/{vinculo,canais,regiao,estoque,frete,chave}.ts`) · *movido:* 1
+(`api/store/custom/checkout-info/route.ts` → `api/store/checkout/info/route.ts`, como rename) ·
+*alterados:* `mercadopago/service.ts`, `api/admin/content/route.ts`, `scripts/seed.ts`,
+`mercadopago/README.md`, `modules/content/README.md`,
+`docs/real-valor/08-arquitetura-e-integracoes.md`, `docs/real-valor/15-arquitetura-modular.md`,
+`scripts/baselines/comments.json` e este doc.
+**Pré-requisito:** F7
+
+**Pendências que a F8 deixou para o F9 (a fase das citações)** — todas são **citação de caminho ou de
+linha que esta fase tornou falsa**, e nenhuma delas é arquivo de fonte do backend:
+
+- `docs/real-valor/01-auditoria-projeto.md:237`, `:371-372` e `:404` — o caminho antigo
+  `/store/custom/checkout-info` (é o registro da auditoria: a F9 decide se reancora ou se marca como
+  histórico);
+- `docs/real-valor/10-roadmap.md:390` — a pergunta sobre o `/store/custom/checkout-info`;
+- `docs/real-valor/08-arquitetura-e-integracoes.md:73` (`seed.ts:212`), `:127` (`seed.ts:295-309`) e
+  `:382` (`seed.ts:397-469`) — as **linhas** do `seed.ts`, que o corte invalidou (o arquivo tem 87
+  linhas agora); a citação da rota foi reancorada nesta fase, as linhas não;
+- `docs/real-valor/10-roadmap.md:154` (`seed.ts:397-469`) e
+  `docs/real-valor/12-script-enriquecimento-catalogo.md:75` e `:158` (o passo 8 na "l. 512") — idem;
+- `docs/real-valor/14-paginas-de-conteudo-no-cms.md:464` —
+  `backend/src/api/admin/content/route.ts:174` (a regra continua no arquivo, mas em outra linha).
+
+**Dívida que segue aberta no doc (não é da F8):** RV-050 (o `next build` de produção), a migração
+`Migration20260929204616`, o split do `c7df56fc85` e o `git push develop` — que é o que fecha os
+hashes das fases.
 
 ### RV-050 · O `yarn build` de produção não fecha (`next/headers` no bundle de cliente) — **ABERTO**
 

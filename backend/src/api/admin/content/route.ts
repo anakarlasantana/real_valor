@@ -11,7 +11,6 @@ import {
 import { isSingletonSectionType } from "../../../modules/content/contract"
 import { DEFAULT_SECTION_DATA } from "../../../modules/content/defaults"
 import {
-  FILTERS_FIELD,
   readCategoryCatalog,
   readChips,
   withFilters,
@@ -19,12 +18,7 @@ import {
 } from "../../../modules/content/filters"
 import { nextPosition, orderFaixa } from "../../../modules/content/order"
 import { splitPayload } from "../../../modules/content/payload"
-import {
-  readPosition,
-  resolveCategoryIds,
-  resolveProductIds,
-  resolveSectionId,
-} from "../../../modules/content/resolvers"
+import { resolveSectionId } from "../../../modules/content/resolvers"
 import { notifyStorefront } from "../../../modules/content/revalidate"
 import type ContentModuleService from "../../../modules/content/service"
 import {
@@ -33,6 +27,9 @@ import {
   validateData,
 } from "../../../modules/content/validation"
 import { toSection } from "../../../modules/content/view"
+
+import { resolverReferencias } from "./lib/gravacao"
+import { recusar } from "./lib/resposta"
 
 /**
  * GET /admin/content — todas as seções, inclusive desabilitadas.
@@ -139,10 +136,7 @@ export async function POST(
   const { schema } = await service.getContract()
 
   if (!isKnownType(type, schema)) {
-    res.status(400).json({
-      type: "invalid_data",
-      message: `Campo "type" deve ser um de: ${schema.types.join(", ")}.`,
-    })
+    recusar(res, `Campo "type" deve ser um de: ${schema.types.join(", ")}.`)
     return
   }
 
@@ -155,7 +149,7 @@ export async function POST(
   )
 
   if (surfaceError) {
-    res.status(400).json({ type: "invalid_data", message: surfaceError })
+    recusar(res, surfaceError)
     return
   }
 
@@ -174,37 +168,28 @@ export async function POST(
     isSingletonSectionType(type) &&
     sections.some((section) => section.type === type)
   ) {
-    res.status(400).json({
-      type: "invalid_data",
-      message:
-        `Já existe uma seção do tipo "${type}" em "${surface}". ` +
+    recusar(
+      res,
+      `Já existe uma seção do tipo "${type}" em "${surface}". ` +
         `Ele é único — é "${schema.typeLabels[type] ?? type}", um bloco fixo da ` +
-        `vitrine: edite a seção existente.`,
-    })
+        `vitrine: edite a seção existente.`
+    )
     return
   }
 
   const { columns, data: sent, curation, references } = splitPayload(body)
-
-  const { ids: productIds, error: curationError } = await resolveProductIds(
+  const referencias = await resolverReferencias(query, {
     curation,
-    query
-  )
+    references,
+    position: columns.position,
+  })
 
-  if (curationError) {
-    res.status(400).json({ type: "invalid_data", message: curationError })
+  if (!referencias.ok) {
+    recusar(res, referencias.message)
     return
   }
 
-  const { ids: categoryIds, error: filtersError } = await resolveCategoryIds(
-    references?.[FILTERS_FIELD],
-    query
-  )
-
-  if (filtersError) {
-    res.status(400).json({ type: "invalid_data", message: filtersError })
-    return
-  }
+  const { productIds, categoryIds, position: sentPosition } = referencias
 
   // A seção nova nasce com o conteúdo padrão do tipo e o que veio no corpo por
   // cima (`DEFAULT_SECTION_DATA`). Sem isso, criar exigiria os campos
@@ -218,15 +203,6 @@ export async function POST(
   // esta regra, e o CRM **não** manda mais a dele: a R6.5 tirou do painel o
   // `nextPosition` importado, então a criação (o CRM e o `curl`) usa a mesma
   // resposta, escrita uma vez só.
-  const { position: sentPosition, error: positionError } = readPosition(
-    columns.position
-  )
-
-  if (positionError) {
-    res.status(400).json({ type: "invalid_data", message: positionError })
-    return
-  }
-
   // A posição vem da **regra do módulo** (`order.ts`), e não de uma cópia
   // local: era o `nextPosition` duplicado aqui — uma segunda resposta para a
   // mesma pergunta. A regra tem o piso da faixa, que é o que impede a seção nova
@@ -247,14 +223,14 @@ export async function POST(
   })
 
   if (errors.length) {
-    res.status(400).json({ type: "invalid_data", message: errors.join(" ") })
+    recusar(res, errors.join(" "))
     return
   }
 
   const { id: sectionId, error } = await resolveSectionId(body.id, service)
 
   if (error) {
-    res.status(400).json({ type: "invalid_data", message: error })
+    recusar(res, error)
     return
   }
 
@@ -319,19 +295,14 @@ export async function PATCH(
   const { id } = req.query as { id?: string }
 
   if (!id) {
-    res.status(400).json({
-      type: "invalid_data",
-      message: 'Query param "id" é obrigatório.',
-    })
+    recusar(res, 'Query param "id" é obrigatório.')
     return
   }
 
   const existing = await service.retrieveContentSection(id)
 
   if (!existing) {
-    res
-      .status(404)
-      .json({ type: "not_found", message: "Seção não encontrada." })
+    recusar(res, "Seção não encontrada.", { status: 404, type: "not_found" })
     return
   }
 
@@ -339,9 +310,8 @@ export async function PATCH(
   const type = existing.type
 
   if (!isKnownType(type, schema)) {
-    res.status(500).json({
-      type: "invalid_data",
-      message: `Seção "${id}" tem type inválido gravado: "${existing.type}".`,
+    recusar(res, `Seção "${id}" tem type inválido gravado: "${existing.type}".`, {
+      status: 500,
     })
     return
   }
@@ -356,7 +326,7 @@ export async function PATCH(
   const { surface, error: surfaceError } = resolveSurface(columns.surface, type)
 
   if (surfaceError) {
-    res.status(400).json({ type: "invalid_data", message: surfaceError })
+    recusar(res, surfaceError)
     return
   }
 
@@ -366,35 +336,18 @@ export async function PATCH(
     delete columns.surface
   }
 
-  const { ids: productIds, error: curationError } = await resolveProductIds(
+  const referencias = await resolverReferencias(query, {
     curation,
-    query
-  )
+    references,
+    position: columns.position,
+  })
 
-  if (curationError) {
-    res.status(400).json({ type: "invalid_data", message: curationError })
+  if (!referencias.ok) {
+    recusar(res, referencias.message)
     return
   }
 
-  const { ids: categoryIds, error: filtersError } = await resolveCategoryIds(
-    references?.[FILTERS_FIELD],
-    query
-  )
-
-  if (filtersError) {
-    res.status(400).json({ type: "invalid_data", message: filtersError })
-    return
-  }
-
-  // `position` passa pela mesma conferência do POST: `Number("abc")` é `NaN`, e
-  // `NaN` na coluna não dá erro — dá ordem indefinida na loja, que é o defeito
-  // que a renumeração do CRM existe para evitar.
-  const { position, error: positionError } = readPosition(columns.position)
-
-  if (positionError) {
-    res.status(400).json({ type: "invalid_data", message: positionError })
-    return
-  }
+  const { productIds, categoryIds, position } = referencias
 
   // Numa edição parcial só se valida o que veio: mesclar com o `data`
   // atual antes de validar evitava poder limpar um campo de propósito.
@@ -405,7 +358,7 @@ export async function PATCH(
   })
 
   if (errors.length) {
-    res.status(400).json({ type: "invalid_data", message: errors.join(" ") })
+    recusar(res, errors.join(" "))
     return
   }
 
@@ -460,10 +413,7 @@ export async function DELETE(
   const { id } = req.query as { id?: string }
 
   if (!id) {
-    res.status(400).json({
-      type: "invalid_data",
-      message: 'Query param "id" é obrigatório.',
-    })
+    recusar(res, 'Query param "id" é obrigatório.')
     return
   }
 

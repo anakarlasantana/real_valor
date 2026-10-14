@@ -1,8 +1,9 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 
 /**
- * Informações institucionais e de pagamento da Loja Real Valor
- * GET /store/custom/checkout-info
+ * Informações institucionais e de pagamento da Loja Real Valor.
+ * `GET /store/checkout/info` — o `custom/` do caminho antigo era o nome de
+ * exemplo do Medusa e não dizia nada sobre o recurso (ver doc 15).
  */
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   res.json({

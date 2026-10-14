@@ -143,8 +143,14 @@ reancorando a catraca com as peças em casa nova, para **19.325** e **311**; a *
 (os tipos com dono) e a **F5** (os dois ciclos), para **19.305** e **309** arquivos —
 cada `--write` é parte do commit que mudou a forma. A **F6** não mexeu no total: partiu a
 régua em dezoito parciais sem escrever uma linha de comentário, e o baseline foi a **326**
-arquivos (as dezoito de `brand/` entram, a entrada do `brand.css` sai). Os piores arquivos
-isolados:
+arquivos (as dezoito de `brand/` entram, a entrada do `brand.css` sai). A **F7** moveu o CRM sem
+tocar em comentário nenhum (27 arquivos, baseline nos mesmos 326), e a **F8** partiu os três alvos do
+backend com o baseline em **334** arquivos — treze novos, dos quais oito precisam de exceção (a
+narrativa **movida** não cabe em 12%: é o mesmo mecanismo da F6) —, com `backend/src` de
+**5.115 → 5.106** linhas de comentário. O total **desceu** porque a prosa que a fase escreveu para se
+explicar teve de ser cortada até caber: no primeiro `make check` da F8 o total estava **+118**
+(5.233), e a fase cortou **127 linhas** de narrativa nova — cabeçalho e doc de módulo dizendo o que o
+README e este doc já dizem. Os piores arquivos isolados:
 
 | Arquivo | Comentário | Linhas | Densidade |
 | :--- | ---: | ---: | ---: |
@@ -152,7 +158,7 @@ isolados:
 | `packages/contrato/src/contract.ts` | 1.340 | 2.633 | 51% |
 | `packages/contrato/src/schema.ts` | 371 | 452 | 82% |
 | `admin/src/admin/routes/content/components/field-input.tsx` | 327 | 1.119 | 29% |
-| `backend/src/modules/payment/mercadopago/service.ts` | 316 | 828 | 38% |
+| `backend/src/modules/payment/mercadopago/credenciais.ts` | 248 | 416 | 60% |
 | `packages/contrato/src/defaults.ts` | 257 | 562 | 46% |
 
 **O que fica:**
@@ -216,7 +222,7 @@ que impede o refactor de ser um "depois eu volto".
 | **F5** (feita) | os ciclos: o locale vira FOLHA (`lib/medusa/locale-cookie.ts`, que só importa `next/headers`) e o SDK e o dado passam a ler dela; a `enum LOGIN_VIEW` sai do template para `modules/account/lib/login-view.ts`. A promessa de `R-C 1 → 0` era falsa: a exceção que sobra é do adapter Stripe | R-C 2 → 1 · R-E 6 → 3 | `make check` |
 | **F6** | ✅ `brand.css` (5.248 linhas) partido em 18 parciais + manifesto, com prova de concatenação byte a byte (na fonte e no bundle) | catraca (`--write`) | GET `/br` · o `yarn build` **não fecha** por defeito anterior a ela (RV-050, no doc 09) |
 | **F7** | ✅ CRM: `admin/src/admin/routes/content/` (23 arquivos + 3 diretórios) → `page.tsx` + `components/` + `hooks/` + `lib/`; `widgets/` só com o entrypoint (a regra pura foi para `admin/src/admin/lib/`), com prova de que só as 21 linhas de import mudaram nos 27 arquivos movidos | `make build-admin` + smoke |
-| **F8** | backend: `mercadopago/service.ts` (828), `api/admin/content/route.ts` (488), `scripts/seed.ts` (569); `api/store/custom/*` renomeado | `make test` (24 suítes) | smoke do pagamento |
+| **F8** | ✅ backend: `mercadopago/service.ts` (828 → **481**) + `decisao`/`status`/`notificacao`/`estorno`/`boot`; `api/admin/content/route.ts` (488 → **438**) + `lib/resposta` e `lib/gravacao`; `scripts/seed.ts` (569 → **87**) + `seed/` com seis passos; `api/store/custom/checkout-info` → **`api/store/checkout/info`** (a URL pública passa a ser `/store/checkout/info`) | `make test` (24 suítes/424 testes) | smoke do pagamento (5 specs/96 asserções) |
 | **F9** | docs: as citações de caminho e de linha reancoradas; o doc 09 ganha o "FEITO (hash)" de cada fase | — | revisão |
 | **F10** | o comentário dos ~20 piores arquivos; o baseline encolhe | `--report` | `make check` |
 

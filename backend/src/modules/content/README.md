@@ -581,8 +581,11 @@ existe.
 versão do schema com que foram gravadas:
 
 **A rota é fina de propósito.** `api/admin/content/route.ts` ficou com os quatro
-handlers — ler o corpo, decidir o status, chamar o módulo e responder. O que ela
-fazia por conta própria mora nos módulos: `validation.ts` (o que o corpo **pode
+handlers — ler o corpo, decidir o status, chamar o módulo e responder — e, desde
+a F8, com um `lib/` ao lado: `lib/resposta.ts` (a forma `{ type, message }` das
+recusas, que estava copiada doze vezes na rota) e `lib/gravacao.ts` (a curadoria,
+os chips e a posição de um corpo, que o `POST` e o `PATCH` conferiam em cópias).
+O que ela fazia por conta própria mora nos módulos: `validation.ts` (o que o corpo **pode
 dizer**), `resolvers.ts` (o que precisa **existir** antes de gravar), `view.ts` (a
 forma da resposta) e `order.ts` (a posição de uma seção nova, que era uma segunda
 cópia da regra dentro da rota). Duas razões: a regra fica testável sem servidor
