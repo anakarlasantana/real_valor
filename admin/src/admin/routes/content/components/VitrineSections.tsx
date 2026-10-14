@@ -5,7 +5,7 @@
 import type { ContentSurfaceSpec } from "@conteudo/contract"
 
 import { SurfaceSectionsPanel } from "./SurfaceSectionsPanel"
-import type { Schema } from "./types"
+import type { Schema } from "../lib/types"
 
 export function VitrineSections({ schema }: { schema: Schema | null }) {
   const surface = schema?.surfaces?.find(

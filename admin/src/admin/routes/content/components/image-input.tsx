@@ -22,7 +22,7 @@
 import { Button, Input, Text, toast } from "@medusajs/ui"
 import { useRef, useState } from "react"
 
-import { apiUrl } from "../../lib/api-url"
+import { apiUrl } from "../../../lib/api-url"
 
 /**
  * O que `POST /admin/uploads` devolve por arquivo (`file-module-service` põe a

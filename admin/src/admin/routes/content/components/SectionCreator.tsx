@@ -7,7 +7,7 @@
  * resposta para "como se cria uma seção", que é exatamente o que a tela
  * monolítica criava antes de ser dividida.
  *
- * A lista de tipos sai de `creatableTypes` (`./utils`), com a superfície da aba:
+ * A lista de tipos sai de `creatableTypes` (`../lib/utils`), com a superfície da aba:
  * o diálogo do tema oferece as estações, o da vitrine oferece as seções, e os
  * tipos únicos que já existem somem da lista porque a API recusaria o segundo.
  */
@@ -23,8 +23,8 @@ import {
 } from "@medusajs/ui"
 import { useCallback, useEffect, useState } from "react"
 
-import { creatableTypes, freeAnchor } from "./utils"
-import type { SectionCreatorProps } from "./types"
+import { creatableTypes, freeAnchor } from "../lib/utils"
+import type { SectionCreatorProps } from "../lib/types"
 
 export function SectionCreator({
   surface,

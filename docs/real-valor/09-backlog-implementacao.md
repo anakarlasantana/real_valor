@@ -335,7 +335,7 @@ O `brand.css` (5.248 linhas, 2.039 de comentário) deixa de ser um arquivo e pas
 **manifesto**: dezoito parciais em `styles/brand/`, na ordem do cascade, e a prova de que a
 concatenação dos dezoito devolve o arquivo original **byte a byte**.
 
-### ✅ F6 · A régua partida — **FEITO** (hash na entrada da F7: um commit não carrega o próprio hash)
+### ✅ F6 · A régua partida — **FEITO** (`593b50c7ce`)
 
 **O que foi feito:**
 
@@ -395,6 +395,98 @@ fecha** — e não por esta fase: é o RV-050, abaixo, reproduzido com a árvore
 `backend/src/modules/content/__tests__/assets.unit.spec.ts`,
 `scripts/baselines/comments.json`, este doc e o doc 15.
 **Pré-requisito:** F5
+## Fase 7 — O CRM partido
+
+O painel tinha uma tela plana: `admin/src/admin/routes/content/` com 23 arquivos na raiz — a casca da
+rota, os desenhos, as regras puras e o CSS, todos irmãos —, mais três diretórios. A F7 dá a cada um
+o seu lugar: `page.tsx` na raiz, o desenho em `components/`, a regra em `lib/`, o hook em `hooks/` —
+e `widgets/` fica só com o entrypoint.
+
+### ✅ F7 · O CRM partido — **FEITO** (hash na entrada da F8: um commit não carrega o próprio hash)
+
+**O que foi feito:**
+
+- `routes/content/components/` (novo): os 15 `.tsx` da tela (`field-input`, `SectionRow`,
+  `SurfaceSectionsPanel`, `SectionCreator`, `PageSectionsPanel`, `PageAccordionItem`,
+  `PagesAccordion`, `ThemeSections`, `VitrineSections`, `pages-view`, `appearance-controls`,
+  `document-input`, `image-input`, `href-input` e `OrderDirtyBar`), **mais** o `appearance.css` e a
+  pasta `fonts/`. O CSS e as fontes vão com o `appearance-controls.tsx`, que é quem importa o CSS: o
+  `url("./fonts/…")` do `@font-face` é relativo ao próprio CSS, então os dois só continuam
+  verdadeiros se mudarem de pasta **colados**. As três famílias seguem as mesmas, e é o
+  `assets.unit.spec.ts` (md5 contra o storefront) que confere.
+- `routes/content/lib/` (novo): as seis regras puras — `form-draft` (a fiação do rascunho),
+  `list-order` (a ordem pendente), `markdown-bar`, `navigation` (as abas e as três vistas), `types`
+  (os tipos compartilhados) e `utils`. Nenhuma delas desenha: são o que se testa sem jsdom.
+- `page.tsx` e `hooks/useSurfaceSections.ts` **ficam onde estavam**: a rota é a rota (o painel a
+  descobre por ela), e o hook é o hook. Os specs foram colados no alvo (convenção do F3):
+  `lib/__tests__/` com quatro, `components/__tests__/` com o do diálogo, e o
+  `panel-wiring.unit.spec.ts` na raiz de `content/__tests__/` — a guarda dele é da **rota inteira**
+  (varre `admin/src` e confere a fiação), não de um arquivo só.
+- `widgets/`: **só o entrypoint**. A regra pura do enriquecimento sai de
+  `widgets/enriquecimento-form.tsx` para `admin/src/admin/lib/enriquecimento-form.ts` — fora dali
+  vale a extensão normal do arquivo (o `] as const` não precisa de `.tsx`, e a irmã `api-url.ts` já
+  provava isso no build) —, e a pasta que o plugin do admin varre **sem filtro de nome** fica só com
+  o que é widget de verdade. O cabeçalho da regra encolheu de 16 para 7 linhas: a medição do plugin
+  continua (o `.ts` ali derruba o parse e o build sai verde mesmo assim), mas a aritmética do
+  `getParserOptions` virou história do commit.
+
+**A prova de que o move não tocou em nada além dos imports:** 27 arquivos movidos e **21 linhas
+alteradas — todas de import**, conferidas linha a linha contra o `HEAD`: qualquer diferença que não
+case com um especificador relativo aborta o script. Nenhuma linha de código, de JSX ou de narrativa
+mudou de conteúdo por causa do move.
+
+**Os leitores por caminho, um a um (é o risco que o F3 mapeou e o F6 pagou):**
+
+- `content/__tests__/panel-wiring.unit.spec.ts` — as 9 leituras passam a nomear a árvore nova
+  (`COMPONENTS` e `LIB`), de modo que a guarda de fiação passa a ser **testemunha do layout**: um
+  arquivo que mude de lugar sem que a árvore mude reprova ali.
+- `components/__tests__/section-creator.unit.spec.ts` — quatro para cinco níveis até `admin/src` (o
+  spec desceu um), com o alvo indo para `components/SectionCreator.tsx`.
+- `backend/src/modules/content/__tests__/assets.unit.spec.ts` — o leitor cruzado do CSS e das
+  fontes do painel, que a F6 já tinha reancorado: as duas leituras ganham o `components`.
+- citações que o próprio move tornou falsas, em comentário: o `./utils` de `SectionCreator.tsx` e de
+  `SectionRow.tsx` e o `__tests__/panel-wiring…` de `lib/types.ts` (que, lido de `lib/`, apontava
+  para uma pasta que não existe) — as três corrigidas no mesmo commit, sem linha nova.
+
+**A catraca (`--write`) e o que ela viu:** os 27 caminhos novos não herdam a exceção dos antigos — o
+`make check` reprovou com **81 verificações** antes do `--write` (é o mecanismo funcionando: o
+baseline guarda caminho, e o caminho mudou), e a catraca foi reancorada no mesmo commit.
+
+**Medido (13/10/2026, pós-F7):** 23 arquivos + 3 diretórios na raiz viram `page.tsx` + `hooks/` +
+`lib/` (6) + `components/` (15 + o CSS + a pasta de fontes), com os specs em três `__tests__/`;
+`widgets/` de 2 arquivos para 1; comentário em `admin/src` **2.030 → 2.022** e 7.098 → **7.093**
+linhas (o cabeçalho que perdeu razão de ser, menos a linha que o `panel-wiring` ganhou para nomear a
+árvore nova), com o baseline em 326 arquivos — a dívida do §15.8 encolhe 8 linhas por um move; o
+contrato intacto (a citação do `fonts/` foi reescrita em quatro linhas, sem crescer).
+
+**Guarda que fica verde:** `make build-admin`, o gate da fase — é o alvo que compila o painel **e**
+reprova o log do plugin mesmo com exit 0. Ele fecha com `Backend build completed successfully
+(80.24s)` e `Frontend build completed successfully (116.21s)`, **0** `An error occurred while` e
+**0** `Rollup failed to resolve` no log, e o smoke do painel (`check-admin-modules.mjs`) confere
+**300 módulos** (287 chunks do otimizador, 437 alcançados) sem nenhum 404 nem fallback de HTML.
+**Gate:** `make check` · `make types` · `make test` (9 suítes/104 testes no CRM — os specs movidos
+rodando nos caminhos novos — e 34/466 no storefront; o backend sem teste novo nesta fase) ·
+`make build-admin` + smoke.
+**Arquivos:** *movidos:* 27 (16 para `components/`, 6 para `lib/`, 5 specs para os `__tests__`
+colados ao alvo, 1 regra de `widgets/` para `admin/src/admin/lib/`, mais a pasta `fonts/`) ·
+*alterados:* `page.tsx`, `hooks/useSurfaceSections.ts`, `widgets/product-enrichment.tsx`,
+`content/__tests__/panel-wiring.unit.spec.ts`,
+`components/__tests__/section-creator.unit.spec.ts`,
+`backend/src/modules/content/__tests__/assets.unit.spec.ts`,
+`packages/contrato/src/contract.ts`, `scripts/baselines/comments.json`, este doc e o doc 15.
+**Pré-requisito:** F6
+
+**Pendências que a F7 deixou para o F9 (a fase das citações)** — todas **anteriores** a ela, e em
+arquivo que não é árvore de fonte do CRM: `frontend/src/app/fonts/README.md:55-56` e
+`backend/src/modules/content/README.md:346` (o `fonts/` e o `appearance.css` que mudaram de pasta);
+`DOCUMENTACAO_REQUISITOS_ADMIN.md` (nove linhas citando `content/<arquivo>`, da linha 137 à 258); e
+`docs/real-valor/12-script-enriquecimento-catalogo.md:45` (o `list-order.ts`). Já falsas **antes**
+desta fase, no mesmo lote de citações: `docs/plano-centralizacao.md` (não existe; citado em
+`components/field-input.tsx:54`, `lib/form-draft.ts:20` e `lib/utils.ts:15`) e
+`frontend/src/lib/util/media.ts` (`components/image-input.tsx:14` — o dono é `lib/ui/media.ts` desde
+a F2).
+
+
 
 ### RV-050 · O `yarn build` de produção não fecha (`next/headers` no bundle de cliente) — **ABERTO**
 

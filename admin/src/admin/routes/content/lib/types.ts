@@ -8,7 +8,7 @@
  * (`admin/tsconfig.json`), como em `form-draft.ts` e `list-order.ts`. O
  * `import type` some no build — o painel continua sem dependência de runtime com
  * o backend —, e o nome de cada campo passa a ser conferido por compilação. A
- * cópia local de `Schema` era o defeito que `__tests__/panel-wiring.unit.spec.ts`
+ * cópia local de `Schema` era o defeito que `../__tests__/panel-wiring.unit.spec.ts`
  * proíbe (`SHAPES`): o alias para o contrato é o que se quer, a cópia não.
  */
 import type { CategoryRef, ContentSurfaceSpec } from "@conteudo/contract"

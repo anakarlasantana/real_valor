@@ -151,7 +151,7 @@ isolados:
 | `frontend/src/styles/brand/04-trilho.css` | 207 | 408 | 51% |
 | `packages/contrato/src/contract.ts` | 1.340 | 2.633 | 51% |
 | `packages/contrato/src/schema.ts` | 371 | 452 | 82% |
-| `admin/src/admin/routes/content/field-input.tsx` | 327 | 1.119 | 29% |
+| `admin/src/admin/routes/content/components/field-input.tsx` | 327 | 1.119 | 29% |
 | `backend/src/modules/payment/mercadopago/service.ts` | 316 | 828 | 38% |
 | `packages/contrato/src/defaults.ts` | 257 | 562 | 46% |
 
@@ -215,7 +215,7 @@ que impede o refactor de ser um "depois eu volto".
 | **F4** (feita) | `src/types` (2 arquivos) dissolvido: `VariantPrice`, `ProductColor` e `ProductEnrichment` para `lib/catalog/types.ts`, o `IconProps` para `lib/ui/types.ts` e o `StoreFreeShippingPrice` para `lib/checkout/types.ts`; os 19 imports do caminho NU (`from "types/global"`) passaram ao apelido, e os 4 adapters que subiam `../../types` a `@lib/payments/types` | R-A/R-C sem regressão | `make types` |
 | **F5** (feita) | os ciclos: o locale vira FOLHA (`lib/medusa/locale-cookie.ts`, que só importa `next/headers`) e o SDK e o dado passam a ler dela; a `enum LOGIN_VIEW` sai do template para `modules/account/lib/login-view.ts`. A promessa de `R-C 1 → 0` era falsa: a exceção que sobra é do adapter Stripe | R-C 2 → 1 · R-E 6 → 3 | `make check` |
 | **F6** | ✅ `brand.css` (5.248 linhas) partido em 18 parciais + manifesto, com prova de concatenação byte a byte (na fonte e no bundle) | catraca (`--write`) | GET `/br` · o `yarn build` **não fecha** por defeito anterior a ela (RV-050, no doc 09) |
-| **F7** | CRM: `admin/src/admin/routes/content/` (23 arquivos + 3 diretórios) → `page.tsx` + `components/` + `hooks/` + `lib/`; `widgets/` só com entrypoint | `make build-admin` | smoke do painel |
+| **F7** | ✅ CRM: `admin/src/admin/routes/content/` (23 arquivos + 3 diretórios) → `page.tsx` + `components/` + `hooks/` + `lib/`; `widgets/` só com o entrypoint (a regra pura foi para `admin/src/admin/lib/`), com prova de que só as 21 linhas de import mudaram nos 27 arquivos movidos | `make build-admin` + smoke |
 | **F8** | backend: `mercadopago/service.ts` (828), `api/admin/content/route.ts` (488), `scripts/seed.ts` (569); `api/store/custom/*` renomeado | `make test` (24 suítes) | smoke do pagamento |
 | **F9** | docs: as citações de caminho e de linha reancoradas; o doc 09 ganha o "FEITO (hash)" de cada fase | — | revisão |
 | **F10** | o comentário dos ~20 piores arquivos; o baseline encolhe | `--report` | `make check` |

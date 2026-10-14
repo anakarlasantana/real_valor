@@ -20,9 +20,9 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 /** `admin/src` — o código do painel (mesma raiz de `panel-wiring`). */
-const PANEL_SRC = join(__dirname, "..", "..", "..", "..")
+const PANEL_SRC = join(__dirname, "..", "..", "..", "..", "..")
 const CREATOR = readFileSync(
-  join(PANEL_SRC, "admin", "routes", "content", "SectionCreator.tsx"),
+  join(PANEL_SRC, "admin", "routes", "content", "components", "SectionCreator.tsx"),
   "utf8"
 )
 

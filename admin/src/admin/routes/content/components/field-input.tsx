@@ -30,11 +30,11 @@ import {
   type Palette,
 } from "./appearance-controls"
 import { DocumentInput } from "./document-input"
-import { parseTextList } from "./form-draft"
+import { parseTextList } from "../lib/form-draft"
 import { HrefInput } from "./href-input"
 import { ImageInput } from "./image-input"
-import { itemSummary, move } from "./list-order"
-import { markExample, toggleMark, type MarkSelection } from "./markdown-bar"
+import { itemSummary, move } from "../lib/list-order"
+import { markExample, toggleMark, type MarkSelection } from "../lib/markdown-bar"
 
 /**
  * Os tipos do campo vem do **contrato**, não são declarados aqui.

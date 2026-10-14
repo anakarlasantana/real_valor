@@ -860,9 +860,9 @@ function themeFont(family: string, fallback: string): ThemeFont {
  * A família, o fallback e a pilha completa de cada papel de fonte.
  *
  * `family` é o nome declarado no `theme.json` (`fonts`) — o mesmo que o
- * `@font-face` da cópia em `admin/src/admin/routes/content/fonts/` usa —, e
- * `stack` é a pilha que `themeToCSSVariables` (`frontend/src/lib/theme.ts`)
- * escreve em `--rv-font-*`.
+ * `@font-face` da cópia do painel usa —, e `stack` é a pilha que
+ * `themeToCSSVariables` (`frontend/src/lib/theme.ts`) escreve em
+ * `--rv-font-*`.
  *
  * Mesma razão de `THEME_COLOR_HEXES`: o `<select>` de fonte do admin
  * desenha cada opção **na própria fonte** — é o que faz "Títulos (Playfair

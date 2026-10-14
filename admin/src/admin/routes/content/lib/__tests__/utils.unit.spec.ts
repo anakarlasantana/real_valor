@@ -18,7 +18,7 @@
 import type { ContentSurfaceSpec } from "@conteudo/contract"
 import type { OrderFaixa } from "@conteudo/order"
 
-import type { FieldSpec } from "../field-input"
+import type { FieldSpec } from "../../components/field-input"
 import type { Schema, Section } from "../types"
 import {
   BACKGROUND_RAIL,

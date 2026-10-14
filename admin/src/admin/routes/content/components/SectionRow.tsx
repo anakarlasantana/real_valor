@@ -2,7 +2,7 @@
  * A linha de uma seção: numeral, setas, interruptor, formulário e trilhos.
  * -------------------------------------------------------------------------
  * Portada de `page.tsx` para o refactor não perder o que ela já fazia: o numeral
- * previsto (`numeralFor`, em `./utils`), a etiqueta "Fixo" da seção ancorada, as
+ * previsto (`numeralFor`, em `../lib/utils`), a etiqueta "Fixo" da seção ancorada, as
  * setas que mexem **na tela** (quem publica é o "Salvar ordem", na lista), a
  * barra de alterações pendentes com Descartar/Salvar e o formulário desenhado das
  * linhas do contrato (`toRows`) — com cada trilho de aparência logo abaixo do
@@ -19,9 +19,9 @@ import { Badge, Button, Container, Label, Switch, Text } from "@medusajs/ui"
 
 import { AppearanceRail } from "./appearance-controls"
 import { FieldInput, type FieldSpec } from "./field-input"
-import { isDirty } from "./form-draft"
-import { railNote, toRows } from "./utils"
-import type { SectionRowProps } from "./types"
+import { isDirty } from "../lib/form-draft"
+import { railNote, toRows } from "../lib/utils"
+import type { SectionRowProps } from "../lib/types"
 
 export function SectionRow({
   section,

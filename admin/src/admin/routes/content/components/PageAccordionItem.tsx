@@ -17,9 +17,9 @@ import { useEffect, useState } from "react"
 
 import type { ContentSurfaceSpec } from "@conteudo/contract"
 
-import { apiUrl } from "../../lib/api-url"
+import { apiUrl } from "../../../lib/api-url"
 import { PageSectionsPanel } from "./PageSectionsPanel"
-import type { Schema, Section } from "./types"
+import type { Schema, Section } from "../lib/types"
 
 export interface PageAccordionItemProps {
   surface: ContentSurfaceSpec

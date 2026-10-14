@@ -13,7 +13,7 @@
  */
 import { SurfaceSectionsPanel } from "./SurfaceSectionsPanel"
 import type { ContentSurfaceSpec } from "@conteudo/contract"
-import type { Schema, Section } from "./types"
+import type { Schema, Section } from "../lib/types"
 
 export interface PageSectionsPanelProps {
   surfaceId: string

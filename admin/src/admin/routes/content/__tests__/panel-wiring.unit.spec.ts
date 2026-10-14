@@ -42,10 +42,14 @@ import { join, relative } from "node:path"
 const PANEL_SRC = join(__dirname, "..", "..", "..", "..")
 const CONTENT_DIR = join(PANEL_SRC, "admin", "routes", "content")
 
-const fieldInput = readFileSync(join(CONTENT_DIR, "field-input.tsx"), "utf8")
-const hrefInput = readFileSync(join(CONTENT_DIR, "href-input.tsx"), "utf8")
+/** Onde cada peça mora desde o F7: a casca na raiz, os desenhos e as regras. */
+const COMPONENTS = join(CONTENT_DIR, "components")
+const LIB = join(CONTENT_DIR, "lib")
+
+const fieldInput = readFileSync(join(COMPONENTS, "field-input.tsx"), "utf8")
+const hrefInput = readFileSync(join(COMPONENTS, "href-input.tsx"), "utf8")
 const page = readFileSync(join(CONTENT_DIR, "page.tsx"), "utf8")
-const pagesView = readFileSync(join(CONTENT_DIR, "pages-view.tsx"), "utf8")
+const pagesView = readFileSync(join(COMPONENTS, "pages-view.tsx"), "utf8")
 
 /**
  * A tela de conteúdo é dividida em arquivos desde o refactor (a página é a
@@ -56,12 +60,12 @@ const pagesView = readFileSync(join(CONTENT_DIR, "pages-view.tsx"), "utf8")
  * inteiro (`panelSources`), que não depende de nome de arquivo.
  */
 const surfacePanel = readFileSync(
-  join(CONTENT_DIR, "SurfaceSectionsPanel.tsx"),
+  join(COMPONENTS, "SurfaceSectionsPanel.tsx"),
   "utf8"
 )
-const sectionRow = readFileSync(join(CONTENT_DIR, "SectionRow.tsx"), "utf8")
-const navigation = readFileSync(join(CONTENT_DIR, "navigation.ts"), "utf8")
-const utils = readFileSync(join(CONTENT_DIR, "utils.ts"), "utf8")
+const sectionRow = readFileSync(join(COMPONENTS, "SectionRow.tsx"), "utf8")
+const navigation = readFileSync(join(LIB, "navigation.ts"), "utf8")
+const utils = readFileSync(join(LIB, "utils.ts"), "utf8")
 const hook = readFileSync(
   join(CONTENT_DIR, "hooks", "useSurfaceSections.ts"),
   "utf8"

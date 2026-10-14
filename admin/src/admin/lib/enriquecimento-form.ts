@@ -5,22 +5,13 @@
  * Testar isso por dentro de um `<form>` diria menos e custaria jsdom, que este
  * pacote não tem (ver `admin/jest.config.js`, e a lacuna declarada lá).
  *
- * O `.tsx` no nome NÃO é engano: dentro de `widgets/`, o plugin do admin
- * (`@medusajs/admin-vite-plugin`) só habilita o parser de TypeScript para
- * arquivos `.tsx`. O `getParserOptions` dele empilha `"jsx"` sempre e
- * `"typescript"` só quando o nome termina em `.tsx` — um `.ts` aqui é lido como
- * **JS puro**, e o `] as const` desta regra derruba o parse:
- *
- *     SyntaxError: Missing semicolon. (38:1)
- *
- * MEDIDO no `make build-admin`: o erro sai duas vezes no log (uma na validação do
- * hash do widget, outra na montagem da lista) e o build termina **verde** —
- * `Backend build completed successfully` e `Frontend build completed
- * successfully (119.35s)`, exit 0. O agravante é que a pasta é varrida **sem
- * filtro de nome** (`crawl(source/widgets)`), enquanto as rotas são varridas por
- * `crawl(source/routes, "page")` — é esse filtro, e não a extensão, que deixa os
- * `.ts` auxiliares de `routes/content` em paz. O `make build-admin` reprova o log
- * que trouxer esse erro; ver o alvo.
+ * A regra mora FORA de `widgets/` de propósito: o plugin do admin varre aquela
+ * pasta **sem filtro de nome** (`crawl(source/widgets)`) e lá dentro só habilita
+ * o parser de TypeScript para `.tsx` — um auxiliar `.ts` ao lado do entrypoint é
+ * lido como JS puro, o `] as const` desta regra derruba o parse
+ * (`SyntaxError: Missing semicolon`) e o build **termina verde mesmo assim**. Em
+ * `src/admin/lib/`, irmã do `api-url.ts`, vale a extensão normal do arquivo — e o
+ * `make build-admin` é quem reprova o log que trouxer esse erro.
  *
  * As três chaves de texto são as do contrato de enriquecimento do storefront
  * (`docs/real-valor/12-script-enriquecimento-catalogo.md`, seção 12.4) — o

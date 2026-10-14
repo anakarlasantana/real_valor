@@ -25,12 +25,12 @@ import { Button, Container, Text, toast } from "@medusajs/ui"
 import { useEffect, useState } from "react"
 
 import { apiUrl, readJson } from "../../lib/api-url"
-import type { Schema, ViewMode } from "./types"
-import { MAIN_NAVIGATION, getPageSurfaces } from "./navigation"
-import { VitrineSections } from "./VitrineSections"
-import { ThemeSections } from "./ThemeSections"
-import { PagesAccordion } from "./PagesAccordion"
-import { PagesView } from "./pages-view"
+import type { Schema, ViewMode } from "./lib/types"
+import { MAIN_NAVIGATION, getPageSurfaces } from "./lib/navigation"
+import { VitrineSections } from "./components/VitrineSections"
+import { ThemeSections } from "./components/ThemeSections"
+import { PagesAccordion } from "./components/PagesAccordion"
+import { PagesView } from "./components/pages-view"
 
 const ContentPage = () => {
   /** A aba aberta: as seções da vitrine, o índice das páginas ou o tema. */

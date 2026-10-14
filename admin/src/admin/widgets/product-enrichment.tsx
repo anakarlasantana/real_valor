@@ -23,10 +23,10 @@
  * "esta peça não tem cuidados cadastrados".
  *
  * A regra de gravação (mesclar, nunca substituir; em branco apaga a chave) mora
- * em `./enriquecimento-form.tsx`, que é função pura e tem teste. O `.tsx` é
- * exigência do plugin do admin (ele só parseia TypeScript em `.tsx` dentro de
- * `widgets/` — a medição está no cabeçalho daquele arquivo). Aqui fica só a
- * tela: ler, mostrar, mandar salvar e dizer o que aconteceu.
+ * em `../lib/enriquecimento-form.ts`, que é função pura e tem teste — e fora de
+ * `widgets/` de propósito: o plugin varre esta pasta sem filtro de nome e só
+ * parseia `.tsx` aqui dentro (a medição está no cabeçalho daquele arquivo). Aqui
+ * fica só a tela: ler, mostrar, mandar salvar e dizer o que aconteceu.
  *
  * **A cor tem dois campos e um valor só.** O lojista escolhe pela **paleta**
  * (`<input type="color">`, nativo, sem dependência nova) ou digita o hex — os
@@ -61,7 +61,7 @@ import {
   type EstadoEnriquecimento,
   type ProdutoDoPainel,
   type Rotulos,
-} from "./enriquecimento-form"
+} from "../lib/enriquecimento-form"
 
 /** Os rótulos da tela, na ordem em que a cliente lê a página da peça. */
 const ROTULOS: Rotulos = {

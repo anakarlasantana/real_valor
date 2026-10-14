@@ -8,7 +8,7 @@
  */
 import { Button, Container, Text } from "@medusajs/ui"
 
-import type { OrderDirtyBarProps } from "./types"
+import type { OrderDirtyBarProps } from "../lib/types"
 
 export function OrderDirtyBar({
   onSave,

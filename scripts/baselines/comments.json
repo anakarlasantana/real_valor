@@ -9,8 +9,8 @@
       "comments": 9770
     },
     "admin/src": {
-      "lines": 7098,
-      "comments": 2030
+      "lines": 7093,
+      "comments": 2022
     },
     "backend/src": {
       "lines": 15987,
@@ -1036,150 +1036,160 @@
       "lines": 116,
       "header": 25
     },
+    "admin/src/admin/lib/__tests__/enriquecimento-form.unit.spec.ts": {
+      "comments": 33,
+      "lines": 238,
+      "header": 14
+    },
     "admin/src/admin/lib/api-url.ts": {
       "comments": 67,
       "lines": 87,
       "header": 33
     },
-    "admin/src/admin/routes/content/OrderDirtyBar.tsx": {
+    "admin/src/admin/lib/enriquecimento-form.ts": {
+      "comments": 117,
+      "lines": 277,
+      "header": 53
+    },
+    "admin/src/admin/routes/content/__tests__/panel-wiring.unit.spec.ts": {
+      "comments": 128,
+      "lines": 309,
+      "header": 37
+    },
+    "admin/src/admin/routes/content/components/OrderDirtyBar.tsx": {
       "comments": 8,
       "lines": 50,
       "header": 8
     },
-    "admin/src/admin/routes/content/PageAccordionItem.tsx": {
+    "admin/src/admin/routes/content/components/PageAccordionItem.tsx": {
       "comments": 17,
       "lines": 160,
       "header": 13
     },
-    "admin/src/admin/routes/content/PageSectionsPanel.tsx": {
+    "admin/src/admin/routes/content/components/PageSectionsPanel.tsx": {
       "comments": 13,
       "lines": 47,
       "header": 13
     },
-    "admin/src/admin/routes/content/PagesAccordion.tsx": {
+    "admin/src/admin/routes/content/components/PagesAccordion.tsx": {
       "comments": 9,
       "lines": 40,
       "header": 8
     },
-    "admin/src/admin/routes/content/SectionCreator.tsx": {
+    "admin/src/admin/routes/content/components/SectionCreator.tsx": {
       "comments": 36,
       "lines": 175,
       "header": 13
     },
-    "admin/src/admin/routes/content/SectionRow.tsx": {
+    "admin/src/admin/routes/content/components/SectionRow.tsx": {
       "comments": 51,
       "lines": 248,
       "header": 16
     },
-    "admin/src/admin/routes/content/SurfaceSectionsPanel.tsx": {
+    "admin/src/admin/routes/content/components/SurfaceSectionsPanel.tsx": {
       "comments": 36,
       "lines": 178,
       "header": 17
     },
-    "admin/src/admin/routes/content/__tests__/form-draft.unit.spec.ts": {
-      "comments": 34,
-      "lines": 160,
-      "header": 8
-    },
-    "admin/src/admin/routes/content/__tests__/list-order.unit.spec.ts": {
-      "comments": 21,
-      "lines": 124,
-      "header": 18
-    },
-    "admin/src/admin/routes/content/__tests__/markdown-bar.unit.spec.ts": {
-      "comments": 22,
-      "lines": 108,
-      "header": 13
-    },
-    "admin/src/admin/routes/content/__tests__/panel-wiring.unit.spec.ts": {
-      "comments": 127,
-      "lines": 305,
-      "header": 37
-    },
-    "admin/src/admin/routes/content/__tests__/section-creator.unit.spec.ts": {
+    "admin/src/admin/routes/content/components/__tests__/section-creator.unit.spec.ts": {
       "comments": 22,
       "lines": 50,
       "header": 18
     },
-    "admin/src/admin/routes/content/__tests__/utils.unit.spec.ts": {
-      "comments": 34,
-      "lines": 198,
-      "header": 17
-    },
-    "admin/src/admin/routes/content/appearance-controls.tsx": {
+    "admin/src/admin/routes/content/components/appearance-controls.tsx": {
       "comments": 102,
       "lines": 278,
       "header": 27
     },
-    "admin/src/admin/routes/content/appearance.css": {
+    "admin/src/admin/routes/content/components/appearance.css": {
       "comments": 51,
       "lines": 211,
       "header": 15
     },
-    "admin/src/admin/routes/content/document-input.tsx": {
+    "admin/src/admin/routes/content/components/document-input.tsx": {
       "comments": 42,
       "lines": 163,
       "header": 29
     },
-    "admin/src/admin/routes/content/field-input.tsx": {
+    "admin/src/admin/routes/content/components/field-input.tsx": {
       "comments": 327,
       "lines": 1119,
       "header": 21
     },
-    "admin/src/admin/routes/content/form-draft.ts": {
-      "comments": 64,
-      "lines": 114,
+    "admin/src/admin/routes/content/components/href-input.tsx": {
+      "comments": 42,
+      "lines": 78,
+      "header": 32
+    },
+    "admin/src/admin/routes/content/components/image-input.tsx": {
+      "comments": 58,
+      "lines": 207,
       "header": 21
+    },
+    "admin/src/admin/routes/content/components/pages-view.tsx": {
+      "comments": 40,
+      "lines": 168,
+      "header": 29
     },
     "admin/src/admin/routes/content/hooks/useSurfaceSections.ts": {
       "comments": 132,
       "lines": 503,
       "header": 19
     },
-    "admin/src/admin/routes/content/href-input.tsx": {
-      "comments": 42,
-      "lines": 78,
-      "header": 32
+    "admin/src/admin/routes/content/lib/__tests__/form-draft.unit.spec.ts": {
+      "comments": 34,
+      "lines": 160,
+      "header": 8
     },
-    "admin/src/admin/routes/content/image-input.tsx": {
-      "comments": 58,
-      "lines": 207,
+    "admin/src/admin/routes/content/lib/__tests__/list-order.unit.spec.ts": {
+      "comments": 21,
+      "lines": 124,
+      "header": 18
+    },
+    "admin/src/admin/routes/content/lib/__tests__/markdown-bar.unit.spec.ts": {
+      "comments": 22,
+      "lines": 108,
+      "header": 13
+    },
+    "admin/src/admin/routes/content/lib/__tests__/utils.unit.spec.ts": {
+      "comments": 34,
+      "lines": 198,
+      "header": 17
+    },
+    "admin/src/admin/routes/content/lib/form-draft.ts": {
+      "comments": 64,
+      "lines": 114,
       "header": 21
     },
-    "admin/src/admin/routes/content/list-order.ts": {
+    "admin/src/admin/routes/content/lib/list-order.ts": {
       "comments": 59,
       "lines": 134,
       "header": 25
     },
-    "admin/src/admin/routes/content/markdown-bar.ts": {
+    "admin/src/admin/routes/content/lib/markdown-bar.ts": {
       "comments": 59,
       "lines": 107,
       "header": 19
     },
-    "admin/src/admin/routes/content/navigation.ts": {
+    "admin/src/admin/routes/content/lib/navigation.ts": {
       "comments": 17,
       "lines": 42,
       "header": 8
+    },
+    "admin/src/admin/routes/content/lib/types.ts": {
+      "comments": 46,
+      "lines": 110,
+      "header": 13
+    },
+    "admin/src/admin/routes/content/lib/utils.ts": {
+      "comments": 93,
+      "lines": 196,
+      "header": 17
     },
     "admin/src/admin/routes/content/page.tsx": {
       "comments": 42,
       "lines": 145,
       "header": 21
-    },
-    "admin/src/admin/routes/content/pages-view.tsx": {
-      "comments": 40,
-      "lines": 168,
-      "header": 29
-    },
-    "admin/src/admin/routes/content/types.ts": {
-      "comments": 46,
-      "lines": 110,
-      "header": 13
-    },
-    "admin/src/admin/routes/content/utils.ts": {
-      "comments": 93,
-      "lines": 196,
-      "header": 17
     },
     "admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts": {
       "comments": 25,
@@ -1200,16 +1210,6 @@
       "comments": 9,
       "lines": 27,
       "header": 9
-    },
-    "admin/src/admin/widgets/__tests__/enriquecimento-form.unit.spec.ts": {
-      "comments": 33,
-      "lines": 238,
-      "header": 14
-    },
-    "admin/src/admin/widgets/enriquecimento-form.tsx": {
-      "comments": 126,
-      "lines": 286,
-      "header": 62
     },
     "admin/src/admin/widgets/product-enrichment.tsx": {
       "comments": 57,

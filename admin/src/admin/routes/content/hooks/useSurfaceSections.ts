@@ -24,8 +24,8 @@ import type { CategoryRef } from "@conteudo/contract"
 import type { OrderFaixa } from "@conteudo/order"
 
 import { apiUrl } from "../../../lib/api-url"
-import { wireValue } from "../form-draft"
-import type { Draft, Schema, Section } from "../types"
+import { wireValue } from "../lib/form-draft"
+import type { Draft, Schema, Section } from "../lib/types"
 
 interface UseSurfaceSectionsOptions {
   /** Primeira pintura, quando o pai já carregou (o acordeão de páginas). */

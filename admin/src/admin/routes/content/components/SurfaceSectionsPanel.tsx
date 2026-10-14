@@ -17,12 +17,12 @@
  */
 import { Button, Text } from "@medusajs/ui"
 
-import { useSurfaceSections } from "./hooks/useSurfaceSections"
+import { useSurfaceSections } from "../hooks/useSurfaceSections"
 import { SectionRow } from "./SectionRow"
 import { SectionCreator } from "./SectionCreator"
 import { OrderDirtyBar } from "./OrderDirtyBar"
-import { numeralFor } from "./utils"
-import type { SurfaceSectionsPanelProps } from "./types"
+import { numeralFor } from "../lib/utils"
+import type { SurfaceSectionsPanelProps } from "../lib/types"
 
 export function SurfaceSectionsPanel({
   surfaceId,

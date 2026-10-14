@@ -34,7 +34,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 // painel: o valor chega pela API, o nome do campo é conferido pelo compilador.
 import type { PageStateSpec } from "@conteudo/contract"
 
-import { apiUrl, readJson } from "../../lib/api-url"
+import { apiUrl, readJson } from "../../../lib/api-url"
 
 /** Uma linha do índice, como a API a manda. */
 type PageRow = {
