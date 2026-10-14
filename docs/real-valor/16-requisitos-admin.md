@@ -1,4 +1,7 @@
-# Documentação de Requisitos — Painel Administrativo (Admin / CRM)
+# 16 — Requisitos do Painel (Admin / CRM)
+
+> **Documentação de Requisitos do Painel Administrativo.** Antes chamado
+> `DOCUMENTACAO_REQUISITOS_ADMIN.md`, na raiz — passou a ser o **doc 16** em 13/10/2026.
 
 > **O que este documento é.** Engenharia reversa do painel administrativo da Real Valor: o que o
 > painel **permite**, o que ele **recusa**, o que **grava** e o que a loja **desenha** depois da

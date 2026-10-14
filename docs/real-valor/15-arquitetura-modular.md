@@ -299,3 +299,33 @@ porque a verificação mostrou que não são trabalho:
 - o split do `c7df56fc85` **perdeu o objeto**: **16 dos 32** arquivos dele foram
   reescritos pela F2, F5, F8 e F10, então re-fatiar hoje não reconstrói a mesma
   mudança — a divisão em quatro commits fica **encerrada**, não adiada.
+
+## 15.9 A convenção de um módulo novo (backend)
+
+**Origem:** `08-arquitetura-e-integracoes.md` §8.6 — o doc 08 foi podado em 13/10/2026, e a
+recuperação dele está no `README.md` da raiz. O padrão é derivado do que o projeto **já faz**:
+`payment/mercadopago/`, `fulfillment/tabela/` e `content/` são os três casos vivos.
+
+```
+backend/src/modules/<nome>/
+├── index.ts          # registro do módulo
+├── service.ts        # lógica
+├── models/           # modelos Medusa
+├── migrations/       # migrações + snapshot
+└── __tests__/        # testes unitários
+
+backend/src/api/webhooks/<provedor>/route.ts   # webhook, se houver
+```
+
+**Regras:**
+
+1. Toda lógica externa fica **dentro do adapter** — o resto do sistema só conhece o contrato.
+2. Segredo em `.env`, nunca em código.
+3. Teste unitário para cada adapter (mesmo sem chamada externa).
+4. Entrada do adapter é **sempre** revalidada no servidor.
+5. Se o adapter normaliza algo, é para o **tipo compartilhado do contrato** — não para um tipo próprio.
+
+**A armadilha que o registro tem, e que não é de módulo:** um `ModuleProvider` **não** é um módulo —
+ele entra como item da lista `providers` do módulo dono, e a lista precisa vir **inteira** (o
+`transformModules` termina em `acc[serviceName] = moduleConfig`, e o loader **desabilita no banco** o
+que está fora da lista). O caso medido está no `README.md` do `fulfillment/tabela/`.

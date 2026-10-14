@@ -104,6 +104,46 @@ produz.
 
 ---
 
+## As chaves, e o que cada uma decide
+
+**Origem:** `docs/real-valor/08-arquitetura-e-integracoes.md` §8.4.1 (o doc 08 foi podado em
+13/10/2026; a recuperação está no `README.md` da raiz). Todas no `.env` do **backend** — nenhuma em
+`NEXT_PUBLIC_*`, porque nenhuma pode chegar ao navegador. Estão no `.env.example` e declaradas no
+`docker-compose.yml` **sem valor padrão**: um default silencioso em pagamento é um default errado.
+
+| Chave | O que decide |
+| --- | --- |
+| `MP_ACCESS_TOKEN` | a credencial da conta. O prefixo decide **só** `init_point` vs `sandbox_init_point` — **não** diz se a conta é de teste |
+| `MP_AMBIENTE` | `teste` \| `producao` — a **intenção declarada**. Ausente = `teste`; `producao` + token `TEST-` é **recusado** no boot |
+| `MP_WEBHOOK_SECRET` | o segredo da assinatura (Painel → *Notificações → Webhooks → Segredo da assinatura*) |
+| `MP_WEBHOOK_SECRET_TEST` | o segredo do ambiente de teste, quando for outro — os dois são tentados |
+| `MP_WEBHOOK_TOLERANCIA_SEGUNDOS` | a janela do `ts` na assinatura. Padrão 1800; `0` desliga |
+| `MP_NOTIFICATION_URL` | **onde o Mercado Pago chama**: HTTPS, público, terminando em `/webhooks/mercadopago` |
+| `MP_BACK_URL` | para onde a cliente volta: `/pedido/confirmacao` |
+| `INTERNAL_API_SECRET` | autentica `GET /internal/orders/by-cart`, nos **dois** serviços, com o mesmo valor — **não** reaproveita o `REVALIDATE_SECRET` |
+
+> ⚠️ **O prefixo do token não diz se ele é de teste.** A documentação do Mercado Pago é explícita:
+> *"The test Access Token starts with the prefix **APP_USR**, just like your production Access
+> Token."* Medido nesta conta: um `APP_USR-` cujo `GET /users/me` devolve `nickname: TESTUSER…` e
+> `tags: [user_product_seller, test_user, normal]` — o log de boot o anunciava como "produção". Por
+> isso o ambiente é **declarado**, e a matriz de casos está em `__tests__/credenciais.unit.spec.ts`.
+
+> ⚠️ **`MP_BACK_URL` não é `/order/[id]/confirmed`.** No Checkout Pro o `{id}` não existe do lado do
+> navegador no momento do retorno — o pedido é criado pelo webhook. A cliente volta para
+> `/pedido/confirmacao`, que consulta `/api/pedido/status` (por cookie httpOnly) e só então troca a
+> URL.
+
+> ⚠️ **Nunca aponte `MP_NOTIFICATION_URL` para `/hooks/payment/…`.** Aquela é a rota nativa do Medusa,
+> que **não valida assinatura nenhuma** (ela não conhece provedor) e responde `400` com `err.message`
+> no corpo. Este projeto devolve **404** nela de propósito.
+
+**O que a modalidade escolhida (Point / Pro / Advanced) define:** se há parcelamento sem juros e em
+quantas parcelas, se o Pix tem desconto e se ele é obrigatório na preference, e se há split. **O
+adapter é o mesmo** — muda a configuração da preference e o que o `describe()` devolve. É decisão
+comercial, e segue aberta (doc 09, §9.11).
+
+---
+
 ## Antes de ir para produção
 
 1. ⚠️ **`pp_system_default` aparece no checkout — e não dá para desligá-lo pelo

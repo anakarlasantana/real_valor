@@ -335,8 +335,7 @@ de pagamento do MP também precisarão ser adicionados.
 `grid-cols-2 small:grid-cols-3 medium:grid-cols-4`. A proporção do card **não foi auditada** no
 `brand.css`.
 
-**Lacuna:** não há token de proporção de imagem. Decisão pendente do time comercial (junto com a
-questão 3 de `01-auditoria-projeto.md`).
+**Lacuna:** não há token de proporção de imagem. Decisão pendente do time comercial.
 
 **Recomendação:** 3:4 (retrato) — padrão de moda, mais alto que largo na grade de 4 colunas.
 
@@ -356,4 +355,99 @@ Para qualquer componente novo:
 - [ ] Respeita `prefers-reduced-motion`
 - [ ] Área de toque ≥ 44px no mobile
 - [ ] Textos em **pt-BR**
+
+---
+
+## 6.8 A marca como regra de UX
+
+**Origem:** `10-roadmap.md` §10.4 (o doc 10 foi podado em 13/10/2026; a recuperação está no
+`README.md` da raiz). Fica aqui porque é regra de **design** — e é aqui que o componente novo é
+conferido.
+
+### Princípio da marca
+
+> **A mulher já possui valor. A Real Valor ajuda sua imagem a expressá-lo.**
+
+A consequência de design mais importante: **a peça não é a origem do valor** — ela é a ferramenta de
+expressão. Isso tem implicações concretas na interface.
+
+### Como o posicionamento aparece na interface
+
+**1. O preço é coadjuvante, não o protagonista.**
+`product-preview` já empilha título → preço → convite, e o comentário registra que o preço era cinza e
+perdia. Coerente com a marca: a peça tem nome antes de ter número.
+
+**2. O caos é removido, não adicionado.**
+A referência tem menu de 20+ itens, urgência repetitiva e bug de desconto. A Real Valor **recusa** os
+três. Menu enxuto, urgência só quando é verdade (reusando `product-availability`), desconto só com
+valor real (RV-011, regra 2).
+
+**3. A página de produto responde "como esta peça entra na minha vida".**
+O briefing pede isso explicitamente. Não é frase motivacional — é **dado estruturado**: caimento,
+tecido, ocasião, com quem combina. `metadata` do produto + o `editorial-banner` do CMS.
+
+**4. O tom é afirmativo, não motivacional.**
+O título atual do metadata é *"A alfaiataria que valoriza você, não o seu status"* — que **nega** uma
+atribuição comum em moda feminina (status) em vez de prometer um sentimento. Esse é o registro certo:
+**autoridade por subtração**.
+
+**5. A fronteira final é experiência, não estética.**
+
+| Conflito | Decisão |
+| :--- | :--- |
+| Real Valor × referência | Identidade da Real Valor |
+| Real Valor × tendência | Identidade |
+| Real Valor × cliente | Necessidade dela |
+| Usabilidade × estética | Usabilidade |
+| Consistência × referência | Consistência |
+
+### Como o público-alvo influencia a UX
+
+O briefing não traz o Brand Brief completo (público-alvo, dores, seldomas). **Não inventamos
+características** — o que segue é derivado do que o código e a marca mostram:
+
+| Inferência verificável | Consequência de UX |
+| :--- | :--- |
+| Posicionamento em **preços honestos** (title da home) e "do PP ao GG" (description) | Filtros de **tamanho e preço são essenciais**, não opcionais |
+| Título da home **nega o status** | Nenhum badge de urgência genérica ou linguagem de pertencimento |
+| Alfaiataria (não "moda") | Estrutura e caimento importam → guia de medidas é **essencial** |
+| Catálogo amplo (15+ categorias na referência) | Busca e filtros são **obrigatórios**, não diferenciais |
+| Checkout é o ponto de maior risco | Idioma pt-BR é **CRÍTICA**, não cosmética |
+
+**Incerteza registrada:** o material de identidade citado no `brand.css`
+(`Downloads/identidade_realvalor`) e o Brand Brief do briefing **não estavam disponíveis** para a
+auditoria. Quando forem fornecidos, esta seção deve ser revisada — o documento não supre o briefing.
+
+### Decisões visuais coerentes com a marca
+
+Já presentes no código e **devem ser mantidas:**
+
+- **Raios pequenos** (2–16px) — alfaiataria é estruturada, não fofinha
+- **Sombras mínimas** — elegância por cor e espaço, não por elevação
+- **Movimento contido** (máx. 640ms) — "o olho acompanha a troca; não para ser vista"
+- **Rosa queimado** em vez de rosa-choque — sofisticação sem feminilidade decorativa
+- **Playfair Display** nos títulos — serifa com autoridade, não com romance
+- **Off White** de fundo — espaço, não densidade
+
+### Decisões a evitar (do briefing)
+
+Excesso de rosa · elementos delicados demais · estética romântica · luxo artificial · serifa só para
+"saber sofisticado" · excesso de animação · excesso de banner · linguagem motivacional genérica ·
+elementos que reforcem estereótipos femininos.
+
+**Como isso se traduz em regra prática:** a Real Valor se apresenta como **autoridade + inteligência +
+autenticidade + personalidade + liberdade**. Uma interface que parece "loja de roupas femininas" já
+falhou, mesmo com as cores certas.
+
+### Oportunidades de diferenciação
+
+1. **A camada de pagamento modular é vantagem competitiva.** Trocar de provedor (ou adicionar Pix,
+   depois boleto, depois Apple Pay) é trabalho de um dia. Um concorrente com `if (provedor)` leva
+   semanas.
+2. **O CMS de conteúdo é raro.** O lojista editar hero, seções e **paleta** sem deploy é diferencial
+   real para uma marca em crescimento.
+3. **Conteúdo por ocasião, não só por categoria.** O briefing sugere; o `featured` com chips já dá a
+   base. Navegar por "para a reunião" comunica a marca melhor do que "blusa".
+4. **Filtro com contagem honesta** — faceta com zero desabilitada, nunca oculta. É a diferença entre
+   um catálogo que informa e um que esconde.
 - [ ] `alt` em toda imagem; `aria-label` em botão só com ícone

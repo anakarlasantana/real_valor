@@ -289,20 +289,19 @@ junto (`admin/`, `COPY admin/ /app/admin`) e o storefront leva o pacote do contr
 | [`README.md`](README.md) | este arquivo: subir a stack, operar o dia a dia, troubleshooting |
 | [`backend/src/modules/content/README.md`](backend/src/modules/content/README.md) | o CMS: contrato, seed, API e painel |
 | [`frontend/src/app/fonts/README.md`](frontend/src/app/fonts/README.md) | por que as fontes são self-hosted e como regerá-las |
-| [`docs/real-valor/01-auditoria-projeto.md`](docs/real-valor/01-auditoria-projeto.md) | auditoria do estado atual, área por área, com caminhos de arquivo |
-| [`docs/real-valor/02-analise-site-referencia.md`](docs/real-valor/02-analise-site-referencia.md) | padrões de UX extraídos da referência e como aplicá-los aqui |
-| [`docs/real-valor/03-gap-analysis.md`](docs/real-valor/03-gap-analysis.md) | comparativo atual × desejado, com prioridade |
 | [`docs/real-valor/04-requisitos-funcionais.md`](docs/real-valor/04-requisitos-funcionais.md) | RV-001 a RV-013 e RV-042 a RV-046: regras, estados, integrações e critérios de aceite |
 | [`docs/real-valor/05-requisitos-nao-funcionais.md`](docs/real-valor/05-requisitos-nao-funcionais.md) | acessibilidade, SEO técnico, performance, segurança, produção |
-| [`docs/real-valor/06-design-system.md`](docs/real-valor/06-design-system.md) | o design system existente, suas lacunas e o inventário de componentes |
-| [`docs/real-valor/07-fluxos-de-usuario.md`](docs/real-valor/07-fluxos-de-usuario.md) | a jornada de compra, os pontos de abandono e os cenários de exceção |
-| [`docs/real-valor/08-arquitetura-e-integracoes.md`](docs/real-valor/08-arquitetura-e-integracoes.md) | mapa frontend x backend, arquivos impactados e a camada modular |
-| [`docs/real-valor/09-backlog-implementacao.md`](docs/real-valor/09-backlog-implementacao.md) | 45 itens em 5 fases, com dependências e pré-requisitos |
-| [`docs/real-valor/10-roadmap.md`](docs/real-valor/10-roadmap.md) | ordem de implementação, tradução da marca e resumo executivo |
+| [`docs/real-valor/06-design-system.md`](docs/real-valor/06-design-system.md) | o design system existente, suas lacunas, o inventário de componentes e **a marca como regra de UX** (§6.8) |
+| [`docs/real-valor/09-backlog-implementacao.md`](docs/real-valor/09-backlog-implementacao.md) | 45 itens em 5 fases, com o status verificado por item, as **decisões abertas** e os **riscos de produção** (§9.11) |
 | [`docs/real-valor/11-ambiente-local.md`](docs/real-valor/11-ambiente-local.md) | **armadilhas do ambiente local:** install parcial, `NODE_ENV` no build, o que o vitest precisa |
 | [`docs/real-valor/12-script-enriquecimento-catalogo.md`](docs/real-valor/12-script-enriquecimento-catalogo.md) | roteiro de execução: catálogo pelo admin, card de exposição e página de produto |
 | [`docs/real-valor/13-mapa-de-botoes-da-home.md`](docs/real-valor/13-mapa-de-botoes-da-home.md) | **cada botão da home, aonde leva e onde ele é configurado** — o mapa dos nove `/store` |
 | [`docs/real-valor/14-paginas-de-conteudo-no-cms.md`](docs/real-valor/14-paginas-de-conteudo-no-cms.md) | **páginas institucionais editáveis no CMS:** diagnóstico, três estratégias e o plano F1/F2/F3 |
+| [`docs/real-valor/15-arquitetura-modular.md`](docs/real-valor/15-arquitetura-modular.md) | **as camadas e as guardas:** a política de comentário, as fases F0–F10 e a convenção de um módulo novo (§15.9) |
+| [`docs/real-valor/16-requisitos-admin.md`](docs/real-valor/16-requisitos-admin.md) | **engenharia reversa do painel (CRM):** o que ele permite, o que recusa e o que grava — cada regra com `arquivo:linha` de evidência |
+
+A numeração tem buracos **de propósito**: os docs 01, 02, 03, 07, 08 e 10 foram podados (ver a nota
+abaixo), e o código cita "doc 11", "doc 13", "doc 14" e "doc 15" por número.
 
 > ⚠️ **Antes de rodar build ou testes na máquina:** leia
 > [`docs/real-valor/11-ambiente-local.md`](docs/real-valor/11-ambiente-local.md). O sintoma mais
@@ -315,6 +314,29 @@ junto (`admin/`, `COPY admin/ /app/admin`) e o storefront leva o pacote do contr
 > foram removidos no commit `6c7feef6e7` e não voltaram. O conjunto em `docs/real-valor/` cobre o
 > estado atual. O conteúdo antigo está no histórico Git, caso queira recuperar
 > (`git show 6c7feef6e7^:docs/DEBITO-TECNICO.md`).
+
+> **A poda de 13/10/2026.** Seis documentos de `docs/real-valor/` saíram: **01** (auditoria),
+> **02** (referência de site), **03** (gap analysis), **07** (fluxos), **08** (arquitetura e
+> integrações) e **10** (roadmap). Nada de **pendência viva** foi perdido — o que restava deles foi
+> reconciliado antes da remoção:
+>
+> | O que | Onde foi parar |
+> | --- | --- |
+> | As chaves do Mercado Pago e as três armadilhas de configuração (08 §8.4.1) | [`backend/src/modules/payment/mercadopago/README.md`](backend/src/modules/payment/mercadopago/README.md) |
+> | A convenção de um módulo novo e a armadilha do `ModuleProvider` (08 §8.6) | §15.9 do doc 15 |
+> | A marca como regra de UX (10 §10.4) | §6.8 do doc 06 |
+> | Decisões abertas, riscos R1–R10, frete, e-mail, analytics e S3 (03 §3.4 · 08 §8.4.2–8.5 · 10 §10.3/§10.7/§10.9) | §9.11 do doc 09 |
+> | A causa do build sem `NODE_ENV=production` (10 §10.8) | §11.2 do doc 11 |
+> | O mapa frontend × backend (08 §8.1) | §"O que já existe", abaixo |
+> | Os cenários de exceção 7, 9 e 10 (07 §7.3) | no critério de aceite do RV-020, no doc 09 |
+>
+> O resto era narrativa datada — e é recuperável no histórico Git. Os buracos na **numeração** ficam:
+> renumerar obrigaria a reescrever as citações por número que existem no código. O documento do CRM,
+> antes `DOCUMENTACAO_REQUISITOS_ADMIN.md` na raiz, virou o **doc 16**.
+>
+> ```bash
+> git show c6a3ecb60b:docs/real-valor/08-arquitetura-e-integracoes.md
+> ```
 
 O débito técnico está em quatro assuntos, por severidade — bloqueadores, alto, médio/baixo e as
 armadilhas de ambiente Docker —, cada item com evidência e impacto.
@@ -394,6 +416,40 @@ payload — banco novo funciona antes do primeiro seed. Detalhes em
 ```bash
 git config core.hooksPath .githooks   # uma vez por clone
 ```
+
+### O que já existe: o mapa frontend × backend
+
+**Origem:** `08-arquitetura-e-integracoes.md` §8.1 (podado em 13/10/2026), com as linhas que
+envelheceram **corrigidas** — pagamento, filtros, busca e rastreio diziam "a implementar" e estão
+prontos. O status item a item está no doc 09; o requisito, no doc 04.
+
+**Legenda:** ✅ implementado · ⚠️ parcial · ❌ ausente
+
+| Funcionalidade | Frontend | Backend | Situação |
+| :--- | :--- | :--- | :--- |
+| Home por conteúdo | ✅ `(main)/page.tsx` | ✅ `/store/content` | **Pronto** |
+| CMS da vitrine | ✅ `admin/…/content` | ✅ `/admin/content` | **Pronto** |
+| Tema sazonal | ✅ `lib/theme.ts` | ✅ payload de tema | **Pronto** |
+| Lista de produtos | ✅ `paginated-products` | ✅ Store API | **Pronto** |
+| Filtros | ✅ `lib/catalog/catalog-filters.ts` | ✅ `option_value` na Store API | **Pronto** |
+| Busca | ✅ `/search?q=…` | ✅ `q` na Store API | **Pronto** |
+| Detalhe do produto | ✅ `products/[handle]` | ✅ | **Pronto** |
+| Variantes e estoque | ✅ `product-actions` | ✅ | **Pronto** |
+| Carrinho | ✅ `lib/data/cart.ts` | ✅ | **Pronto** |
+| Cupom | ✅ `discount-code` | ✅ | **Pronto** |
+| Opções de frete | ✅ `shipping/` | ✅ `fulfillment-manual` + `tabela` | **Pronto** |
+| Checkout (formulário) | ✅ 20 componentes | ✅ | **Pronto** |
+| Pagamento | ✅ adapters do MP (`lib/payments/`) | ✅ `payment/mercadopago` (Pix + cartão) | **Pronto** — falta a venda real (§9.11.2 do doc 09) |
+| Conta do cliente | ⚠️ `modules/account` | ✅ | **Parcial** |
+| Pedido confirmado | ✅ `order/…/confirmed` | ✅ | **Pronto** |
+| Rastreio | ✅ `modules/tracking` + `lib/data/tracking.ts` | ✅ `/store/orders/track` | **Pronto** (RV-044) |
+| `checkout-info` | ❌ | ⚠️ a rota existe e **ninguém a consome** | **Órfã** — ver §9.11.6 do doc 09 |
+| Newsletter | ❌ | ❌ | **A implementar** (RV-012) |
+| SEO técnico | ✅ `app/sitemap.ts` + `app/robots.ts` | — | ⚠️ **metadados pendentes** (RV-007) |
+| Armazenamento de imagem | ✅ `resolveMediaUrl` | ⚠️ `file-local` | **Parcial** (RV-023) |
+
+**Não remova a rota órfã nem a `pp_system_default` sem confirmar**: as duas são suspeitas, não
+diagnósticos, e o registro delas é o doc 09 §9.11.
 
 ### Verificação: o que roda, e onde
 

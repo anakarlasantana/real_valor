@@ -97,6 +97,22 @@ NODE_ENV=production NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_test yarn build
 O Compose já faz isso (`docker-compose.yml`, linhas 135 e 232). Quem roda o build na mão precisa
 saber — a mensagem de erro não menciona `NODE_ENV` em lugar nenhum.
 
+### Este sintoma apareceu duas vezes, com causas diferentes
+
+Vale separar as duas porque a segunda **não** era `NODE_ENV` — e a mensagem de erro é a mesma.
+**Origem da primeira:** `10-roadmap.md` §10.8 (o doc 10 foi podado em 13/10/2026; a recuperação está
+no `README.md` da raiz).
+
+| Quando | Onde quebrou | Causa |
+| :--- | :--- | :--- |
+| 10/02/2026 | prerender do **404** | o build rodou sem `NODE_ENV=production` — é este item |
+| 13/10/2026 (RV-050) | a **compilação** | `next/headers` alcançando o bundle de cliente pelo `lib/config`; a correção foi `"use server"` em `lib/data/tracking.ts` |
+
+**Se a falha persistir com `NODE_ENV=production`**, o candidato seguinte é a versão do
+`@medusajs/ui`: ele está declarado como `"latest"` no `frontend/package.json` (o preset também), e sem
+`package-lock.json` no workspace um `npm install` em outra máquina resolve uma versão diferente da que
+o build verde usou (a 4.2.6). **Fechar a versão é o conserto mais barato — e segue aberto.**
+
 ---
 
 ## 11.3 O `vitest` precisa de configuração para componentes

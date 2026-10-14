@@ -573,9 +573,9 @@ presas por teste:
   tamanho, não de contrato (`static identifier`, `static metodo`, `metodo` de instância e `meuId`);
 - `mercadopago/README.md` e `content/README.md` — as duas tabelas ganharam as linhas novas no mesmo
   commit, e a contagem de testes do módulo (90 → 96) foi corrigida na seção de testes;
-- `docs/real-valor/08-arquitetura-e-integracoes.md` — a tabela do módulo (§8.4.1.1.1) ganhou os cinco
-  irmãos, e a citação da rota órfã virou `/store/checkout/info`, com a data da mudança para quem
-  chegar depois;
+- `backend/src/modules/payment/mercadopago/README.md` — a tabela do módulo (§8.4.1.1.1 do antigo doc
+  08, podado em 13/10/2026) ganhou os cinco irmãos, e a citação da rota órfã virou
+  `/store/checkout/info`, com a data da mudança para quem chegar depois;
 - `docs/real-valor/15-arquitetura-modular.md` — a linha da fase (§15.6), o parágrafo e a tabela dos
   "piores arquivos" (§15.4): o `service.ts` (316/828) **saiu** da tabela, e o pior do mesmo módulo
   passa a ser o `credenciais.ts` (248/416).
@@ -700,6 +700,10 @@ rodou, embora a fase não seja de código: **24 suítes/424 testes** no backend,
 **Arquivos:** `README.md`, `DOCUMENTACAO_REQUISITOS_ADMIN.md`, os docs 01, 08, 09, 10, 12, 14 e 15,
 `frontend/src/app/fonts/README.md`, `backend/src/modules/content/README.md` e os quatro comentários de
 fonte (`components/field-input.tsx`, `lib/form-draft.ts`, `lib/utils.ts`, `components/image-input.tsx`).
+
+> *A lista acima é o registro do que **aquele commit** tocou — não um mapa de hoje. Depois dela, em
+> 13/10/2026, os docs 01, 08 e 10 foram podados e o `DOCUMENTACAO_REQUISITOS_ADMIN.md` virou
+> `docs/real-valor/16-requisitos-admin.md`.*
 **Pré-requisito:** F8
 
 ### ✅ F10 · O comentário dos vinte e oito piores — **FEITO** (o hash é o commit que carrega esta entrada: a F10 é a última fase do lote, e não há entrada seguinte onde escrevê-lo)
@@ -950,8 +954,10 @@ e **reprova** quando se injeta um import proibido.
 >    que só paga Pix.
 >
 > **Consequência:** a loja não terá rede de segurança entre o RV-001 e o RV-002. Se o Mercado Pago
-> estourar o prazo, **não há venda** — decisão consciente, registrada em `03-gap-analysis.md`,
-> seção 3.3.
+> estourar o prazo, **não há venda** — decisão consciente, e este é o registro dela (o antigo
+> `03-gap-analysis.md` §3.3 foi podado em 13/10/2026). As duas saídas possíveis, em ordem de
+> qualidade: **Pix por link manual gerado fora do site** (vende, mas perde o carrinho) e **antecipar
+> o MP cortando escopo de vitrine**.
 >
 > **Remanescentes do Stripe que ficam para o RV-002:** `NEXT_PUBLIC_STRIPE_KEY` já foi removida do
 > `.env.example`, do `docker-compose.yml` e do `.env`. O **código do frontend segue intacto** por
@@ -995,8 +1001,9 @@ tornaria a revisão mais difícil.
 > | `lib/payments/registry.ts` tem o adapter do MP? | Não — só `stripe`, `manual`, `unsupported` | **Sim** — os dois do MP, e **primeiro** na ordem do array |
 > | Backend tem dependência do Mercado Pago? | Não | **Sim** |
 >
-> **O que a implementação descobriu** — e que mudou decisões deste documento — está em
-> `08-arquitetura-e-integracoes.md` 8.4.1.1.1 e no `README.md` do módulo. Os três que mais importam:
+> **O que a implementação descobriu** — e que mudou decisões deste documento — está no `README.md`
+> do módulo (`backend/src/modules/payment/mercadopago/`, que herdou a tabela §8.4.1.1.1 do antigo doc
+> 08, podado em 13/10/2026). Os três que mais importam:
 >
 > 1. **A idempotência não precisou ser construída.** Este item previa uma marca nossa em
 >    `order.metadata`. Ela seria uma segunda fonte de verdade para uma pergunta que o Medusa já
@@ -1302,7 +1309,17 @@ retorno; revalidar e avisar alteração de preço.
 **Tipo:** funcional · **Prioridade:** MÉDIA · **Complexidade:** média
 **Depende de:** nenhuma
 **Arquivos:** *alterados:* `cart/components/cart-item-select/`, `lib/data/cart.ts`
-**Aceite:** os cenários 7, 9 e 10 de `07-fluxos-de-usuario.md`
+**Aceite:** os três cenários de exceção que o antigo `07-fluxos-de-usuario.md` §7.3 exigia — o doc 07
+foi podado em 13/10/2026, e o texto deles passa a ser este:
+1. **Sessão expirada** — `retrieveCustomer()` é chamado no carrinho e no checkout; se o cookie expira
+   entre carregar a página e submeter, interceptar e redirecionar para o login, preservando o carrinho
+   (que está em cookie próprio) e a URL de retorno;
+2. **Alteração de preço** — revalidar o total no servidor antes de cobrar e mostrar a diferença
+   **explicitamente** — nunca cobrar em silêncio (o valor da preference é o do carrinho no momento da
+   criação, o que já mitiga);
+3. **Quantidade acima do estoque** — o botão impede adicionar além do estoque, mas **editar a
+   quantidade no carrinho** pode passar do disponível: o `cart-item-select` limita pelo estoque da
+   variante.
 
 ### RV-012 · Newsletter
 **Descrição:** novo tipo de seção no contrato, com consentimento LGPD.
@@ -1457,4 +1474,126 @@ esperar ninguém: o provider `tabela` calcula preço por peso × região hoje, e
 entra depois como **outro** provider, sem tocar em carrinho, checkout, painel de envio ou `/rastreio`.
 Só o RV-046 espera a decisão comercial — e o `fulfillment-manual` seedado mantém a loja vendável até lá.
 
-Ver `10-roadmap.md` para a ordem de execução.
+A ordem de execução é a das fases acima — a Fase 1 é a que fecha a inauguração.
+
+---
+
+## 9.11 Decisões abertas, riscos de produção e dívidas herdadas
+
+**Por que esta seção existe.** Os docs **03, 08 e 10** foram podados em 13/10/2026 (a recuperação
+está no `README.md` da raiz). O que neles era **pendência viva** — e não narrativa — foi reconciliado
+aqui, num lugar só. O status por requisito já está nas entradas por RV, acima.
+
+### 9.11.1 Decisões que bloqueiam implementação
+
+| Questão | Bloqueia | Quem decide |
+| :--- | :--- | :--- |
+| **Modalidade do Mercado Pago** (Point, Pro, Advanced) | Parcelamento e split — define o que o `describe()` devolve | Comercial |
+| Provedor de frete definitivo | `RV-046` (adapter real) | Comercial |
+| Tabela de medidas: `metadata` ou módulo novo? | `RV-009` (guia de medidas) | Arquitetura |
+| Quantidade de imagens por produto | Layout da galeria | Comercial |
+| Catálogo real: tamanho e número de categorias | Facetas de filtro, paginação | Comercial |
+| Configuração fiscal / emissão de NF | Produção | Fiscal |
+| Brand guide definitivo: logo vetorial e tom da marca | `RV-021` (wordmark e tipografia) | Marca |
+| Serviço de e-mail transacional | Avisos de pedido — **confirmar se já existe** | Infra |
+
+**A única verdadeiramente urgente é a modalidade do MP.** As duas últimas linhas têm indicativos no
+código (o comentário do logo vetorial; os tokens derivados de um brand guide), mas **não foram
+confirmadas** por auditoria.
+
+### 9.11.2 O que falta para o Mercado Pago valer em produção
+
+| # | Passo | Bloqueia |
+| :--- | :--- | :--- |
+| 1 | Preencher `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `MP_AMBIENTE` | Teste da integração |
+| 2 | Apontar `MP_NOTIFICATION_URL` para um endereço público com HTTPS | Teste do webhook |
+| 3 | `MP_BACK_URL` no domínio real | O retorno da cliente |
+| 4 | Provider de e-mail transacional | Os avisos de pedido |
+
+**A URL pública é o caminho crítico de infraestrutura.** O Compose **não** expõe proxy TLS — o
+`traefik_network` citado no `README.md` pertence a outros projetos. Em desenvolvimento o túnel resolve
+(`make tunnel`, doc 11 §11.6); em produção, é decisão de infraestrutura a tomar **antes da
+inauguração**. ⚠️ Enquanto `MP_NOTIFICATION_URL` apontar para o `webhook.site`, ele **captura a
+notificação e engole a venda**.
+
+Nada disso trava o desenvolvimento: o provider foi escrito e testado contra o ambiente de teste. **O
+que o RV-002 não prova** — e não vai provar antes do roteiro do §11.6 rodar — é a assinatura contra uma
+notificação **real**: o que existe é cobertura unitária, não integração validada. As chaves e o que
+cada uma decide estão no `README.md` do módulo
+(`backend/src/modules/payment/mercadopago/`).
+
+### 9.11.3 Frete: o que espera decisão comercial
+
+Os quatro itens que o `RV-046` precisa, e nenhum deles é de código:
+
+| O que é preciso | De quem |
+| :--- | :--- |
+| Qual transportadora | Comercial |
+| Se é link (Opção A) ou API (Opção B) | Comercial |
+| Tabela ou regra de preço | Comercial |
+| **Peso dos produtos cadastrado** | **Loja** — é trabalho de cadastro, não de integração |
+
+**Sem peso cadastrado não há cálculo possível**, e nenhuma API resolve isso: vale começar o cadastro
+antes de fechar a transportadora.
+
+**Três regras de desenho que mantêm isso barato:**
+
+1. **Os campos de rastreio são texto livre** (`carrier`, `tracking_number`, `tracking_url`) — **sem
+   lista suspensa de transportadoras**. Se forem modelados para a transportadora de hoje, a decisão de
+   amanhã obriga a refatorar o painel.
+2. **A UI não conhece a transportadora**: mesmo o cálculo no backend passa pelo adapter, que normaliza
+   o resultado para `ShippingOption`.
+3. **O Medusa não tem webhook de frete.** Se a transportadora mudar o preço depois do pagamento, a loja
+   **não descobre**. Com a tabela isso não acontece (a regra é nossa e não muda); com API real, vira
+   conciliação manual — decisão consciente, a revisar quando houver transportadora.
+
+**A rota de rastreio já aceita a Opção A hoje** — foi desenhada assim. Não é gambiarra: é o padrão do
+mercado e o caminho de menor risco. O provider `tabela`, a opção `Calculada` no Admin e os valores
+fictícios isolados em `tabela.ts` estão no `README.md` de
+`backend/src/modules/fulfillment/tabela/`.
+
+**Uma correção que veio junto:** `createShippingOptionsWorkflow` **não falha** numa base já semeada —
+cada `make seed` somava um par de PAC/SEDEX (medido: 7 + 7). O seed hoje tem a mesma guarda dos
+produtos, comparando por **(nome, perfil de envio)** — o `id` muda a cada execução, então comparar por
+ele não acharia a opção da rodada anterior.
+
+### 9.11.4 Riscos técnicos de produção
+
+| # | Risco | Probabilidade | Impacto | Mitigação |
+| :--- | :--- | :--- | :--- | :--- |
+| R1 | Webhook do MP inacessível | Média | **Crítico** — pedido pago não confirma | Documentar e testar a URL **antes** de lançar |
+| R2 | Webhook duplicado cria pedido duplo | Alta sem cuidado | **Crítico** | Idempotência por `preference_id` (RV-002, regra 4) |
+| R3 | Nenhuma resposta ao pagamento | Média | **Crítico** | Camada `PaymentResult` + estado `pending` explícito |
+| R4 | Sem provider de e-mail | **Alta** (inferido) | Alto | Verificar e configurar antes da inauguração |
+| R5 | Imagens grandes sem CDN | **Alta** | Alto (LCP) | Exigir redimensionamento; S3 na Fase 3 |
+| R6 | `NEXT_PUBLIC_*` inlinadas em PROD | Média | Médio | Documentar `make build && make restart` |
+| R7 | Segredo não regenerado em produção | Baixa | **Crítico** | Checklist de pré-lançamento |
+| R8 | Rate limiting ausente | Média | Médio | Fase 3 |
+| R9 | Upload sem limite enche o volume | Média | Alto | Validar tamanho e tipo |
+| R10 | CORS aberto em produção | Baixa | Alto | Checklist de pré-lançamento |
+
+**R7 e R10 são os mais baratos de resolver e os mais fáceis de esquecer** — ambos estão na lista de
+critérios de produção em `05-requisitos-nao-funcionais.md`.
+
+### 9.11.5 Integrações que ainda não existem
+
+- **E-mail transacional — não auditado.** A confirmação de pedido depende dele. O `medusa-config.ts`
+  registra só `file` e `content`, o que sugere que **não há provider de notificação**: o pedido pode
+  ser confirmado sem e-mail de aviso. Não bloqueia a venda, mas é falha de confiança — **verificar
+  antes da inauguração**.
+- **Analytics — nenhum configurado.** `@medusajs/analytics` está no workspace e não registrado. Fase 3:
+  um e-commerce sem métricas de funil não decide o que melhorar. Mínimo: taxa de conversão, abandono
+  por etapa do checkout e busca sem resultado.
+- **Armazenamento de imagem — `file-local` + volume.** A migração para S3 **não exige converter o
+  conteúdo** (o banco guarda a **chave** do arquivo, não a URL, e o storefront resolve com
+  `resolveMediaUrl`) — é trocar o provider. Riscos atuais: sem CDN, volume único como ponto de falha e
+  upload sem validação de tipo/tamanho. **Manter até a inauguração e exigir, desde já, imagens
+  redimensionadas no upload** — é o que evita o pior cenário com o armazenamento local (`RV-023` e
+  `RV-024`).
+
+### 9.11.6 Uma ponta solta de código
+
+`GET /store/checkout/info` (`backend/src/api/store/checkout/info/route.ts`) **não tem consumo no
+frontend** — confirmado por grep em 13/10/2026. Pode ser código morto ou consumo externo: **não
+remover sem confirmar**. A rota `GET /store/orders/track` tinha a mesma suspeita e **não** é o caso —
+ela é consumida por `frontend/src/lib/data/tracking.ts` (o RV-044), e a página pública existe.
