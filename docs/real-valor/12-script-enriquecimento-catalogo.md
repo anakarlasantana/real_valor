@@ -42,7 +42,7 @@ avaliação da loja, cupom por indicação (ver `09-backlog-implementacao.md`).
 | Tipos do storefront | `frontend/src/types/global.ts` | É onde mora `VariantPrice` — a casa dos tipos novos |
 | Painel do CRM | `admin/src/admin/routes/{content,shipping}` | Só `routes/` e `i18n/` existem hoje; `admin/src/admin/i18n/index.ts` é `export default {}` |
 | Chamada à Admin API no painel | `admin/src/admin/routes/content/page.tsx:360` | `fetch("/admin/…", { credentials: "include" })` |
-| Ordenação de lista no painel | `admin/src/admin/routes/content/list-order.ts` | Setas (`move()`). **Não existe drag-and-drop** |
+| Ordenação de lista no painel | `admin/src/admin/routes/content/lib/list-order.ts` | Setas (`move()`). **Não existe drag-and-drop** |
 
 ### 12.2.2 Onde cada dado de produto **pode** morar (medido)
 
@@ -155,8 +155,9 @@ Medir e **colar no PR**:
 
 **Objetivo:** nenhuma peça, categoria ou nível de estoque vem do código.
 
-- `backend/src/scripts/seed.ts`: remover o passo **8** (categorias, l. 512), o passo **9**
-  (produtos, l. 553) e o passo **10** (estoque, l. 835) e o que ficar sem uso (imports de
+- `backend/src/scripts/seed.ts` — **feito**: o arquivo tem 89 linhas e os passos 1 a 7 vivem
+  em `scripts/seed/`. Remover o passo **8** (categorias), o passo **9** (produtos) e o passo
+  **10** (estoque), e o que ficar sem uso (imports de
   `createProductsWorkflow`, `createProductCategoriesWorkflow`,
   `createInventoryLevelsWorkflow`, `CreateInventoryLevelInput`, `ProductStatus` e os blocos
   de dados das peças).

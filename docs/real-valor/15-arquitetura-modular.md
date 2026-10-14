@@ -223,7 +223,7 @@ que impede o refactor de ser um "depois eu volto".
 | **F6** | ✅ `brand.css` (5.248 linhas) partido em 18 parciais + manifesto, com prova de concatenação byte a byte (na fonte e no bundle) | catraca (`--write`) | GET `/br` · o `yarn build` **não fecha** por defeito anterior a ela (RV-050, no doc 09) |
 | **F7** | ✅ CRM: `admin/src/admin/routes/content/` (23 arquivos + 3 diretórios) → `page.tsx` + `components/` + `hooks/` + `lib/`; `widgets/` só com o entrypoint (a regra pura foi para `admin/src/admin/lib/`), com prova de que só as 21 linhas de import mudaram nos 27 arquivos movidos | `make build-admin` + smoke |
 | **F8** | ✅ backend: `mercadopago/service.ts` (828 → **481**) + `decisao`/`status`/`notificacao`/`estorno`/`boot`; `api/admin/content/route.ts` (488 → **438**) + `lib/resposta` e `lib/gravacao`; `scripts/seed.ts` (569 → **87**) + `seed/` com seis passos; `api/store/custom/checkout-info` → **`api/store/checkout/info`** (a URL pública passa a ser `/store/checkout/info`) | `make test` (24 suítes/424 testes) | smoke do pagamento (5 specs/96 asserções) |
-| **F9** | docs: as citações de caminho e de linha reancoradas; o doc 09 ganha o "FEITO (hash)" de cada fase | — | revisão |
+| **F9** | ✅ docs: as citações de caminho e de linha reancoradas — as que a F2, a F6, a F7 e a F8 tornaram falsas, mais as do `plano-centralizacao.md`, que não existe desde o `6c7feef6e7`; e o doc 09 ganha o "FEITO (hash)" de cada fase (F7 `fd42c25831`, F8 `fc3b7d77d3`) | — | revisão |
 | **F10** | o comentário dos ~20 piores arquivos; o baseline encolhe | `--report` | `make check` |
 
 **Regra do lote**: fora dele, só o que a guarda exigir. Se uma fase encontrar um
@@ -258,7 +258,7 @@ no `make test`, e não no `make check`.
 | Dívida | Medido em 13/10/2026 | Apaga |
 | :--- | :--- | :--- |
 | Exceções de camada no baseline | 7 (todas do RV-048; eram 17 antes da F1) | ✅ F1–F5 — o que sobra sai no RV-048 |
-| Arquivos acima da política de comentário | 311 | F10 (meta: ≤12% e cabeçalho ≤5) |
+| Arquivos acima da política de comentário | 334 (eram 311 antes da F6: cada parcial da F6 e cada herdeiro da F8 entra no baseline) | F10 (meta: ≤12% e cabeçalho ≤5) |
 | Specs fora da convenção | 0 | ✅ F3 |
 | `lib/util` sem uma responsabilidade só | 45 arquivos · 6.622 linhas | ✅ F2 — dissolvido em `catalog`, `ui`, `content`, `checkout`, `payments` e `medusa` |
 | `lib/data/cart.ts` | 421 linhas (eram 476: a F1 tirou as 4 funções mortas) | ✅ F1 |

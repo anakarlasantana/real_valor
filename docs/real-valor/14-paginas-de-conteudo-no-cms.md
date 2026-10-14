@@ -25,7 +25,7 @@ Fora do escopo: tradução de PDP/checkout, catálogo, frete e pagamento.
 | Peça | Estado hoje | Evidência |
 | :--- | :--- | :--- |
 | Superfícies declaradas | **Duas** — a vitrine e o tema | `CONTENT_SURFACES`, `packages/contrato/src/contract.ts:1686` e `:1707` |
-| Leitura | Qualquer nome de superfície é aceito; só o `type` é validado | `backend/src/api/store/content/route.ts:32` (surface) e `:37` (type). `?surface=sobre` responde `{"sections":[],"schemaVersion":10}` — **200**, não 400 |
+| Leitura | Qualquer nome de superfície é aceito; só o `type` é validado | `backend/src/api/store/content/route.ts:40` (surface e type). `?surface=sobre` responde `{"sections":[],"schemaVersion":10}` — **200**, não 400 |
 | Escrita | `POST /admin/content` aceita qualquer superfície; só o `theme` é travado | `backend/src/modules/content/validation.ts` → `resolveSurface` |
 | Painel | As abas saem do `schema`, e o `schema` vem do **registro no Postgres** — não do bundle | `admin/src/admin/routes/content/page.tsx:862`; `service.getContract`, `service.ts:87`; o writer é `backend/src/scripts/seed-schema.ts` |
 | Cromo | Cabeçalho, anúncio e rodapé saem da superfície `home` e são desenhados pelo **layout**, em todas as rotas de `(main)` | `frontend/src/app/[countryCode]/(main)/layout.tsx` |
@@ -372,7 +372,7 @@ documenta.
 contrato de troca, a tabela de medidas. O `kind` de campo `document` resolve **sem nada novo**: o painel
 sobe pelo mesmo `POST /admin/uploads` (`@medusajs/file-local`, `medusa-config.ts`) e grava a **chave**
 (`1699999999-aviso.pdf`); o site traduz chave → endereço com o `resolveMediaUrl` que já faz isso para a
-imagem (`frontend/src/lib/util/media.ts` — o cabeçalho dele fala só de imagem e passa a ser o mesmo caso),
+imagem (`frontend/src/lib/ui/media.ts` — o cabeçalho dele fala só de imagem e passa a ser o mesmo caso),
 pelo rewrite `/uploads/:path*` que já está no `frontend/next.config.js:110`.
 
 ⚠️ **O anexo complementa o texto, não o substitui.** PDF não é indexável, não é bom no telefone e não é o
@@ -461,7 +461,7 @@ monta, não do layout.
 | `packages/contrato/src/contract.ts` | `kind` no `ContentSurfaceSpec`, `PAGE_SURFACES`, `PAGE_SECTION_TYPES`, as 4–6 entradas | **dado** |
 | `packages/contrato/src/defaults.ts` | `DEFAULT_PAGE_SECTIONS` (o padrão de cada página — **vazio hoje, de propósito**: a copy é do negócio, e a página sem bloco responde 404) | **dado** |
 | `backend/src/modules/content/validation.ts:226` | `resolveSurface` valida contra o contrato | regra |
-| `backend/src/api/admin/content/route.ts:174` | tipo único só em `home`/`theme` | regra |
+| `backend/src/api/admin/content/route.ts:168` | tipo único só em `home`/`theme` | regra |
 | `backend/src/modules/content/restore.ts:81` | `defaultsFor` com o ramo `page` | regra |
 | `backend/src/scripts/seed-content.ts` | o loop de superfícies passa a incluir `PAGE_SURFACES` | dado |
 | `frontend/src/lib/data/content.ts` | `getSurfaceSections(surface)`; `getHomeSections` vira uma chamada dela | leitura |
@@ -950,7 +950,7 @@ grande não é o arquivo, é o processo que o recebe.
 | `frontend/src/modules/content/prose.tsx` | o `<a download>` abaixo do texto, com o rótulo do CRM (ou "Baixar o documento (PDF)") |
 | `frontend/src/styles/brand.css` | `.rv-prose-document`: o fio acima e o rótulo em caixa alta pequena, para o botão não se confundir com a última frase do texto |
 | `admin/.../document-input.tsx` | o campo: envio pelo mesmo `/admin/uploads`, a chave gravada, **sem** prévia (o que se confere é o caminho do arquivo) e o teto dos 25 MB |
-| `frontend/src/lib/util/media.ts` | o cabeçalho passa a falar de **imagem e anexo**: chave → endereço é a mesma regra, e agora serve às duas pontas |
+| `frontend/src/lib/ui/media.ts` | o cabeçalho passa a falar de **imagem e anexo**: chave → endereço é a mesma regra, e agora serve às duas pontas |
 | `backend/.../wiring.unit.spec.ts` | a guarda nova: **os campos do `prose` são exatamente os que a página lê** — os dois sentidos, e não só um |
 
 ### Uma correção ao desenho, e um limite declarado
@@ -1217,7 +1217,7 @@ duas vezes, a lista tem seis, e ninguém pediu para criar ou despublicar página
 | `backend/.../modules/content/pages.ts` *(novo)* | `pageSummaries`: as linhas do índice, com a régua aplicada (puro — sem request, sem banco) |
 | `backend/.../api/admin/content/pages/route.ts` *(novo)* | `GET /admin/content/pages` — as linhas + o vocabulário, ao lado de `/order` e `/restore` |
 | `frontend/.../(main)/[slug]/page.tsx` | o `notFound()` passa a ler a **mesma** função (`publishedSections`) |
-| `admin/.../routes/content/pages-view.tsx` *(novo)* | a tela: uma linha por página, o estado e "Editar blocos" |
+| `admin/.../routes/content/components/pages-view.tsx` *(novo)* | a tela: uma linha por página, o estado e "Editar blocos" |
 | `admin/.../routes/content/page.tsx` | o botão "Páginas" na barra das superfícies e o `openSurface` (o atalho) |
 | `backend/.../__tests__/pages.unit.spec.ts` | **8** testes novos: o par da régua, os três estados, o vocabulário completo e o índice |
 | `frontend/.../lib/data/supported-sections.spec.ts` | a premissa: a régua do contrato não tira nada dos dois filtros da loja |

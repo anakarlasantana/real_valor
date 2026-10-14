@@ -151,7 +151,7 @@ e isso não segura a loja.**
 para a transportadora de hoje, a decisão de amanhã obriga a refatorar o painel — e aí sim o bloqueio
 volta.
 
-**A salvaguarda prática:** o `fulfillment-manual` está seedado com PAC e SEDEX (`seed.ts:397-469`),
+**A salvaguarda prática:** o `fulfillment-manual` está seedado com PAC e SEDEX (`seed/frete.ts:120`),
 então a loja vende com frete fixo enquanto a transportadora não é decidida. **RV-046 sai do caminho
 crítico e vai para a Fase 4.**
 
@@ -387,7 +387,7 @@ Este conjunto foi produzido a partir da **leitura do código**, não de suposiç
 verificar, a dúvida está registrada em vez de preenchida.
 
 **Incertezas que permanecem abertas** (detalhe em `01-auditoria-projeto.md`, seção 1.7):
-1. Se `/store/custom/checkout-info` e `/store/orders/track` são consumidos
+1. Se `/store/checkout/info` e `/store/orders/track` são consumidos
 2. Quantidade de imagens por produto no catálogo real
 3. Se existe provider de e-mail transacional configurado
 4. Configuração fiscal para emissão de nota

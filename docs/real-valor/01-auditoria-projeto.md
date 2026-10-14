@@ -217,7 +217,7 @@ modules: [
 ]
 ```
 
-**Nenhum provedor de pagamento.** E `seed.ts:212` cria a região com
+**Nenhum provedor de pagamento.** E `scripts/seed/regiao.ts:41` cria a região com
 `payment_providers: ["pp_system_default"]` — provedor manual, que não processa.
 
 Resultado: o checkout renderiza, o formulário valida, mas **a finalização do pagamento não
@@ -234,7 +234,7 @@ provedor** — é exatamente o oposto de modular. Ver `08-arquitetura-e-integrac
 - Medusa 2.18.0, PostgreSQL, Redis, módulo local `content`.
 - `seed.ts` **idempotente**: verifica região e tax region antes de criar (linhas 189–231).
 - Rotas customizadas: `GET /store/content`, `GET/POST /api/admin/content`,
-  `GET /api/admin/content/order`, `GET /api/admin/content/restore`, `GET /store/custom/checkout-info`,
+  `GET /api/admin/content/order`, `GET /api/admin/content/restore`, `GET /store/checkout/info`,
   `GET /store/orders/track`.
 - `links/content-section-category.ts` e `links/content-section-product.ts` — seções relacionadas
   a categorias/produtos (base para os chips do `featured`, schema v5).
@@ -369,7 +369,7 @@ provider. `@medusajs/file-s3` já está no workspace.
 **Recomendação:** manter local até a inauguração; planejar S3 para a Fase 3.
 
 ### P9. `checkout-info` e `track` como APIs customizadas
-`backend/src/api/store/custom/checkout-info/route.ts`, `orders/track/route.ts`
+`backend/src/api/store/checkout/info/route.ts`, `orders/track/route.ts`
 **Status:** `desconhecido` quanto ao uso real no storefront — existem no backend; **não localizei
 consumo no frontend**. Confirmar antes de remover.
 
@@ -401,7 +401,7 @@ em crescimento, e ambos estão tratados na Fase 0.
 
 Registradas em vez de assumidas:
 
-1. **`/store/custom/checkout-info` e `/store/orders/track` são consumidos?** Não localizei chamada no
+1. **`/store/checkout/info` e `/store/orders/track` são consumidos?** Não localizei chamada no
    frontend. Podem ser usados por integração externa ou ser código morto. **Confirmar antes de remover.**
 2. **A galeria do catálogo tem uma imagem por produto.** O `product-preview` (linhas 40–41) já trata a
    segunda foto no hover, mas o comentário registra que "o catálogo hoje tem uma imagem por produto

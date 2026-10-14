@@ -52,8 +52,8 @@ O editor de conteúdo (`/painel/content`) mostra a **prévia** de cada fonte do
 tema, desenhando cada opção na própria família — logo, o navegador do painel
 também precisa dos arquivos. Como o CRM é um pacote separado (`admin/`, irmão do
 `backend/` desde a R7), existe uma cópia byte a byte destes três `.woff2` em
-`admin/src/admin/routes/content/fonts/`, declarada por `@font-face` em
-`admin/src/admin/routes/content/appearance.css` (ver o `README.md` de lá).
+`admin/src/admin/routes/content/components/fonts/`, declarada por `@font-face` em
+`admin/src/admin/routes/content/components/appearance.css` (ver o `README.md` de lá).
 
 A consequência prática: **trocar um `.woff2` aqui é trocar nos dois lugares**.
 O `assets.unit.spec.ts` (no backend) confere o md5 das cópias contra estes

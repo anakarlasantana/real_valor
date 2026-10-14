@@ -11,7 +11,7 @@
  * endereço de quem respondeu o upload dentro dela; gravada, o conteúdo
  * passaria a apontar para `http://localhost:9000` e quebraria no dia em que a
  * loja for para outro domínio. Quem traduz chave → endereço é o storefront
- * (`resolveMediaUrl`, em `frontend/src/lib/util/media.ts`) — e é por isso que
+ * (`resolveMediaUrl`, em `frontend/src/lib/ui/media.ts`) — e é por isso que
  * este arquivo não precisa saber o endereço do backend para a prévia: a chave
  * vira `/static/<chave>`, que responde nos **dois** endereços do painel — no
  * local, no próprio backend, e no publicado, pela reescrita `/static/:path*` do

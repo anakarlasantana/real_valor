@@ -12,7 +12,7 @@
  *
  * O `import type` vem pelo alias `@conteudo/*` (`admin/tsconfig.json`), que aponta
  * para o módulo do conteúdo no backend: o vínculo tem nome em vez de cinco
- * níveis de `..` (ver docs/plano-centralizacao.md, R2). Só tipo atravessa — valor
+ * níveis de `..` (ver docs/real-valor/15-arquitetura-modular.md, §15.3, R2). Só tipo atravessa — valor
  * importado por este apelido é reprovado por `scripts/check-boundaries.mjs`.
  */
 import type {

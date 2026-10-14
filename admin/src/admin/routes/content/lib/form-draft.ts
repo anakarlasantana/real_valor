@@ -17,7 +17,7 @@
  *
  * O `import type` vem pelo alias `@conteudo/*` (`admin/tsconfig.json`), que aponta
  * para o módulo do conteúdo no backend: o vínculo tem nome em vez de cinco
- * níveis de `..` (ver docs/plano-centralizacao.md, R2).
+ * níveis de `..` (ver docs/real-valor/15-arquitetura-modular.md, §15.3, R2).
  */
 import type { FieldKind } from "@conteudo/contract"
 

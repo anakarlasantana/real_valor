@@ -402,7 +402,7 @@ rota, os desenhos, as regras puras e o CSS, todos irmãos —, mais três diret�
 o seu lugar: `page.tsx` na raiz, o desenho em `components/`, a regra em `lib/`, o hook em `hooks/` —
 e `widgets/` fica só com o entrypoint.
 
-### ✅ F7 · O CRM partido — **FEITO** (hash na entrada da F8: um commit não carrega o próprio hash)
+### ✅ F7 · O CRM partido — **FEITO** (`fd42c25831`)
 
 **O que foi feito:**
 
@@ -486,7 +486,7 @@ desta fase, no mesmo lote de citações: `docs/plano-centralizacao.md` (não exi
 `frontend/src/lib/util/media.ts` (`components/image-input.tsx:14` — o dono é `lib/ui/media.ts` desde
 a F2).
 
-### ✅ F8 · O backend partido nos três alvos — **FEITO** (hash na entrada da F9: um commit não carrega o próprio hash)
+### ✅ F8 · O backend partido nos três alvos — **FEITO** (`fc3b7d77d3`)
 
 **F7 = `fd42c25831`** — o CRM partido (27 arquivos movidos e a árvore `content/` em `page.tsx` +
 `components/` + `hooks/` + `lib/`). O hash entra aqui pela mesma razão de sempre: quem commita não
@@ -639,6 +639,64 @@ linha que esta fase tornou falsa**, e nenhuma delas é arquivo de fonte do backe
 **Dívida que segue aberta no doc (não é da F8):** RV-050 (o `next build` de produção), a migração
 `Migration20260929204616`, o split do `c7df56fc85` e o `git push develop` — que é o que fecha os
 hashes das fases.
+
+### ✅ F9 · As citações reancoradas — **FEITO** (hash na entrada da F10: um commit não carrega o próprio hash)
+
+**O que foi feito:** as duas metades da fase — o doc 09 ganha o hash de cada fase, e as citações que o
+lote tornou falsas foram reancoradas. Dos cinco arquivos de **fonte** tocados, as cinco linhas são
+**comentário**, e trocar uma linha por uma linha não mexe na catraca: ela segue verde com o mesmo
+número por arquivo.
+
+**Os hashes:** os cabeçalhos da F7 e da F8 passam a carregar o commit de cada uma — `fd42c25831` e
+`fc3b7d77d3` —, como o F0 a F6 já carregavam. A promessa "hash na entrada da F<seguinte>" fica só na
+entrada da fase que ainda não tem sucessora, que é esta.
+
+**As citações, por origem** (o critério é a fase que as tornou falsas, e não o arquivo em que elas
+moram):
+
+- **F8** (as que a fase anterior criou e listou): `01-auditoria-projeto.md` (4 — o caminho
+  `/store/custom/checkout-info` em três pontos e o `seed.ts:212`), `08-arquitetura-e-integracoes.md`
+  (3 — os dois `seed.ts:NNN` e o `seed.ts:397-469`, que viram `seed/regiao.ts:41`, `seed/estoque.ts:81`
+  + `seed/frete.ts:40` e `seed/frete.ts:120`), `10-roadmap.md` (2), `12-script-enriquecimento-catalogo.md`
+  (1 — o T1 pedia "remover o passo 8, l. 512" num arquivo que hoje tem 89 linhas: virou **feito**, sem
+  as linhas que não existem mais) e `14-paginas-de-conteudo-no-cms.md` (1 — `route.ts:174` → `:168`).
+- **F7** (as que a entrada daquela fase já tinha listado para cá): `DOCUMENTACAO_REQUISITOS_ADMIN.md`
+  (os nove caminhos `content/<arquivo>` → `content/components/` ou `content/lib/`, mais a rota do admin
+  nos trechos que a F8 encurtou — `:100-118` → `:97-118`, `:52-118` → `:49-119`, `:86-99` → `:82-96`,
+  `:120-303` → `:123-282`, `:52-60` → `:56-59`, `:74-84` → `:64-81`); `frontend/src/app/fonts/README.md`
+  (as duas pastas do CRM que o move criou); `backend/src/modules/content/README.md` (a pasta dos
+  `.woff2` e o ponteiro do plano); `12-script-enriquecimento-catalogo.md` (o `list-order.ts`); e as
+  quatro citações em **comentário de código** (`field-input.tsx`, `form-draft.ts`, `utils.ts` e
+  `image-input.tsx`).
+- **F2** (as que ninguém tinha listado): `14-paginas-de-conteudo-no-cms.md` citava
+  `frontend/src/lib/util/media.ts` em dois pontos — é `lib/ui/media.ts` desde a F2, e o comentário do
+  `image-input.tsx` repetia o caminho morto.
+- **O `plano-centralizacao.md`, que não existe** (saiu no `6c7feef6e7`): era citado por três
+  comentários (`field-input.tsx`, `form-draft.ts`, `utils.ts`), pelo `content/README.md` e por três
+  pontos do `README.md` — que já tinha a nota sobre os dois arquivos removidos. Todos passam a apontar
+  para `docs/real-valor/15-arquitetura-modular.md` (§15.2 e §15.3), e no `README.md` o mapa das 114
+  asserções da guarda de paridade fica só na mensagem do commit, que é onde ele de fato está.
+- **A tabela de verificação do `README.md` estava seis fases atrás**: `21 suítes / 368 testes` no
+  backend e `4 / 52` no CRM viraram `24 / 424` e `9 / 104`, e o storefront, de `12 arquivos / 173` para
+  `34 / 466` — medido rodando `make test` nesta fase, não copiado de outro doc.
+
+**O que a fase NÃO mexeu, e por quê:** as citações de linha dentro dos arquivos que a F7 **moveu
+inteiros** continuam válidas — o move trocou imports, não deslocou conteúdo (é a prova da própria F7:
+27 arquivos, 21 linhas, todas de import). As que a F7 **editou no lugar** foram conferidas uma a uma e
+reancoradas quando a linha andou: `page.tsx:135-139` → `:139-142` (o `defineRouteConfig` da rota) e
+`useSurfaceSections.ts:327-344` → `:351` (o `restore`, que a F7 deslocou). E o que é **histórico** fica
+onde está: as perguntas abertas da auditoria sobre `/store/orders/track` e o caminho antigo registrado
+no doc 08 e na própria entrada da F8 — o registro de uma mudança é parte da mudança.
+
+**Gate:** `make check` (as cinco guardas; a catraca segue em 334 arquivos, com o mesmo número de
+comentário por arquivo em cada arquivo tocado — trocar uma linha de comentário por outra não move a
+régua) · `make types` (as cinco linhas são comentário, e é isto que o `tsc` confirma) · `make test`
+rodou, embora a fase não seja de código: **24 suítes/424 testes** no backend, **9/104** no CRM e
+**34/466** no storefront — é de onde saem os números que o `README.md` passou a dizer.
+**Arquivos:** `README.md`, `DOCUMENTACAO_REQUISITOS_ADMIN.md`, os docs 01, 08, 09, 10, 12, 14 e 15,
+`frontend/src/app/fonts/README.md`, `backend/src/modules/content/README.md` e os quatro comentários de
+fonte (`components/field-input.tsx`, `lib/form-draft.ts`, `lib/utils.ts`, `components/image-input.tsx`).
+**Pré-requisito:** F8
 
 ### RV-050 · O `yarn build` de produção não fecha (`next/headers` no bundle de cliente) — **ABERTO**
 

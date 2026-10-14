@@ -343,7 +343,7 @@ As três são **dado do contrato, não do painel**: o que pode ser gravado conti
 saindo de `options`, campo a campo, e validado no servidor — o `schema` só leva o
 que o painel precisa para **desenhar**. A bolinha mostra a cor do tema **padrão**
 (num tema de estação a da loja é outra) e a fonte é a mesma da loja, com os
-arquivos `.woff2` copiados para `admin/src/admin/routes/content/fonts/` — o
+arquivos `.woff2` copiados para `admin/src/admin/routes/content/components/fonts/` — o
 navegador do painel não tem nenhuma das três. Quem confere o que a geração não
 cobre é o `make test`: o **md5** dos `.woff2` contra os do storefront e o
 `@font-face` de cada papel (`assets.unit.spec.ts`), o `fallback` de fonte que o
@@ -620,7 +620,7 @@ tem é aceito. É o que faz o formulário mudar sem deploy.
 A página fica em **Conteúdo da vitrine**, na sidebar principal do painel. Desde a
 R7 ela mora no pacote do CRM — `admin/src/admin/routes/content/`, irmão de
 `backend/` — e o Vite do backend é quem a compila (ver
-`docs/plano-centralizacao.md`).
+`docs/real-valor/15-arquitetura-modular.md` §15.3).
 
 Ela **não** vive em `admin/src/admin/routes/settings/`: o dashboard classifica o item pelo
 prefixo do path (`DashboardApp.populateMenus`, `path.startsWith("/settings")`), e o
