@@ -455,8 +455,7 @@ Permitir que a cliente restrinja o catálogo por **cor**, **tamanho**, **faixa d
 
 ### Descrição
 
-Hoje `refinement-list/index.tsx` tem 41 linhas e renderiza **apenas** `<SortProducts>`. Não há
-nenhuma faceta. A referência tem as quatro, e é o padrão mais forte dela que vale adopting.
+Até a Fase 1 o `refinement-list/index.tsx` (41 linhas) renderizava só `<SortProducts>`; hoje existem `filter-panel`, `filter-chips` e `catalog-filters.ts`. A referência tem as quatro, e é o padrão mais forte dela que vale adopting.
 
 O projeto **já tem o padrão certo**: `sortBy` vive na query string e é lido no servidor
 (`categories/[...category]/page.tsx` → `searchParams`). Os filtros devem usar **o mesmo mecanismo**,
@@ -554,9 +553,9 @@ trocar por um índice dedicado (Algolia, Typesense, ou o `search` do Postgres) s
 ```
 Header → campo de busca
   ├─ com ≥2 caracteres: sugestões (debounced, nome + preço)
-  │     └─ Enter → /br/busca?q=termo
+  │     └─ Enter → /br/search?q=termo
   └─ sem termo e foco: nada (não poluir)
-Página /br/busca?q=
+Página /br/search?q=
   → listagem reutilizando PaginatedProducts + filtros (RV-004)
 ```
 
@@ -1061,7 +1060,7 @@ libere o estoque — sem pedido duplicado e sem estoque preso.
 ### Descrição
 
 **Verificado na auditoria:** `backend/src/workflows/` **não existe** — este fluxo é código novo, não
-adaptação. O único subscriber é `order-customer-indexer.ts`, que apenas indexa pedido na conta.
+adaptação. Os subscribers são `order-customer-indexer.ts` (indexa pedido na conta) e `catalog-revalidate.ts` (invalida cache ao mudar catálogo).
 
 O webhook do MP (RV-002) recebe `approved` e precisa disparar a criação do pedido no Medusa.
 

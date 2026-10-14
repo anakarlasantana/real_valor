@@ -367,7 +367,7 @@ próprio container. Trocar por S3 é trocar o `providers` do módulo `file` em
 `backend/medusa-config.ts` — o banco guarda a chave, então nenhum conteúdo precisa migrar.
 
 **A foto colada de fora** (a que a lojista copia do site antigo) sai intacta e é entregue
-**sem otimizar** (`mediaImageProps`, em `frontend/src/lib/util/media.ts`): o otimizador do
+**sem otimizar** (`mediaImageProps`, em `frontend/src/lib/ui/media.ts`): o otimizador do
 `next/image` só busca arquivo do próprio site, e um host que ele não conhece **lança** dentro do
 SSR — medido com uma foto de `cdn.awsli.com.br` no bloco de coleções, a home inteira respondia
 **HTTP 500**. É por isso que nenhum host de terceiro precisa entrar em `images.remotePatterns`.
@@ -431,7 +431,7 @@ prontos. O status item a item está no doc 09; o requisito, no doc 04.
 | CMS da vitrine | ✅ `admin/…/content` | ✅ `/admin/content` | **Pronto** |
 | Tema sazonal | ✅ `lib/theme.ts` | ✅ payload de tema | **Pronto** |
 | Lista de produtos | ✅ `paginated-products` | ✅ Store API | **Pronto** |
-| Filtros | ✅ `lib/catalog/catalog-filters.ts` | ✅ `option_value` na Store API | **Pronto** |
+| Filtros | ✅ `lib/catalog/catalog-filters.ts` | ⚠️ em memória (Store API não filtra cor/tamanho/disponibilidade) | **Pronto** |
 | Busca | ✅ `/search?q=…` | ✅ `q` na Store API | **Pronto** |
 | Detalhe do produto | ✅ `products/[handle]` | ✅ | **Pronto** |
 | Variantes e estoque | ✅ `product-actions` | ✅ | **Pronto** |

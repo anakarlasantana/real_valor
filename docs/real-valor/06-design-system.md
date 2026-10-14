@@ -159,7 +159,7 @@ for mais larga que a tela. Com o conteúdo que está no ar — duas mensagens cu
 cobria um terço de uma tela de 1440: o texto saía pela esquerda e o vão entrava pela direita antes de a
 cópia chegar, com a faixa preta à vista em todo desktop e **nenhum** buraco no celular (abaixo de ~560px
 a volta já cobria a tela — é a assinatura do defeito). São duas metades, e as duas têm uma razão de ser:
-as **cópias** (`tickerCopies`, `lib/util/ticker.ts`) repetem a lista dentro da volta sem mudar o vão
+as **cópias** (`tickerCopies`, `lib/content/ticker.ts`) repetem a lista dentro da volta sem mudar o vão
 entre mensagens, e a duração da volta passa a ser `speedSeconds × cópias` (`tickerLapSeconds`) — o que
 mantém o rótulo do contrato verdadeiro, porque a mensagem continua reaparecendo a cada `speedSeconds`;
 e o **piso** (`.rv-announce-strip .rv-marquee-group { min-width: 100vw }`, com `justify-content:
@@ -295,7 +295,7 @@ Sombras **muito suaves**, coerentes com a paleta clara. **Manter.**
 
 ### 6.5.3 Componentes novos necessários
 
-Mapeados para a Fase 1 — **todos propostos, nenhum existe**:
+Mapeados para a Fase 1 — **filtros, busca e InstallmentInfo já existem**; os demais são propostos:
 
 | Componente | Requisito | Onde vive |
 | :--- | :--- | :--- |
@@ -317,9 +317,9 @@ Mapeados para a Fase 1 — **todos propostos, nenhum existe**:
 
 ### 6.5.4 Ícones
 
-**Verificado:** `modules/common/icons/` tem 13 ícones (`bancontact`, `ideal`, `paypal`, `refresh`,
+**Verificado:** `modules/common/icons/` tem 10 ícones (`refresh`, 
 `package`, `trash`, `x`, `spinner`, `user`, `map-pin`, `fast-delivery`, `eye`, `eye-off`) e
-`types/icon.ts` tipa o registro. O CMS tem `lib/content/icons.ts`.
+`lib/ui/types.ts` tipa o registro. O CMS tem `lib/content/icons.ts`.
 
 **Lacuna:** **não há ícone de busca (lupa)** — necessário para RV-005. Nem ícone de filtro. Os ícones
 de pagamento do MP também precisarão ser adicionados.
