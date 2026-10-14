@@ -7,7 +7,7 @@
  * traduz a resposta HTTP em uma situação que a página sabe desenhar, e é só
  * isso.
  *
- * **Duas decisões que valem explicar.**
+ * **Três decisões que valem explicar.**
  *
  * **1. `cache: "no-store"`.** É a única função do storefront que não usa
  * cache. As outras respostas são públicas e iguais para todo mundo; esta tem o
@@ -15,25 +15,27 @@
  * uma consulta poderia ser servida para outra pessoa, e o dado errado aqui é o
  * pedido de outra pessoa.
  *
- * **2. O CPF não aparece em lugar nenhum.** Não vai para a URL do Next, não vai
- * para log, não vai para mensagem de erro. Uma página de consulta que passa a
- * cliente pelo `searchParams` é uma página de consulta cujo histórico fica no
- * navegador e no histórico do servidor. Por isso a consulta só acontece
- * **depois que a cliente aperta o botão**, dentro do componente: a URL da
- * página nunca carrega o CPF, e o que fica registrado da visita é a rota — não
- * o documento.
+ * **2. `"use server"` — requisito, não estilo.** Quem importa isto por valor é
+ * um componente `"use client"` (`modules/tracking/templates/index.tsx`), e um
+ * módulo comum arrastaria o `sdk` do `@lib/config` — junto com o `next/headers`
+ * de onde ele lê o idioma — para o bundle do cliente: o `next build` morre
+ * antes de emitir CSS (`RV-050`). É a mesma diretiva de `cart`, `orders` e
+ * `customer`.
+ *
+ * **3. O CPF não aparece em lugar nenhum.** Não vai para a URL do Next, não vai
+ * para log, não vai para mensagem de erro: uma página que passa a cliente pelo
+ * `searchParams` tem histórico no navegador e no servidor. Por isso a consulta
+ * só acontece **depois que a cliente aperta o botão** — e a URL da página
+ * nunca carrega o CPF.
  */
+"use server"
+
 import { sdk } from "@lib/config"
 import type { RespostaRastreio, SituacaoRastreio } from "./tracking-types"
 
 /**
- * O que a página precisa saber, em vez do JSON cru do backend.
- *
- * São quatro situações, e a distinção entre elas é o que a página desenha:
- * pendente (a loja ainda não preencheu), não encontrado (não existe),
- * recusado (a identidade não bate) e erro (algo quebrou).
- *
- * O "não encontrado" e o "recusado" são separados de propósito: a resposta 403
+ * O que a página precisa saber, em vez do JSON cru do backend: o "não
+ * encontrado" e o "recusado" são separados de propósito — a resposta 403
  * **existe** e não muda o status do pedido no Medusa.
  */
 export type ResultadoRastreio =

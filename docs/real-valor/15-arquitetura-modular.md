@@ -227,7 +227,7 @@ que impede o refactor de ser um "depois eu volto".
 | **F3** (feita) | convenção de teste: os 30 specs de unidade → `__tests__/<alvo>.unit.spec.ts` (colado no alvo) e os 2 de arquitetura → `src/__checks__/`; as 20 specs de `lib/` com import relativo passaram a `../<alvo>`, os cinco `index.spec.tsx` de componente a `from ".."`, e os dois `__checks__` tiveram os caminhos de leitura refeitos. O baseline da convenção ficou vazio | convenção 32 → 0 | `yarn test` (34) · `STOREFRONT_RUNNER=1` |
 | **F4** (feita) | `src/types` (2 arquivos) dissolvido: `VariantPrice`, `ProductColor` e `ProductEnrichment` para `lib/catalog/types.ts`, o `IconProps` para `lib/ui/types.ts` e o `StoreFreeShippingPrice` para `lib/checkout/types.ts`; os 19 imports do caminho NU (`from "types/global"`) passaram ao apelido, e os 4 adapters que subiam `../../types` a `@lib/payments/types` | R-A/R-C sem regressão | `make types` |
 | **F5** (feita) | os ciclos: o locale vira FOLHA (`lib/medusa/locale-cookie.ts`, que só importa `next/headers`) e o SDK e o dado passam a ler dela; a `enum LOGIN_VIEW` sai do template para `modules/account/lib/login-view.ts`. A promessa de `R-C 1 → 0` era falsa: a exceção que sobra é do adapter Stripe | R-C 2 → 1 · R-E 6 → 3 | `make check` |
-| **F6** | ✅ `brand.css` (5.248 linhas) partido em 18 parciais + manifesto, com prova de concatenação byte a byte (na fonte e no bundle) | catraca (`--write`) | GET `/br` · o `yarn build` **não fecha** por defeito anterior a ela (RV-050, no doc 09) |
+| **F6** | ✅ `brand.css` (5.248 linhas) partido em 18 parciais + manifesto, com prova de concatenação byte a byte (na fonte e no bundle) | catraca (`--write`) | GET `/br` · o `yarn build` **não fecha** por defeito anterior a ela (RV-050, no doc 09 — fechado em 13/10/2026) |
 | **F7** | ✅ CRM: `admin/src/admin/routes/content/` (23 arquivos + 3 diretórios) → `page.tsx` + `components/` + `hooks/` + `lib/`; `widgets/` só com o entrypoint (a regra pura foi para `admin/src/admin/lib/`), com prova de que só as 21 linhas de import mudaram nos 27 arquivos movidos | `make build-admin` + smoke |
 | **F8** | ✅ backend: `mercadopago/service.ts` (828 → **481**) + `decisao`/`status`/`notificacao`/`estorno`/`boot`; `api/admin/content/route.ts` (488 → **438**) + `lib/resposta` e `lib/gravacao`; `scripts/seed.ts` (569 → **87**) + `seed/` com seis passos; `api/store/custom/checkout-info` → **`api/store/checkout/info`** (a URL pública passa a ser `/store/checkout/info`) | `make test` (24 suítes/424 testes) | smoke do pagamento (5 specs/96 asserções) |
 | **F9** | ✅ docs: as citações de caminho e de linha reancoradas — as que a F2, a F6, a F7 e a F8 tornaram falsas, mais as do `plano-centralizacao.md`, que não existe desde o `6c7feef6e7`; e o doc 09 ganha o "FEITO (hash)" de cada fase (F7 `fd42c25831`, F8 `fc3b7d77d3`) | — | revisão |
@@ -271,19 +271,21 @@ no `make test`, e não no `make check`.
 | `lib/data/cart.ts` | 421 linhas (eram 476: a F1 tirou as 4 funções mortas) | ✅ F1 |
 | `src/types` sem dono de camada | 2 arquivos · 52 linhas | ✅ F4 — os tipos foram para `lib/{catalog,ui,checkout}/types.ts` |
 | `brand.css` | 5.248 linhas, 2.039 de comentário | ✅ F6 + F10 — virou dezoito parciais + manifesto, sem perder um byte (F6); a narrativa da régua foi cortada na F10 (os quatro piores: 207/197/158/158 → 70/60/54/55 linhas de comentário) |
-| O `yarn build` de produção | achado na F6, mas **anterior** a ela, e reproduzido no HEAD da F10: `next/headers` alcança um bundle de cliente pelo `lib/config` (RV-050) | fora do lote — o item e o aceite estão no doc 09 |
+| O `yarn build` de produção | achado na F6, mas **anterior** a ela: o `next/headers` alcançava um bundle de cliente pelo `lib/config` (RV-050) | ✅ 13/10/2026 — `"use server"` no `lib/data/tracking.ts`: o `next build` compila e fecha, com a cadeia (`lib/config.ts`, `locale-cookie.ts`, o componente) intacta |
 
-Fora deste lote (não é F0–F10, e não entra no meio de uma fase) sobra **um** item, e ele
-é defeito:
+Fora deste lote (não é F0–F10, e não entra no meio de uma fase) **não sobra nenhum** item — o
+último saiu em 13/10/2026, e era defeito:
 
-- **o `yarn build` de produção** (RV-050) — a F10 o reproduziu no HEAD: `Failed to
-  compile` em `lib/medusa/locale-cookie.ts`, o mesmo trace da F6 (`locale-cookie` →
-  `get-locale-header` → `lib/config.ts` → `lib/data/tracking.ts` →
-  `modules/tracking/templates/index.tsx`), e nenhum dos 43 arquivos que a F8–F10
-  mudaram está na cadeia. O item e o aceite estão no doc 09.
+- **o `yarn build` de produção** (RV-050) — a F10 o reproduziu no HEAD (`Failed to compile` em
+  `lib/medusa/locale-cookie.ts`, o mesmo trace da F6) e a correção foi uma linha: `"use server"` em
+  `lib/data/tracking.ts`, o único módulo de `lib/data` que um componente `"use client"` importava por
+  valor sem a diretiva. Sem ela, o `sdk` do `lib/config` — junto com o `next/headers` de onde ele lê o
+  idioma — entrava no bundle do cliente. O build agora compila (`✓ Compiled successfully`) e fecha, e
+  nenhum arquivo da cadeia foi tocado; a medição, o antes e o depois e a armadilha do `NODE_ENV` de
+  desenvolvimento estão na entrada do RV-050 no doc 09.
 
-**Três dívidas que constavam aqui saíram da lista em 13/10/2026**, porque a verificação
-mostrou que não são trabalho:
+**Três dívidas que constavam aqui saíram da lista em 13/10/2026** (além do RV-050, acima),
+porque a verificação mostrou que não são trabalho:
 
 - **o push do `develop`** — o lote F0–F10 está no remoto: `origin/develop` é o
   `a4bf6d441a`, o commit que fecha os hashes das fases. Isso vale também para o

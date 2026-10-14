@@ -388,7 +388,8 @@ que passaram a ler o manifesto (o `ruler.spec.ts` verde: 34 arquivos/466 testes 
 **Gate:** `make check` · `make types` · `make test` (24 suítes/424 no backend, 9/104 no CRM, 34/466 no
 storefront) · GET `/br`, `/br/store` e `/br/account` = 200, com os parciais no CSS servido (regras dos
 parciais 1, 3, 17 e 18 presentes, e **zero** `@import` cru). ⚠️ O `yarn build` de produção **não
-fecha** — e não por esta fase: é o RV-050, abaixo, reproduzido com a árvore limpa.
+fecha** — e não por esta fase: é o RV-050, abaixo, reproduzido com a árvore limpa (**fechado em
+13/10/2026**; a medição está na entrada dele mais abaixo).
 **Arquivos:** *novos:* os dezoito de `frontend/src/styles/brand/` ·
 *alterados:* `frontend/src/styles/brand.css` (vira o manifesto),
 `frontend/src/__checks__/ruler.spec.ts`,
@@ -637,10 +638,11 @@ linha que esta fase tornou falsa**, e nenhuma delas é arquivo de fonte do backe
   `backend/src/api/admin/content/route.ts:174` (a regra continua no arquivo, mas em outra linha).
 
 **Dívida que seguia aberta no doc (não é da F8):** RV-050 (o `next build` de produção), a migração
-`Migration20260929204616`, o split do `c7df56fc85` e o `git push develop`. Três dos quatro saíram da
-lista em 13/10/2026, na reconciliação da F10 — a migração está aplicada, o push é o `a4bf6d441a` e o
-split perdeu o objeto (16 dos 32 arquivos dele foram reescritos pela F2, F5, F8 e F10) —, e sobrou o
-RV-050; o veredito está no doc 15, §15.8.
+`Migration20260929204616`, o split do `c7df56fc85` e o `git push develop`. Os quatro saíram da lista em
+13/10/2026 — três na reconciliação da F10 (a migração está aplicada, o push é o `a4bf6d441a` e o split
+perdeu o objeto: 16 dos 32 arquivos dele foram reescritos pela F2, F5, F8 e F10) e o RV-050 na correção
+do `"use server"` no `lib/data/tracking.ts`, que faz o `next build` fechar. A medição está na entrada do
+RV-050, aqui em cima, e o veredito no doc 15, §15.8.
 
 ### ✅ F9 · As citações reancoradas — **FEITO** (`712038e90c`)
 
@@ -757,7 +759,7 @@ quatro parciais de CSS) e 2 do CRM (`api-url.ts`, `field-input.tsx`) —, mais
 
 ---
 
-### RV-050 · O `yarn build` de produção não fecha (`next/headers` no bundle de cliente) — **ABERTO**
+### ✅ RV-050 · O `yarn build` de produção não fecha (`next/headers` no bundle de cliente) — **CONCLUÍDO (13/10/2026)**
 
 **Descrição:** o `next build` reprova em `src/lib/medusa/locale-cookie.ts` com `You're importing a
 component that needs "next/headers"` — o `next/headers` alcança um bundle **de cliente** pela cadeia
@@ -775,6 +777,40 @@ da cadeia (só CSS e dois specs).
 **Aceite:** `next build` verde com a régua partida — a prova de concatenação da F6 já está feita nos
 outros dois níveis (a fonte e o bundle do dev), e é este o gate que sobra
 **Pré-requisito:** nenhum — achado na F6 e registrado aqui como manda a regra do lote (§15.6)
+
+**O que era, medido na correção (13/10/2026).** O build no `develop` (`a4bf6d441a`) dá **um** erro, e o
+trace já nomeia o caminho: `locale-cookie.ts` → `get-locale-header.ts` → `lib/config.ts` →
+`lib/data/tracking.ts` → `modules/tracking/templates/index.tsx`. O `tracking.ts` era o **único** dos 20
+módulos de `frontend/src/lib/data` sem diretiva (17 são `"use server"`, `cookies.ts` é `server-only` e
+`tracking-types.ts` só tem tipo) importado **por valor** por um componente `"use client"`. Os irmãos
+escapam porque `"use server"` troca o import do cliente por uma **referência de action** — o módulo nunca
+entra no bundle. Sem a diretiva, o grafo do cliente levava o `sdk` inteiro junto, e o `lib/config.ts`
+embrulha o `fetch` para injetar o `x-medusa-locale`: é a leitura desse cookie, no `next/headers`, que o
+webpack recusa em bundle de cliente.
+
+**A correção.** `"use server"` em `frontend/src/lib/data/tracking.ts`, mais a nota da armadilha no
+cabeçalho do arquivo. A consulta passa a rodar no servidor, dentro de uma server action: o CPF continua
+fora da URL (vai no corpo do POST, no mesmo domínio) e o idioma passa a ser lido **de verdade** — no
+navegador `cookies()` não existe e o `readLocale` devolvia `null` em silêncio. É a forma que `cart`,
+`orders` e `customer` já tinham. Nenhum arquivo da cadeia foi tocado (`lib/config.ts`,
+`locale-cookie.ts` e o componente cliente ficam como estavam): a cadeia é cortada na origem, não
+remendada.
+
+**Medido:**
+- *antes* — `Failed to compile` / `Build failed because of webpack errors`, 1 erro, o trace acima, e
+  nenhum CSS emitido;
+- *depois* — `✓ Compiled successfully` e o build **fecha** (o aceite), com `/[countryCode]/rastreio` na
+  tabela de rotas: 56 linhas de log, **0** erro;
+- `make check` verde com o **mesmo** total de comentário (`frontend/src: 8792`, o baseline): a nota da
+  armadilha foi paga cortando o ensaio do bloco `ResultadoRastreio` — 17 inserções e 15 remoções no
+  arquivo. `make types` e `make test` verdes nos três pacotes.
+
+**Armadilha da medição local.** Com `NODE_ENV=development` exportado no shell, o `next build` avisa
+`non-standard NODE_ENV` e **falha depois de compilar**, no pré-render do `/_error` (`<Html> should not be
+imported outside of pages/_document`) — é o react-dom de desenvolvimento, não o storefront. O build roda
+como a CI (`check.yml`) e o `Dockerfile` rodam: `cd frontend && yarn build`, sem `NODE_ENV` no ambiente.
+
+**Entregue:** `frontend/src/lib/data/tracking.ts` (a diretiva e a nota).
 
 ---
 
