@@ -271,11 +271,29 @@ no `make test`, e não no `make check`.
 | `lib/data/cart.ts` | 421 linhas (eram 476: a F1 tirou as 4 funções mortas) | ✅ F1 |
 | `src/types` sem dono de camada | 2 arquivos · 52 linhas | ✅ F4 — os tipos foram para `lib/{catalog,ui,checkout}/types.ts` |
 | `brand.css` | 5.248 linhas, 2.039 de comentário | ✅ F6 + F10 — virou dezoito parciais + manifesto, sem perder um byte (F6); a narrativa da régua foi cortada na F10 (os quatro piores: 207/197/158/158 → 70/60/54/55 linhas de comentário) |
-| O `yarn build` de produção | achado na F6, mas **anterior** a ela: `next/headers` alcança um bundle de cliente (RV-050) | fora do lote — o item está no doc 09 |
+| O `yarn build` de produção | achado na F6, mas **anterior** a ela, e reproduzido no HEAD da F10: `next/headers` alcança um bundle de cliente pelo `lib/config` (RV-050) | fora do lote — o item e o aceite estão no doc 09 |
 
-Fora deste lote (não é F0–F10, e não entra no meio de uma fase): o push do `develop`
-(o commit `c7df56fc85` está local), a migration pendente
-(`Migration20260929204616`, `content_section` → `content_block`) e a divisão do
-`c7df56fc85` em quatro commits, se ela ainda fizer sentido depois da F2 — as duas
-fases mexeram justamente nos arquivos que ele tocou, e a resposta certa pode ser
-"não mexe".
+Fora deste lote (não é F0–F10, e não entra no meio de uma fase) sobra **um** item, e ele
+é defeito:
+
+- **o `yarn build` de produção** (RV-050) — a F10 o reproduziu no HEAD: `Failed to
+  compile` em `lib/medusa/locale-cookie.ts`, o mesmo trace da F6 (`locale-cookie` →
+  `get-locale-header` → `lib/config.ts` → `lib/data/tracking.ts` →
+  `modules/tracking/templates/index.tsx`), e nenhum dos 43 arquivos que a F8–F10
+  mudaram está na cadeia. O item e o aceite estão no doc 09.
+
+**Três dívidas que constavam aqui saíram da lista em 13/10/2026**, porque a verificação
+mostrou que não são trabalho:
+
+- **o push do `develop`** — o lote F0–F10 está no remoto: `origin/develop` é o
+  `a4bf6d441a`, o commit que fecha os hashes das fases. Isso vale também para o
+  `c7df56fc85`, que a versão anterior deste parágrafo dava como local;
+- a migration `Migration20260929204616` **está aplicada** — comitada em `70ecff63e2`
+  (no remoto) e no banco de dev (`mikro_orm_migrations` id 178, `executed_at`
+  2026-10-06 00:17:25 UTC, em lote com as 179 e 180); o schema bate com o `up()`
+  (`content_section` existe, `content_block` não, a coluna `title` caiu) e o
+  `.snapshot-content.json` já foi regerado, que é o que o README do módulo exige.
+  O que resta é rodá-la no ambiente de publicação — e isso não é deste repo;
+- o split do `c7df56fc85` **perdeu o objeto**: **16 dos 32** arquivos dele foram
+  reescritos pela F2, F5, F8 e F10, então re-fatiar hoje não reconstrói a mesma
+  mudança — a divisão em quatro commits fica **encerrada**, não adiada.

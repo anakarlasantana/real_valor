@@ -636,9 +636,11 @@ linha que esta fase tornou falsa**, e nenhuma delas é arquivo de fonte do backe
 - `docs/real-valor/14-paginas-de-conteudo-no-cms.md:464` —
   `backend/src/api/admin/content/route.ts:174` (a regra continua no arquivo, mas em outra linha).
 
-**Dívida que segue aberta no doc (não é da F8):** RV-050 (o `next build` de produção), a migração
-`Migration20260929204616`, o split do `c7df56fc85` e o `git push develop` — que é o que fecha os
-hashes das fases.
+**Dívida que seguia aberta no doc (não é da F8):** RV-050 (o `next build` de produção), a migração
+`Migration20260929204616`, o split do `c7df56fc85` e o `git push develop`. Três dos quatro saíram da
+lista em 13/10/2026, na reconciliação da F10 — a migração está aplicada, o push é o `a4bf6d441a` e o
+split perdeu o objeto (16 dos 32 arquivos dele foram reescritos pela F2, F5, F8 e F10) —, e sobrou o
+RV-050; o veredito está no doc 15, §15.8.
 
 ### ✅ F9 · As citações reancoradas — **FEITO** (`712038e90c`)
 
