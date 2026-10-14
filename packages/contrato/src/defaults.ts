@@ -5,33 +5,10 @@ import {
 } from "./contract.ts"
 
 /**
- * Conteúdo padrão da home — a cópia exata do protótipo.
- *
- * Uma exceção, e ela está marcada na própria seção: `lancamentos` (o trilho de
- * novidades depois do hero) não existe no protótipo — a cópia dela foi escrita
- * aqui, na voz da marca, e é o ponto de partida que o lojista troca no CRM
- * inteiro. As demais são cópia literal.
- *
- * Usado por três caminhos:
- *   1. `scripts/seed-content.ts` popula o banco com isto quando a base nasce
- *      (`make seed`), pela CLI.
- *   2. `POST /admin/content/restore` — o botão "Restaurar padrão" do CRM — faz
- *      a mesma coisa pelo painel, para uma base que subiu vazia ou uma seção
- *      apagada por engano. As duas portas chamam a mesma função
- *      (`modules/content/restore.ts`), de propósito.
- *   3. O frontend usa como fallback se a API de conteúdo falhar, para
- *      que a vitrine nunca caia por causa do CMS.
- *
- * Nos três casos este arquivo é a única cópia: desde o G5 o storefront importa
- * este módulo pelo pacote (`@rv/contrato`) como o backend — o artefato gerado
- * (`contract.generated.ts`) morreu com a cópia.
- *
- * Imagem aponta para `/brand/*.jpg` (servida pelo Next, em
- * `frontend/public/brand`) enquanto for a foto do protótipo. Depois do primeiro
- * envio pelo CRM o valor gravado é a **chave** do arquivo
- * (`1699999999-hero.jpg`): quem traduz chave → endereço é o `resolveMediaUrl`
- * do storefront (`frontend/src/lib/util/media.ts`), e por isso os dois formatos
- * convivem sem migração.
+ * Conteúdo padrão da home — a cópia do protótipo, com a exceção marcada na
+ * própria seção: `lancamentos`, que não existe nele. Usado pelo seed, pelo
+ * "Restaurar padrão" do CRM e pelo fallback do frontend quando a API falha.
+ * A imagem aponta `/brand/*.jpg` ou a chave do arquivo (`resolveMediaUrl`).
  */
 export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
   {
@@ -39,30 +16,14 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     type: "announcement",
     enabled: true,
     position: 1,
-    /**
-     * A mensagem única é a de sempre — continua sendo o que a barra mostra
-     * quando não há ticker —, e o ticker nasce com a **mesma informação**
-     * separada em duas mensagens: uma por peça de informação, que é o que dá ao
-     * ticker o que rolar.
-     *
-     * Nada de copy nova aqui. O padrão não pode prometer o que a loja não
-     * combinou (prazo de troca, frete grátis) só porque a barra ganhou
-     * movimento; quem escreve mensagem nova é o lojista, no CRM.
-     */
+    /** A mensagem única (o que a barra mostra sem ticker) e o ticker com a
+     * **mesma informação** em duas mensagens. Nada de copy nova no padrão. */
     text: "Frete seguro para todo o Brasil · Até 6x sem juros",
     messages: ["Frete seguro para todo o Brasil", "Até 6x sem juros"],
     speedSeconds: ANNOUNCEMENT_SPEED_DEFAULT,
   },
-  /**
-   * Cabeçalho. Não é uma seção da home — o layout o renderiza em todas
-   * as rotas —, mas é conteúdo como qualquer outro, então mora aqui e
-   * ganha um bloco no seed. A casa dele é **2**, a segunda do bloco ancorado
-   * (`FIXED_SECTION_POSITIONS`, no contrato), e a posição não decide o render
-   * da home: quem desenha o cabeçalho em todas as rotas é o layout.
-   *
-   * O fallback do storefront (`DEFAULT_HEADER`) é derivado deste bloco pelo
-   * gerador — não há segunda cópia.
-   */
+  /** Cabeçalho: não é seção da home (o layout o renderiza em todas as rotas),
+   * mas é conteúdo e mora aqui — casa **2**, e `DEFAULT_HEADER` deriva daqui. */
   {
     id: "nav",
     type: "nav",
@@ -81,15 +42,9 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
       { icon: "search", label: "Buscar", href: "/search" },
     ],
   },
-  /**
-   * A capa. É a **abertura da home**: a vitrine a desenha, mas ela não entra na
-   * ordem das setas — junto com a faixa de benefícios, é o começo da página, e
-   * não conteúdo que se reordena (casa 3, ver `FIXED_SECTION_POSITIONS`).
-   *
-   * Nasce com **um** slide: é a capa estática de sempre (a foto e a cópia do
-   * protótipo), e é o mínimo que a seção desenha — a lista é a capa inteira
-   * desde a v9, e sem slide nenhum não há capa.
-   */
+  /** A capa: a **abertura da home**, desenhada pela vitrine mas fora da ordem
+   * das setas (casa 3, com os benefícios). Nasce com **um** slide — a capa
+   * estática —, e sem slide nenhum não há capa. */
   {
     id: "hero",
     type: "hero",
@@ -107,36 +62,20 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
         ctaHref: "/store",
       },
     ],
-    /**
-     * A nota da capa — a linha do canto, a que o protótipo redesenhado escreve
-     * sobre a foto. É cópia nova (a capa não a tinha), e é **da faixa**: no
-     * carrossel ela não troca junto com a foto.
-     */
+    /** A nota da capa: a linha do canto sobre a foto, **da faixa** — no
+     * carrossel ela não troca junto com a foto. */
     note: "Peças que acompanham quem você é — e quem está se tornando.",
   },
-  /**
-   * A faixa de benefícios. Fecha a **abertura da home** (casa 4) e nasce fixa,
-   * como a capa: o que o lojista ordena pelas setas começa depois dela.
-   */
+  /** A faixa de benefícios. Fecha a **abertura da home** (casa 4) e nasce fixa,
+   * como a capa: o que o lojista ordena pelas setas começa depois dela. */
   {
     id: "benefits",
     type: "benefits",
     enabled: true,
     position: 4,
-    /**
-     * Os **três** itens do protótipo redesenhado (a faixa nasceu com quatro).
-     *
-     * A cópia é a do protótipo, e é promessa comercial — frete grátis acima de
-     * R$ 499, 5% no Pix, dados protegidos. Fica gravada porque é ela que a régua
-     * desenha; quem confere se a loja cumpre (e troca a frase no CRM) é o
-     * lojista, como em qualquer outro texto do conteúdo padrão.
-     *
-     * As chaves de ícone são as que o registro da vitrine já tem: `delivery` é o
-     * caminhão, `price` a etiqueta e `quality` o selo de garantia. Um par
-     * `truck`/`sparkle`/`shield` novo exigiria chave nova no registro do
-     * storefront **e** no `ICON_LABELS` do contrato, que é a lista que o CRM
-     * oferece — três sinônimos para os mesmos desenhos.
-     */
+    /** Os **três** itens do protótipo (a faixa nasceu com quatro). A cópia é a
+     * dele e é promessa comercial: quem confere se a loja cumpre é o lojista.
+     * As chaves de ícone são as que o registro do storefront já tem. */
     items: [
       {
         icon: "delivery",
@@ -160,8 +99,7 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     type: "launches",
     enabled: true,
     position: 5,
-    // Cópia escrita AQUI, e não copiada do protótipo: ele não tem esta seção.
-    // É ponto de partida na voz da marca — o lojista troca tudo no CRM.
+    // Cópia escrita AQUI: o protótipo não tem esta seção.
     eyebrow: "Novidades",
     title: "Chegou agora",
     subtitle:
@@ -206,25 +144,16 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
       },
     ],
   },
-  /**
-   * A seção "Sobre" (o manifesto). Casa **7**: o protótipo redesenhado põe o
-   * manifesto logo antes da faixa editorial, e é essa a ordem que a loja lê.
-   */
+  /** A seção "Sobre" (o manifesto). Casa **7**: o protótipo põe o manifesto
+   * logo antes da faixa editorial. */
   {
     id: "editorial",
     type: "editorial",
     enabled: true,
     position: 7,
     script: "Vista o seu valor.",
-    /**
-     * O eyebrow e o realce do título são os dois campos que a v10 acrescentou:
-     * com eles o título sai em duas vozes, como no protótipo ("Você não precisa
-     * provar nada." / "Só precisa se reconhecer.").
-     *
-     * A cópia do título continua sendo a da marca — o protótipo é a **régua do
-     * desenho**, e a frase com que a REAL VALOR se apresenta não é detalhe de
-     * layout. Quem a troca é o lojista, no CRM.
-     */
+    /** O eyebrow e o realce do título (o título em duas vozes, como no
+     * protótipo). A cópia do título é a da marca: quem a troca é o lojista. */
     eyebrow: "NOSSA ESSÊNCIA",
     title: "A alfaiataria que valoriza você,",
     titleEmphasis: "não o seu status.",
@@ -235,17 +164,8 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     imageAlt: "Detalhes de alfaiataria Real Valor",
     imagePosition: "left",
   },
-  /**
-   * A faixa editorial (`banner`, "Banner editorial" no CRM): a última faixa do
-   * protótipo redesenhado — a foto inteira, o eyebrow, o título em duas linhas
-   * e o botão para o catálogo. Casa **8**, logo depois do manifesto; os extras
-   * da loja (os destaques e o Instagram) ficam depois dela.
-   *
-   * A cópia é a do protótipo, palavra por palavra: aqui não havia cópia da
-   * marca para preservar — a seção é nova. A foto é a `/brand/story-2.jpg` (a
-   * outra do manifesto, que ainda não aparecia na home), e o destino do botão é
-   * `/store`, o mesmo das outras chamadas.
-   */
+  /** A faixa editorial (`banner`): a última do protótipo — foto inteira, eyebrow,
+   * título em duas linhas e botão. Casa **8**, logo depois do manifesto. */
   {
     id: "banner",
     type: "banner",
@@ -270,39 +190,13 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
       "Uma vitrine editorial com navegação simples, foco no produto e preço sempre visível.",
     viewAllLabel: "Ver todos os produtos",
   },
-  /**
-   * Rodapé. Como o `nav`, não é uma seção da home: o layout o renderiza
-   * em todas as rotas. A casa dele é **10** — a que fecha o bloco ancorado —, e
-   * é ela que a renumeração pula: as seções ordenáveis ocupam as casas livres
-   * (5 a 9 e, a partir da sexta, 11) e nunca nascem na 10
-   * (`FIXED_SECTION_POSITIONS`, no contrato).
-   *
-   * O fallback do storefront (`DEFAULT_FOOTER`) é derivado deste bloco pelo
-   * gerador — não há segunda cópia.
-   *
-   * `columns` nasce com as **duas colunas da referência** —
-   * "Institucional" e "Atendimento" —, e cada link delas é uma porta para uma
-   * **página declarada** (`PAGE_SURFACES`): o `href` é o `id` da superfície, e
-   * quem prefixa o país é o `nav-link`. Foi o PR1 do doc 14 que deu destino a
-   * estas colunas; antes dele, "Institucional" seria um título prometendo o que
-   * não existia — o defeito que o doc 13 mediu ("promessa no ar sem página que a
-   * sustente").
+  /** Rodapé: como o `nav`, aparece em todas as rotas (quem desenha é o layout) e
+   * a casa dele é **10** — a renumeração a pula. `DEFAULT_FOOTER` deriva daqui.
    *
    * ⚠️ **A régua de publicação: um link só vai ao ar quando o destino responde
-   * 200.** Dois dos oito respondem sem depender de copy — `/rastreio` (RV-044) e
-   * o `mailto:` que o menu já publica —; os seis de página (`/sobre`,
-   * `/trocas-e-devolucoes`, `/privacidade`, `/termos`, `/contato`,
-   * `/perguntas-frequentes`) respondem **404 enquanto a página estiver vazia**
-   * (decisão 7). O padrão é o **molde de lançamento**: ele traz as colunas
-   * inteiras, e ativá-las sem a copy trocaria "o link não existe" por "o link
-   * está quebrado".
-   *
-   * A coluna continua sendo conteúdo: o lojista insere, edita, reordena e
-   * remove todas pelo mesmo editor do admin — digitando os links ou apontando a
-   * coluna para o catálogo (`source`). O que o padrão entrega é o **nome** das
-   * colunas e o destino certo já apontado (/rastreio, /sobre, …), para o
-   * rodapé não depender de alguém lembrar da URL.
-   */
+   * 200.** Os seis links de página respondem **404 enquanto a página estiver
+   * vazia**, então ativar as colunas sem a copy trocaria "o link não existe" por
+   * "o link está quebrado" — o padrão é o molde de lançamento. */
   {
     id: "footer",
     type: "footer",
@@ -362,18 +256,8 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
       },
     ],
   },
-  /**
-   * O Instagram. É a **sexta seção ordenável** da vitrine, e por isso nasce na
-   * casa **11**: a casa 10 é do rodapé (`FIXED_SECTION_POSITIONS`), e a
-   * renumeração das ordenáveis a pula — 5, 6, 7, 8, 9 e 11. É também por isso
-   * que este bloco é o **último do arquivo**: a lista é escrita na ordem das
-   * casas, e a 11 vem depois da 10.
-   *
-   * O título deixou de ser "Mais que roupas, é sobre você.": essa linha passou a
-   * ser a da faixa editorial (`banner`), que é onde o protótipo a escreve. Duas
-   * faixas com o mesmo título na mesma página seriam repetição; o Instagram diz
-   * o que ele é — o convite para seguir o perfil.
-   */
+  /** O Instagram: a **sexta seção ordenável**, que nasce na casa **11** (a 10 é
+   * do rodapé), e por isso é o último bloco do arquivo. */
   {
     id: "instagram",
     type: "instagram",
@@ -393,34 +277,15 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
         imageAlt: "Real Valor no Instagram",
       },
     ],
-    /**
-     * A faixa **rola** já no padrão, e é por isso que a velocidade nasce
-     * declarada aqui: quatro fotos com um ritmo comum são o convite que a seção
-     * existe para fazer, e é o mesmo arranjo do ticker da barra de anúncio
-     * (que também nasce com a velocidade do padrão). A unidade é por imagem —
-     * seis segundos cada, como o `INSTAGRAM_SPEED_DEFAULT` diz —, e não por
-     * volta: subir ou tirar foto não muda o ritmo de quem está olhando.
-     */
+    /** A faixa **rola** já no padrão: quatro fotos no ritmo comum do
+     * `INSTAGRAM_SPEED_DEFAULT`, que é por imagem, como no ticker da barra. */
     secondsPerImage: INSTAGRAM_SPEED_DEFAULT,
   },
 ]
-/**
- * As categorias que o padrão liga aos chips da vitrine.
- *
- * São **handles**, e não ids: o id de uma categoria é criado pelo seed a cada
- * base (`pcat_…`), então um id escrito aqui não existiria em lugar nenhum. O
- * `handle` é estável e legível — é o mesmo que a loja usa na URL do chip
- * (`/?peca=vestidos`) —, e quem resolve handle → id é quem cria a seção
- * (`modules/content/restore.ts`) e quem repõe os chips de uma base antiga
- * (`scripts/seed-content.ts`), os dois por `defaultFilterIds`
- * (`modules/content/filters.ts`).
- *
- * **A lista não mora na seção do padrão** (`DEFAULT_HOME_SECTIONS.featured`)
- * porque o chip não é conteúdo dela: é referência, e o link só existe depois de
- * a seção existir. O que estava lá era a cópia — `["Todos", "Blazers",
- * "Conjuntos", "Calças"]` —, e "Blazers" não existe no catálogo: aquele chip
- * devolvia zero peças em silêncio.
- */
+/** As categorias que o padrão liga aos chips da vitrine — **handles**, e não
+ * ids (o id é criado pelo seed a cada base); quem resolve é `defaultFilterIds`
+ * (`modules/content/filters.ts`). Não mora na seção do padrão porque o chip é
+ * referência — a cópia ("Blazers") devolvia zero peças em silêncio. */
 export const DEFAULT_FEATURED_FILTERS = [
   "vestidos",
   "blusas-camisas",
@@ -431,46 +296,23 @@ export const DEFAULT_FEATURED_FILTERS = [
 
 
 /**
- * O `data` de uma seção NOVA, por tipo — o que a rota admin usa quando o
- * lojista cria uma seção pelo CRM.
- *
- * A seção nasce igual à padrão (o título do hero, os quatro itens da faixa de
- * benefícios) e o lojista edita a partir daí. As duas alternativas são piores:
- * exigir os campos obrigatórios de uma seção que ainda não existe obrigaria o
- * formulário a pedir tudo antes de a seção aparecer na lista, e aceitar a
- * seção vazia seria gravar algo que a loja não sabe desenhar.
- *
- * Derivado de `DEFAULT_HOME_SECTIONS`, e não escrito de novo, porque é o
- * **mesmo** conteúdo: uma seção nova nasce com a cara da loja. Ficam de fora as
- * colunas do bloco (`id`, `enabled`, `position`) — quem decide as três é a
- * rota, e a posição da seção nova vai para o fim da lista.
- *
- * O `prose` e o `faq` não saem da vitrine: são os dois tipos que **só existem em
- * página** (a home não tem texto longo nem perguntas frequentes de fábrica), e
- * por isso o padrão deles vem da tabela ao lado. O que a regra exige continua
- * valendo para os dois: uma seção nova nasce com conteúdo que a loja **sabe
- * desenhar** — um bloco de parágrafo vazio, um item de pergunta em branco, ambos
- * prontos para o lojista escrever —, e não com um formulário em branco.
- * Toda entrada de `SECTION_TYPES` tem a sua aqui; o `defaults.unit.spec.ts`
- * cobra isso.
+ * O `data` de uma seção NOVA, por tipo — o que a rota admin usa quando o lojista
+ * cria uma seção pelo CRM. Derivado de `DEFAULT_HOME_SECTIONS` porque é o
+ * **mesmo** conteúdo; ficam de fora `id`, `enabled` e `position`, que a rota
+ * decide. `prose` e `faq` vêm da tabela ao lado (só existem em página), e o
+ * `defaults.unit.spec.ts` cobra uma entrada por tipo de `SECTION_TYPES`.
  */
 const DEFAULT_PAGE_SECTION_DATA: Record<string, Record<string, unknown>> = {
   prose: {
-    // Em branco: a página já se chama pelo `label` da superfície no `pageSeo`,
-    // e um título inventado seria copy do negócio escrita por engano — a mesma
-    // regra que faz o padrão das páginas ser vazio (`DEFAULT_PAGE_SECTIONS`).
+    // Em branco: a página já se chama pelo `label` da superfície no `pageSeo`.
     title: "",
     blocks: [{ kind: "paragraph", text: "", items: [] }],
-    // Sem anexo e sem rótulo: o botão de baixar só existe quando há arquivo, e
-    // a seção nova não tem nenhum (14.6.3, critério 7).
+    // Sem anexo e sem rótulo: o botão de baixar só existe quando há arquivo.
     documentUrl: "",
     documentLabel: "",
   },
   faq: {
-    // Como o `prose`: sem título (a página já se chama pelo `label` dela) e com
-    // **um** item em branco, que é o formulário pronto para o lojista escrever.
-    // O item nasce vazio nos dois campos, e por isso a seção nova não desenha
-    // nada: um par incompleto não é pergunta frequente (ver `faq.tsx`).
+    // Como o `prose`: sem título e com **um** item em branco, pronto para escrever.
     title: "",
     items: [{ question: "", answer: "" }],
   },
@@ -487,15 +329,8 @@ export const DEFAULT_SECTION_DATA: Record<string, Record<string, unknown>> = {
   ),
   ...DEFAULT_PAGE_SECTION_DATA,
 }
-/**
- * A primeira seção de um tipo no conteúdo padrão — o cromo (`nav`/`footer`).
- *
- * Morava no artefato gerado do storefront, que sintetizava os dois blocos a
- * partir de `DEFAULT_HOME_SECTIONS`. Com o contrato como pacote o dado voltou
- * para junto da lista que o origina: quem importa `@rv/contrato` recebe os três
- * (`DEFAULT_HOME_SECTIONS`, `DEFAULT_HEADER`, `DEFAULT_FOOTER`) e não há mais
- * como o mesmo bloco existir em dois formatos.
- */
+/** A primeira seção de um tipo no conteúdo padrão — o cromo (`nav`/`footer`).
+ * Com o contrato como pacote, o storefront importa os três daqui. */
 function defaultSection<T extends HomeSection["type"]>(
   type: T
 ): Extract<HomeSection, { type: T }> {
@@ -515,34 +350,12 @@ export const DEFAULT_HEADER = defaultSection("nav")
 export const DEFAULT_FOOTER = defaultSection("footer")
 
 /**
- * O conteúdo padrão de cada **página** — e por que ele está vazio.
- * -------------------------------------------------------------------------
- * A chave é o `id` da superfície (`PAGE_SURFACES`, no contrato) e o valor é a
- * lista de blocos que "Restaurar padrão" e o `make seed` criam naquela página.
- *
- * **Vazio é o valor deliberado, não um TODO esquecido.** Duas razões:
- *
- *   1. **A copy é do negócio, não do seed.** O que uma página institucional
- *      promete (prazo de troca, política de dados, horário de atendimento) é
- *      compromisso da loja com a cliente, e o seed não pode inventá-lo — é a
- *      mesma regra que fez o padrão da barra de anúncio não prometer frete
- *      grátis (`DEFAULT_HOME_SECTIONS`). Quem escreve a página é o lojista, no
- *      CRM, com o bloco que já existe (`editorial`, `banner`).
- *   2. **A página vazia responde 404, e isso é o estado honesto.** Um endereço
- *      que abre com texto de exemplo é pior do que um endereço que ainda não
- *      existe: o segundo some do índice sozinho, o primeiro anuncia uma página
- *      que a loja não escreveu. É a regra do defeito 4 do doc 14 — vazio em
- *      página é `notFound()`, **nunca** o fallback da vitrine.
- *
- * O que **não** é vazio é o mapa: toda página declarada tem a sua entrada (a
- * guarda de paridade cobra isso). É a entrada que faz `defaultsFor` responder
- * "esta página não tem padrão" em vez de cair no `DEFAULT_HOME_SECTIONS` — o
- * defeito 1 do doc 14, em que clicar em "Restaurar padrão" na aba de `/trocas`
- * criava a vitrine **inteira** dentro da página de trocas (barra de anúncio,
- * cabeçalho, capa e rodapé) e o painel dizia que tinha dado certo.
- *
- * Quando a copy existir, ela entra **aqui** e o botão passa a repor conteúdo
- * real; até então, o que ele repõe é a ausência, que é a verdade.
+ * O conteúdo padrão de cada **página** — e por que ele está vazio. **Vazio é
+ * deliberado:** a copy de uma página institucional é compromisso da loja com a
+ * cliente, e a página vazia responde 404, que é o estado honesto. O que **não**
+ * é vazio é o mapa (uma entrada por página, cobrado pela paridade): é ele que
+ * faz `defaultsFor` dizer "esta página não tem padrão", em vez de o "Restaurar
+ * padrão" de `/trocas` criar a vitrine inteira (defeito 1 do doc 14).
  */
 export const DEFAULT_PAGE_SECTIONS: Record<string, HomeSection[]> = {
   /** `/sobre` — a história da marca: um `editorial` responde pela página. */

@@ -1,61 +1,7 @@
 /*
- * O card de produto — a foto é a peça, e não um quadro
- * ---------------------------------------------------------------
- * O redesenho mexe em quatro coisas do card, e as quatro são a mesma ideia: o
- * que estava entre a cliente e a peça sai da frente.
- *
- * O card vestia a foto com uma **moldura** — o `Container` do `@medusajs/ui`
- * (off-white da superfície, raio grande, sombra e 1rem de respiro), com a foto
- * recuada 1rem dentro dela. A vitrine parecia uma parede de quadros emoldurados,
- * e o olho lia "cartão"; a peça ficava menor do que a caixa que a mostrava.
- *
- * O que entra no lugar é o que a régua escreve:
- *
- *   1. **A foto é 3/4 e vai de borda a borda da caixa** — sem moldura, sem
- *      recuo, sem raio, sem sombra. É a **mesma** proporção em todos os lugares
- *      em que a loja lista uma peça (vitrine, trilhos, catálogo, relacionados,
- *      busca), porque a régua não tem uma segunda: o card de 4/5 do carrossel e
- *      o retrato 9/16 do catálogo eram duas réguas de altura na mesma dobra.
- *      Atrás da foto fica `--rv-rose-soft`: o retângulo nunca aparece branco
- *      enquanto o arquivo chega, e foto com transparência não cai no vazio.
- *
- *      A caixa de fora é a do próprio `thumbnail` (a classe `rv-thumb`), e **o
- *      recorte de 1rem sai daqui**: ele existia para a foto não encostar no fio
- *      da moldura, e sem moldura o recorte não recorta nada — só encolhe a peça.
- *
- *   2. **O ponteiro dá o zoom** — 1,035 em 700ms. É o movimento que a referência
- *      usa para dizer "esta foto responde" sem mexer em mais nada: nenhum texto
- *      muda de cor, nenhuma sombra cresce. O tempo é longo de propósito (o
- *      `--rv-motion-*` da casa é de interface, 180ms, e um zoom de foto nesse
- *      compasso pareceria um pinote).
- *
- *   3. **O convite desce para o pé da foto** (`.rv-card-cta`), sobre a imagem e
- *      escondido até o ponteiro chegar. E ele **só existe onde existe ponteiro**
- *      (`@media (hover: hover)`): sem hover não há como revelá-lo, e uma caixa
- *      invisível no rodapé da foto seria um alvo que ninguém vê. O convite nunca
- *      foi o caminho para a peça — o **card inteiro** é um link, e no celular
- *      toca-se a foto, o nome ou o preço, que é o gesto de sempre numa vitrine
- *      de duas colunas. É a mesma leitura da referência, que esconde o quick-add
- *      no toque.
- *
- *   4. **O estado da peça sobe para o canto da foto** (`.rv-card-tag`), que é
- *      onde a referência põe a etiqueta. Ele era lido na linha do preço; sobre a
- *      foto volta a ser selo, e o que sobra abaixo é a peça — categoria, nome,
- *      cor e preço, com a hierarquia da régua (nome 18px, preço 13px em preto).
- *
- * **O chip continua escuro, e isso não é desenho novo.** A referência escreve a
- * etiqueta em superfície clara com texto preto; aqui o chip é cacau com texto
- * offwhite, e essa escolha já está feita e medida no bloco "Chip de estado"
- * (acima): ele saiu do contorno claro **sobre a foto** justamente porque sobre a
- * foto o fundo escuro é o que se lê. O que este bloco muda é a **posição** e a
- * **escala** do chip no card: canto superior esquerdo, 8px, sem raio. Os quatro
- * estados seguem se distinguindo pela borda, como lá.
- *
- * **O coração (favoritos) da referência não está aqui, e é decisão.** A régua põe
- * um botão de favorito no canto direito da foto (`.favorite`); a loja não tem
- * favoritos — não há lista, conta nem endpoint para guardá-los, e um coração que
- * não guarda nada é pior do que coração nenhum. Ele entra quando a funcionalidade
- * existir, no mesmo canto, e o lugar dele neste arquivo é ao lado do `.rv-card-tag`.
+ * O card de produto: a foto é a peça, e não um quadro. A moldura do `@medusajs/ui` sai e a foto vira 3/4 de borda a borda;
+ * o ponteiro dá o zoom (1,035 em 700ms); o convite desce para o pé da foto, só onde há ponteiro; e o estado da peça sobe
+ * para o canto dela. O chip segue escuro, e o coração de favoritos **não** entra: sem lista, conta ou endpoint, não guardaria nada.
  */
 
 .rv-card-media {
@@ -63,11 +9,9 @@
 }
 
 /*
- * A caixa da foto dentro do card. A especificidade (`.rv-card-media .rv-thumb`,
- * dois seletores de classe) é o que faz estas regras vencerem os utilitários do
- * `Container` (`shadow-elevation-card-rest bg-ui-bg-base rounded-lg px-6 py-4`) e
- * os do próprio `thumbnail` (`aspect-[9/16]`, o `p-4`): o `brand.css` é
- * importado antes deles em `globals.css`, e ordem se resolve por especificidade.
+ * A caixa da foto. A especificidade (`.rv-card-media .rv-thumb`, dois seletores de classe) vence os utilitários do `Container`
+ * e do `thumbnail` (`aspect-[9/16]`, `p-4`), porque o `brand.css` é importado antes em `globals.css`. `--rv-rose-soft` atrás
+ * da foto: o retângulo nunca aparece branco enquanto o arquivo chega. O recorte de 1rem sai daqui — sem moldura só encolhe a peça.
  */
 .rv-card-media .rv-thumb {
   aspect-ratio: 3 / 4;
@@ -80,10 +24,8 @@
 
 .rv-card-media .rv-thumb img {
   /*
-   * As **duas** transições, e não só a do zoom: a troca da capa pela segunda foto
-   * (`HoverImage`, no `thumbnail`) também é `transition`, da propriedade
-   * `opacity`, e um `transition` declarado aqui **reescreve a linha inteira** do
-   * utilitário que a pedia — a troca de foto passaria a ser um corte seco.
+   * As **duas** transições, e não só a do zoom: a troca da capa pela segunda foto (`HoverImage`) também é `opacity`, e um
+   * `transition` declarado aqui **reescreve a linha inteira** do utilitário que a pedia — a troca seria um corte seco.
    */
   transition: transform 700ms var(--rv-ease-out),
     opacity 500ms var(--rv-ease-out);
@@ -94,10 +36,10 @@
 }
 
 /*
- * A etiqueta da peça sobre a foto — o chip do estado, na posição e na escala da
- * régua. O raio vai a zero com a caixa: a etiqueta da referência é reta, e o
- * `::after` do pulso (o halo de "últimas peças") acompanha, senão o anel
- * arredondava num canto e ficava reto no outro.
+ * A etiqueta da peça sobre a foto — o chip do estado, na posição e na escala da régua —, com o raio a zero: a etiqueta da
+ * referência é reta, e o `::after` do pulso (o halo de "últimas peças") acompanha, senão o anel arredondava num canto e
+ * ficava reto no outro. O coração de favoritos não está aqui e é decisão: a loja não tem lista, conta nem endpoint que
+ * guarde a peça, e um coração que não guarda nada é pior do que coração nenhum.
  */
 .rv-card-tag {
   position: absolute;
@@ -115,11 +57,9 @@
 }
 
 /*
- * O convite (`.rv-card-cta`, acima) na posição da régua: pé da foto, de 12px a
- * 12px. Ele nasce **fora de cena** e o ponteiro o traz — e só há ponteiro onde há
- * hover. O `display` é o que separa os dois mundos; dentro do `hover: hover` a
- * caixa existe e o movimento é a revelação, no compasso da casa
- * (`--rv-motion-fast`, um convite, não um zoom de foto).
+ * O convite na posição da régua: pé da foto, de 12px a 12px, fora de cena até o ponteiro chegar — e só há ponteiro onde há
+ * hover. O `display` separa os dois mundos; dentro do `hover: hover` a caixa existe e o movimento é a revelação, no compasso
+ * da casa (`--rv-motion-fast`, um convite, não um zoom de foto).
  */
 .rv-card-media .rv-card-cta {
   display: none;
@@ -149,33 +89,12 @@
 }
 
 /*
- * A informação da peça, na ordem em que a régua a escreve
- * ---------------------------------------------------------------
- * Categoria (8px, o eyebrow), nome da peça (18px) com as cores ao lado do nome,
- * e o preço (13px em preto). Nada mais: o convite mora na foto, e o estado da
- * peça é a etiqueta do canto dela.
- *
- * **A hierarquia inverte em relação ao card antigo.** O preço era o maior peso
- * do bloco (1.125rem semibold) porque era o que a vitrine escondia — cinza,
- * espremido entre o título e o botão. Aqui ele é o **terceiro** tamanho da lista,
- * e isso é a régua: o nome da peça identifica, o preço confirma. O preço continua
- * em `--rv-fg-strong` (16:1 sobre o off-white da página) — o tamanho cai, o
- * contraste não.
- *
- * O `.rv-price-value` da casa **continua** com 1.125rem: é o do bloco de preço
- * da página da peça, onde o número é a decisão da tela. O do card é este, por
- * esta regra — dois seletores de classe vencem o da casa sem que ninguém precise
- * mexer lá.
- *
- * **A linha de parcelamento não está aqui, e é dado que falta, não desenho.** A
- * régua escreve "ou 6x de R$ 81,50 sem juros" abaixo do preço; esse número não
- * existe no Medusa — ele é do meio de pagamento, e é por compra. A página da peça
- * já tem o bloco pronto (`InstallmentInfo`) e passa `null` nos dois lados pelo
- * mesmo motivo, com o comentário que o explica em `product-price/index.tsx`: uma
- * condição de pagamento inventada logo abaixo do preço é a pior promessa
- * possível. No card seria pior: uma linha por peça listada, e o servidor teria de
- * consultar o provedor para cada card da dobra. No dia em que o dado subir para o
- * servidor, a linha entra aqui — o lugar dela está reservado por este comentário.
+ * A informação da peça, na ordem da régua: categoria (8px, o eyebrow), nome (18px) com as cores ao lado, e o preço (13px em
+ * preto). **A hierarquia inverte** em relação ao card antigo: o preço era o maior peso (1.125rem semibold) porque era o que a
+ * vitrine escondia; aqui é o **terceiro** tamanho — o nome identifica, o preço confirma — e segue em `--rv-fg-strong` (16:1
+ * sobre o off white): o tamanho cai, o contraste não. O `.rv-price-value` da casa continua com 1.125rem (é o do bloco de
+ * preço da página da peça); o do card é este, e dois seletores de classe vencem lá sem ninguém mexer.
+ * A linha de parcelamento **não** está aqui, e é dado que falta, não desenho: o número é do meio de pagamento e é por compra.
  */
 .rv-card-info {
   display: flex;
@@ -191,14 +110,9 @@
 }
 
 /*
- * Nome e cores na **mesma linha**, com as cores encostadas na direita — é onde a
- * régua as põe, e o nome (comprido: "Camisa Feminina em Alfaiataria Seda Pura")
- * ganha a largura que sobra.
- *
- * `flex-wrap` porque a peça pode ter **seis** bolinhas (`+n` incluído) e o card
- * tem 167px no celular: sem a quebra, as bolinhas comeriam o nome até ele virar
- * uma coluna de sílabas. Com ela, quando não cabe, a linha das cores desce
- * sozinha — que é exatamente o card antigo, para quem tem pouco espaço.
+ * Nome e cores na **mesma linha**, cores encostadas na direita, e o nome comprido ganha a largura que sobra. `flex-wrap`
+ * porque a peça pode ter **seis** bolinhas (`+n` incluído) e o card tem 167px no celular: sem a quebra, as bolinhas comeriam
+ * o nome até ele virar uma coluna de sílabas.
  */
 .rv-card-name {
   display: flex;
@@ -216,14 +130,9 @@
 }
 
 /*
- * O nome da peça. O `rv-display` (a serifa da marca) já vem do componente; o que
- * a régua acrescenta é o tamanho — 18px, o maior texto do card.
- *
- * **Não há mais hover de cor no nome.** Ele era `group-hover:text-rv-rose`, e o
- * rosa da marca dá 3,1:1 sobre o off-white da página: a regra de acessibilidade
- * deste arquivo só o permite em texto grande (≥24px), e o nome tem 18. Quem
- * responde ao ponteiro é o **movimento** — o zoom da foto e o convite que sobe —
- * e nenhum dos dois é cor de texto.
+ * O nome da peça: a serifa (`rv-display`) vem do componente, e o que a régua acrescenta é o tamanho — 18px, o maior texto do
+ * card. **Não há mais hover de cor no nome**: ele era `group-hover:text-rv-rose`, e o rosa da marca dá 3,1:1 sobre o off-white
+ * — a regra de acessibilidade deste arquivo só o permite em texto ≥24px, e o nome tem 18. Quem responde ao ponteiro é o movimento.
  */
 .rv-card-title {
   font-size: 1.125rem;
@@ -236,10 +145,8 @@
 }
 
 /*
- * O "+n" das cores que não couberam no card. Ele é a **continuação** da lista de
- * bolinhas, e por isso não pode ser maior do que elas: o `rv-eyebrow` da casa
- * (11px) ao lado de bolinhas de 12px ficaria do tamanho das cores — e o resumo
- * pesaria mais do que a informação que ele resume.
+ * O "+n" das cores que não couberam é a **continuação** da lista de bolinhas, e por isso não pode ser maior do que elas: o
+ * `rv-eyebrow` da casa (11px) ao lado de bolinhas de 12px pesaria mais do que a informação que ele resume.
  */
 .rv-card-count {
   font-size: 0.5625rem;
@@ -247,16 +154,9 @@
 }
 
 /*
- * A bolinha de cor do card — 12px, com um anel de superfície e um fio de borda.
- *
- * O anel é `--rv-surface` (o off-white elevado da casa, o mais perto do branco
- * que a paleta tem), e não branco puro: a cor da bolinha é dado do lojista e pode
- * ser o próprio off-white da página — sem o anel, uma peça "Cru" sumiria. O fio
- * por fora é o que fica para a cor **sem hex**: o painel aceita a cor sem
- * enriquecimento, e a bolinha continua ali, com a inicial do nome dentro. A
- * inicial é pista, não legenda (a 6px não se lê uma palavra, e lê-la não é o
- * trabalho dela): o nome inteiro está no `title` da bolinha, no `sr-only` ao lado
- * dela e no rótulo da lista.
+ * A bolinha de cor — 12px, com um anel de `--rv-surface` (o off white elevado da casa, e não branco puro: a cor é dado do
+ * lojista e pode ser o próprio off white da página — sem o anel, uma peça "Cru" sumiria) e um fio de borda, que fica para a
+ * cor **sem hex**. A inicial de 6px é pista, não legenda: o nome inteiro está no `title` e no `sr-only` ao lado dela.
  */
 .rv-card-dot {
   display: inline-flex;
@@ -271,10 +171,7 @@
   line-height: 1;
 }
 
-/*
- * Telas pequenas: o nome e a etiqueta encolhem um degrau, como na régua. Nada
- * mais muda — a foto é a mesma proporção e a informação é a mesma lista.
- */
+/* Telas pequenas: o nome e a etiqueta encolhem um degrau, como na régua. */
 @media (max-width: 639px) {
   .rv-card-title {
     font-size: 0.9375rem;

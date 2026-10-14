@@ -1,44 +1,7 @@
 /**
- * Os chips de filtro de uma seção — a segunda coisa do CMS que é **referência**.
- * -------------------------------------------------------------------------
- * O chip da vitrine nasceu como **texto**: o campo `filters` do `featured`
- * guardava `["Todos", "Blazers", "Conjuntos", "Calças"]` dentro do `data`, e a
- * loja mandava o rótulo como busca (`q=Blazers`). Duas consequências, as duas
- * medidas no banco real: "Blazers" **não existe** no catálogo (o `q` devolvia
- * zero peças em silêncio, sem erro e sem log), e renomear uma categoria no
- * painel não mudava o chip — a cópia é que era o dado.
- *
- * Aqui o chip é referência: uma linha do link `content_section_category`
- * (`src/links/content-section-category.ts`) ligando a seção a uma categoria de
- * verdade, com a ordem numa coluna (`position`). O que a loja desenha é o nome e
- * o `handle` lidos **ao vivo** da categoria — o nome que o lojista editar amanhã
- * é o nome do chip amanhã —, e o filtro da vitrine é por `category_id`, não por
- * texto.
- *
- * **Três coisas que o chip não é.**
- *
- * - **Não é conteúdo (`data`).** Um id de categoria dentro do JSON não teria
- *   quem o limpasse: a categoria apagada viraria um chip que leva a lugar
- *   nenhum. O link é a mesma máquina da curadoria de produtos (`curation.ts`),
- *   com o ciclo de vida das duas pontas ligado.
- * - **Não tem "Todos".** Não existe categoria "todas": o chip que limpa o filtro
- *   é gesto da loja, e por isso não se grava. Antes era a **posição** que dizia
- *   qual chip limpava (`filters[0]`), então reordenar os chips trocava o
- *   significado de cada um sem nada acusar.
- * - **Não é lista de objetos.** O valor é o **id** da categoria; quem resolve
- *   id → `{ label, handle }` é a leitura (`listCategoryRefs`), na rota pública e
- *   no CRM.
- *
- * A escrita é a mesma da curadoria, e pelos mesmos motivos: `remoteLink.create`
- * é upsert (é assim que a reordenação entra), `remoteLink.dismiss` é soft
- * (`deleted_at`), e a lista manda — o que saiu é desfeito **antes** de o que
- * ficou ser regravado, para uma falha no meio deixar a seção sem chips (volta ao
- * catálogo inteiro) em vez de com uma lista pela metade.
- *
- * A integridade é de aplicação, como na curadoria: a tabela gerada pelo módulo
- * de links não tem chave estrangeira, então `resolveCategoryIds` (na rota admin)
- * recusa id inexistente antes de gravar. O buraco que sobra é o `DELETE` cru no
- * psql, o mesmo trade-off documentado em `src/links/content-section-product.ts`.
+ * Os chips de filtro de uma seção — a **referência** `content_section_category`.
+ * O chip era **texto** (`data.filters`): "Blazers" não existia no catálogo (a
+ * busca devolvia zero em silêncio) e renomear a categoria não mudava o chip.
  */
 import type { LinkDefinition } from "@medusajs/framework/types"
 import { Modules } from "@medusajs/framework/utils"
@@ -50,25 +13,14 @@ import { DEFAULT_FEATURED_FILTERS } from "./defaults"
 import { listPositionFor } from "./order"
 
 /**
- * A chave dos chips no corpo e no payload.
- *
- * É a **mesma** chave do campo em `SECTION_FIELDS.featured` (`contract.ts`), e
- * essa é a diferença entre os chips e a curadoria: o CRM edita os chips (a
- * curadoria não tem editor, e por isso `productIds` não é campo de contrato),
- * então a chave precisa existir no contrato para o formulário desenhá-la. Quem
- * a tira do `data` é o `splitPayload` (`payload.ts`): campo de contrato **e**
- * referência — não conteúdo, que é o que ela era.
+ * A chave dos chips no corpo e no payload — a **mesma** chave do campo em
+ * `SECTION_FIELDS.featured`, que o CRM edita. O `splitPayload` a tira do `data`.
  */
 export const FILTERS_FIELD = "filters"
 
 /**
- * A entidade do link, como o `query.graph` a conhece.
- *
- * Medido, e não adivinhado: `defineLink` compõe o nome do alias com os dois
- * lados na ordem em que são declarados (`product_category` + `content_section`).
- * O teste de unidade confere os dois (o arquivo do link e o nome aqui) para uma
- * divergência não virar uma query vazia — que seria a vitrine **sem chips**, sem
- * erro nenhum.
+ * A entidade do link, como o `query.graph` a conhece. `defineLink` compõe o
+ * alias com os dois lados na ordem declarada; o teste confere os dois.
  */
 export const FILTERS_ENTITY = "product_category_content_section"
 
@@ -90,11 +42,8 @@ type CategoryRow = {
 
 
 /**
- * As linhas do link → `{ [id da seção]: [id de categoria, …] }`.
- *
- * A ordem é a que veio do banco (a query ordena por `position`): agrupar não
- * pode reordenar, senão os chips sairiam embaralhados — e a ordem é metade do
- * que a lista é.
+ * As linhas do link → `{ [id da seção]: [id de categoria, …] }`. A ordem é a do
+ * banco (a query ordena por `position`): agrupar não pode reordenar.
  */
 export function groupFilters(
   rows: readonly FilterRow[]
@@ -110,19 +59,8 @@ export function groupFilters(
 }
 
 /**
- * A seção com os chips, **quando ela tem algum**.
- *
- * Sem chips a chave não sai do payload, como na curadoria: uma vitrine sem chip
- * nenhum é uma vitrine que mostra o catálogo inteiro, e a ausência da chave já
- * diz isso. Mandar `[]` diria a mesma coisa com mais bytes.
- *
- * **A chave que vem do `data` é descartada.** Uma base anterior à R1 ainda tem
- * os chips de **texto** gravados (`data.filters`, os rótulos digitados), e o
- * `listSections` achata o `data` no nível raiz — então eles chegariam ao payload
- * com a mesma chave do link e shape nenhum de chip (uma string não tem `label`
- * nem `handle`). Quem limpa a linha é o `retireTextFilters`
- * (`scripts/seed-content.ts`); aqui é a garantia de que, limpa ou não, o que a
- * loja e o CRM recebem como `filters` veio do **link**.
+ * A seção com os chips, **quando ela tem algum**. **A chave que vem do `data` é
+ * descartada** (chips de texto de uma base anterior à R1); o link é a verdade.
  */
 export function withFilters<T extends { id: string }>(
   section: T,
@@ -134,11 +72,8 @@ export function withFilters<T extends { id: string }>(
 }
 
 /**
- * Lê os ids dos chips de várias seções numa query só.
- *
- * Como na curadoria, a leitura é na **entidade do link** e com
- * `order: { position: "ASC" }` (o `order` aninhado, na entidade da seção, é
- * ignorado pelo `query.graph` — ver o comentário longo em `curation.ts`).
+ * Lê os ids dos chips de várias seções numa query só. A leitura é na entidade do
+ * link com `order: { position: "ASC" }` (o `order` na seção é ignorado).
  */
 export async function readFilters(
   query: QueryGraph,
@@ -159,20 +94,15 @@ export async function readFilters(
 }
 
 /**
- * O que **grava** os chips: um link por categoria, com a posição da lista.
- *
- * A posição vem do índice (10, 20, 30…), como na curadoria: a lista **é** a
- * ordem, e o CRM não manda número nenhum. `remoteLink.create` é upsert, então
- * reordenar chips é uma chamada só — o que já estava lá tem a posição
- * atualizada e o que entrou é criado.
+ * O que **grava** os chips: um link por categoria, com a posição da lista
+ * (10, 20, 30…). `remoteLink.create` é upsert: reordenar é uma chamada só.
  */
 export function filterLinks(
   sectionId: string,
   categoryIds: readonly string[]
 ): LinkDefinition[] {
   return categoryIds.map((categoryId, index) => ({
-    // O lado do catálogo é o modelo `product_category` do módulo de produto —
-    // a mesma chave que o link declara (`defineLink`, `productCategory`).
+    // O lado do catálogo é o modelo `product_category` — a mesma chave do link.
     [Modules.PRODUCT]: { product_category_id: categoryId },
     [CONTENT_MODULE]: { content_section_id: sectionId },
     data: { position: listPositionFor(index) },
@@ -201,12 +131,8 @@ export function removedFromFilters(
 }
 
 /**
- * Grava os chips de uma seção: a lista manda.
- *
- * Mesma ordem da curadoria, e pelo mesmo motivo: o que saiu é desfeito **antes**
- * de o que ficou ser regravado, para uma falha no meio deixar a seção sem chips
- * (o catálogo inteiro na vitrine) em vez de com uma lista pela metade — que é a
- * falha que o lojista não veria.
+ * Grava os chips de uma seção: a lista manda. O que saiu é desfeito **antes** de
+ * o que ficou ser regravado — uma falha no meio deixa a seção sem chips.
  */
 export async function writeFilters({
   link,
@@ -245,13 +171,8 @@ function categoryRef(row: CategoryRow): CategoryRef {
 }
 
 /**
- * Os chips **prontos** para desenhar, por seção, na ordem da lista.
- *
- * O id é o que a seção guarda (a referência) e o nome/handle são lidos agora —
- * é esta função que faz o chip acompanhar uma categoria renomeada no painel. Um
- * id que sumiu do catálogo (o `DELETE` cru no psql, o buraco documentado no
- * arquivo do link) simplesmente não vira chip: a lista encolhe, e a vitrine não
- * ganha um botão que não filtra nada.
+ * Os chips **prontos**, por seção, na ordem da lista. **Id que sumiu do catálogo
+ * não vira chip**: a lista encolhe, e a vitrine não ganha um botão que não filtra.
  */
 export async function readChips(
   query: QueryGraph,
@@ -275,10 +196,8 @@ export async function readChips(
 }
 
 /**
- * As categorias de um conjunto de ids, **na ordem pedida**.
- *
- * A ordem é a da lista que pediu (os chips de uma seção), e não a que o banco
- * devolveu: quem manda no que aparece primeiro é o `position` do link.
+ * As categorias de um conjunto de ids, **na ordem pedida** (a dos chips), não a
+ * do banco: quem manda é o `position` do link. Id que sumiu não vira ref.
  */
 export async function listCategoryRefs(
   query: QueryGraph,
@@ -303,11 +222,8 @@ export async function listCategoryRefs(
 }
 
 /**
- * O catálogo inteiro, para o seletor de chips do CRM.
- *
- * Ordenado por `rank` — a ordem em que as categorias estão organizadas no painel
- * do Medusa —, e não por nome: o seletor abre na mesma ordem do catálogo, que é
- * a que o lojista reconhece.
+ * O catálogo inteiro, para o seletor de chips do CRM. Ordenado por `rank` — a
+ * ordem do painel do Medusa —, e não por nome.
  */
 export async function readCategoryCatalog(
   query: QueryGraph
@@ -322,16 +238,9 @@ export async function readCategoryCatalog(
 }
 
 /**
- * Os ids das categorias que o **padrão** liga aos chips, na ordem declarada.
- *
- * A referência do padrão é por `handle` (`DEFAULT_FEATURED_FILTERS`): o id é
- * criado pelo seed a cada base, e um id escrito à mão em `defaults.ts` não
- * existiria em lugar nenhum.
- *
- * Handle que não existe no catálogo **sai da lista** em vez de virar erro: uma
- * base sem a categoria `conjuntos` recebe os outros três chips e a vitrine
- * continua de pé — o contrário seria o seed inteiro falhando por causa de uma
- * categoria que o lojista apagou.
+ * Os ids das categorias que o **padrão** liga aos chips, na ordem declarada, por
+ * `handle` (`DEFAULT_FEATURED_FILTERS`): o id é criado pelo seed a cada base.
+ * Handle que não existe **sai da lista** — uma categoria apagada não derruba tudo.
  */
 export async function defaultFilterIds(query: QueryGraph): Promise<string[]> {
   if (!DEFAULT_FEATURED_FILTERS.length) {
@@ -353,12 +262,8 @@ export async function defaultFilterIds(query: QueryGraph): Promise<string[]> {
 }
 
 /**
- * O tipo de seção declara o campo de chips?
- *
- * A resposta sai do **contrato** (o `kind` do campo), e não de uma lista de tipos
- * escrita aqui ou em `restore.ts`: o dia em que uma segunda seção ganhar chips —
- * a vitrine da loja, por exemplo —, o padrão dela passa a ser ligado sem que
- * ninguém precise lembrar deste arquivo.
+ * O tipo de seção declara o campo de chips? A resposta sai do **contrato** (o
+ * `kind`), não de uma lista de tipos — uma segunda seção com chips se liga só.
  */
 export function hasChips(type: string): boolean {
   return (SECTION_FIELDS[type as SectionType] ?? []).some(
@@ -367,18 +272,9 @@ export function hasChips(type: string): boolean {
 }
 
 /**
- * Liga os chips **padrão** (`DEFAULT_FEATURED_FILTERS`) às seções que acabaram de
- * nascer.
- *
- * É o passo que o seed e o "Restaurar padrão" dão depois de criar a seção: o
- * chip é referência, e o link só existe com a seção no banco. Fica aqui, e não em
- * `restore.ts`, porque quem sabe ligar chips é este módulo — a função é a mesma
- * de qualquer outra escrita (`writeFilters`), com a lista vinda do padrão.
- *
- * `link`/`query` ausentes devolvem lista vazia em vez de estourar: sem container
- * não há link para escrever, e a seção criada continua válida — sem chips, a
- * vitrine mostra o catálogo inteiro. Quem não tem os dois (um teste de unidade)
- * não precisa deles para o que a função faz de útil.
+ * Liga os chips **padrão** às seções recém-criadas (o passo do seed e do
+ * "Restaurar padrão"), com `writeFilters` e a lista do padrão. Sem `link`/
+ * `query` a resposta é lista vazia: sem contêiner não há link.
  */
 export async function writeDefaultChips({
   link,
@@ -414,38 +310,10 @@ type SectionWriter = {
 }
 
 /**
- * Aposenta os chips de **texto** de uma base anterior à R1.
- *
- * Antes desta fase o `featured` guardava os chips como rótulos dentro do `data`
- * (`["Todos", "Blazers", "Conjuntos", "Calças"]`), e a seção não tinha linha
- * nenhuma no link. A chave antiga não é campo de contrato há dois passos: ela
- * nunca mais é escrita e continuaria no `data` para sempre, porque o `PATCH`
- * **mescla** o `data` em vez de substituí-lo.
- *
- * O que a função faz, então, é o fecho da conversão:
- *
- *   1. **neutraliza** `filters` no `data` (grava `null` na chave);
- *   2. a seção que ficou **sem** chips no link recebe os do padrão — por
- *      `handle`, ver `defaultFilterIds`.
- *
- * **Por que neutralizar, e não apagar a chave.** Medido em 2026-09-29, com uma
- * sonda: o `updateContentSections` do módulo **mescla** o JSON da coluna `data`
- * no nível raiz — gravar `data` sem a chave deixa a chave onde estava (a sonda
- * gravou `{probe: true}` e o `data` ficou com a chave nova **mais** todas as
- * antigas). Apagar a chave exigiria SQL cru (`data - 'filters'`), e um caminho
- * de escrita por fora do módulo não se paga por causa de um campo aposentado:
- * `null` é o valor que diz "não há nada aqui", e a **leitura** já descarta a
- * chave (`withFilters`) — nenhum consumidor vê o resto. A consequência geral
- * (o `data` da seção só cresce em chave) está registrada no plano.
- *
- * O passo 2 **não** tenta adivinhar o que os rótulos antigos queriam dizer: eles
- * não são categorias (é o ponto da fase — "Blazers" não existe no catálogo), e
- * uma conversão por semelhança de nome erraria em silêncio. A seção recebe o
- * padrão, que é o que o seed e o "Restaurar padrão" gravam numa base nova, e o
- * lojista ajusta no CRM — agora com o catálogo de verdade na frente.
- *
- * Idempotente por construção: numa base já convertida não há chave antiga nem
- * seção sem chips, e nada é gravado.
+ * Aposenta os chips de **texto** de uma base anterior à R1. O `featured`
+ * guardava os rótulos em `data.filters`, e o `PATCH` **mescla** o `data` em vez
+ * de substituí-lo. A função **neutraliza** a chave (grava `null`; o update
+ * mescla o JSON na raiz, medido) e dá às seções sem chips os do padrão.
  */
 export async function retireTextFilters({
   service,
@@ -469,11 +337,8 @@ export async function retireTextFilters({
       continue
     }
 
-    // A chave é **neutralizada**, não apagada: o update do serviço mescla o JSON
-    // (medido em 2026-09-29 — ver o cabeçalho desta função), então o `data` sem
-    // ela deixaria a chave exatamente onde estava. `null` é o valor que diz "não
-    // há nada aqui", e a leitura descarta a chave de qualquer forma
-    // (`withFilters`).
+    // Neutralizada, não apagada: o update do serviço mescla o JSON, então o
+    // `data` sem ela manteria a chave. `null` diz "não há nada aqui".
     await service.updateContentSections([
       { id: section.id, data: { [FILTERS_FIELD]: null } },
     ])
@@ -488,9 +353,8 @@ export async function retireTextFilters({
     return { cleaned, chipped: [] }
   }
 
-  // Quem já tem chips no link não é tocado: pode ser escolha do lojista feita
-  // no CRM depois da conversão, e sobrescrevê-la seria trocar o trabalho dele
-  // pelo padrão sem aviso.
+  // Quem já tem chips no link não é tocado: pode ser escolha do lojista no CRM
+  // depois da conversão, e sobrescrevê-la trocaria o trabalho dele pelo padrão.
   const current = query ? await readFilters(query, candidates) : {}
 
   return {

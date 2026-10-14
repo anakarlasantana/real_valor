@@ -63,7 +63,7 @@ isso estão no hook de commit (`.githooks/pre-commit`) e no job `guard` da CI.
 | painel × backend | `admin/` importa VALOR do backend (só `import type`) | `check-boundaries.mjs` (R7) | 0 | — |
 | checkout × adapter | `modules/checkout` importa adapter ou SDK de pagamento | `check-boundaries.mjs` (RV-014) | 0 | — |
 | convenção de teste | spec fora de `__tests__/<alvo>.unit.spec.ts` ou `src/__checks__/` | `check-storefront-tests.mjs` | 0 | — (a F3 zerou) |
-| comentário | cabeçalho > 5 linhas, densidade > 12% (arquivo fora do baseline) | `check-comments.mjs` | 309 arquivos | F10 reduz |
+| comentário | cabeçalho > 5 linhas, densidade > 12% (arquivo fora do baseline) | `check-comments.mjs` | 334 arquivos | ✅ F10 — cortou os 28 piores (3.509 linhas de comentário a menos); o resto é dívida declarada |
 
 **O baseline é a lista das exceções vivas, não uma licença.**
 (`scripts/baselines/boundaries.json`, `comments.json`, `storefront-tests.json`.)
@@ -185,7 +185,7 @@ README e este doc já dizem. Os piores arquivos isolados:
 | :--- | :--- |
 | Cabeçalho (o primeiro bloco de comentário, antes da primeira linha de código) | ≤ 5 linhas |
 | Densidade de um arquivo que **não** está no baseline | ≤ 12% das linhas, com piso de 6 |
-| Baseline (`scripts/baselines/comments.json`) | 312 arquivos + o total por árvore |
+| Baseline (`scripts/baselines/comments.json`) | 334 arquivos + o total por árvore (reancorado na F10) |
 | Folga tolerada de uma entrada | < 10% (e < 3 linhas): acima disso a entrada é frouxa |
 
 A catraca só desce: um arquivo que já está no baseline não pode ganhar comentário, um
@@ -193,6 +193,13 @@ total de árvore não pode subir, e uma entrada frouxa ou órfã **reprova**. `-
 lista os piores (é o insumo da F10) e `--write` reancora o baseline — o `--write` é
 parte do commit que mudou a forma dos arquivos de propósito (a F6, que partiu a régua; a
 F5, que desmanchou o ciclo), e o diff do baseline aparece na revisão.
+
+**A F10 cortou** os vinte e oito piores que o `--report` listou — **3.509 linhas de comentário a menos**
+no repositório, sem uma única entrada que subisse: `contract.ts` 1.340 → 375, `schema.ts` 371 → 55,
+`field-input.tsx` 327 → 133, `credenciais.ts` 248 → 89, `order.ts` 224 → 78, os quatro parciais da
+régua 207/197/158/158 → 70/60/54/55. O que se corta é o **ensaio** (o bloco de 15 a 60 linhas), não a
+armadilha nem o dono da peça — e é por isso que os 28 arquivos seguem no baseline: cabeçalho e linha
+de campo são a documentação que o arquivo tem, e num arquivo pequeno eles sozinhos passam dos 12%.
 
 ## 15.5 "Ler antes de mover"
 
@@ -224,7 +231,7 @@ que impede o refactor de ser um "depois eu volto".
 | **F7** | ✅ CRM: `admin/src/admin/routes/content/` (23 arquivos + 3 diretórios) → `page.tsx` + `components/` + `hooks/` + `lib/`; `widgets/` só com o entrypoint (a regra pura foi para `admin/src/admin/lib/`), com prova de que só as 21 linhas de import mudaram nos 27 arquivos movidos | `make build-admin` + smoke |
 | **F8** | ✅ backend: `mercadopago/service.ts` (828 → **481**) + `decisao`/`status`/`notificacao`/`estorno`/`boot`; `api/admin/content/route.ts` (488 → **438**) + `lib/resposta` e `lib/gravacao`; `scripts/seed.ts` (569 → **87**) + `seed/` com seis passos; `api/store/custom/checkout-info` → **`api/store/checkout/info`** (a URL pública passa a ser `/store/checkout/info`) | `make test` (24 suítes/424 testes) | smoke do pagamento (5 specs/96 asserções) |
 | **F9** | ✅ docs: as citações de caminho e de linha reancoradas — as que a F2, a F6, a F7 e a F8 tornaram falsas, mais as do `plano-centralizacao.md`, que não existe desde o `6c7feef6e7`; e o doc 09 ganha o "FEITO (hash)" de cada fase (F7 `fd42c25831`, F8 `fc3b7d77d3`) | — | revisão |
-| **F10** | o comentário dos ~20 piores arquivos; o baseline encolhe | `--report` | `make check` |
+| **F10** | ✅ os 28 piores: os ensaios do contrato (**1.340 → 375** linhas de comentário só no `contract.ts`), os parciais da régua, o formulário do CRM e o pagamento do backend — **3.509 linhas de comentário a menos**, com o baseline reancorado no mesmo commit e a prova de que só comentário mudou (o minificado dos 28 é idêntico ao `HEAD`) | `--report` + `--write` | `make check` · `make types` · `make test` |
 
 **Regra do lote**: fora dele, só o que a guarda exigir. Se uma fase encontrar um
 defeito que não é dela, ele vira item no doc 09 — não vira commit no meio.
@@ -258,12 +265,12 @@ no `make test`, e não no `make check`.
 | Dívida | Medido em 13/10/2026 | Apaga |
 | :--- | :--- | :--- |
 | Exceções de camada no baseline | 7 (todas do RV-048; eram 17 antes da F1) | ✅ F1–F5 — o que sobra sai no RV-048 |
-| Arquivos acima da política de comentário | 334 (eram 311 antes da F6: cada parcial da F6 e cada herdeiro da F8 entra no baseline) | F10 (meta: ≤12% e cabeçalho ≤5) |
+| Arquivos acima da política de comentário | 334 arquivos, mas **3.509 linhas de comentário a menos** (o contrato: 2.084 → 541; o storefront: 9.770 → 8.792; o backend: 5.106 → 4.346) | ✅ F10 — cortou os 28 piores; o que fica no baseline é onde o cabeçalho e a linha de campo *são* a documentação do arquivo |
 | Specs fora da convenção | 0 | ✅ F3 |
 | `lib/util` sem uma responsabilidade só | 45 arquivos · 6.622 linhas | ✅ F2 — dissolvido em `catalog`, `ui`, `content`, `checkout`, `payments` e `medusa` |
 | `lib/data/cart.ts` | 421 linhas (eram 476: a F1 tirou as 4 funções mortas) | ✅ F1 |
 | `src/types` sem dono de camada | 2 arquivos · 52 linhas | ✅ F4 — os tipos foram para `lib/{catalog,ui,checkout}/types.ts` |
-| `brand.css` | 5.248 linhas, 2.039 de comentário | ✅ F6 — virou dezoito parciais + manifesto, sem perder um byte; a narrativa da régua é do F10, que corta |
+| `brand.css` | 5.248 linhas, 2.039 de comentário | ✅ F6 + F10 — virou dezoito parciais + manifesto, sem perder um byte (F6); a narrativa da régua foi cortada na F10 (os quatro piores: 207/197/158/158 → 70/60/54/55 linhas de comentário) |
 | O `yarn build` de produção | achado na F6, mas **anterior** a ela: `next/headers` alcança um bundle de cliente (RV-050) | fora do lote — o item está no doc 09 |
 
 Fora deste lote (não é F0–F10, e não entra no meio de uma fase): o push do `develop`

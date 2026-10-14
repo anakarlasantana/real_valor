@@ -1,50 +1,15 @@
-/**
- * Real Valor — Contrato de conteúdo (fonte da verdade)
- * -----------------------------------------------------------------
- * Este arquivo é a ÚNICA definição do formato de conteúdo da vitrine:
- * os tipos das seções, os campos que o CRM edita (`SECTION_FIELDS`) e as
- * listas fechadas do tema (paleta, papéis de fonte, trilhos).
- *
- * Desde o G5 backend, CRM e storefront importam este arquivo pelo pacote
- * `@rv/contrato` (`packages/contrato/src/`): não há bloco copiado nem espelho
- * digitado à mão — a fronteira passou a ser do compilador. O
- * `scripts/gen-content.mjs` ficou só com o que **deriva** do contrato e não é
- * código (o seed do tema e os tokens do `brand.css`), e o que o compilador não
- * vê — os espelhos de dado do painel, a aparência e o que a loja lê do
- * contrato — virou **teste** no G4, quando a guarda de texto
- * (`scripts/check-contract-parity.mjs`) foi apagada: `contract`/`assets`/
- * `wiring.unit.spec.ts` aqui e `panel-wiring.unit.spec.ts` no CRM.
- *
- * Origem do conteúdo: ./Downloads/real-valor-frontend-prototype
- */
+/** Real Valor — Contrato de conteúdo (fonte da verdade): a ÚNICA definição
+ * do formato da vitrine — os tipos das seções, os campos que o CRM edita
+ * (`SECTION_FIELDS`) e as listas fechadas do tema. CRM, backend e storefront
+ * importam o pacote `@rv/contrato`; `scripts/gen-content.mjs` só deriva daqui. */
 
 // ===========================================================================
-// INÍCIO DO BLOCO COMPARTILHADO — tudo o que a loja lê em runtime (tipos das
-// seções, listas fechadas do tema, fontes de coluna do rodapé). O que é só do
-// backend/CRM fica abaixo do fim do bloco. Desde o G5 o storefront importa
-// este arquivo pelo pacote (`@rv/contrato`): não há cópia para manter em dia.
+// INÍCIO DO BLOCO COMPARTILHADO — o que a loja lê em runtime: tipos das seções
+// e listas fechadas do tema; abaixo do fim do bloco é só backend/CRM.
 // ===========================================================================
 
-/**
- * Aparência da seção — escolhas do lojista no CRM (opcional).
- *
- * Cada campo guarda o **papel** do tema (`rose`, `dourado`, `display`…),
- * não a cor ou a fonte literal: quem escolhe "Dourado Rosé" gravou
- * `"dourado"`, e o storefront resolve isso para `var(--rv-dourado)`.
- * É o que faz a seção acompanhar um tema sazonal — o Black Friday troca
- * `--rv-rose` e a seção recolore junto, sem ninguém reeditar o conteúdo.
- *
- * Vazio (ou ausente) é o padrão e o valor normal: significa "como o tema
- * da loja manda", e é o que o `NULL` da coluna `data` acaba virando.
- *
- * As listas de valores válidos são `THEME_COLOR_TOKENS` / `FONT_ROLES`
- * abaixo; quem valida em runtime é o `appearanceVars` do storefront
- * (`frontend/src/lib/content/appearance.ts`), porque o que volta do
- * banco é texto livre.
- *
- * Seção não oferece campo que não use: a barra de anúncio, por exemplo,
- * é uma linha só, então não tem título nem detalhe para colorir.
- */
+/** Aparência da seção (opcional): cada campo guarda o **papel** do tema (`"dourado"`
+ * → `var(--rv-dourado)`), não a cor literal; vazio é "segue a loja" (`appearanceVars`). */
 export type SectionAppearance = {
   /** `FONT_ROLES`. Vazio já é o padrão da seção. */
   appearanceHeadingFont?: string
@@ -66,48 +31,20 @@ export type SectionBase = {
   position: number
 }
 
-/**
- * A velocidade do ticker da barra de anúncio, em segundos por volta.
- *
- * Mora no contrato, e não solta no campo, porque a faixa é lida em dois
- * lugares: o `min`/`max` do `SECTION_FIELDS.announcement` (que o CRM desenha e a
- * API admin valida) e o storefront (`frontend/src/lib/util/ticker.ts`), que é a
- * última defesa — o que está gravado no banco pode ser anterior à faixa. É o
- * mesmo arranjo do `limit` do trilho de lançamentos
- * (`frontend/src/lib/util/launches.ts`), e quem confere os dois espelhos são
- * `ticker.spec.ts` e `launches.spec.ts`, por valor contra este arquivo.
- *
- * O piso de 8s não é estético: abaixo dele a linha cruza a tela rápido demais
- * para ser lida, e texto que não dá para ler é ruído com movimento. O teto de
- * 60s é o outro extremo — acima dele o ticker parece parado, e o lojista fica
- * com uma barra que ele acha que quebrou.
- */
+/** A velocidade do ticker da barra de anúncio, em segundos por volta: lida pelo
+ * `min`/`max` de `SECTION_FIELDS.announcement` e pelo storefront
+ * (`frontend/src/lib/util/ticker.ts`), a última defesa — o banco pode ter valor
+ * anterior à faixa. Piso de 8s (abaixo não dá para ler), teto de 60s (acima
+ * parece parado); quem confere o espelho é `ticker.spec.ts`. */
 export const ANNOUNCEMENT_SPEED_MIN = 8
 export const ANNOUNCEMENT_SPEED_MAX = 60
 export const ANNOUNCEMENT_SPEED_DEFAULT = 24
 
-/**
- * A velocidade da faixa do Instagram, em **segundos por imagem**.
- *
- * A unidade é a imagem, e não a volta, porque aqui a volta é invisível: o
- * lojista conta fotos na tela, não sabe quantas vezes a lista se repete para o
- * laço fechar (o storefront repete a lista até a volta cobrir a largura da tela
- * — ver `frontend/src/lib/util/marquee.ts`). Com a unidade na foto, o ritmo é o
- * mesmo com quatro ou com doze imagens; com a unidade na volta, ele mudaria
- * sozinho quando o lojista subisse uma foto, sem ele ter pedido nada.
- *
- * Mora no contrato pelo mesmo arranjo do ticker da barra de anúncio
- * (`ANNOUNCEMENT_SPEED_*`): o `min`/`max` do `SECTION_FIELDS.instagram` (que o
- * CRM desenha e a API admin valida) e o storefront
- * (`frontend/src/lib/util/marquee.ts`), que é a última defesa — o que está
- * gravado no banco pode ser anterior à faixa. Quem confere o espelho é
- * `marquee.spec.ts`.
- *
- * O piso de 3s não é estético: abaixo dele a foto atravessa a tela rápido
- * demais para ser vista, e uma faixa de fotos embaçadas é ruído com movimento.
- * O teto de 12s é o outro extremo — acima dele a faixa parece parada, e o
- * lojista fica com um bloco que ele acha que quebrou.
- */
+/** A velocidade da faixa do Instagram, em **segundos por imagem** — unidade na
+ * foto, não na volta (a volta é invisível: o storefront repete a lista até cobrir
+ * a tela, `lib/util/marquee.ts`), para o ritmo não mudar sozinho quando o lojista
+ * sobe uma foto. Espelha o `min`/`max` de `SECTION_FIELDS.instagram`; confere
+ * `marquee.spec.ts`. Piso de 3s, teto de 12s. */
 export const INSTAGRAM_SPEED_MIN = 3
 export const INSTAGRAM_SPEED_MAX = 12
 export const INSTAGRAM_SPEED_DEFAULT = 6
@@ -115,78 +52,30 @@ export const INSTAGRAM_SPEED_DEFAULT = 6
 export type AnnouncementSection = SectionBase &
   SectionAppearance & {
     type: "announcement"
-    /**
-     * A mensagem única — como a barra nasceu ("Frete seguro para todo o Brasil ·
-     * Até 6x sem juros"): uma linha, centrada, parada.
-     *
-     * Continua valendo **quando não há `messages`** (base antiga, ou seção a que
-     * ninguém deu ticker ainda), e é o que faz esta mudança não ter migração:
-     * uma base que nunca ouviu falar de ticker desenha o que já desenhava.
-     */
+    /** A mensagem única, uma linha centrada — vale **quando não há `messages`**
+     * (base antiga), e é o que faz esta mudança não ter migração. */
     text: string
-    /**
-     * As mensagens do ticker, na ordem em que aparecem.
-     *
-     * Com **duas ou mais**, a barra rola sozinha e em laço; com **uma só**, ela
-     * fica parada e centrada — a leitura de antes com a redação nova. Vazio é o
-     * caso do `text` acima.
-     */
+    /** As mensagens do ticker: com **duas ou mais** a barra rola sozinha em laço;
+     * com **uma só**, fica parada e centrada. Vazio é o caso do `text`. */
     messages?: string[]
-    /**
-     * Quantos segundos o ticker leva para dar uma volta completa
-     * (`ANNOUNCEMENT_SPEED_*`). Ausente é o padrão.
-     */
+    /** Quantos segundos o ticker leva para dar uma volta (`ANNOUNCEMENT_SPEED_*`). */
     speedSeconds?: number
   }
 
-/**
- * A capa da home — a **abertura** da página, desenhada pela vitrine.
- *
- * Desde a v9 ela tem **uma forma só**: a lista de slides. Até então a seção
- * carregava também os campos de um slide (`eyebrow`, `headline`, `imageUrl`, o
- * scrim…) e a lista era opcional, valendo os campos quando ela estava vazia.
- * Dois jeitos de escrever a mesma capa no formulário eram um a mais, e o pior
- * deles: quem preenchia a foto de cima não via mudança nenhuma na loja — quem
- * estava no ar era o slide — e o campo ficava de reserva, no CRM, para sempre.
- * Com a lista, o que o lojista escreve é o que a home desenha.
- */
+/** A capa da home — a abertura da página. Desde a v9 tem **uma forma só**, a lista
+ * de slides: quem preenchia a foto de cima não via mudança nenhuma na loja. */
 export type HeroSection = SectionBase & {
   type: "hero"
-  /**
-   * Os slides da capa, na ordem em que aparecem — a capa **é** esta lista.
-   *
-   * Um item é a capa estática: a foto e a cópia dele, sem rodízio e sem
-   * controle nenhum. Dois ou mais viram carrossel (`./carousel.tsx` da
-   * vitrine), com ponto, pausa e a troca a cada sete segundos. Lista vazia não
-   * desenha capa: a seção some da página em vez de virar uma faixa vazia.
-   */
+  /** Os slides da capa, na ordem — a capa **é** esta lista: um item é a capa
+   * estática, dois ou mais o carrossel, e lista vazia não desenha capa. */
   slides: HeroSlide[]
-  /**
-   * A nota da capa: a linha que a loja escreve no canto da faixa — o recado
-   * que fecha a foto, e não a cópia de um slide.
-   *
-   * Mora na **seção**, e não no slide (`HeroSlide`), porque é isso que ela é:
-   * a capa mostra uma nota só e, no carrossel, ela não troca junto com a foto.
-   * Não é o caso dos campos que a v9 tirou do `hero` (os que duplicavam a cópia
-   * do slide e não chegavam à loja): esta é a **única** forma de escrever a
-   * nota, e quem a desenha é a vitrine. Vazia, a nota não é desenhada.
-   */
+  /** A nota da capa: a linha do canto, **da faixa** — no carrossel ela não troca
+   * junto com a foto. Vazia, não é desenhada. */
   note?: string
 }
 
-/**
- * Um slide da capa: a foto e a cópia que entram na capa ou no carrossel.
- *
- * A ordem da lista é a ordem do carrossel, e a ordem dos campos daqui é a do
- * sub-formulário no CRM (`ITEM_FIELDS["list:hero-slide"]`) — a guarda de
- * paridade compara as duas.
- *
- * O scrim (o véu escuro sobre a foto, do lado do texto) **não** está aqui: ele
- * é um valor de desenho, e não conteúdo — é constante da vitrine (a `SCRIM` de
- * `frontend/src/modules/home/components/hero/index.tsx`) desde a v9, quando o
- * campo saiu do formulário. Um valor por slide seria mais um campo num
- * sub-formulário que já repete oito.
- */
+/** Um slide da capa: a foto e a cópia da capa ou do carrossel. A ordem dos campos é
+ * a do sub-formulário no CRM (`ITEM_FIELDS["list:hero-slide"]`); o scrim é desenho. */
 export type HeroSlide = {
   imageUrl: string
   imageAlt: string
@@ -226,32 +115,14 @@ export type CollectionsSection = SectionBase &
     eyebrow: string
     title: string
     subtitle: string
-    /**
-     * O formato da faixa: `cards` (a grade de três cartões altos, como a seção
-     * nasceu) ou `banners` (uma linha de dois banners largos, um ao lado do
-     * outro).
-     *
-     * É escolha de **formato**, então é um `select` e não um booleano: um
-     * segundo formato já era previsível, e um terceiro é mais um valor aqui e um
-     * ramo no render. Ausente ou desconhecido = `cards`, que é o que a loja
-     * desenhava antes deste campo existir — e é o que continua desenhando numa
-     * base onde ninguém escolheu nada.
-     */
+    /** O formato da faixa: `cards` (grade de três cartões) ou `banners` (dois banners
+     * largos). Ausente ou desconhecido = `cards`. */
     layout?: "cards" | "banners"
     items: CollectionHighlight[]
   }
 
-/**
- * Uma categoria do catálogo, como a vitrine e o CRM precisam dela.
- *
- * `categoryId` é a **referência** — é ele que filtra, no `category_id` da Store
- * API —, e `label`/`handle` são leitura ao vivo de `product_category`: quem
- * renomeia a categoria no painel vê o chip mudar, porque não há cópia gravada.
- *
- * O tipo é o mesmo nos dois lados (o chip escolhido e o catálogo oferecido): um
- * chip **é** uma entrada do catálogo, com a diferença de estar na lista da
- * seção.
- */
+/** Uma categoria do catálogo: `categoryId` é a **referência** (o `category_id` da
+ * Store API) e `label`/`handle` são lidos ao vivo, então renomear muda o chip. */
 export type CategoryRef = {
   categoryId: string
   label: string
@@ -264,57 +135,26 @@ export type FeaturedSection = SectionBase &
     eyebrow: string
     title: string
     subtitle: string
-    /**
-     * Chips de filtro acima da vitrine: **referências** às categorias do
-     * catálogo, na ordem em que aparecem (o link `content_section_category`).
-     *
-     * Não é lista de rótulos, e é essa a diferença que a R1 conserta: os chips
-     * eram texto dentro do `data` (`["Todos", "Blazers", "Conjuntos", "Calças"]`)
-     * e a loja mandava o rótulo como busca. Medido no banco real, "Blazers" não
-     * existe no catálogo — aquele chip devolvia zero peças **em silêncio** —, e
-     * renomear uma categoria no painel não mudava chip nenhum, porque a cópia é
-     * que era o dado. Aqui o filtro é `categoryId`, e o rótulo é o nome da
-     * categoria lido na hora.
-     *
-     * O chip "Todos" (limpa o filtro) **não** está nesta lista: não existe
-     * categoria "todas", e quem o desenha é a loja. Antes era a posição —
-     * `filters[0]` — que dizia qual dos chips limpava, então reordenar os chips
-     * trocava o significado de cada um sem nada acusar.
-     */
+    /** Chips de filtro: **referências** às categorias do catálogo (o link
+     * `content_section_category`), na ordem. Não é lista de rótulos: era, e o chip
+     * mandava o rótulo como busca — medido no banco real, "Blazers" não existe no
+     * catálogo e devolvia zero peças **em silêncio**. O chip "Todos" não entra
+     * aqui: quem o desenha é a loja. */
     filters?: CategoryRef[]
     viewAllLabel: string
   }
 
-/**
- * Lançamentos — o trilho de novidades logo depois do hero.
- *
- * É a pergunta que a home não respondia: "o que chegou?". O hero apresenta a
- * marca, as coleções mostram o universo e esta seção mostra o que é novo, num
- * trilho horizontal com encaixe (`scroll-snap`) em vez de grade — a mesma
- * largura de card do resto da loja, mas com o gesto de arrastar.
- *
- * **A fonte do conteúdo é a loja, não o CMS.** A seção carrega só a cópia
- * (eyebrow, título, subtítulo, link) e o `limit`; os produtos vêm da Store API,
- * do mais novo para o mais antigo. É o que faz a seção se manter sozinha: o
- * lojista publica uma peça e ela aparece no trilho sem ninguém editar bloco.
- * Escolher *quais* peças é outro assunto — curadoria manual, com um campo
- * `kind: "products"` —, e a decisão registrada é automático primeiro.
- *
- * A cópia padrão (`defaults.ts`) **não** é cópia do protótipo: o protótipo não
- * tem esta seção. Ela está escrita na voz da marca e é toda editável no CRM —
- * o texto de lá é ponto de partida, não redação final.
- */
+/** Lançamentos — o trilho de novidades depois do hero, com `scroll-snap` em vez de
+ * grade. **A fonte do conteúdo é a loja, não o CMS:** a seção carrega só a cópia e
+ * o `limit`, e os produtos vêm da Store API, do mais novo para o mais antigo. */
 export type LaunchesSection = SectionBase &
   SectionAppearance & {
     type: "launches"
     eyebrow: string
     title: string
     subtitle: string
-    /**
-     * Quantos produtos o trilho mostra. A faixa é declarada no campo
-     * (`SECTION_FIELDS.launches`): a API recusa fora dela, e o storefront tem o
-     * mesmo piso como última defesa (`lib/util/launches.ts`).
-     */
+    /** Quantos produtos o trilho mostra. A faixa é declarada em
+     * `SECTION_FIELDS.launches`; o storefront tem o mesmo piso (`lib/util/launches.ts`). */
     limit: number
     viewAllLabel: string
     viewAllHref: string
@@ -325,17 +165,11 @@ export type EditorialSection = SectionBase &
     type: "editorial"
     /** Linha manuscrita em Allura. */
     script: string
-    /**
-     * O eyebrow acima do título (ex.: "NOSSA ESSÊNCIA") — a etiqueta que diz
-     * de que o bloco fala, no mesmo lugar em que as outras seções a têm.
-     */
+    /** O eyebrow acima do título — a etiqueta que diz de que o bloco fala. */
     eyebrow?: string
     title: string
-    /**
-     * O realce do título: a segunda linha dele, em itálico (`<em>`) — o jeito
-     * que o protótipo escreve o título em duas vozes ("Você não precisa provar
-     * nada." / "Só precisa se reconhecer."). Vazio, o título é uma linha só.
-     */
+    /** O realce do título: a segunda linha dele, em itálico (`<em>`). Vazio, o
+     * título é uma linha só. */
     titleEmphasis?: string
     body: string
     ctaLabel: string
@@ -345,34 +179,18 @@ export type EditorialSection = SectionBase &
     imagePosition: "left" | "right"
   }
 
-/**
- * A faixa editorial: uma foto larga com a cópia por cima e um botão que leva ao
- * catálogo — a última faixa da home no protótipo redesenhado.
- *
- * **Não é uma segunda `editorial`** (a seção "Sobre"): aquela é o manifesto —
- * a foto ao lado do texto (`imagePosition`), a frase manuscrita e o texto
- * corrido da marca. Esta é uma faixa de passagem: a foto inteira, uma linha de
- * eyebrow, o título em duas partes e o botão. Também não é o `hero`: a capa
- * abre a página, e esta faixa fecha o conteúdo, depois do manifesto.
- *
- * A foto **é** o fundo da faixa (como no hero), então não há campo de posição
- * de imagem nem trilho de fundo: o que a seção veste é o título.
- */
+/** A faixa editorial: foto larga, cópia por cima e botão para o catálogo — a
+ * última faixa da home. **Não é** a `editorial` (o manifesto, foto ao lado do
+ * texto) nem o `hero` (que abre a página). A foto **é** o fundo, então não há
+ * campo de posição de imagem. */
 export type BannerSection = SectionBase &
   SectionAppearance & {
     type: "banner"
-    /**
-     * O eyebrow acima do título (ex.: "REAL VALOR, REAL HISTÓRIA"). É opcional
-     * como no `editorial`: em branco, a faixa desenha só o título — e o lojista
-     * pode tirá-lo sem trocar de seção.
-     */
+    /** O eyebrow acima do título; em branco, a faixa desenha só o título. */
     eyebrow?: string
     title: string
-    /**
-     * O realce do título: a segunda linha dele, em itálico (`<em>`) — a que o
-     * protótipo escreve depois da quebra ("Mais que roupa," / "é sobre você.").
-     * Vazio, o título é uma linha só.
-     */
+    /** O realce do título: a segunda linha, em itálico (`<em>`) — como no
+     * `editorial`. Vazio, o título é uma linha só. */
     titleEmphasis?: string
     imageUrl: string
     imageAlt: string
@@ -380,16 +198,8 @@ export type BannerSection = SectionBase &
     ctaHref: string
   }
 
-/**
- * Como um bloco do texto longo se lê — o que o `<select>` do CRM oferece em
- * cada bloco de `prose.blocks`.
- *
- * É uma lista, e não um `union` solto, porque é ela que o editor do admin
- * oferece no `<select>`: as opções do campo de item viajam em `ITEM_FIELDS` (e
- * daí no `schema` do `GET /admin/content`), então o painel não tem cópia
- * nenhuma. O **primeiro** é o `kind` de um bloco novo — o parágrafo, que é o
- * caso comum de um texto corrido.
- */
+/** Como um bloco do texto longo se lê — as opções do `<select>` de `prose.blocks`,
+ * que viajam em `ITEM_FIELDS`. O **primeiro** é o `kind` de um bloco novo. */
 export const PROSE_BLOCK_KINDS = [
   "paragraph",
   "subtitle",
@@ -405,29 +215,11 @@ export const PROSE_BLOCK_KIND_LABELS: Record<ProseBlockKind, string> = {
   bullets: "Lista",
 }
 
-/**
- * O texto longo de uma página (`prose`) — o bloco que destrava Privacidade,
- * Termos, Trocas e Cuidados (14.6.2 do doc 14).
- *
- * **Por que a estrutura é dado, e não marca.** Num editor de texto rico o
- * lojista escreve `##` e `- item`, e duas formas de escrever a mesma coisa é
- * como nasce a divergência entre o que o painel mostra e o que a loja desenha:
- * um `##` no meio do texto não é um subtítulo, é dois cerquilhas na tela. O que
- * o campo de texto aceita é o **subconjunto de marcas inline** de 14.6.3
- * (`**negrito**`, `_itálico_`, `~~riscado~~`, `[texto](/rota)`); o que é
- * estrutura — subtítulo, parágrafo e lista — é campo, e é este tipo.
- */
-
-/**
- * Um bloco do texto longo: o `kind` diz **como** o trecho se lê e o texto diz
- * o quê.
- *
- * Os três campos existem nos três `kind` (o editor de item desenha o
- * sub-formulário inteiro, sem esconder campo pela escolha do outro), e quem
- * escolhe qual deles vale é o render: `subtitle` e `paragraph` leem `text`,
- * `bullets` lê `items`. É por isso que os três são obrigatórios no tipo — o
- * valor gravado tem sempre a mesma forma, e a loja não precisa adivinhar.
- */
+/** O texto longo (`prose`) e um bloco dele. **A estrutura é dado, e não marca:** o
+ * campo de texto aceita só as marcas inline de 14.6.3 (`**negrito**`, `_itálico_`,
+ * `~~riscado~~`, `[texto](/rota)`) — um `##` no meio do texto não é subtítulo, é
+ * dois cerquilhas na tela. Os três campos existem nos três `kind` e o render
+ * escolhe: `subtitle`/`paragraph` leem `text`, `bullets` lê `items`. */
 export type ProseBlock = {
   /** `subtitle` é um `<h2>` dentro do texto, `paragraph` um `<p>`, `bullets` um `<ul>`. */
   kind: ProseBlockKind
@@ -437,51 +229,24 @@ export type ProseBlock = {
   items: string[]
 }
 
-/**
- * A seção de texto longo: um título e a estrutura do texto.
- *
- * Sem trilho de aparência, ao contrário do resto: a página de texto segue o
- * tema da loja inteira, e a decisão do que ela pode vestir é do negócio, não
- * deste PR (ver 14.17 do doc 14). Quem desenha é
- * `frontend/src/modules/content/prose.tsx`.
- */
+/** A seção de texto longo: um título e a estrutura do texto. Sem trilho de
+ * aparência, como o `faq`. Quem desenha é `modules/content/prose.tsx`. */
 export type ProseSection = SectionBase & {
   type: "prose"
   /** O `<h2>` da seção. Em branco, o texto começa direto nos blocos. */
   title: string
   /** A estrutura do texto, na ordem em que ela se lê. */
   blocks: ProseBlock[]
-  /**
-   * O anexo da página (a **chave** do arquivo enviado no CRM), ou `""`.
-   *
-   * É o aviso assinado, o contrato de troca, a tabela de medidas — o que a
-   * página promete em PDF. Vazio significa **sem botão**: desligar o anexo tira
-   * o botão da página sem tocar no texto (critério 7 de 14.6.3).
-   */
+  /** O anexo da página (a **chave** do arquivo enviado, ou `""`): o aviso
+   * assinado, o contrato de troca. Vazio significa **sem botão**. */
   documentUrl: string
-  /**
-   * O que o botão de baixar diz. Vazio cai no rótulo genérico — "Baixar o
-   * documento (PDF)" —, e é o motivo de o rótulo ser campo: "Baixar o aviso
-   * assinado" é o que faz a cliente clicar em um e ignorar o outro.
-   */
+  /** O que o botão de baixar diz. Vazio cai no rótulo genérico "Baixar o
+   * documento (PDF)". */
   documentLabel: string
 }
 
-/**
- * Uma pergunta frequente: a pergunta que a cliente clica e a resposta que ela
- * abre (14.6.2 do doc 14).
- *
- * Os dois campos são o par inteiro, e o par é a razão do tipo: pergunta sem
- * resposta é item em construção, e quem desenha publica só o par completo (ver
- * `frontend/src/modules/content/faq.tsx`).
- *
- * **A assimetria entre os dois tipos é deliberada.** A pergunta é `text` — uma
- * linha que a cliente lê para escolher o que abrir —, e a resposta é `markdown`,
- * o mesmo campo do texto longo, pelo mesmo motivo de 14.6.3: o que é texto
- * chega à página como texto, e quem interpreta as marcas é `renderInline`. Quem
- * escrever `**negrito**` na pergunta verá os asteriscos: marca não é o que o
- * campo promete, e o que a loja não desenha ela também não esconde.
- */
+/** Uma pergunta frequente: o par pergunta/resposta é a razão do tipo — `faq.tsx`
+ * publica só o par completo. A pergunta é `text` e a resposta é `markdown`. */
 export type FaqItem = {
   /** A linha clicável — o texto do `<summary>`. */
   question: string
@@ -489,20 +254,8 @@ export type FaqItem = {
   answer: string
 }
 
-/**
- * As perguntas frequentes (`faq`) — a página da dúvida, que é página de
- * conversão: é onde mora a objeção (14.6.2 do doc 14).
- *
- * **Por que `<details>/<summary>`.** O elemento nativo é acessível por teclado,
- * funciona **sem JavaScript**, e o conteúdo fechado **é indexado** — diferente
- * de abas e de acordeões feitos à mão, que escondem a resposta do buscador e do
- * leitor de tela. E é a resposta longa o que a cliente procura: por isso o `faq`
- * é o par do `prose`, e reusa o parser e as marcas que o texto longo trouxe.
- *
- * Sem trilho de aparência, como o `prose`: a página segue o tema da loja
- * inteira, e o que ela pode vestir é decisão do negócio (14.17/14.19 do doc 14).
- * Quem desenha é `frontend/src/modules/content/faq.tsx`.
- */
+/** As perguntas frequentes (`faq`): o `<details>/<summary>` nativo é acessível por
+ * teclado e indexado, sem JavaScript. Desenha `modules/content/faq.tsx`. */
 export type FaqSection = SectionBase & {
   type: "faq"
   /** O `<h2>` da seção. Em branco, a lista começa direto nas perguntas. */
@@ -517,28 +270,13 @@ export type InstagramSection = SectionBase &
     handle: string
     title: string
     images: { imageUrl: string; imageAlt: string }[]
-    /**
-     * Quantos segundos **cada imagem** leva para atravessar a faixa
-     * (`INSTAGRAM_SPEED_*`). Ausente é o padrão.
-     *
-     * Com **duas ou mais** imagens a faixa rola sozinha, em laço, e para no
-     * mouse e no teclado. Com **uma só** ela é a grade parada de sempre: não há
-     * laço com uma imagem, e repetir a mesma foto lado a lado para preencher a
-     * tela seria uma faixa de cópias, não uma faixa.
-     */
+    /** Quantos segundos **cada imagem** leva para atravessar a faixa
+     * (`INSTAGRAM_SPEED_*`): com duas ou mais ela rola em laço; com uma, é grade. */
     secondsPerImage?: number
   }
 
-/**
- * Item do menu principal do cabeçalho.
- *
- * O `href` também define o comportamento, então não existe um campo
- * "modo": a forma do destino basta.
- *   `/#hero` ou `#hero`   → rola até a seção de id `hero` da home
- *   `/store`, `/search`   → página interna (o país é prefixado na loja)
- *   `https://…`           → fora do site, em nova aba
- *   `mailto:…` / `tel:…`  → cliente de e-mail / telefone
- */
+/** Item do menu do cabeçalho: o `href` define o comportamento (não há campo "modo"):
+ * `#hero` rola, `/store` navega, `https://` abre em nova aba e `mailto:` o contato. */
 export type HeaderLink = {
   label: string
   href: string
@@ -553,49 +291,19 @@ export type HeaderAction = {
   href: string
 }
 
-/**
- * Menu do cabeçalho.
- *
- * É a única seção que não é da home: como a barra de anúncio, aparece
- * em todas as rotas da loja. Mas, como todo conteúdo da vitrine, mora na
- * mesma tabela e na mesma superfície (`home`) — daí o `id` fixo `nav`,
- * que o seed cria (e o "Restaurar padrão" do CRM recria, em
- * `modules/content/restore.ts`).
- *
- * A ordem é a ordem dos arrays: `links` no centro do cabeçalho (e no
- * topo do menu mobile), `actions` no cluster da direita. Os itens da
- * lista são editáveis um a um pelo admin (inclusive reordenados), sem
- * um campo de ordem por item.
- */
+/** Menu do cabeçalho: não é seção da home, mas mora na mesma tabela e superfície
+ * (`home`) — daí o `id` fixo `nav`. Ordem: `links` no centro, `actions` à direita. */
 export type NavSection = SectionBase & {
   type: "nav"
   links: HeaderLink[]
   actions: HeaderAction[]
 }
 
-/**
- * De onde vêm os itens de uma coluna do rodapé.
- *
- *   `links`       → os `links` digitados no admin (o padrão)
- *   `pages`       → as páginas **no ar**, ao vivo (as que respondem 200)
- *   `categories`  → as categorias do catálogo, ao vivo
- *   `collections` → as coleções do catálogo, ao vivo
- *
- * `pages` é a origem que fecha o defeito medido em 14.16: uma coluna com os
- * links digitados à mão promete a página que a lojista ainda não escreveu, e o
- * endereço responde 404 — "o link está quebrado", que é pior do que "o link não
- * existe". Aqui a lista sai do **conteúdo**, pela mesma régua que a rota `[slug]`
- * aplica (`publishedSections`, ver `page.tsx`): o que está fora do ar não entra
- * no rodapé, e o que entra responde. É a mesma pergunta que o `sitemap` faz, e é
- * por isso que os dois leem o mesmo leitor público (`GET /store/content/pages`) —
- * e não uma varredura de seis requisições cada.
- *
- * É uma lista, e não um `union` solto, porque é ela que o editor do admin
- * oferece no `<select>`: as opções do campo de item viajam em `ITEM_FIELDS`
- * (e daí no `schema` do `GET /admin/content`), então o painel não tem cópia
- * nenhuma. Quem confere a lista contra os ramos de `footer-column/index.tsx` é
- * `assets.unit.spec.ts`: origem oferecida que a loja não desenha reprova.
- */
+/** De onde vêm os itens de uma coluna do rodapé: `links` (o padrão, digitados),
+ * `pages` (as páginas **no ar**, as que respondem 200), `categories` e
+ * `collections` (do catálogo, ao vivo). `pages` fecha o defeito de 14.16: link
+ * digitado respondia 404 — "o link está quebrado", pior que "não existe". A lista
+ * sai de `publishedSections`, a régua do `[slug]` e do `sitemap`. */
 export const FOOTER_COLUMN_SOURCES = [
   "links",
   "pages",
@@ -605,22 +313,8 @@ export const FOOTER_COLUMN_SOURCES = [
 
 export type FooterColumnSource = (typeof FOOTER_COLUMN_SOURCES)[number]
 
-/**
- * Coluna de links do rodapé (ex.: "Institucional").
- *
- * Coluna é sempre conteúdo: não existe coluna fixa nem automática no
- * componente, e o lojista insere, edita, reordena e remove **todas** pelo
- * mesmo editor do admin. As colunas de catálogo não são um caso especial
- * do layout — são só uma `source` possível, escolhida por coluna.
- *
- * Com `source: "categories"` ou `"collections"` os itens vêm do catálogo
- * e `links` é ignorado; com `"links"` (o padrão) é o contrário. Nos dois
- * casos os `href` digitados têm a mesma forma e a mesma resolução dos
- * links do menu: quem transforma o `href` em comportamento é o `nav-link`
- * (`/#secao` rola, `/rota` navega, `https://` abre em nova aba,
- * `mailto:`/`tel:` abrem o contato), então rodapé e cabeçalho não
- * divergem.
- */
+/** Coluna de links do rodapé (ex.: "Institucional"), sempre conteúdo — o lojista
+ * insere, edita, reordena e remove todas. `source` de catálogo ignora os `links`. */
 export type FooterColumn = {
   title: string
   /** Ausente/desconhecido conta como `"links"` (dado gravado antes). */
@@ -637,27 +331,12 @@ export type FooterSocial = {
   href: string
 }
 
-/**
- * Rodapé da loja.
- *
- * Como o `nav`, não é uma seção da home: aparece em todas as rotas, quem
- * o desenha é o layout, e o `id` fixo `footer` é o que o seed cria.
- *
- * A marca, a frase manuscrita e a linha de direitos continuam no
- * componente — não são conteúdo. Todo o resto é: as colunas de links (na
- * ordem da lista, cada uma com a sua origem) e as redes sociais. Não
- * existe coluna padrão nem FAQ embutida: rodapé sem coluna nenhuma é um
- * estado válido, e na loja só aparece o que o lojista inserir no admin —
- * uma coluna de "Perguntas frequentes" é uma coluna como qualquer outra.
- */
+/** Rodapé da loja: como o `nav`, aparece em todas as rotas (o layout o desenha) e o
+ * `id` fixo `footer` vem do seed. A marca e a linha de direitos ficam no componente. */
 export type FooterSection = SectionBase & {
   type: "footer"
-  /**
-   * Colunas de links, na ordem da lista. Cada item decide de onde vêm os
-   * itens (`source`), então o componente não tem coluna fixa. Coluna sem
-   * título ou sem itens não aparece na loja — é o que permite publicar o
-   * rodapé antes de o catálogo existir.
-   */
+  /** Colunas de links, na ordem da lista. Cada item decide de onde vêm os itens
+   * (`source`); coluna sem título ou sem itens não aparece na loja. */
   columns: FooterColumn[]
   social: FooterSocial[]
 }
@@ -681,40 +360,24 @@ export type HomeSection =
 export const SECTION_TYPES = [
   "announcement",
   "hero",
-  // A abertura da home vem antes de tudo o que se ordena: a capa (casa 3) e a
-  // faixa de benefícios (casa 4) são fixas, e o trilho de novidades cai na
-  // primeira casa livre da vitrine (5). A ordem deste array é a ordem do
-  // seletor de tipo no CRM e a ordem em que as seções se leem na página — a
-  // mesma das casas ancoradas (`FIXED_SECTION_POSITIONS`) e da faixa da
-  // vitrine (`order.ts`): 5 lançamentos, 6 coleções, 7 Sobre, 8 a faixa
-  // editorial, 9 os destaques e 11 o Instagram — a casa 10 é do rodapé, e a
-  // numeração das ordenáveis a pula.
+  // A ordem deste array é a do seletor do CRM e a das casas (`FIXED_SECTION_POSITIONS`,
+  // `order.ts`): 5 lançamentos, 6 coleções, 7 Sobre, 8 a faixa, 9 destaques, 11 Instagram.
   "benefits",
   "launches",
   "collections",
   "editorial",
   "banner",
-  // O texto longo (a F2 do doc 14). É o **primeiro tipo que existe só em
-  // página**: ele nasce aqui e na lista de tipos do CRM como os outros, mas
-  // não está no conteúdo padrão da vitrine (`DEFAULT_HOME_SECTIONS`) — o que a
-  // home oferece a mais é o que o payload dela já tinha. O lugar dele no array
-  // é o do seletor (o bloco de texto fica ao lado do outro, o `banner`); a
-  // ordem **das seções na página** é a `position` que vem do banco, e a
-  // numeração da vitrine continua saindo de `order.ts`.
+  // O `prose` (F2 do doc 14) é o primeiro tipo que existe só em página: não está
+  // no conteúdo padrão da vitrine.
   "prose",
-  // As perguntas frequentes (o PR4 da mesma fase): o **segundo** tipo que só
-  // existe em página, e o par do `prose` — a resposta de cada pergunta reusa o
-  // mesmo parser e as mesmas marcas. Vem logo depois dele no array pela mesma
-  // razão que o `prose` vem depois do `banner`: é onde o seletor do CRM deixa os
-  // dois lado a lado. A ordem **na página** continua sendo a `position` do banco.
+  // O `faq` é o segundo desse caso, e o par do `prose` — vem logo depois para o
+  // seletor do CRM deixar os dois lado a lado.
   "faq",
   "featured",
   "instagram",
-  // Não é uma seção da home: é o cabeçalho da loja, renderizado pelo
-  // layout em todas as rotas (como a barra de anúncio).
+  // Não é seção da home: é o cabeçalho, desenhado pelo layout em todas as rotas.
   "nav",
-  // Mesmo caso do `nav`: o rodapé também é cromo do site, não seção da
-  // home, e quem o desenha é o layout.
+  // Mesmo caso do `nav`: o rodapé é cromo do site, não seção da home.
   "footer",
 ] as const
 
@@ -727,34 +390,12 @@ export function isSectionType(value: unknown): value is SectionType {
   )
 }
 
-/**
- * Tipos que só podem existir **uma vez** por superfície — e que, por isso, têm
- * **casa ancorada** (`FIXED_SECTION_POSITIONS`): a posição deles não se move.
- *
- * São dois grupos, e os dois aparecem no CRM com a etiqueta **Fixo** (sem
- * setas, sem numeral a recalcular):
- *
- *   cromo do site     `announcement`, `nav` e `footer` — a moldura que a loja
- *                     desenha **em todas as rotas** e resolve por `find`
- *                     (`announceSections`, `headerSections` e `footerSections`,
- *                     em `frontend/src/lib/content/home-sections.ts`): o
- *                     primeiro bloco do tipo é o que aparece;
- *   abertura da home  `hero` e `benefits` — quem os desenha é a vitrine, e não
- *                     a moldura, mas eles são o **começo da página** e não
- *                     conteúdo que se reordena: a capa e a faixa de benefícios
- *                     moram sempre na mesma casa (ver `FIXED_SECTION_POSITIONS`).
- *
- * Um segundo bloco de um tipo destes seria o pior defeito possível num CMS: o
- * lojista cria, a lista do CRM mostra, e a loja **nunca** desenha — o cromo é
- * resolvido por `find` e a abertura está ancorada numa casa só. Por isso a API
- * recusa a criação (`POST /admin/content`) e o CRM não oferece um tipo que já
- * existe — as duas pontas leem esta lista, então não há duas opiniões sobre o
- * que é único.
- *
- * Estar aqui é o que faz a seção nascer **fixa** (`fixed = true`): quem grava a
- * coluna são as duas portas que criam seção (`restore.ts` e
- * `POST /admin/content`), as duas perguntando a `isSingletonSectionType`.
- */
+/** Tipos que só podem existir **uma vez** por superfície e que têm **casa ancorada**
+ * (`FIXED_SECTION_POSITIONS`). Dois grupos, os dois com a etiqueta **Fixo** no CRM:
+ * o cromo do site (`announcement`, `nav`, `footer` — resolvido por `find` em
+ * `lib/content/home-sections.ts`) e a abertura da home (`hero`, `benefits`). Um
+ * segundo bloco seria o pior defeito num CMS: o lojista cria, o CRM lista e a loja
+ * **nunca** desenha — por isso a API recusa e o CRM não oferece. */
 export const SINGLETON_SECTION_TYPES = [
   "announcement",
   "nav",
@@ -774,15 +415,8 @@ export function isSingletonSectionType(
   )
 }
 
-/**
- * Papéis de cor do tema (`ThemeColors` de `frontend/src/lib/theme.ts`,
- * os tokens `--rv-*` de `frontend/src/styles/brand.css`).
- *
- * É uma lista, e não só um `union` no tipo, porque as pontas precisam
- * dos mesmos valores em runtime: o `<select>` do admin (via `options`),
- * a validação do storefront (`appearanceVars`) e a guarda de paridade,
- * que compara as duas cópias.
- */
+/** Papéis de cor do tema (`ThemeColors` de `lib/theme.ts`, os tokens `--rv-*` de
+ * `brand.css`). É lista, e não só um union: as pontas precisam dos mesmos valores. */
 export const THEME_COLOR_TOKENS = [
   "rose",
   "offwhite",
@@ -794,28 +428,8 @@ export const THEME_COLOR_TOKENS = [
 
 export type ThemeColorToken = (typeof THEME_COLOR_TOKENS)[number]
 
-/**
- * A paleta do tema padrão — **a origem dos hex**, não mais uma cópia.
- *
- * Serve a dois consumidores, e os dois precisam dos mesmos valores:
- *
- *   1. o editor do admin desenha a **bolinha de cor** (o painel é um pacote
- *      separado, não lê os `theme.json` do storefront e sem isto só teria como
- *      oferecer a palavra "rose" — que não diz nada a quem escolhe uma cor);
- *   2. o gerador (`scripts/gen-content.mjs`) escreve
- *      `frontend/themes/default/theme.json` daqui e os tokens `--rv-*` no
- *      `frontend/src/styles/tokens.generated.css`, que é o fallback do
- *      `brand.css` antes de `themeToCSSVariables` escrever por requisição.
- *
- * Era **cópia de leitura** até a R3-lite, conferida cor por cor contra o
- * `theme.json` por dois arquivos de verificação. Agora o `theme.json` é
- * *seed* (bootstrap do tema no banco, na R4) e sai daqui: não há o que
- * comparar.
- *
- * O que o lojista grava continua sendo o papel (`"rose"`), nunca o hex, então
- * o tema sazonal segue mandando: a bolinha do CRM mostra a cor do **tema
- * padrão**, e é por isso que a opção segue trazendo o nome do papel no rótulo.
- */
+/** A paleta do tema padrão — **a origem dos hex**. Serve ao editor (sem os hex o painel
+ * só teria a palavra "rose") e ao gerador (`gen-content.mjs`). O lojista grava o papel. */
 export const THEME_COLOR_HEXES: Record<ThemeColorToken, string> = {
   rose: "#B97872",
   offwhite: "#F7F1E8",
@@ -825,10 +439,7 @@ export const THEME_COLOR_HEXES: Record<ThemeColorToken, string> = {
   dourado: "#D4B19A",
 }
 
-/**
- * Papéis de fonte do tema (`ThemeFonts`): títulos, textos e a frase
- * manuscrita. Mesma razão de lista de `THEME_COLOR_TOKENS`.
- */
+/** Papéis de fonte do tema (`ThemeFonts`): títulos, textos e a manuscrita. */
 export const FONT_ROLES = ["display", "sans", "script"] as const
 
 export type FontRole = (typeof FONT_ROLES)[number]
@@ -842,79 +453,29 @@ export type ThemeFont = {
   stack: string
 }
 
-/**
- * Monta uma fonte a partir da família e do fallback dela.
- *
- * A pilha é **derivada** — antes era escrita à mão em três lugares (aqui, no
- * template de `themeToCSSVariables` e no `--rv-font-*` do `brand.css`), e
- * cada cópia podia envelhecer sozinha. As três saem daqui agora: a loja monta
- * a pilha com `family` + `fallback` (`frontend/src/lib/theme.ts`), o
- * `brand.css` declara o fallback, e `assets.unit.spec.ts` confere que ele é o
- * mesmo.
- */
+/** Monta uma fonte a partir da família e do fallback. A pilha é **derivada**: as
+ * três saem daqui (a loja, o `brand.css` e `assets.unit.spec.ts`, que confere). */
 function themeFont(family: string, fallback: string): ThemeFont {
   return { family, fallback, stack: `"${family}", ${fallback}` }
 }
 
-/**
- * A família, o fallback e a pilha completa de cada papel de fonte.
- *
- * `family` é o nome declarado no `theme.json` (`fonts`) — o mesmo que o
- * `@font-face` da cópia do painel usa —, e `stack` é a pilha que
- * `themeToCSSVariables` (`frontend/src/lib/theme.ts`) escreve em
- * `--rv-font-*`.
- *
- * Mesma razão de `THEME_COLOR_HEXES`: o `<select>` de fonte do admin
- * desenha cada opção **na própria fonte** — é o que faz "Títulos (Playfair
- * Display)" parecer um título na tela em vez de uma linha de texto igual às
- * outras. Sem a família, o painel não tem como pedir essa fonte ao
- * navegador.
- *
- * A guarda de paridade confere o md5 dos `.woff2` do admin contra os do
- * storefront — uma família sem arquivo vira prévia em Times New Roman, e um
- * arquivo diferente do da loja vira prévia que mente. A família em si não se
- * confere mais contra o `theme.json`: o arquivo é gerado daqui.
- */
+/** A família, o fallback e a pilha de cada papel de fonte — mesma razão de
+ * `THEME_COLOR_HEXES`: o `<select>` do admin desenha a opção **na própria fonte**. A
+ * paridade confere o md5 dos `.woff2` (sem arquivo, a prévia mente). */
 export const THEME_FONTS: Record<FontRole, ThemeFont> = {
   display: themeFont("Playfair Display", "Georgia, serif"),
   sans: themeFont("Montserrat", "system-ui, sans-serif"),
   script: themeFont("Allura", "cursive"),
 }
 
-/**
- * Cores do tema que são fundo escuro.
- *
- * Elas não existem para o formulário (nenhum `<select>` as oferece — as
- * opções saem de `THEME_COLOR_TOKENS`): servem para o storefront
- * auto-legibilizar a seção. Fundo escuro escolhido **e** nenhuma cor de
- * texto escolhida significam "não mexi no texto", e aí o texto vira off
- * white — grafite sobre preto seria ilegível, e o lojista que quer preto de
- * fundo não tem por que saber que precisa escolher a cor do texto também.
- *
- * Escolha explícita sempre vence: quem gravar `grafite` de texto num fundo
- * `preto` fica com grafite.
- *
- * Só o lado escuro tem regra: no tema padrão todo texto de seção já é
- * escuro (grafite/muted), então um fundo claro — `offwhite` — continua
- * legível sem ajuda. O caso que sobra é `dourado` de fundo (texto off
- * white fica com pouco contraste), e para esse o lojista tem o campo *Cor
- * dos textos* na mão.
- */
+/** Cores do tema que são fundo escuro. Nenhum `<select>` as oferece: servem para o
+ * storefront auto-legibilizar — fundo escuro **sem** cor de texto escolhida vira off
+ * white, porque grafite sobre preto seria ilegível. A escolha explícita vence. */
 export const THEME_DARK_TOKENS = ["preto", "cacao"] as const
 
-/**
- * Rótulos dos trilhos de aparência no editor do admin.
- *
- * Aparência não é um bloco no fim do formulário: cada trilho aparece
- * **dentro** do conteúdo, logo abaixo do campo que ele veste — a fonte e a
- * cor dos títulos embaixo do campo "Título", a cor do fundo no fim da
- * seção. Quem diz onde cada campo cai é o `attachedTo` do `FieldSpec`; o
- * rótulo do trilho é o `group` dele.
- *
- * A ordem é a ordem dos trilhos quando dois deles caem no mesmo campo (a
- * faixa de benefícios, por exemplo, veste tudo a partir da lista de itens):
- * título, texto, detalhe e, por último, o fundo.
- */
+/** Rótulos dos trilhos de aparência: cada trilho aparece **dentro** do conteúdo,
+ * logo abaixo do campo que ele veste (o `attachedTo` do `FieldSpec`; o `group` é o
+ * rótulo). A ordem é a dos trilhos quando dois caem no mesmo campo. */
 export const APPEARANCE_GROUPS = [
   "Títulos",
   "Textos",
@@ -924,16 +485,8 @@ export const APPEARANCE_GROUPS = [
 
 export type AppearanceGroup = (typeof APPEARANCE_GROUPS)[number]
 
-/**
- * Nome do campo de `data` que carrega cada cor do tema (`rose` → `colorRose`).
- *
- * O payload é plano — um bloco é `{ id, enabled, position, type, …data }` —,
- * então a paleta editável no CRM não vira um objeto aninhado em `data`: cada
- * cor é um campo, como qualquer outro. O nome sai daqui para o editor e a
- * loja não terem duas convenções de leitura: quem grava é o CRM (via
- * `THEME_FIELDS`) e quem lê é o storefront (`frontend/src/lib/theme.ts`),
- * pacotes diferentes que só concordam pelo artefato gerado.
- */
+/** Nome do campo de `data` que carrega cada cor do tema (`rose` → `colorRose`): a
+ * paleta é campo como outro — grava o CRM (`THEME_FIELDS`), lê a loja (`lib/theme.ts`). */
 export function themeColorField(token: ThemeColorToken): string {
   return `color${token[0].toUpperCase()}${token.slice(1)}`
 }
@@ -944,38 +497,15 @@ export function themeFontField(role: FontRole): string {
 }
 
 // ===========================================================================
-// FIM DO BLOCO COMPARTILHADO. Daqui para baixo é só backend/admin: os
-// atalhos dos trilhos de aparência, o `SECTION_FIELDS` que o CRM consome e a
-// paleta/fontes de prévia (que o painel recebe pelo `schema` da API).
+// FIM DO BLOCO COMPARTILHADO — daqui para baixo é só backend/admin: os trilhos de
+// aparência, o `SECTION_FIELDS` que o CRM consome e a paleta/fontes de prévia.
 // ===========================================================================
 
-/**
- * A **casa** de cada seção fixa: a posição que ela ocupa sempre.
- *
- * Fixa é a seção que não tem ordem — o CRM mostra a etiqueta "Fixo" no lugar
- * das setas, e a renumeração da vitrine não a toca. Os tipos são os de
- * `SINGLETON_SECTION_TYPES` (único por superfície é o que garante uma casa só),
- * e o desenho da home é este:
- *
- *     1  barra de anúncio   ┐
- *     2  cabeçalho          │ o bloco ancorado do TOPO: as casas em que a
- *     3  capa (hero)        │ página começa, na ordem em que se lê
- *     4  benefícios         ┘
- *     5… as seções da vitrine — as únicas que o "Salvar ordem" renumera
- *    10  rodapé             ← ancorado no fim da numeração
- *
- * A faixa de cada superfície (`CONTENT_SURFACES[i].order`) começa na primeira
- * casa livre depois do bloco do topo e **pula** as casas ancoradas (`order.ts`):
- * as ordenáveis caem nas casas livres em ordem — 5, 6, 7, 8, 9 e depois **11**,
- * porque a casa 10 é do rodapé e nenhuma seção ordenável a ocupa. A vitrine de
- * hoje usa as seis: lançamentos, coleções, Sobre, a faixa editorial e os
- * destaques (5 a 9) e o Instagram (11).
- *
- * Mora **abaixo do bloco compartilhado** porque o storefront não precisa dela:
- * ele ordena por `position` e resolve o cromo por `type`
- * (`frontend/src/lib/content/home-sections.ts`). Quem lê as casas é o backend —
- * o padrão (`defaults.ts`), a restauração (`restore.ts`) e a regra da ordem.
- */
+/** A **casa** de cada seção fixa: a posição que ela ocupa sempre — 1 barra de
+ * anúncio, 2 cabeçalho, 3 capa, 4 benefícios e 10 rodapé. A renumeração do
+ * "Salvar ordem" não as toca: as ordenáveis caem nas casas livres (5 a 9 e,
+ * depois, 11 — a 10 é do rodapé), como em `order.ts`. Mora abaixo do bloco
+ * compartilhado porque quem lê as casas é o backend (`defaults.ts`, `restore.ts`). */
 export const FIXED_SECTION_POSITIONS: Record<SingletonSectionType, number> = {
   announcement: 1,
   nav: 2,
@@ -1009,28 +539,11 @@ const APPEARANCE_FONT_LABELS: Record<string, string> = {
   script: "Manuscrita (Allura)",
 }
 
-/**
- * Um trilho de aparência: os campos de um mesmo `group`, ancorados no
- * campo de conteúdo que eles vestem (`attachedTo`).
- *
- * Cada trilho é uma função porque o mesmo trilho cai em lugares diferentes
- * conforme a seção: "Títulos" é a fonte e a cor do `headline` no hero, do
- * `title` nas coleções e do `items` na faixa de benefícios. Quem chama
- * informa a âncora, e `SECTION_FIELDS` espalha o retorno logo depois do
- * campo citado — é a ordem do array, e não um mapa à parte, que diz o que
- * aparece onde. O formulário do admin é montado daqui, na ordem daqui.
- *
- * `attachedTo` é âncora de verdade, não comentário: a guarda de paridade
- * confere que o campo citado existe naquela seção e que o trilho vem logo
- * depois dele. Sem isso, um trilho continuaria compilando e aparecendo —
- * só que longe do campo que ele muda.
- *
- * A primeira opção de todo campo é a vazia — "Padrão do tema da loja" —
- * porque vazio significa "não escreve nada no wrapper da seção", que é o
- * que faz o bloco seguir a loja sem override nenhum. A cor livre (hex) foi
- * descartada de propósito: o guia de marca tem 6 cores, e um hex solto
- * venceria o tema sazonal em vez de acompanhá-lo.
- */
+/** Um trilho de aparência: os campos de um mesmo `group`, ancorados no campo de
+ * conteúdo que eles vestem (`attachedTo`). Quem chama informa a âncora e
+ * `SECTION_FIELDS` espalha o retorno logo depois do campo citado — a ordem do array
+ * é a do formulário do admin, e a paridade cobra que o trilho venha depois do campo.
+ * A primeira opção de todo campo é a vazia ("Padrão do tema da loja"). */
 function appearanceTitles(attachedTo: string): readonly FieldSpec[] {
   return [
     {
@@ -1078,11 +591,8 @@ function appearanceTexts(attachedTo: string): readonly FieldSpec[] {
   ]
 }
 
-/**
- * Trilho "Detalhes": a cor de destaque da seção — eyebrow, ícone, frase
- * manuscrita, realce do título, link "ver todos". É uma cor só, mas é a
- * que dá o tom.
- */
+/** Trilho "Detalhes": a cor de destaque da seção — eyebrow, ícone, frase
+ * manuscrita, realce do título e link "ver todos". */
 function appearanceDetails(attachedTo: string): readonly FieldSpec[] {
   return [
     {
@@ -1098,19 +608,8 @@ function appearanceDetails(attachedTo: string): readonly FieldSpec[] {
   ]
 }
 
-/**
- * Trilho "Fundo": a cor do bloco inteiro.
- *
- * Fica sempre no fim do formulário da seção — é a única escolha que vale
- * para o bloco todo, não para um elemento —, e por isso a âncora dele é o
- * último campo de conteúdo da seção.
- *
- * Escolher um fundo escuro (`preto`, `cacao` — `THEME_DARK_TOKENS`) faz o
- * storefront legibilizar o texto em off white por conta própria. A regra é
- * do render, não um campo: por isso o editor a **avisa** no trilho, em vez
- * de oferecer um campo "cor do texto no fundo escuro" que seria um segundo
- * jeito de dizer a mesma coisa.
- */
+/** Trilho "Fundo": a cor do bloco inteiro — fica no fim do formulário. Fundo escuro
+ * (`THEME_DARK_TOKENS`) legibiliza o texto em off white; o editor só **avisa**. */
 function appearanceBackground(attachedTo: string): readonly FieldSpec[] {
   return [
     {
@@ -1125,117 +624,56 @@ function appearanceBackground(attachedTo: string): readonly FieldSpec[] {
   ]
 }
 
-/**
- * Contrato por tipo: campos que vivem em `data` (JSON) e o formato
- * esperado de cada um.
- *
- * Serve para duas coisas: validar a entrada da API admin antes de
- * gravar, e derivar o formulário do widget sem repetir a lista de
- * campos em React.
- */
+/** Contrato por tipo: campos que vivem em `data` (JSON) — valida a entrada da API
+ * admin antes de gravar e deriva o formulário do widget. */
 export type FieldKind =
   | "text"
-  // Destino (**href**): o `text` de um endereço, com a **lista das rotas
-  // conhecidas** ao lado — o seletor de destino do PR5 do doc 14 (14.6.4, F3a).
-  //
-  // O valor continua sendo a string, e a lista **sugere**, não tranca:
-  // `mailto:`, `tel:`, `https://…` e a âncora da vitrine (`/#editorial`) não
-  // são rotas da loja, e um `<select>` fechado não teria como oferecê-las. Quem
-  // oferece é o `datalist` do painel, alimentado por `CONTENT_DESTINATIONS` —
-  // que viaja no `schema` (`schema.destinations`) pelo motivo de sempre: o
-  // admin é outro pacote e não importa valor do contrato.
-  //
-  // É o campo que fecha a causa-raiz do doc 13: nove botões apontando para
-  // `/store` não era desatenção de quem editou — era ausência de alternativa no
-  // painel, que só conhecia o campo de texto livre.
+  // Destino (**href**): o `text` de um endereço com a **lista das rotas conhecidas**
+  // ao lado; a lista **sugere**, não tranca (`mailto:`, `tel:`, `https://…`).
   | "href"
   | "textarea"
-  // Texto **formatado**: a mesma caixa de texto, com um subconjunto fechado de
-  // marcas inline (`MARKDOWN_MARKS`) gravado como **texto** — o que está no
-  // banco é uma string sem HTML nenhum, e quem interpreta é `renderInline`
-  // (`frontend/src/lib/content/markdown.tsx`), que devolve nós React.
-  //
-  // É o campo do texto longo (`prose.blocks[].text`, e a resposta de cada
-  // pergunta no `faq` do PR4): o que o lojista escreve no CRM chega à página
-  // com negrito, itálico, riscado e link — e o resto sai literal, nunca
-  // desaparece. O CRM acrescenta uma barra de marcas acima da caixa; a lista
-  // das marcas chega ao painel pelo `schema` (`markdownMarks`), porque o painel
-  // não importa valor do contrato. Ver 14.6.3 do doc 14.
+  // Texto **formatado**: a mesma caixa, com um subconjunto fechado de marcas inline
+  // (`MARKDOWN_MARKS`) gravado como **texto**; quem interpreta é `renderInline`.
   | "markdown"
   | "number"
   | "select"
-  // Imagem: campo com envio de arquivo. O editor sobe a foto pelo provider de
-  // arquivos (`@medusajs/file-local`, ver `medusa-config.ts`) e grava a
-  // **chave** do arquivo (`1699999999-hero.jpg`) — nunca a URL absoluta, que
-  // amarraria o conteúdo ao endereço do backend. Quem traduz chave → URL é
-  // `resolveMediaUrl` no storefront (`frontend/src/lib/util/media.ts`), o que
-  // mantém a loja funcionando com o mesmo valor gravado hoje (URL do painel
-  // nativo) e depois de trocar o provider por S3.
+  // Imagem: campo com envio de arquivo. Grava a **chave** (`1699999999-hero.jpg`),
+  // nunca a URL; quem traduz é `resolveMediaUrl` (`lib/util/media.ts`).
   | "image"
-  // Documento anexo: envio de arquivo, como a imagem — e com a mesma regra de
-  // valor. O que muda é o que a loja faz com ele: **não desenha**, publica um
-  // botão que baixa.
-  //
-  // O anexo **complementa** o texto, nunca o substitui (14.6.3 do doc 14): PDF
-  // não é indexável, não é bom no telefone e não é o que a LGPD pede para o
-  // aviso em si — ela pede o texto acessível. O documento é o **da** página, com
-  // rótulo (`documentLabel`, no `prose`): "Baixar o aviso assinado (PDF)".
+  // Documento anexo: envio de arquivo, como a imagem — e a loja **não desenha**,
+  // publica um botão que baixa. O anexo **complementa** o texto (14.6.3).
   | "document"
-  // Aparência: a paleta e as fontes do tema, desenhadas como bolinhas de cor
-  // e como uma lista de fontes com prévia — ver `THEME_COLOR_HEXES` e
-  // `THEME_FONTS`. Continuam sendo escolha dentro de uma lista fechada: o
-  // `validateData` da rota admin reprova o que estiver fora de `options`.
+  // Aparência: a paleta e as fontes do tema em lista fechada (`validateData`).
   | "color"
   | "font"
-  // Cor **literal** (`#RRGGBB`): a paleta de uma estação, editada no CRM. É o
-  // único campo em que o valor gravado é o hex, e não o papel (`THEME_COLOR_TOKENS`)
-  // — a estação define cores novas, então não há lista fechada onde escolhê-las.
-  // O formato quem cobra é o `pattern` do campo (a rota admin reprova o resto).
+  // Cor **literal** (`#RRGGBB`): a paleta de uma estação, o único campo em que o
+  // valor gravado é o hex. O formato quem cobra é o `pattern` do campo.
   | "hex"
-  // Lista de **referências** a categorias (ids), com a ordem da lista: é o campo
-  // dos chips da vitrine. Não é lista de objetos — não há sub-formulário —, e
-  // por isso o editor é um seletor próprio (`field-input.tsx`) e `ITEM_FIELDS`
-  // traz a entrada vazia (a guarda de paridade cobra editor para todo `list:*`).
-  // O que **não** se grava aqui é o rótulo: `label` e `handle` são lidos da
-  // categoria na hora de desenhar (`modules/content/filters.ts`).
+  // Lista de **referências** a categorias (ids), com a ordem: o campo dos chips da
+  // vitrine. `label`/`handle` são lidos da categoria na hora de desenhar.
   | "list:category"
-  // Lista de textos simples: uma caixa por texto, sem sub-campos — e sem
-  // entrada em `ITEM_FIELDS` (não há sub-formulário para desenhar). É o campo
-  // das mensagens do ticker da barra de anúncio (`messages`).
-  //
-  // Era um único input separado por vírgula, e o separador **dentro** do campo
-  // era o defeito: o texto era remontado a cada tecla (`join` para exibir,
-  // `split` para gravar), então a vírgula recém-digitada sumia e as mensagens se
-  // colavam numa só — a barra ficava parada, com `messages` de um item, e nada
-  // acusava. Com uma caixa por mensagem não há separador para perder; a vírgula
-  // continua valendo como gesto de **colagem** (colar uma lista abre várias).
+  // Lista de textos simples, uma caixa por texto, sem sub-campos. Era um input único
+  // separado por vírgula, e o separador **dentro** do campo era o defeito: a vírgula
+  // recém-digitada sumia e as mensagens colavam numa só.
   | "list:text"
-  // Lista de textos **formatados**: uma caixa por item, cada uma com a barra de
-  // marcas — é o `list:text` do texto longo (`prose.blocks[].items`, as linhas
-  // de uma lista). Como ele, não tem sub-campos e por isso **não** entra em
-  // `ITEM_FIELDS`: o editor de item desenharia um cartão de item sem campo
-  // nenhum dentro.
+  // Lista de textos **formatados**, uma caixa por item — o `list:text` do texto
+  // longo. Como ele, não entra em `ITEM_FIELDS`.
   | "list:markdown"
-  // O slide da capa (`hero.slides`): foto e cópia, o sub-formulário do tipo
-  // `HeroSlide` — item de lista como o `list:highlight`, com a mesma forma
-  // (imagem, textos e link) e por isso o mesmo editor do admin.
+  // O slide da capa (`hero.slides`), o sub-formulário do tipo `HeroSlide` — item de
+  // lista como o `list:highlight`, com a mesma forma.
   | "list:hero-slide"
   | "list:benefit"
   | "list:highlight"
   | "list:image"
   | "list:link"
   | "list:action"
-  // O bloco do texto longo (`prose.blocks`): o `kind`, o texto formatado e as
-  // linhas da lista — o único `list:*` cujo item tem, ele mesmo, uma lista de
-  // textos formatados dentro (`list:markdown`).
+  // O bloco do texto longo: o `kind`, o texto e as linhas da lista — o único `list:*`
+  // cujo item tem, ele mesmo, uma lista dentro.
   | "list:proseBlock"
-  // A pergunta frequente (`faq.items`): a pergunta (texto simples e clicável) e a
-  // resposta (`markdown`, o mesmo campo do texto longo). Sub-formulário de dois
-  // campos e **sem** lista dentro — o editor genérico dos `list:*` o desenha
-  // sem uma linha nova no painel, e o tipo que ele espelha é o `FaqItem`.
+  // A pergunta frequente: pergunta (`text`) e resposta (`markdown`). O tipo que ele
+  // espelha é o `FaqItem`.
   | "list:faqItem"
-  // Item com sub-lista dentro (`links`): o editor do admin desenha os
-  // níveis internos recursivamente.
+  // Item com sub-lista dentro (`links`): o editor desenha os níveis internos.
   | "list:column"
   | "list:social"
 
@@ -1246,73 +684,32 @@ export type FieldSpec = {
   required?: boolean
   /** Apenas para `select`. */
   options?: readonly string[]
-  /**
-   * Formato esperado do valor, como **fonte de regex** (`HEX_COLOR_PATTERN`,
-   * `MONTH_DAY_PATTERN`): o `validateData` da rota admin reprova o que não
-   * casar, e o editor mostra o aviso no campo.
-   *
-   * Existe porque há campo de texto cuja forma o `kind` sozinho não descreve:
-   * sem isto um `#B9787` (cinco dígitos) seria gravado e chegaria à loja como
-   * variável CSS inválida — o `var()` não cai no fallback quando a variável
-   * existe e não resolve, então a cor sumiria sem erro nenhum.
-   */
+  /** Formato esperado do valor, como **fonte de regex** (`HEX_COLOR_PATTERN`): a rota
+   * admin reprova o que não casar — senão um `#B9787` chegaria à loja como variável
+   * CSS inválida, e a cor sumiria sem erro. */
   pattern?: string
-  /**
-   * Tradução de cada opção, para o `<select>` do admin não ser só
-   * jargão (`"dourado"` → `"Dourado Rosé"`). A chave é a opção; a
-   * opção vazia se escreve `"": "…"`.
-   *
-   * A ordem quem manda é a de `options` — este mapa só traduz.
-   */
+  /** Tradução de cada opção, para o `<select>` não ser só jargão (`"dourado"` →
+   * `"Dourado Rosé"`). A ordem quem manda é a de `options`. */
   optionLabels?: Record<string, string>
-  /**
-   * Agrupamento visual no editor do admin (ex.: `"Títulos"`). Campo sem
-   * grupo é conteúdo e aparece na ordem do contrato; campo com grupo é um
-   * **trilho** de aparência e aparece logo abaixo do campo que ele veste.
-   * Ver `APPEARANCE_GROUPS`.
-   */
+  /** Agrupamento visual no editor (ex.: `"Títulos"`): campo com grupo é um
+   * **trilho** de aparência, e aparece abaixo do campo que veste. */
   group?: string
-  /**
-   * Nome do campo de conteúdo que este campo veste — o input debaixo do
-   * qual ele é desenhado no editor (`"headline"` para a fonte e a cor dos
-   * títulos do hero).
-   *
-   * Redundante com a posição no array de propósito: a ordem de
-   * `SECTION_FIELDS` é o que o admin usa para montar o formulário, e este
-   * campo é o que a guarda de paridade cobra para que a ordem não se perca
-   * num `sort`, num agrupamento ou num `spread` fora de lugar. Sem ele, um
-   * trilho pode acabar a três campos de distância do que ele muda — e nada
-   * quebra.
-   */
+  /** Nome do campo de conteúdo que este campo veste — o input debaixo do qual ele é
+   * desenhado. Redundante com a posição no array de propósito: é o que a guarda de
+   * paridade cobra para que a ordem não se perca num `sort` ou `spread`. */
   attachedTo?: string
   help?: string
-  /**
-   * Faixa de um campo `number` (mínimo, máximo e passo do `<input>`), e o que
-   * a rota admin usa para reprovar valor fora dela.
-   *
-   * Declaradas no campo, e não no editor: o formulário do painel é desenhado a
-   * partir deste contrato, então um campo numérico novo — o limite de itens de
-   * uma vitrine, por exemplo — herdaria a faixa do primeiro campo que a tivesse
-   * (os segundos por volta do ticker, 8 a 60) se ela estivesse escrita no
-   * `field-input.tsx`, e o lojista não conseguiria digitar 8. Campo sem faixa é
-   * um número livre.
-   */
+  /** Faixa de um campo `number` (mínimo, máximo e passo). Declarada no campo: se
+   * estivesse no `field-input.tsx`, todo campo numérico herdaria a faixa do primeiro
+   * que a tem. A rota admin reprova o valor fora dela. */
   min?: number
   max?: number
   /** Passo do `<input type="number">`; ausente vale 1. */
   step?: number
 }
 
-/**
- * A ajuda dos campos de destino (`kind: "href"`).
- *
- * Uma constante porque a frase é a **mesma** em todos eles — e porque o que ela
- * diz é o que mudou no campo: ele deixou de ser uma caixa de texto livre e
- * ganhou a lista das rotas conhecidas ao lado. O lojista precisa saber as duas
- * metades: que existe uma lista para escolher, e que o texto continua valendo
- * para o que **não** é rota da loja (`https://…`, `mailto:`, `tel:` e a âncora
- * da vitrine).
- */
+/** A ajuda dos campos de destino (`kind: "href"`): a frase é a mesma em todos — existe
+ * uma lista para escolher, e o texto continua valendo para o que **não** é rota. */
 const HREF_HELP =
   "Escolha um destino da lista (as rotas que a loja tem) ou escreva o " +
   "endereço: um caminho do site (ex.: /sobre), uma âncora da vitrine " +
@@ -1322,10 +719,8 @@ const HREF_HELP =
 /** Campos de `data` por tipo de seção, na ordem em que o admin os mostra. */
 export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
   announcement: [
-    // Deixou de ser obrigatória na v8: quem preenche o ticker (`messages`)
-    // pode esvaziar a mensagem única sem a API recusar o salvamento. É a
-    // mensagem que a barra mostra **quando não há ticker**, e é por isso que
-    // ela ainda existe.
+    // Deixou de ser obrigatória na v8: quem preenche o ticker pode esvaziar a
+    // mensagem única sem a API recusar. Vale **quando não há ticker**.
     {
       name: "text",
       label: "Mensagem única",
@@ -1338,16 +733,11 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       kind: "list:text",
       help: "Uma caixa por mensagem — o ticker rola sozinho com duas ou mais e fica parado com uma. O que estiver aqui substitui a mensagem única; colar uma lista separada por vírgulas cria várias caixas de uma vez.",
     },
-    // A barra é uma linha só: tem a fonte e a cor do texto e a cor da
-    // própria barra. Sem títulos nem detalhes para vestir.
+    // A barra é uma linha só: tem a fonte, a cor do texto e a cor da barra.
     ...appearanceTexts("messages"),
     ...appearanceBackground("messages"),
-    // A velocidade vem **depois** dos trilhos de propósito: o `attachedTo` do
-    // contrato é a promessa de "aparece embaixo do campo que muda", e a guarda
-    // de paridade exige que o trilho fique logo abaixo do último campo de
-    // conteúdo — aqui, `messages`. A ordem do formulário também fica melhor
-    // assim: o que o lojista vem fazer nesta seção é escrever mensagem, e a
-    // velocidade é o último ajuste.
+    // A velocidade vem **depois** dos trilhos de propósito: o `attachedTo` exige o
+    // trilho logo abaixo do último campo de conteúdo — aqui, `messages`.
     {
       name: "speedSeconds",
       label: "Segundos por volta",
@@ -1359,24 +749,16 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     },
   ],
   hero: [
-    // A capa é **só** isto: a lista de slides. Um item é a capa estática; dois
-    // ou mais são o carrossel. Até a v9 havia também os campos de um slide
-    // (`eyebrow`, `headline`, `imageUrl`, `overlay`…) fora da lista, e quem
-    // preenchia a foto de cima não via mudança nenhuma na loja — quem estava no
-    // ar era o slide. Com uma forma só, o formulário não oferece o que a vitrine
-    // ignora.
-    //
-    // Sem trilho de fundo: o fundo do hero é a fotografia, e sem trilho de
-    // títulos: a cópia de cada slide é a que ele traz.
+    // A capa é **só** isto: a lista de slides. Até a v9 havia os campos de um slide
+    // fora dela, e quem preenchia a foto de cima não via mudança nenhuma na loja.
+    // Sem trilho de fundo (o fundo é a fotografia) nem de títulos.
     {
       name: "slides",
       label: "Slides da capa",
       kind: "list:hero-slide",
       help: "Um item por capa, na ordem em que aparecem. Um item só é a capa estática; dois ou mais viram carrossel automático. Sem nenhum item a capa não é desenhada.",
     },
-    // A nota da capa: é da faixa, não do slide — no carrossel ela não troca
-    // junto com a foto. Vem depois dos slides porque é o último recado da capa,
-    // não porque a posição mude o que a loja desenha.
+    // A nota é **da faixa**, não do slide: no carrossel ela não troca com a foto.
     {
       name: "note",
       label: "Nota da capa",
@@ -1393,10 +775,8 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     { name: "subtitle", label: "Subtítulo", kind: "textarea" },
     ...appearanceTexts("subtitle"),
     {
-      // O `limit` é o número com faixa da seção: os produtos vêm da loja, então
-      // o que o lojista escolhe aqui é QUANTOS. Sem o limite, ou com um limite
-      // grande, o trilho viraria o catálogo inteiro — e um `limit` de 0
-      // devolveria uma seção vazia.
+      // O `limit` é o número com faixa da seção: os produtos vêm da loja, então o
+      // que o lojista escolhe aqui é QUANTOS.
       name: "limit",
       label: "Quantos produtos",
       kind: "number",
@@ -1420,12 +800,10 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       name: "items",
       label: "Itens",
       kind: "list:benefit",
-      // O layout da faixa acompanha a contagem — o lojista não precisa
-      // recorrer a um número "certo" (2 ou 4) para a faixa ficar bonita.
+      // O layout acompanha a contagem: o lojista não precisa de um número "certo".
       help: "A faixa se adapta à quantidade: 2 por linha no celular e de 5 a 7 por linha no desktop, conforme a largura da tela. O que sobrar de uma linha ocupa a linha inteira.",
     },
-    // A faixa veste tudo a partir da lista de itens: o título e o texto são
-    // os de cada item, o detalhe é o ícone e o fundo é o da faixa.
+    // A faixa veste tudo a partir da lista: o título e o texto são de cada item.
     ...appearanceTitles("items"),
     ...appearanceTexts("items"),
     ...appearanceDetails("items"),
@@ -1465,11 +843,8 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     {
       name: "filters",
       label: "Filtros",
-      // Referência, e não texto: o que se escolhe aqui são **categorias do
-      // catálogo**, e o chip da vitrine passa a ser o nome delas, lido na hora.
-      // Era um `list:text` — os chips eram rótulos digitados, e um rótulo sem
-      // categoria por trás (o "Blazers" do padrão) devolvia zero peças em
-      // silêncio.
+      // Referência, e não texto: o que se escolhe são **categorias do catálogo**,
+      // e o rótulo do chip é o nome delas, lido na hora.
       kind: "list:category",
       help: 'Escolha as categorias que viram chips na vitrine. O chip "Todos" (limpa o filtro) a loja desenha sozinha: ele não é uma categoria.',
     },
@@ -1481,9 +856,7 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     // A frase manuscrita é o destaque do bloco (a seção "Sobre").
     { name: "script", label: "Frase manuscrita", kind: "text" },
     ...appearanceDetails("script"),
-    // O eyebrow entra **depois** do trilho de propósito: o `attachedTo` dele é
-    // o `script`, e a cor de detalhes vale para os dois (eyebrow, frase
-    // manuscrita e realce do título são o mesmo destaque na seção).
+    // O eyebrow entra depois do trilho de propósito: a cor de detalhes vale para ele.
     { name: "eyebrow", label: "Eyebrow", kind: "text" },
     { name: "title", label: "Título", kind: "text", required: true },
     {
@@ -1492,15 +865,13 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       kind: "text",
       help: "A segunda linha do título, em itálico — a que a loja desenha em <em>. Em branco, o título é uma linha só.",
     },
-    // O trilho dos títulos veste os dois campos do título: fica abaixo do
-    // segundo, que é o último que ele muda.
+    // O trilho dos títulos veste os dois campos do título: fica abaixo do segundo.
     ...appearanceTitles("titleEmphasis"),
     {
       name: "body",
       label: "Texto (conceito e história)",
       kind: "textarea",
-      // A ajuda repete o casamento com o item do menu de propósito: é o
-      // que o lojista procura ao abrir o formulário.
+    // A ajuda repete o casamento com o item do menu de propósito: é o que se procura.
       help: 'Conteúdo da seção "Sobre": conceito da marca, história e valores. O item "Sobre" do menu rola até aqui.',
     },
     ...appearanceTexts("body"),
@@ -1532,8 +903,7 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       name: "imageUrl",
       label: "Imagem",
       kind: "image",
-      // A foto é o fundo inteiro da faixa: sem ela não há faixa nenhuma, e por
-      // isso ela é obrigatória — a API recusa salvar a seção sem foto.
+      // A foto é o fundo inteiro: sem ela não há faixa — por isso é obrigatória.
       required: true,
       help: "A foto que ocupa a faixa inteira. Envie pelo botão, ou informe um caminho do site (ex.: /brand/story-2.jpg) ou uma URL.",
     },
@@ -1546,9 +916,7 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       kind: "text",
       help: "A segunda linha do título, em itálico — a que a loja desenha em <em>. Em branco, o título é uma linha só.",
     },
-    // Como no hero, o trilho veste a cópia sobre a foto: a fonte e a cor valem
-    // para o título inteiro (as duas linhas). Sem trilho de fundo e sem o de
-    // detalhes: o fundo é a fotografia, e o eyebrow é a única linha de detalhe.
+    // Como no hero, o trilho veste a cópia sobre a foto; sem fundo e sem detalhes.
     ...appearanceTitles("titleEmphasis"),
     { name: "ctaLabel", label: "Texto do botão", kind: "text" },
     {
@@ -1605,16 +973,10 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     { name: "title", label: "Título", kind: "text", required: true },
     ...appearanceTitles("title"),
     { name: "images", label: "Imagens", kind: "list:image" },
-    // Sem trilho de texto: a faixa não tem texto corrido — o perfil é
-    // destaque, o título é título e o resto é imagem. A cor de fundo, essa
-    // sim, é o que dá o tom do bloco (o padrão é o preto).
+    // Sem trilho de texto: a faixa não tem texto corrido. O fundo é que dá o tom.
     ...appearanceBackground("images"),
-    // A velocidade vem **depois** dos trilhos de propósito, como na barra de
-    // anúncio: o `attachedTo` é a promessa de "aparece embaixo do campo que
-    // muda", e a guarda de paridade exige que o trilho fique logo abaixo do
-    // último campo de conteúdo — aqui, `images`. A ordem do formulário também
-    // fica melhor assim: quem entra nesta seção entra para subir foto, e a
-    // velocidade é o último ajuste.
+    // A velocidade vem depois dos trilhos de propósito, como na barra de anúncio:
+    // o `attachedTo` exige o trilho logo abaixo do último campo de conteúdo.
     {
       name: "secondsPerImage",
       label: "Segundos por imagem",
@@ -1656,43 +1018,13 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
 }
 
 // ===========================================================================
-// O QUE O CRM DESENHA ALÉM DOS CAMPOS DE SEÇÃO
+// O QUE O CRM DESENHA ALÉM DOS CAMPOS DE SEÇÃO — `SECTION_TYPE_LABELS`,
+// `ITEM_FIELDS`, `ICON_LABELS` e `MARKDOWN_MARKS`, os quatro no `schema` do
+// `GET /admin/content`; quem os desenha é o `field-input.tsx` do admin.
 // ===========================================================================
-// `SECTION_FIELDS` diz quais campos uma seção tem; falta o resto que o editor
-// do admin precisa para desenhar a tela — e que também é dado, não tabela em
-// React:
-//
-//   SECTION_TYPE_LABELS   o nome de cada tipo na listagem ("Sobre", não
-//                         "editorial");
-//   ITEM_FIELDS           o sub-formulário de cada item de lista (os itens de
-//                         `benefits`, os links de uma coluna do rodapé…),
-//                         recursivo como o conteúdo é;
-//   ICON_LABELS           a tradução das chaves de ícone oferecidas;
-//   MARKDOWN_MARKS        as marcas do texto formatado que a barra do editor
-//                         insere e o site desenha.
-//
-// Os quatro viajam no `schema` do `GET /admin/content` e quem os desenha é o
-// `field-input.tsx`/`page.tsx`, que não importam nada daqui (o admin é um
-// pacote npm separado do backend). Até aqui eles eram espelhos digitados à mão
-// no admin, e a guarda de paridade só sabia comparar texto com texto; agora o
-// que o editor desenha e o que o contrato declara são o **mesmo objeto**, e a
-// guarda confere o que de fato vive em dois pacotes: as chaves de ícone do
-// storefront e os campos que ele lê.
-//
-// Nada disto é gravável por conta própria: o que a API aceita continua saindo
-// de `SECTION_FIELDS` (com `options` campo a campo) e sendo validado pelo
-// `validateData` da rota admin.
 
-/**
- * Rótulo de cada tipo na listagem do editor.
- *
- * O `type` é o identificador que a API grava e que o storefront casa no
- * `switch` — não muda. O rótulo é o que o lojista lê, e não é uma tradução do
- * `type`: a seção `editorial` se chama **Sobre** na loja (é o item do menu que
- * rola até ela), e `nav`/`footer` são cromo de todas as rotas, não seções da
- * home. Uma tabela dentro do `page.tsx` deixaria um tipo novo aparecendo como
- * jargão até alguém lembrar de mexer no admin.
- */
+/** Rótulo de cada tipo na listagem: não é tradução do `type` — o `editorial` se chama
+ * **Sobre**, e `nav`/`footer` são cromo. Uma tabela no admin mostraria jargão. */
 export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   announcement: "Barra de anúncio",
   hero: "Hero",
@@ -1709,14 +1041,8 @@ export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
   footer: "Rodapé",
 }
 
-/**
- * Tradução de cada chave de ícone oferecida em `ITEM_FIELDS`.
- *
- * O ícone é escolhido por chave (`"quality"`, `"bag"`) porque quem desenha é o
- * registro do storefront (`frontend/src/lib/content/icons.ts`); sem a tradução
- * o `<select>` do admin seria só jargão. Chave oferecida e sem rótulo aparece
- * crua — é o que a guarda de paridade reprova, junto com o rótulo órfão.
- */
+/** Tradução de cada chave de ícone oferecida em `ITEM_FIELDS` — quem desenha é o
+ * registro do storefront (`lib/content/icons.ts`); sem ela o `<select>` é jargão. */
 export const ICON_LABELS: Record<string, string> = {
   quality: "qualidade",
   price: "preço",
@@ -1729,43 +1055,29 @@ export const ICON_LABELS: Record<string, string> = {
   mail: "e-mail",
   phone: "telefone",
   pin: "localização",
-  // Redes sociais do rodapé (`list:social`), que têm registro próprio
-  // (`frontend/src/lib/content/social-icons.tsx`).
+  // Redes sociais do rodapé (`list:social`), com registro próprio (`social-icons.tsx`).
   instagram: "Instagram",
   facebook: "Facebook",
   youtube: "YouTube",
 }
 
-/**
- * As marcas do texto formatado (o campo `markdown`): o subconjunto fechado que
- * o lojista escreve e o site desenha — a lista que a barra do editor oferece.
- *
- * Cada entrada é o que a **barra** do CRM precisa para escrever a marca
- * (`open`/`close`, que envolvem a seleção) e o que a **spec de paridade**
- * precisa para cobrar que a loja desenhe o que o painel emite (`element`). Não
- * existe HTML em lugar nenhum: o valor gravado é texto, e quem o interpreta
- * devolve nós React (`renderInline`).
- */
+/** As marcas do texto formatado (o campo `markdown`): o que a barra do CRM oferece
+ * — `open`/`close` para envolver a seleção, `element` para a spec cobrar o desenho.
+ * O valor gravado é **texto**, e quem o interpreta devolve nós React. */
 export const MARKDOWN_MARKS = [
   { label: "Negrito", open: "**", close: "**", element: "strong" },
   { label: "Itálico", open: "_", close: "_", element: "em" },
   { label: "Riscado", open: "~~", close: "~~", element: "s" },
-  // A única assimétrica — e a única com risco: `[clique](javascript:alert(1))`
-  // é XSS **sem HTML nenhum**. Por isso o botão insere a forma já segura
-  // (`](/rota)`) e o `href` é allowlist no storefront: o que não passa sai como
-  // texto. O rótulo é o gesto, e o destino é o que o lojista troca.
+  // A única assimétrica, e a única com risco: `[clique](javascript:alert(1))` é XSS
+  // **sem HTML nenhum**. O botão insere a forma segura (`](/rota)`) e o `href` é
+  // allowlist: o que não passa sai como texto.
   { label: "Link", open: "[", close: "](/rota)", element: "a" },
 ] as const
 
 export type MarkdownMark = (typeof MARKDOWN_MARKS)[number]
 
-/**
- * Tradução das origens de uma coluna do rodapé.
- *
- * O rótulo diz de onde os itens **saem**, e não o nome da origem: quem escolhe
- * `categories` precisa saber que a lista passa a ser o catálogo ao vivo, e não
- * o que ele digitou logo abaixo.
- */
+/** O rótulo diz de onde os itens **saem**: quem escolhe `categories` precisa saber
+ * que a lista passa a ser o catálogo ao vivo. */
 export const FOOTER_COLUMN_SOURCE_LABELS: Record<FooterColumnSource, string> = {
   links: "os links digitados abaixo",
   pages: "as páginas que estão no ar",
@@ -1773,16 +1085,9 @@ export const FOOTER_COLUMN_SOURCE_LABELS: Record<FooterColumnSource, string> = {
   collections: "as coleções do catálogo",
 }
 
-/**
- * Um campo de um item de lista — o que o editor desenha dentro de um item.
- *
- * É um tipo à parte de `FieldSpec` de propósito: item de lista não tem trilho
- * de aparência, nem `attachedTo`, nem campo obrigatório. Oferecer isso aqui
- * sugeriria um recurso que o editor não desenha.
- *
- * `kind` só existe para o item que é lista (hoje, o `links` de uma coluna do
- * rodapé) e `options` para o item que é escolha (`source`, `icon`).
- */
+/** Um campo de um item de lista — o que o editor desenha dentro de um item. Tipo à
+ * parte de `FieldSpec` de propósito: item não tem trilho de aparência nem `attachedTo`,
+ * e `kind` só existe no item que é lista. */
 export type ItemFieldSpec = {
   name: string
   label: string
@@ -1798,56 +1103,20 @@ export type ItemFieldSpec = {
   help?: string
 }
 
-/**
- * O mapa `kind` de lista → campos de dentro do item.
- *
- * Nome próprio (e não um `Partial<Record<…>>` escrito em cada lugar) porque o
- * **painel** importa este tipo: ele recebe o mapa no `schema.itemFields` e
- * precisa da mesma forma que o contrato declara. Com o nome, um campo novo no
- * item é erro de compilação nos dois lados, em vez de um espelho que diverge em
- * silêncio.
- */
+/** O mapa `kind` de lista → campos de dentro do item. Nome próprio porque o **painel**
+ * importa este tipo (`schema.itemFields`): com o nome, um campo novo no item é erro
+ * de compilação nos dois lados, em vez de um espelho que diverge calado. */
 export type ItemFields = Partial<Record<FieldKind, readonly ItemFieldSpec[]>>
 
-/**
- * Sub-formulário de cada `kind` de lista, na ordem em que o editor o desenha.
- *
- * Só os `kind` de objeto aparecem: `list:text` é uma caixa por texto, sem
- * sub-campos, e `list:category` é o seletor de categorias do
- * `filters` — os dois sem sub-campos, e por isso os dois de fora. Todo `list:*`
- * de `SECTION_FIELDS` precisa estar aqui — sem editor o campo aparece na tela e
- * não dá para preencher —, e a guarda de paridade cobra os dois sentidos
- * (nenhum `kind` sem editor, nenhuma chave que não seja um `kind` declarado nas
- * seções).
- *
- * Cada `kind` tem um tipo no bloco compartilhado (`BenefitItem`,
- * `CollectionHighlight`, `HeaderLink`, `HeaderAction`, `FooterColumn`,
- * `FooterSocial`), que é o que o storefront lê: a guarda confere que o editor
- * oferece exatamente os campos do tipo, na mesma ordem — campo num lado só
- * deixa o lojista sem como preencher o que a loja renderiza, ou o contrário.
- * `list:image` não tem tipo nomeado (o `images` do Instagram é inline), e
- * `list:column` tem a checagem extra contra o que o render da coluna lê.
- *
- * O ícone é escolha dentro de uma lista fechada, e as chaves são declaradas
- * aqui — o contrato não importa o registro do storefront (pacotes separados) —,
- * conferidas contra `BENEFIT_ICON_KEYS`/`HEADER_ACTION_ICON_KEYS` (`icons.ts`)
- * e `SOCIAL_ICON_KEYS` (`social-icons.tsx`) pela guarda de paridade: chave
- * nova num lado só ofereceria no admin um ícone que a loja não desenha (ou o
- * contrário, um ícone que ninguém consegue escolher).
- *
- * `list:column` é o caso recursivo: a coluna guarda os próprios links
- * (`list:link`), e é por isso que o editor desenha os níveis internos em
- * recursão em vez de um ramo por profundidade.
- */
+/** Sub-formulário de cada `kind` de lista, na ordem em que o editor o desenha. Só os
+ * `kind` de objeto aparecem (`list:text` e `list:category` não têm sub-campos), e
+ * todo `list:*` de `SECTION_FIELDS` precisa estar aqui — a paridade cobra os dois
+ * sentidos, campo a campo, contra o tipo do bloco compartilhado. `list:column` é o
+ * caso recursivo: a coluna guarda os próprios links. */
 
 export const ITEM_FIELDS: ItemFields = {
-  // Lista de **referências**, não de objetos: o valor é o id da categoria, e o
-  // rótulo dela é lido ao vivo (não há sub-formulário para desenhar). A entrada
-  // vazia existe porque a guarda de paridade cobra editor para todo `list:*` de
-  // `SECTION_FIELDS` — e o editor de verdade é o seletor de categorias
-  // (`field-input.tsx`), que recebe o catálogo pelo payload. Sem a entrada, o
-  // campo apareceria na tela sem como ser preenchido, que é o defeito que a
-  // guarda procura.
+  // Lista de **referências**, não de objetos: o valor é o id da categoria. A entrada
+  // vazia existe porque a paridade cobra editor para todo `list:*`.
   "list:category": [],
   "list:benefit": [
     {
@@ -1860,12 +1129,8 @@ export const ITEM_FIELDS: ItemFields = {
     { name: "title", label: "Título" },
     { name: "subtitle", label: "Subtítulo" },
   ],
-  /**
-   * O slide da capa (`hero.slides`): os mesmos oito campos do hero, sem os de
-   * bloco. A ordem desta lista **é** a ordem dos campos de `HeroSlide` — a
-   * guarda de paridade compara as duas (`ITEM_TYPES`), e um campo num lado só
-   * deixaria o lojista sem como preencher o que a loja desenha.
-   */
+  /** O slide da capa: os mesmos oito campos do hero, sem os de bloco. A ordem desta
+   * lista **é** a de `HeroSlide` — a paridade compara as duas (`ITEM_TYPES`). */
   "list:hero-slide": [
     {
       name: "imageUrl",
@@ -1938,11 +1203,8 @@ export const ITEM_FIELDS: ItemFields = {
       help: HREF_HELP,
     },
   ],
-  // O bloco do texto longo: o `kind` (um `<select>`), o texto do subtítulo/
-  // parágrafo (`markdown`) e as linhas da lista (`list:markdown`). Os três
-  // campos valem nos três `kind` — o editor de item desenha o sub-formulário
-  // inteiro —, e a ajuda de cada um diz em qual deles ele é lido, porque é isso
-  // que o lojista tem de saber para não preencher campo que a página ignora.
+  // O bloco do texto longo: o `kind` (um `<select>`), o `text` (`markdown`) e as
+  // linhas (`list:markdown`). Os três valem nos três `kind`.
   "list:proseBlock": [
     {
       name: "kind",
@@ -1963,12 +1225,8 @@ export const ITEM_FIELDS: ItemFields = {
       help: "Só a lista usa: cada linha é um item. Ignoradas no subtítulo e no parágrafo.",
     },
   ],
-  // A pergunta frequente (`faq.items`): a pergunta, que é a linha clicável, e a
-  // resposta, que é o texto que abre. A resposta é `markdown` — o **mesmo** campo
-  // do texto longo, pela razão de 14.6.3 (as marcas viajam como texto e quem as
-  // interpreta é o render) —, e por isso a barra de marcas do formulário de
-  // seção aparece aqui dentro sem trabalho nenhum. Sem lista dentro do item: o
-  // sub-formulário são dois campos, e o editor genérico do painel o desenha.
+  // A pergunta frequente: a pergunta, que é a linha clicável, e a resposta, que é
+  // `markdown` — o mesmo campo do texto longo. Sem lista dentro do item.
   "list:faqItem": [
     {
       name: "question",
@@ -1982,8 +1240,7 @@ export const ITEM_FIELDS: ItemFields = {
       help: "A resposta que abre no clique, com o negrito, o itálico, o riscado e o link da barra acima. Item sem resposta não aparece na loja: um botão que não abre nada é pior do que um item a menos.",
     },
   ],
-  // Coluna do rodapé: título, a origem dos itens e — quando a origem é
-  // "links" — os links dela, que são uma lista dentro do item.
+  // Coluna do rodapé: título, a origem dos itens e — quando é "links" — os links dela.
   "list:column": [
     { name: "title", label: "Título" },
     {
@@ -2008,12 +1265,9 @@ export const ITEM_FIELDS: ItemFields = {
       allowEmpty: true,
     },
     { name: "label", label: "Rótulo" },
-    // A exceção declarada ao `kind: "href"`: o destino de uma rede social é
-    // sempre externo (`https://…`), então a lista das rotas da loja não tem o
-    // que oferecer — e um seletor de rotas aqui criaria a expectativa de um
-    // destino da casa para o Instagram. A guarda de contrato
-    // (`contract.unit.spec.ts`) cobra o `kind: "href"` de todo outro `href` e
-    // declara esta exceção pelo nome.
+    // A exceção declarada ao `kind: "href"`: o destino de uma rede social é sempre
+    // externo, então a lista das rotas da loja não tem o que oferecer.
+    // `contract.unit.spec.ts` declara esta exceção pelo nome.
     {
       name: "href",
       label: "Destino",
@@ -2025,29 +1279,11 @@ export const ITEM_FIELDS: ItemFields = {
 
 // ===========================================================================
 // A superfície de tema — o tema como dado, ao lado das seções.
-// ---------------------------------------------------------------------------
-// Mora no fim do arquivo porque é a segunda forma de conteúdo: ela usa os
-// campos (`FieldSpec`), os rótulos e as listas fechadas declarados acima, e
-// vir depois deles evita que quem lê o contrato de cima para baixo encontre
-// uma regra antes do dado que ela descreve.
 // ===========================================================================
 
-/**
- * A superfície que guarda o tema: a coluna `surface` da linha de estação.
- *
- * Um tema **é uma linha de `content_section`** como uma seção — mesma tabela,
- * mesmas colunas (`surface`, `type`, `enabled`, `position`) e mesmo `data`
- * JSON —, e é isso que faz o editor do CRM servir para os dois sem um segundo
- * formulário. O que muda é o que o `data` carrega: uma seção é uma peça da
- * vitrine, uma estação é a paleta e as fontes da loja inteira.
- *
- * Sem migração: a coluna já existia, com o valor padrão `home`.
- *
- * A estação continua sendo escolhida pelas **datas**, não à mão: o storefront
- * compara `MM-DD` com o dia de hoje e a janela mais estreita vence (Black
- * Friday ganha do Natal). `enabled = false` tira a estação do ar sem apagar a
- * paleta dela.
- */
+/** A superfície que guarda o tema: um tema **é uma linha de `content_section`** como
+ * uma seção — mesma tabela e mesmas colunas —, e é isso que faz o editor do CRM
+ * servir para os dois. Sem migração: a coluna `surface` já existia. */
 export const THEME_SURFACE = "theme"
 
 /** O `type` de todo bloco da superfície de tema. */
@@ -2056,73 +1292,25 @@ export const THEME_TYPE = "theme"
 /** Como o tema aparece na tela do CRM. */
 export const THEME_TYPE_LABEL = "Tema da loja"
 
-/**
- * O que uma **página** pode receber: os blocos da home **menos** o cromo e a
- * abertura.
- *
- * Campo derivado, e não digitado: é a fatia de `SECTION_TYPES` que não é única
- * (`isSingletonSectionType`). Os cinco que ficam de fora são os que só existem
- * na vitrine — `announcement`, `nav` e `footer` porque o layout os resolve por
- * `find` na superfície `home` (uma segunda barra de anúncio numa página nunca
- * seria desenhada por ninguém), e `hero` e `benefits` porque moram em **casa
- * ancorada** (`FIXED_SECTION_POSITIONS`), que é uma numeração da vitrine.
- *
- * A lista sai daqui — e não de um `filter` no painel, nem de uma segunda lista
- * escrita no backend — porque três coisas dependem dela e todas as três a leem
- * do mesmo lugar: o que a aba da página oferece no CRM (`types` da superfície,
- * no `schema`), o que a API aceita gravar numa página (`resolveSurface`) e a
- * conferência de que uma superfície de página **não tem casa reservada**
- * (`reservedPositions`, que lê os `types` da superfície).
- */
+/** O que uma **página** pode receber: os blocos da home **menos** o cromo e a
+ * abertura. Campo derivado, e não digitado: é a fatia de `SECTION_TYPES` que não é
+ * única (`isSingletonSectionType`). Três coisas leem daqui: o que a aba da página
+ * oferece no CRM, o que a API aceita gravar (`resolveSurface`) e a conferência de que
+ * uma página **não tem casa reservada** (`reservedPositions`). */
 export const PAGE_SECTION_TYPES: readonly SectionType[] = SECTION_TYPES.filter(
   (type) => !isSingletonSectionType(type)
 )
 
-/**
- * Como uma superfície se descreve para o CRM.
- *
- * Tudo é **dado**, e não um `if (surface === "theme")` no painel: uma
- * superfície nova no contrato aparece na tela — com rótulo, título e aviso —
- * sem tocar em React.
- *
- *   `titleField`   o campo que dá nome ao bloco na listagem. A home se chama
- *                  pelo **tipo** ("Sobre", "Coleções" — o `type` é o
- *                  identificador do render) e por isso declara `null`; uma
- *                  estação se chama pelo que o dono escreveu (`label`:
- *                  "Natal"), que é o que ele reconhece na lista;
- *   `enabledLabel` "visível na loja" quer dizer outra coisa quando o bloco é
- *                  uma estação ("no ar hoje", pela janela de datas) — é o nome
- *                  do interruptor que liga/desliga a linha;
- *   `types`        o que a superfície **pode criar**. É esta lista que o
- *                  diálogo "Nova seção" oferece: a home oferece os tipos de
- *                  seção e a superfície de tema oferece `theme` (uma estação
- *                  nova). Sem ela o diálogo daquela aba ofereceria "Hero" — um
- *                  bloco que nenhum render da superfície de tema lê;
- *   `blockLabel`   como a linha se chama no singular ("seção", "estação"), para
- *                  o botão de criar e as mensagens da tela não dizerem "Nova
- *                  seção" numa aba que só tem estações;
- *   `order`        a faixa da numeração da superfície (começo e passo), que o
- *                  CRM recebe como dado para prever o numeral das linhas
- *                  enquanto a ordem está pendente na tela.
- */
+/** Como uma superfície se descreve para o CRM — tudo **dado**, e não um
+ * `if (surface === "theme")` no painel: uma superfície nova aparece na tela sem
+ * tocar em React. `titleField` nomeia o bloco na listagem (a home pelo `type`, a
+ * estação pelo `label`), `enabledLabel` é o interruptor, `types` é o que ela pode
+ * criar, `blockLabel` o singular e `order` a faixa da numeração. */
 export type ContentSurfaceSpec = {
   id: string
-  /**
-   * O que a superfície **é**.
-   *
-   * Até a F1 existiam duas superfícies e cada uma se explicava pelo `id`: a
-   * `home` era a vitrine e a `theme` era o tema. Uma **página** (`sobre`,
-   * `trocas-e-devolucoes`…) não é nenhuma das duas, e precisava de nome.
-   *
-   * É dado porque três regras dependem dele, e nenhuma delas quer uma lista de
-   * `id` escrita à mão: quais superfícies têm **rota** na loja (`page` — a rota
-   * `[slug]` e o `sitemap` leem `PAGE_SURFACES`), o que o "Restaurar padrão"
-   * repõe (`defaultsFor`, em `restore.ts`: a página repõe o padrão dela, nunca a
-   * vitrine) e onde o bloco único do site pode existir (`home`/`theme` — em
-   * página nenhuma, porque lá ele não seria desenhado). Sem o campo, cada uma
-   * dessas três regras teria a própria cópia da lista de páginas, e um `id` novo
-   * ficaria de fora de uma delas em silêncio.
-   */
+  /** O que a superfície **é** — até a F1 cada uma se explicava pelo `id`, e uma
+   * **página** precisava de nome. Três regras dependem dele: quais têm **rota**
+   * (`page`), o que o "Restaurar padrão" repõe e onde o bloco único pode existir. */
   kind: "home" | "theme" | "page"
   label: string
   titleField: string | null
@@ -2130,23 +1318,9 @@ export type ContentSurfaceSpec = {
   blockLabel: string
   hint: string
   types: readonly string[]
-  /**
-   * A faixa da numeração da superfície: em que casa cai a primeira seção
-   * ordenável e de quanto em quanto a renumeração do "Salvar ordem" anda.
-   *
-   * A vitrine numera **de 1 em 1**: o bloco ancorado em 1, 2, 3, 4 e 10
-   * (`FIXED_SECTION_POSITIONS`) e as seções ordenáveis nas casas livres — 5 a
-   * 9, e a partir da sexta em 11, porque a casa 10 é do rodapé e a renumeração a
-   * pula (`order.ts`). O tema numera **de 10 em 10**, como as estações do
-   * `theme.json` (`THEME_SECTIONS`, em `themes.ts`). A faixa de cada superfície
-   * começa depois do bloco ancorado dela — o tema não tem bloco fixo nenhum,
-   * então começa na própria folga (10).
-   *
-   * Viaja para o CRM no payload (`order`, em `GET /admin/content`) porque o
-   * painel precisa **prever** o numeral enquanto a ordem está pendente — e a
-   * previsão tem de ser a mesma conta que o servidor vai gravar (`applyOrder`,
-   * em `order.ts`, que é quem lê esta faixa).
-   */
+   /** A faixa da numeração da superfície: onde cai a primeira seção ordenável e de
+    * quanto em quanto anda — a vitrine **de 1 em 1** (pulando a casa 10 do rodapé) e o
+    * tema **de 10 em 10**; o CRM prevê o numeral como `applyOrder` (`order.ts`). */
   order: { first: number; step: number }
 }
 
@@ -2186,34 +1360,11 @@ export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
     types: [THEME_TYPE],
     order: { first: 10, step: 10 },
   },
-  // ---------------------------------------------------------------------------
   // As páginas (a F1 do doc 14). A chave (`id`) **é o slug**: é ela que a rota
-  // `(main)/[slug]/page.tsx` casa e que o `sitemap` publica, então renomear uma
-  // página aqui renomeia a URL dela — e URL de página institucional é
-  // permanente. O `label` é o que a aba do CRM mostra.
-  //
-  // `titleField: null` porque uma página não tem um campo que lhe dê nome (ao
-  // contrário da estação, que se chama pelo que o dono escreveu): a linha da
-  // lista se chama pelo tipo do bloco ("Sobre", "Banner editorial"), como na
-  // vitrine.
-  //
-  // `types: PAGE_SECTION_TYPES` fecha o defeito 2 do doc 14 pelo lado do painel:
-  // a lista não traz `hero`, `benefits`, `announcement`, `nav` nem `footer`,
-  // então a aba da página **não oferece** um bloco que a loja nunca desenharia
-  // ali. Quem recusa o corpo que insistir é a API (`resolveSurface`).
-  //
-  // `order.first` é **1**, e não o 5 da vitrine: a página não tem bloco ancorado
-  // nenhum (nenhum tipo único entre os `types` dela, então `reservedPositions`
-  // devolve vazio), logo a primeira casa livre é a primeira. Copiar o 5 faria a
-  // primeira linha da página nascer numerada como se quatro blocos existissem
-  // antes dela — e o numeral é o que o lojista lê na tela.
-  //
-  // A ordem da lista é a da fila do negócio (14.3): o que já tem quem peça,
-  // primeiro. `perguntas-frequentes` é a última porque era a que dependia do
-  // bloco de Q&A — que chegou no PR4 (`faq`, ver 14.19); até lá ela se montava
-  // com `editorial`, e a dica da superfície dizia isso. Agora o par de blocos
-  // existe, e a dica fala do presente.
-  // ---------------------------------------------------------------------------
+  // `(main)/[slug]/page.tsx` casa e que o `sitemap` publica. `titleField: null`
+  // porque uma página não tem campo que lhe dê nome, e `types:` fecha o defeito 2
+  // do doc 14 pelo painel; quem recusa o corpo que insistir é a API. `order.first`
+  // é **1** porque a página não tem bloco ancorado nenhum.
   {
     id: "sobre",
     kind: "page",
@@ -2300,48 +1451,22 @@ export const CONTENT_SURFACES: readonly ContentSurfaceSpec[] = [
   },
 ]
 
-/**
- * As páginas declaradas: a fatia de `CONTENT_SURFACES` com `kind: "page"`.
- *
- * Derivada, e não digitada — a mesma regra do `PAGE_SECTION_TYPES`, no outro
- * lado da relação. Quem lê esta lista é quem precisa saber que uma URL
- * institucional existe: a rota `(main)/[slug]/page.tsx` (o `slug` está aqui, ou
- * a página é 404), o `sitemap.ts` e o guarda de colisão de slug que a CI roda.
- * Uma página nova entra no contrato e aparece nos três sem que nenhum deles seja
- * editado — que é o ponto da F1: declarar, e não desenhar.
- */
+/** As páginas declaradas: a fatia de `CONTENT_SURFACES` com `kind: "page"`. Derivada
+ * e não digitada — quem a lê é a rota `[slug]`, o `sitemap.ts` e o guarda de slug. */
 export const PAGE_SURFACES: readonly ContentSurfaceSpec[] =
   CONTENT_SURFACES.filter((surface) => surface.kind === "page")
 
-/**
- * Um destino que o painel oferece: a rota e o nome que o lojista lê.
- *
- * `href` é o valor que se grava no campo — a URL como ela é escrita no conteúdo
- * (`/sobre`, `/store`), **sem** o país: quem prefixa é a loja
- * (`LocalizedClientLink`, por `nav-link`), e gravar `/br/sobre` amarraria o
- * conteúdo ao país do dia.
- */
+/** Um destino que o painel oferece: a rota e o nome que o lojista lê. `href` é o
+ * valor gravado, **sem** o país: quem prefixa é a loja (`LocalizedClientLink`, por
+ * `nav-link`), e gravar `/br/sobre` amarraria o conteúdo ao país do dia. */
 export type ContentDestination = {
   href: string
   label: string
 }
 
-/**
- * As rotas **fixas** da loja — as vizinhas do `[slug]` em `(main)`.
- *
- * Nenhuma superfície as declara porque nenhuma as desenha: são as telas escritas
- * à mão (o catálogo, a sacola, a conta, a busca e o rastreio), e por isso a lista
- * mora aqui, com o rótulo de cada uma, em vez de num `readdir` do painel. Um
- * destino daqui que deixe de existir na loja reprova no guarda do storefront
- * (`page-surfaces.spec.ts`), que lê o **diretório de verdade** — a mesma régua
- * que já prende os destinos do rodapé.
- *
- * O que fica de fora, de propósito: as rotas **dinâmicas** (`/products/<handle>`,
- * `/collections/<handle>`, `/order/<id>`), que não são rota nenhuma sem o
- * identificador, e as **âncoras** da vitrine (`/#editorial`), cujo dono é o
- * `nav-link` da loja — uma lista aqui seria a segunda cópia do mapa dele. Os
- * dois casos continuam valendo no campo: ele é texto, e a lista só sugere.
- */
+/** As rotas **fixas** da loja — as vizinhas do `[slug]` em `(main)`, escritas à mão
+ * (catálogo, sacola, conta, busca, rastreio). Um destino daqui que deixe de existir
+ * reprova no guarda (`page-surfaces.spec.ts`); as âncoras são do `nav-link`. */
 const STORE_ROUTES: readonly ContentDestination[] = [
   { href: "/", label: "Início (a vitrine)" },
   { href: "/store", label: "Catálogo (todas as peças)" },
@@ -2351,24 +1476,11 @@ const STORE_ROUTES: readonly ContentDestination[] = [
   { href: "/rastreio", label: "Rastrear o pedido" },
 ]
 
-/**
- * O índice de destinos — as rotas que a loja **tem**, para o seletor do CRM.
- *
- * É a peça que fecha a causa-raiz do doc 13. O diagnóstico de lá não foi
- * desatenção de quem editou: o painel só oferecia texto livre, e o único
- * endereço que o lojista podia conferir era `/store`, que existe e sempre
- * responde. Os nove botões apontando para o catálogo eram o resultado disso.
- *
- * Duas metades, e as duas têm dono: as rotas fixas são declaradas aqui
- * (`STORE_ROUTES`, com o rótulo), e as páginas são **derivadas** de
- * `PAGE_SURFACES` — a mesma lista que a rota `[slug]` e o `sitemap` leem. Página
- * nova no contrato aparece no seletor sem que ninguém edite esta lista, que é a
- * regra da F1 (declarar, e não desenhar) valendo para o painel.
- *
- * Quem consome: `schema.destinations` (o `datalist` do campo `kind: "href"`) e o
- * guarda `page-surfaces.spec.ts`, que confere os dois sentidos — todo destino
- * aqui resolve numa rota que existe, e toda página declarada é oferecida.
- */
+/** O índice de destinos — as rotas que a loja **tem**, para o seletor do CRM. É a
+ * peça que fecha a causa-raiz do doc 13: o painel só oferecia texto livre, e o único
+ * endereço que o lojista podia conferir era `/store` — os nove botões apontando para
+ * o catálogo eram o resultado disso. Duas metades: `STORE_ROUTES` e as páginas,
+ * **derivadas** de `PAGE_SURFACES`. */
 export const CONTENT_DESTINATIONS: readonly ContentDestination[] = [
   ...STORE_ROUTES,
   ...PAGE_SURFACES.map((surface) => ({
@@ -2384,16 +1496,9 @@ export function findSurface(id: unknown): ContentSurfaceSpec | undefined {
     : undefined
 }
 
-/**
- * O `id` é uma superfície declarada?
- *
- * É a guarda das duas pontas que recebem uma superfície — a leitura pública
- * (`GET /store/content?surface=`) e a escrita do CRM —, e existe porque as duas
- * aceitavam **qualquer** string: `?surface=sobreo` respondia 200 com
- * `{"sections":[]}`, e um typo de instalação de página nova (a mesma família do
- * `/stroe` do doc 13) sumia sem aviso. Com a lista do contrato, o erro é 400 em
- * pt-BR.
- */
+/** O `id` é uma superfície declarada? É a guarda das duas pontas que recebem uma
+ * superfície — a leitura pública e a escrita do CRM —, e existe porque as duas
+ * aceitavam **qualquer** string: `?surface=sobreo` respondia 200 com `{"sections":[]}`. */
 export function isKnownSurface(id: unknown): id is string {
   return findSurface(id) !== undefined
 }
@@ -2403,32 +1508,10 @@ export function isPageSurface(id: unknown): boolean {
   return findSurface(id)?.kind === "page"
 }
 
-/**
- * As seções de uma página que põem o endereço **no ar** — a régua do 200.
- * -------------------------------------------------------------------------
- * Duas perguntas, uma resposta:
- *
- *   - a seção está **ligada**? O interruptor é a coluna `enabled`, que o
- *     contrato chama de **Publicada** na superfície de página (`enabledLabel`);
- *   - o tipo dela é um que a loja **conhece**? (`isSectionType`) — um tipo
- *     gravado no registro do schema sem deploy da loja é descartado antes do
- *     render (`supportedSections`, no storefront), porque o render é exaustivo
- *     e o `default` lança: a página inteira viraria HTTP 500.
- *
- * É o mesmo par que a rota `[slug]` aplica antes de responder 404
- * (`visibleSections` + `supportedSections`, no storefront — ela lê os dois pelos
- * dados, já que a Store API só manda as habilitadas). E é por isso que a função
- * mora **aqui**, e não numa cópia de cada lado: o CRM diz "publicada" com ela e
- * a página responde 200 com ela. Um CRM que dissesse "publicada" para um
- * endereço que responde 404 seria pior do que não ter a tela — é a promessa
- * vazia do doc 13, agora com a autoridade de quem deveria saber.
- *
- * **O que ela não sabe:** se a seção que sobrou tem o que mostrar. Um `prose`
- * publicado e ainda sem texto passa por aqui e some no render — o vazio de cada
- * tipo é de quem desenha, e o endereço abre vazio. Distinguir os dois exigiria
- * uma segunda cópia das regras de vazio de cada render, que é o espelho que este
- * contrato não paga (doc 14, 14.21).
- */
+/** As seções de uma página que põem o endereço **no ar** — a régua do 200: a seção
+ * está **ligada** (a coluna `enabled`, "Publicada" no CRM) e o tipo dela é um que a
+ * loja **conhece** (`isSectionType` — o render é exaustivo e o `default` lança, a
+ * página viraria 500). É a mesma régua que a rota `[slug]` aplica antes do 404. */
 export function publishedSections<T extends { type: string; enabled: boolean }>(
   sections: readonly T[]
 ): T[] {
@@ -2437,20 +1520,11 @@ export function publishedSections<T extends { type: string; enabled: boolean }>(
   )
 }
 
-/**
- * Os estados de uma página declarada — o vocabulário da tela "Páginas".
- *
- * São **três**, e o terceiro existe porque a diferença importa para quem edita:
- * uma página **despublicada** é a que tem bloco e nenhum no ar (o endereço
- * responde 404 e o link do rodapé, se promete a página, promete um link
- * quebrado — o defeito medido em 14.16); uma página **sem blocos** é a que ainda
- * não foi montada (404 também, e é esse o caminho normal até a copy entrar).
- *
- * Os rótulos e o tom viajam no payload do CRM (`pageStates`, em
- * `GET /admin/content/pages`): a tela do lojista desenha o que chega, e a
- * palavra "Publicada" é a mesma do interruptor da seção — uma régua, um
- * vocabulário.
- */
+/** Os estados de uma página declarada — o vocabulário da tela "Páginas". São **três**,
+ * e o terceiro existe porque a diferença importa: **despublicada** é a que tem bloco
+ * e nenhum no ar (404, e o link do rodapé promete um link quebrado — o defeito
+ * medido em 14.16); **sem blocos** é a que ainda não foi montada. Os rótulos viajam
+ * no payload do CRM (`pageStates`), e "Publicada" é a palavra do interruptor. */
 export type PageState = "published" | "unpublished" | "empty"
 
 /** O que a tela mostra para cada estado: o rótulo, o tom e a frase. */
@@ -2486,13 +1560,8 @@ export const PAGE_STATES: readonly PageStateSpec[] = [
   },
 ]
 
-/**
- * O estado de uma página, das seções dela — a régua aplicada.
- *
- * Recebe as seções **cruas** (as desabilitadas inclusive), que é o que o CRM
- * tem em mão: a conta e a decisão saem da mesma lista, e por isso não há como a
- * tela dizer "publicada" com zero publicadas.
- */
+/** O estado de uma página, das seções dela — a régua aplicada. Recebe as seções
+ * **cruas** (as desabilitadas inclusive): a conta e a decisão saem da mesma lista. */
 export function pageState(
   sections: readonly { type: string; enabled: boolean }[]
 ): PageState {
@@ -2503,34 +1572,14 @@ export function pageState(
   return sections.length > 0 ? "unpublished" : "empty"
 }
 
-/**
- * Todo `type` de conteúdo que o CRM edita: as seções **e** o bloco de tema.
- *
- * É a união do que as superfícies podem criar (`CONTENT_SURFACES[i].types`), e
- * existe como constante porque a rota admin valida o `type` do corpo contra o
- * registro — sem `theme` aqui, a primeira gravação de uma estação seria
- * recusada com "deve ser um de: announcement, hero, …".
- *
- * A união das superfícies e esta lista são conferidas uma contra a outra pela
- * guarda de paridade: uma superfície nova que declare um tipo que ninguém
- * aceita (ou o contrário) reprova o `make check` em vez de virar um botão que
- * responde 400 na tela do lojista.
- */
+/** Todo `type` de conteúdo que o CRM edita: as seções **e** o bloco de tema. Sem
+ * `theme` aqui, a primeira gravação de uma estação seria recusada; a paridade confere
+ * a união das superfícies contra esta lista. */
 export const CONTENT_TYPES: readonly string[] = [...SECTION_TYPES, THEME_TYPE]
 
-/**
- * As famílias que a loja de fato carrega — **derivadas** de `THEME_FONTS`.
- *
- * São as três self-hosted (`frontend/src/app/fonts`, `localFont` no layout):
- * o `<select>` do CRM não pode oferecer outra, porque trocar a fonte dos
- * títulos por "Arial" não faria o navegador da cliente baixar Arial nenhuma —
- * `themeToCSSVariables` escreveria `"Arial", Georgia, serif` e a promessa da
- * tela ("a loja fica nesta fonte") seria falsa.
- *
- * A lista sai do contrato em vez de ser digitada aqui: a família já está em
- * `THEME_FONTS[role].family`, e uma segunda cópia dos três nomes poderia
- * envelhecer sozinha — o `<select>` ofereceria uma fonte que ninguém carrega.
- */
+/** As famílias que a loja de fato carrega — **derivadas** de `THEME_FONTS`. São as
+ * três self-hosted (`frontend/src/app/fonts`): o `<select>` do CRM não pode oferecer
+ * outra, porque trocar por "Arial" não faria o navegador baixar Arial nenhuma. */
 export const THEME_FONT_FAMILIES: readonly string[] = FONT_ROLES.map(
   (role) => THEME_FONTS[role].family
 )
@@ -2569,28 +1618,13 @@ export const THEME_FONT_ROLE_LABELS: Record<FontRole, string> = {
 /** `#RRGGBB` — o formato que o storefront consegue usar como variável CSS. */
 export const HEX_COLOR_PATTERN = "^#[0-9a-fA-F]{6}$"
 
-/**
- * `MM-DD`, o formato que o storefront compara com a data de hoje.
- *
- * Sem o ano de propósito: a janela é anual (o Verão vira o ano), e quem
- * resolve o tema é que decide o que fazer quando `start > end`.
- */
+/** `MM-DD`, o formato que o storefront compara com a data de hoje. Sem o ano de
+ * propósito: a janela é anual, e quem resolve o tema decide se `start > end`. */
 export const MONTH_DAY_PATTERN = "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
 
-/**
- * Campos de `data` de um bloco de tema, na ordem em que o CRM os mostra.
- *
- * Mesma máquina dos campos de seção: a rota admin valida contra a lista do
- * **schema gravado** e o editor desenha o que ela diz — nem a paleta nem as
- * datas têm uma tela própria no painel. Toda cor sai de `THEME_COLOR_TOKENS`
- * e todo papel de `FONT_ROLES`, pelos helpers de nome, para acrescentar uma
- * cor no contrato não deixar o editor (nem a loja) para trás.
- *
- * Nada além do `label` é obrigatório: uma estação declara só o que muda e o
- * resto é **herdado** do tema padrão — era assim no `theme.json` (o Natal
- * troca três cores) e continua sendo aqui. Campo em branco significa "segue o
- * padrão", não "apague".
- */
+/** Campos de `data` de um bloco de tema, na ordem em que o CRM os mostra. Mesma
+ * máquina dos campos de seção. Nada além do `label` é obrigatório: uma estação
+ * declara só o que muda e o resto é **herdado** do tema padrão. */
 export const THEME_FIELDS: readonly FieldSpec[] = [
   {
     name: "label",

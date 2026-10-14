@@ -1,30 +1,7 @@
 /**
  * Os filtros do catálogo: quais existem, quanto cada um tem e o que excluem.
- * -------------------------------------------------------------------------
- * O catálogo era uma grade com um seletor de ordem ao lado. O redesenho pede
- * cinco facetas — categoria, tamanho, cor, faixa de preço e disponibilidade —, e
- * **faceta é regra**: o que conta como "tamanho de uma peça", quantas peças cada
- * valor tem, qual peça cada faixa de preço inclui e como duas facetas se somam.
- * Regra mora aqui, e não dentro do componente, pelo mesmo motivo que
- * `product-availability.ts` e `product-enrichment.ts`: ela se testa sem
- * renderizar nada (o vitest deste pacote roda em `node`, sem DOM).
- *
- * A entrada é um tipo **estrutural**, e não `StoreProduct`: são quatro campos, e
- * declará-los aqui é o que permite testar a regra com um objeto de dez linhas.
- *
- * O QUE NÃO FOI PORTADO DA REFERÊNCIA, E POR QUÊ
- * -------------------------------------------------------------------------
- * A referência desenha as facetas com **valores de mentira** e contagens fixas
- * ("Alfaiataria (3)", "PP (4)"), e repete a mesma lista em todos os acordeões.
- * Aqui cada valor e cada contagem saem do catálogo que está na tela, e uma faceta
- * sem nenhum valor **não é desenhada** — um acordeão "Cor" que abre em nada é
- * pior do que não existir.
- *
- * E há uma consequência do catálogo real que vale escrever, porque é visível: os
- * tamanhos saem da opção cujo título é "Tamanho" (a mesma regra declarada de
- * `product-enrichment.ts`, que não adivinha pelo conteúdo), então a peça cujos
- * tamanhos foram cadastrados **como opções separadas** não aparece em "Tamanho"
- * nenhum. A faceta diz o que o catálogo diz — não o que ele deveria dizer.
+ * Faceta é regra, testável sem DOM sobre entrada estrutural (não `StoreProduct`);
+ * valor e contagem saem do catálogo na tela, e faceta sem valor não é desenhada.
  */
 import { convertToLocale } from "@lib/ui/money"
 import {
@@ -35,13 +12,9 @@ import {
 import { coresDoProduto, normalizarTitulo } from "./product-enrichment"
 
 /**
- * As cinco facetas, na ordem em que o painel as mostra.
- *
- * As chaves são as que vão para a **URL** (`?color=Preto&size=P`), em inglês,
- * como o resto dos endereços da loja (`/store`, `/search`, `sortBy`, `page`) e
- * como o requisito RV-004 as escreve. Os rótulos que a cliente lê são em pt-BR,
- * em `TITULOS` — separar as duas coisas é o que permite mudar o texto do painel
- * sem quebrar um link compartilhado.
+ * As cinco facetas, na ordem do painel: as chaves vão para a **URL**
+ * (`?color=Preto&size=P`), em inglês (RV-004); os rótulos pt-BR ficam em
+ * `TITULOS`, para mudar o texto do painel sem quebrar link compartilhado.
  */
 export type ChaveDeFaceta =
   | "category"
@@ -66,14 +39,9 @@ const TITULOS: Record<ChaveDeFaceta, string> = {
   availability: "Disponibilidade",
 }
 
-/**
- * O título de uma faceta, pelo lado de fora do painel.
- *
- * Existe para os **chips dos filtros aplicados** (`filter-chips.ts`): eles nomeiam
- * a faceta ("Cor: Preto") e não podem depender de a faceta ter sido desenhada — a
- * URL pode nomear um valor que o catálogo não tem mais, e o painel, nesse caso,
- * não existe. Um título por chave, e um lugar só.
- */
+/** O título de uma faceta, para os **chips** (`filter-chips.ts`): eles nomeiam a
+ * faceta ("Cor: Preto") mesmo quando a URL traz um valor que o catálogo não tem
+ * mais e o painel não é desenhado. */
 export function tituloDaFaceta(chave: ChaveDeFaceta): string {
   return TITULOS[chave]
 }
@@ -91,17 +59,12 @@ export type Faceta = {
   options: OpcaoDeFaceta[]
 }
 
-/**
- * O que está marcado, por faceta. **É a URL, não um estado de tela**: um filtro
- * aplicado é um endereço — compartilhável, favoritável e desfeito pelo botão
- * "voltar" do navegador, uma marcação por vez.
- */
+/** O que está marcado, por faceta. **É a URL, não um estado de tela**: um filtro
+ * aplicado é um endereço — compartilhável, favoritável e desfeito pelo "voltar". */
 export type SelecaoDoCatalogo = Partial<Record<ChaveDeFaceta, string[]>>
 
-/**
- * Os títulos de opção que contam como "o tamanho da peça", no mesmo espírito de
- * `TITULOS_DE_COR`. A comparação ignora caixa e acento.
- */
+/** Os títulos que contam como "o tamanho da peça" (como `TITULOS_DE_COR`); a
+ * comparação ignora caixa e acento. */
 export const TITULOS_DE_TAMANHO = ["tamanho", "tamanhos", "size", "sizes"]
 
 /** Se o título de uma opção conta como tamanho. `null` (opção sem título) não. */
@@ -190,15 +153,9 @@ export function menorPrecoDaPeca(produto: ProdutoFiltravel): number | null {
 
 /* --- Ordem dos valores -------------------------------------------------- */
 
-/**
- * A ordem em que os tamanhos se leem numa arruela de roupas: do menor para o
- * maior. Sem esta lista, "G" viria antes de "M" (ordem alfabética), e a faceta
- * seria a única parte da loja a sugerir que G é menor do que M.
- *
- * Tamanho que não está na lista (a numeração "38 (P)") não é jogado fora: ele vai
- * para o fim, em ordem alfabética, ao lado dos outros que também não estão — o
- * que a lista não conhece, ela não ordena nem esconde.
- */
+/** A ordem em que os tamanhos se leem, do menor (pp) ao maior (xgg) — sem ela
+ * "G" viria antes de "M". O que não está na lista vai para o fim, em ordem
+ * alfabética: a lista não conhece, não ordena nem esconde. */
 const ORDEM_DE_TAMANHO = ["pp", "p", "m", "g", "gg", "xgg", "u"]
 
 /** A ordem em que os estados da peça se leem: do mais disponível ao menos. */
@@ -234,14 +191,9 @@ function porTamanho(a: OpcaoDeFaceta, b: OpcaoDeFaceta): number {
 
 /* --- Faixa de preço ----------------------------------------------------- */
 
-/**
- * O valor de uma faixa: "de-até", com as pontas vazias quando são abertas.
- *
- * `-370` é "até R$ 370", `370-630` é "de 370 a 630" e `630-` é "acima de 630".
- * Números no endereço, e não um índice ("preco=1"), porque um índice depende da
- * ordem em que as faixas foram geradas: bastaria uma peça nova para a mesma URL
- * passar a mostrar outra faixa.
- */
+/** O valor de uma faixa: "de-até", com as pontas vazias quando abertas (`-370`
+ * = "até 370", `630-` = "acima de 630"). Números no endereço, e não um índice:
+ * um índice dependeria da ordem das faixas, e uma peça nova mudaria a URL. */
 function faixa(minimo: string, maximo: string): string {
   return `${minimo}-${maximo}`
 }
@@ -264,14 +216,9 @@ export function precoNaFaixa(preco: number | null, valor: string): boolean {
   return preco >= minimo && preco < maximo
 }
 
-/**
- * Arredonda para N algarismos significativos.
- *
- * É o que faz uma fronteira de faixa parecer preço em vez de conta: R$ 370,72 não
- * se lê, R$ 370 sim. Dois algarismos é a precisão que basta para as três faixas
- * não se colarem num catálogo de faixa estreita (R$ 990 a R$ 1.010 vira 990 e
- * 1.000, e não 990 e 990).
- */
+/** Arredonda para N algarismos significativos: faz a fronteira parecer preço
+ * (R$ 370, não R$ 370,72). Dois algarismos bastam para as três faixas não se
+ * colarem num catálogo estreito (990 e 1.000, não 990 e 990). */
 export function arredondarSignificativo(valor: number, digitos = 2): number {
   if (!Number.isFinite(valor) || valor === 0) {
     return valor
@@ -283,19 +230,9 @@ export function arredondarSignificativo(valor: number, digitos = 2): number {
   return Math.round(valor * fator) / fator
 }
 
-/**
- * As faixas de preço do catálogo que está na tela: **três**, tiradas dos preços
- * que existem.
- *
- * Faixa fixa ("até R$ 300", "R$ 300 a R$ 600") é uma aposta no catálogo alheio:
- * numa loja de vestidos as três faixas ficariam na primeira, e numa de casacos a
- * primeira ficaria vazia. As fronteiras saem do próprio conjunto — terços da
- * distância entre o menor e o maior preço —, então o filtro é útil em qualquer
- * catálogo, e continua útil quando os preços mudam.
- *
- * A contagem de cada faixa usa `precoNaFaixa`, o mesmo predicado que filtra: o
- * número ao lado de uma faixa não pode discordar do que a faixa devolve.
- */
+/** As **três** faixas de preço saem dos preços que existem (terços entre o menor
+ * e o maior), não de fronteiras fixas que apostam no catálogo alheio. A contagem
+ * usa `precoNaFaixa`, o mesmo predicado que filtra. */
 export function faixasDePreco(
   produtos: ProdutoFiltravel[],
   currencyCode: string
@@ -315,12 +252,8 @@ export function faixasDePreco(
   const corte1 = arredondarSignificativo(menor + (maior - menor) / 3)
   const corte2 = arredondarSignificativo(menor + (2 * (maior - menor)) / 3)
 
-  /*
-   * Catálogo de preço único: não há o que partir. A faixa é uma só, aberta nas
-   * duas pontas (o valor `-`, que casa com qualquer preço), e o rótulo diz o
-   * preço em vez de dizer "até o infinito" — que é o que a fórmula genérica
-   * escreveria aqui.
-   */
+  /* Catálogo de preço único: uma faixa só, aberta nas duas pontas, com o preço no
+     rótulo em vez de "até o infinito". */
   if (menor === maior) {
     return [
       {
@@ -364,14 +297,9 @@ export function faixasDePreco(
 /* --- Contagem ----------------------------------------------------------- */
 
 
-/**
- * Conta quantas peças cada valor tem.
- *
- * **Uma peça conta uma vez por valor**, mesmo que o catálogo repita o valor (uma
- * peça com a cor "Preto" em cinco variantes é uma peça preta, não cinco): o
- * número ao lado do valor é "quantas peças você veria", e é o que a cliente
- * compara com a grade depois de filtrar.
- */
+/** Conta quantas peças cada valor tem — **uma vez por valor**, mesmo que o
+ * catálogo repita (peça com "Preto" em cinco variantes é uma peça preta): o
+ * número é "quantas peças você veria" na grade. */
 function contar(
   produtos: ProdutoFiltravel[],
   extrair: (produto: ProdutoFiltravel) => ChaveDeValor[],
@@ -418,25 +346,11 @@ function porDisponibilidade(a: OpcaoDeFaceta, b: OpcaoDeFaceta): number {
 }
 
 /**
- * As facetas de um conjunto de peças.
- *
- * **A contagem de cada faceta é feita sobre o que os OUTROS filtros deixaram** —
- * a faceta não conta a si mesma. Marcar "Preto" faz a contagem de "P" cair para
- * as peças P pretas, que é a pergunta que a cliente está fazendo naquele instante
- * ("tem P nesse preto?"); e a contagem de "Preto" continua cheia, porque é a
- * lista em que ela acabou de mexer — se ela mesma se filtrasse, o valor marcado
- * apareceria com zero e o filtro pareceria quebrado no mesmo clique em que foi
- * aplicado.
- *
- * **Uma opção com zero peças continua na lista, desabilitada** (o desenho é do
- * painel: o `input` nasce `disabled`). Esconder o valor faria a cliente acreditar
- * que a loja não tem "GG" — quando o que aconteceu é que não tem GG **naquela
- * combinação**. Sumindo, a informação de que existe GG se perde; desabilitado,
- * ela vira a resposta: "existe, não neste recorte".
- *
- * Uma faceta sem nenhum valor (nenhuma peça do catálogo declara tamanho, por
- * exemplo) **não é desenhada**: não há o que mostrar nem o que desabilitar, e um
- * acordeão vazio só ocupa a barra lateral.
+ * As facetas de um conjunto de peças. A contagem sai do que os OUTROS filtros
+ * deixaram (a faceta não conta a si mesma): "Preto" faz "P" cair para as peças P
+ * pretas e "Preto" fica cheio — se a faceta se filtrasse, o valor marcado
+ * apareceria com zero. Opção com zero peças continua na lista, desabilitada
+ * ("existe, não neste recorte"); faceta sem nenhum valor não é desenhada.
  */
 export function construirFacetas(
   produtos: ProdutoFiltravel[],
@@ -458,16 +372,10 @@ export function construirFacetas(
     return [{ value: status, label: PRODUCT_STATUS_LABELS[status] }]
   }
 
-  /**
-   * Os valores da faceta, com a contagem do recorte.
-   *
-   * A **lista de valores sai do catálogo inteiro** e só a contagem sai do recorte:
-   * os dois papéis são diferentes. Se a lista também saísse do recorte, marcar um
-   * filtro que não encontra nada apagaria as outras facetas da tela — e a cliente
-   * ficaria sem a caixa para desmarcar o que acabou de marcar. Com a lista
-   * inteira, o valor que a combinação não alcança aparece com zero e desabilitado,
-   * que é a resposta, e não a ausência dela.
-   */
+  /** Os valores da faceta, com a contagem do recorte. A **lista sai do catálogo
+   * inteiro** e só a contagem sai do recorte: se a lista saísse do recorte, um
+   * filtro que não encontra nada apagaria as outras facetas, e a cliente ficaria
+   * sem a caixa para desmarcar. */
   const facetar = (
     base: ProdutoFiltravel[],
     extrair: (produto: ProdutoFiltravel) => ChaveDeValor[],
@@ -528,14 +436,9 @@ export function construirFacetas(
   return candidatas.flatMap((faceta) => {
     const selecionados = marcados(faceta.key)
 
-    /*
-     * O valor marcado que **o catálogo não tem mais** — um link compartilhado
-     * cuja peça saiu do ar, ou um endereço escrito à mão. Ele entra na lista com
-     * zero peças e o próprio valor como rótulo: sem ele, o filtro continuaria
-     * aplicado (a URL diz isso) e não haveria caixa para desmarcar. O rótulo
-     * feio, no caso da faixa de preço, é o preço honesto de não ter um nome
-     * melhor para uma faixa que não existe mais.
-     */
+    /* O valor marcado que **o catálogo não tem mais** (link compartilhado, peça
+       fora do ar): entra com zero peças e o próprio valor como rótulo, senão o
+       filtro seguiria aplicado (a URL diz isso) sem caixa para desmarcar. */
     const presentes = new Set(faceta.options.map((opcao) => opcao.value))
 
     const ausentes = Array.from(selecionados)
@@ -568,14 +471,9 @@ function lerParametro(
   return Array.isArray(valor) ? valor : [valor]
 }
 
-/**
- * A seleção que a URL descreve.
- *
- * Cada faceta aceita **uma chave com valores separados por vírgula**
- * (`?cor=Preto,Branco`) e também a chave repetida (`?cor=Preto&cor=Branco`): as
- * duas formas aparecem em links escritos à mão, e as duas são a mesma coisa.
- * Valor vazio é ausência — `?cor=` é um filtro limpo, não um valor em branco.
- */
+/** A seleção que a URL descreve. Cada faceta aceita a chave com vírgulas
+ * (`?cor=Preto,Branco`) ou repetida (`?cor=Preto&cor=Branco`) — as duas são a
+ * mesma coisa. Valor vazio é ausência: `?cor=` é um filtro limpo. */
 export function selecaoDaUrl(
   input: URLSearchParams | Record<string, string | string[] | undefined>
 ): SelecaoDoCatalogo {
@@ -634,16 +532,9 @@ function atende(
   }
 }
 
-/**
- * O catálogo filtrado.
- *
- * **Entre facetas soma (E), dentro de uma faceta soma (OU)** — a única leitura
- * que não surpreende: "Alfaiataria **e** tamanho M" é o que a cliente pediu, e
- * "M **ou** G" também é.
- *
- * Sem marcação nenhuma, a lista volta **igual** (a mesma referência, e não uma
- * cópia): a grade sem filtro não paga pelo filtro.
- */
+/** O catálogo filtrado. **Entre facetas soma (E), dentro de uma faceta soma
+ * (OU)**. Sem marcação, a lista volta **igual** (a mesma referência): a grade
+ * sem filtro não paga pelo filtro. */
 export function filtrarProdutos<T extends ProdutoFiltravel>(
   produtos: T[],
   selecao: SelecaoDoCatalogo

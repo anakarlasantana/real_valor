@@ -640,7 +640,7 @@ linha que esta fase tornou falsa**, e nenhuma delas é arquivo de fonte do backe
 `Migration20260929204616`, o split do `c7df56fc85` e o `git push develop` — que é o que fecha os
 hashes das fases.
 
-### ✅ F9 · As citações reancoradas — **FEITO** (hash na entrada da F10: um commit não carrega o próprio hash)
+### ✅ F9 · As citações reancoradas — **FEITO** (`712038e90c`)
 
 **O que foi feito:** as duas metades da fase — o doc 09 ganha o hash de cada fase, e as citações que o
 lote tornou falsas foram reancoradas. Dos cinco arquivos de **fonte** tocados, as cinco linhas são
@@ -697,6 +697,63 @@ rodou, embora a fase não seja de código: **24 suítes/424 testes** no backend,
 `frontend/src/app/fonts/README.md`, `backend/src/modules/content/README.md` e os quatro comentários de
 fonte (`components/field-input.tsx`, `lib/form-draft.ts`, `lib/utils.ts`, `components/image-input.tsx`).
 **Pré-requisito:** F8
+
+### ✅ F10 · O comentário dos vinte e oito piores — **FEITO** (o hash é o commit que carrega esta entrada: a F10 é a última fase do lote, e não há entrada seguinte onde escrevê-lo)
+
+**O que foi feito:** a política do doc 15 §15.4 (cabeçalho ≤ 5 linhas, densidade ≤ 12%) deixou de ser
+só régua — ela foi aplicada aos **vinte e oito arquivos** que o `--report` apontou como os piores, e o
+`--write` reancorou o baseline **no mesmo commit**, que é o que a §15.4 manda ("o `--write` é parte do
+commit que mudou a forma dos arquivos de propósito"). O corte não é apagar comentário: é cortar o
+**ensaio** — o bloco de 15 a 60 linhas antes de um tipo, de uma função ou de uma peça de CSS — e ficar
+com a armadilha, com o dono de cada peça e com o número medido.
+
+**Os cinco piores** (linhas de comentário, antes → depois): `contract.ts` **1.340 → 375** (72% de
+corte; o arquivo perdeu 966 linhas e a densidade caiu de 51% para 22%), `schema.ts` **371 → 55**
+(85%), `field-input.tsx` **327 → 133**, `defaults.ts` **257 → 70** e `credenciais.ts` **248 → 89**.
+Depois deles: `order.ts` 224 → 78, `filters.ts` 216 → 80, os quatro parciais da régua (`04-trilho`
+207 → 70, `01-tokens` 197 → 60, `05-card-vitrine` 158 → 54, `15-card-home` 158 → 55), `service.ts`
+195 → 80, `catalog-filters.ts` 187 → 78, `ruler.spec.ts` 172 → 68, `product-carousel/index.tsx`
+166 → 60, `marquee.ts` 117 → 29, `payment.ts` 95 → 20, `api-url.ts` 67 → 33, `content-section.ts`
+63 → 32, `contexto.ts` 61 → 42, `motion.ts` 61 → 34, `product-fields.ts` 60 → 24, os dois links
+(`content-section-product` 58 → 22, `content-section-category` 56 → 22), `seed.ts` 58 → 22,
+`content-contract.ts` 47 → 28 e `api/hooks/payment/[provider]/route.ts` 47 → 18.
+
+**Medido (13/10/2026):** **3.509 linhas de comentário a menos** no repositório — frontend
+9.770 → 8.792, backend 5.106 → 4.346, CRM 2.022 → 1.794 e o pacote de contrato 2.084 → **541** (era o
+mais comentado do repo). O baseline fica com **334 arquivos**, e o diff dele é a prova da fase: **0
+entradas subiram, 0 nasceram, 0 ficaram órfãs** — 306 entradas intactas (os arquivos que a fase não
+tocou, byte a byte) e as 28 tocadas com o número apertado em cada uma. É o que sustenta a leitura da
+catraca: cortar comentário não move a régua para cima, e a folga que sobra vira número reancorado.
+
+**A prova de que só comentário mudou** (a fase edita 28 arquivos de fonte, e o risco é o comentário
+levar código junto): os 28 foram reparseados pelo `esbuild` com os **identificadores preservados** e
+comparados com o `HEAD` — saída idêntica nos 28. Com o mangling ligado, dois deles divergem só nos
+nomes curtos que o minificador inventa — e é essa segunda comparação que separa "mudou o código" de
+"mudou o comentário". Em cima disso: `tsc` verde nos três pacotes e as três suítes com os mesmos
+**424 / 104 / 466** testes de antes da fase. Vale o registro porque um `{/* ... */}` de JSX aparece
+como "linha de código" numa auditoria de diff por linha: a auditoria acusou 33 linhas e o minificado
+idêntico mostrou que as 33 eram prosa.
+
+**O que a fase NÃO fez:** não perseguiu os 334 do baseline. Um arquivo pequeno com cabeçalho e linha
+de campo (o `product-fields.ts` tem 30 linhas de código e 24 de comentário, 80% de densidade) fica
+acima de 12% mesmo depois do corte — ali o comentário **é** a documentação do arquivo, e a exceção
+declarada no baseline é a resposta honesta. A fase cortou os vinte e oito piores, não a lista
+inteira, e o resto segue como dívida declarada no doc 15 §15.8.
+
+**Gate:** `make check` (as cinco guardas verdes, com o baseline reancorado no mesmo commit) ·
+`make types` · `make test` (24/424 no backend, 9/104 no CRM, 34/466 no storefront) · e o `--report`
+de novo ao fim, para conferir que a cabeça da lista mudou.
+**Arquivos (lidos integralmente na fase, como manda a §15.5):** 28 arquivos de fonte — 4 do contrato
+(`contract.ts`, `schema.ts`, `defaults.ts`, `payment.ts`), 11 do backend (`credenciais.ts`,
+`service.ts`, `order.ts`, `filters.ts`, `contexto.ts`, `content-section.ts`, `content-contract.ts`,
+`content-section-product.ts`, `content-section-category.ts`, `seed.ts`,
+`api/hooks/payment/[provider]/route.ts`), 11 do storefront (`catalog-filters.ts`, `marquee.ts`,
+`launches.ts`, `product-fields.ts`, `motion.ts`, `product-carousel/index.tsx`, `ruler.spec.ts` e os
+quatro parciais de CSS) e 2 do CRM (`api-url.ts`, `field-input.tsx`) —, mais
+`scripts/baselines/comments.json`, este doc e o doc 15.
+**Pré-requisito:** F9
+
+---
 
 ### RV-050 · O `yarn build` de produção não fecha (`next/headers` no bundle de cliente) — **ABERTO**
 

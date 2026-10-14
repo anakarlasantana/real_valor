@@ -5,20 +5,20 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37630,
-      "comments": 9770
+      "lines": 36653,
+      "comments": 8792
     },
     "admin/src": {
-      "lines": 7093,
-      "comments": 2022
+      "lines": 6865,
+      "comments": 1794
     },
     "backend/src": {
-      "lines": 16180,
-      "comments": 5106
+      "lines": 15420,
+      "comments": 4346
     },
     "packages/contrato/src": {
-      "lines": 3817,
-      "comments": 2084
+      "lines": 2273,
+      "comments": 541
     },
     "scripts": {
       "lines": 1539,
@@ -32,9 +32,9 @@
       "header": 34
     },
     "frontend/src/__checks__/ruler.spec.ts": {
-      "comments": 172,
-      "lines": 407,
-      "header": 56
+      "comments": 68,
+      "lines": 303,
+      "header": 5
     },
     "frontend/src/app/[countryCode]/(checkout)/layout.tsx": {
       "comments": 11,
@@ -167,9 +167,9 @@
       "header": 13
     },
     "frontend/src/lib/catalog/catalog-filters.ts": {
-      "comments": 187,
-      "lines": 666,
-      "header": 28
+      "comments": 78,
+      "lines": 557,
+      "header": 5
     },
     "frontend/src/lib/catalog/category-tabs.ts": {
       "comments": 19,
@@ -287,9 +287,9 @@
       "header": 5
     },
     "frontend/src/lib/content/launches.ts": {
-      "comments": 39,
-      "lines": 61,
-      "header": 27
+      "comments": 12,
+      "lines": 34,
+      "header": 5
     },
     "frontend/src/lib/content/markdown.tsx": {
       "comments": 125,
@@ -297,9 +297,9 @@
       "header": 41
     },
     "frontend/src/lib/content/marquee.ts": {
-      "comments": 117,
-      "lines": 174,
-      "header": 50
+      "comments": 29,
+      "lines": 86,
+      "header": 5
     },
     "frontend/src/lib/content/page-seo.ts": {
       "comments": 78,
@@ -342,9 +342,9 @@
       "header": 5
     },
     "frontend/src/lib/data/product-fields.ts": {
-      "comments": 60,
-      "lines": 65,
-      "header": 60
+      "comments": 24,
+      "lines": 30,
+      "header": 5
     },
     "frontend/src/lib/data/products.ts": {
       "comments": 41,
@@ -477,9 +477,9 @@
       "header": 5
     },
     "frontend/src/lib/ui/motion.ts": {
-      "comments": 61,
-      "lines": 87,
-      "header": 29
+      "comments": 34,
+      "lines": 60,
+      "header": 17
     },
     "frontend/src/middleware.ts": {
       "comments": 44,
@@ -707,8 +707,8 @@
       "header": 5
     },
     "frontend/src/modules/home/components/product-carousel/index.tsx": {
-      "comments": 166,
-      "lines": 516,
+      "comments": 60,
+      "lines": 410,
       "header": 5
     },
     "frontend/src/modules/layout/components/cart-button/index.tsx": {
@@ -937,9 +937,9 @@
       "header": 18
     },
     "frontend/src/styles/brand/01-tokens.css": {
-      "comments": 197,
-      "lines": 265,
-      "header": 40
+      "comments": 60,
+      "lines": 128,
+      "header": 5
     },
     "frontend/src/styles/brand/02-base.css": {
       "comments": 87,
@@ -952,14 +952,14 @@
       "header": 33
     },
     "frontend/src/styles/brand/04-trilho.css": {
-      "comments": 207,
-      "lines": 408,
-      "header": 21
+      "comments": 70,
+      "lines": 271,
+      "header": 5
     },
     "frontend/src/styles/brand/05-card-vitrine.css": {
-      "comments": 158,
-      "lines": 287,
-      "header": 46
+      "comments": 54,
+      "lines": 183,
+      "header": 5
     },
     "frontend/src/styles/brand/06-cromo.css": {
       "comments": 94,
@@ -1007,9 +1007,9 @@
       "header": 15
     },
     "frontend/src/styles/brand/15-card-home.css": {
-      "comments": 158,
-      "lines": 291,
-      "header": 59
+      "comments": 55,
+      "lines": 188,
+      "header": 5
     },
     "frontend/src/styles/brand/16-home.css": {
       "comments": 143,
@@ -1042,9 +1042,9 @@
       "header": 14
     },
     "admin/src/admin/lib/api-url.ts": {
-      "comments": 67,
-      "lines": 87,
-      "header": 33
+      "comments": 33,
+      "lines": 53,
+      "header": 15
     },
     "admin/src/admin/lib/enriquecimento-form.ts": {
       "comments": 117,
@@ -1112,9 +1112,9 @@
       "header": 29
     },
     "admin/src/admin/routes/content/components/field-input.tsx": {
-      "comments": 327,
-      "lines": 1119,
-      "header": 21
+      "comments": 133,
+      "lines": 925,
+      "header": 5
     },
     "admin/src/admin/routes/content/components/href-input.tsx": {
       "comments": 42,
@@ -1252,9 +1252,9 @@
       "header": 20
     },
     "backend/src/api/hooks/payment/[provider]/route.ts": {
-      "comments": 47,
-      "lines": 63,
-      "header": 40
+      "comments": 18,
+      "lines": 34,
+      "header": 5
     },
     "backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts": {
       "comments": 58,
@@ -1287,13 +1287,13 @@
       "header": 20
     },
     "backend/src/links/content-section-category.ts": {
-      "comments": 56,
-      "lines": 75,
+      "comments": 22,
+      "lines": 41,
       "header": 5
     },
     "backend/src/links/content-section-product.ts": {
-      "comments": 58,
-      "lines": 76,
+      "comments": 22,
+      "lines": 40,
       "header": 5
     },
     "backend/src/modules/content/__tests__/assets.unit.spec.ts": {
@@ -1382,9 +1382,9 @@
       "header": 9
     },
     "backend/src/modules/content/filters.ts": {
-      "comments": 216,
-      "lines": 506,
-      "header": 42
+      "comments": 80,
+      "lines": 370,
+      "header": 5
     },
     "backend/src/modules/content/migrations/Migration20260929204616.ts": {
       "comments": 41,
@@ -1402,19 +1402,19 @@
       "header": 5
     },
     "backend/src/modules/content/models/content-contract.ts": {
-      "comments": 47,
-      "lines": 59,
+      "comments": 28,
+      "lines": 40,
       "header": 5
     },
     "backend/src/modules/content/models/content-section.ts": {
-      "comments": 63,
-      "lines": 83,
+      "comments": 32,
+      "lines": 52,
       "header": 5
     },
     "backend/src/modules/content/order.ts": {
-      "comments": 224,
-      "lines": 437,
-      "header": 49
+      "comments": 78,
+      "lines": 291,
+      "header": 5
     },
     "backend/src/modules/content/pages.ts": {
       "comments": 87,
@@ -1537,14 +1537,14 @@
       "header": 23
     },
     "backend/src/modules/payment/mercadopago/contexto.ts": {
-      "comments": 61,
-      "lines": 77,
-      "header": 28
+      "comments": 42,
+      "lines": 58,
+      "header": 17
     },
     "backend/src/modules/payment/mercadopago/credenciais.ts": {
-      "comments": 248,
-      "lines": 416,
-      "header": 20
+      "comments": 89,
+      "lines": 257,
+      "header": 5
     },
     "backend/src/modules/payment/mercadopago/decisao.ts": {
       "comments": 39,
@@ -1572,9 +1572,9 @@
       "header": 29
     },
     "backend/src/modules/payment/mercadopago/service.ts": {
-      "comments": 195,
-      "lines": 482,
-      "header": 32
+      "comments": 80,
+      "lines": 367,
+      "header": 5
     },
     "backend/src/modules/payment/mercadopago/status.ts": {
       "comments": 23,
@@ -1627,9 +1627,9 @@
       "header": 5
     },
     "backend/src/scripts/seed.ts": {
-      "comments": 58,
-      "lines": 89,
-      "header": 27
+      "comments": 22,
+      "lines": 53,
+      "header": 4
     },
     "backend/src/subscribers/__tests__/catalog-revalidate.unit.spec.ts": {
       "comments": 45,
@@ -1647,13 +1647,13 @@
       "header": 5
     },
     "packages/contrato/src/contract.ts": {
-      "comments": 1340,
-      "lines": 2633,
-      "header": 19
+      "comments": 375,
+      "lines": 1667,
+      "header": 4
     },
     "packages/contrato/src/defaults.ts": {
-      "comments": 257,
-      "lines": 562,
+      "comments": 70,
+      "lines": 375,
       "header": 5
     },
     "packages/contrato/src/index.ts": {
@@ -1662,14 +1662,14 @@
       "header": 21
     },
     "packages/contrato/src/payment.ts": {
-      "comments": 95,
-      "lines": 145,
-      "header": 19
+      "comments": 20,
+      "lines": 70,
+      "header": 3
     },
     "packages/contrato/src/schema.ts": {
-      "comments": 371,
-      "lines": 452,
-      "header": 15
+      "comments": 55,
+      "lines": 136,
+      "header": 5
     },
     "scripts/check-admin-modules.mjs": {
       "comments": 43,
