@@ -102,6 +102,11 @@ Três variáveis, todas no `.env` e no `docker-compose.yml`:
 `SUPERFRETE_TOKEN`, `SUPERFRETE_AMBIENTE` (`sandbox` por padrão) e
 `SUPERFRETE_WEBHOOK_SECRET`.
 
+O segredo do webhook é o **`secret_token` devolvido ao criar o Webhook App**
+(`POST /api/v0/webhook`), não um valor inventado por nós. Enquanto ele estiver
+vazio, `POST /webhooks/superfrete` responde **401 a tudo** — sem chave, um HMAC
+não é conferência, e a rota seria um POST anônimo escrevendo em pedido de cliente.
+
 Para conferir a integração: **`POST /api/v0/calculator`** com o token do
 sandbox. A conta de teste precisa de saldo (o sandbox recarrega por Pix
 simulado).

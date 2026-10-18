@@ -1313,6 +1313,52 @@ ordem; ligar a Jadlog a fez aparecer no `/store/shipping-options` de um carrinho
 não foi vista. `POST /admin/shipping/testar` responde "O SuperFrete não está configurado". Com o
 token, o teste já cota as três (`todos: true`).
 
+### ✅ F3 · Webhook do SuperFrete — **FEITO (18/10/2026)**
+
+**Descrição:** a etiqueta saía pelo painel, mas a cliente nunca sabia que o pedido andou: postado,
+entregue ou cancelado no SuperFrete não chegava ao pedido do Medusa. Receber o aviso do provedor e
+traduzi-lo no `metadata`.
+
+**Tipo:** funcional + API · **Prioridade:** ALTA · **Complexidade:** média
+**Depende de:** F2 (a etiqueta no `metadata`) · **Arquivo-alvo:** `superfrete/webhook.ts`
+
+**Entregue:**
+- `POST /webhooks/superfrete` com **HMAC-SHA256 do corpo cru** em `x-me-signature`, comparado em
+  tempo constante. Segredo vazio → **401 a tudo**: sem chave, a rota é um POST anônimo escrevendo
+  em pedido de cliente.
+- `webhook.ts` (assinatura, os 6 eventos, envelope, o que muda no `metadata`) e `vinculo.ts`
+  (etiqueta → pedido), puros e testados; o I/O fica na rota e no subscriber `superfrete-webhook`.
+- Grava `superfrete_situacao`, `status_label`, `tracking_number`/`tracking_url` quando o aviso traz,
+  e `superfrete_cancelada` no cancelamento — **preservando** o CPF e o preço que já estavam lá.
+
+**Quatro armadilhas, medidas:**
+1. **O HMAC é sobre os bytes**, não sobre o objeto: assinar o JSON reserializado (outra ordem de
+   chaves) reprova um aviso legítimo. Daí `req.rawBody`.
+2. **`tracking` e `tracking_url` só existem a partir do `generated`** — o `generated` chega sem
+   eles, e apagar o link que o F2 gravou deixaria a cliente sem para onde clicar.
+3. **A SuperFrete reentrega**: 30 s de timeout, nova tentativa a cada 15 min, até 5. O mesmo aviso
+   chega várias vezes, e gravar o igual emitiria `order.updated` à toa — `metadataDoAviso` devolve
+   `null` quando nada muda. Um aviso atrasado depois do cancelamento também não ressuscita a etiqueta.
+4. **`listOrders` não filtra por `metadata`** (e o índice de busca exige `metadata` no schema, não
+   ligado). O vínculo é varredura limitada a 120 dias, 200 por página — e o aviso é anônimo na
+   origem, então procurar em todo o histórico seria dar uma varredura do banco a qualquer remetente.
+
+**Dois bugs pegos rodando** (os testes puros não pegavam, porque o dublê aceitava qualquer coisa):
+`skip`/`take` no **filtro** derrubam o subscriber com *"not existing property Order.skip"* — são
+config; e o operador de data é **`$gte`**, não `gte` (*"not existing property Order.gte"*). Cada um
+ganhou teste de regressão.
+
+**Validado rodando**, com pedido temporário no banco: aviso `order.posted` → `status_label` virou
+"Postada", `tracking_number` gravado, CPF e preço intactos; a **reentrega** foi reconhecida como
+"não muda nada"; `order.cancelled` marcou `superfrete_cancelada`; e um `order.delivered` atrasado
+foi recusado. Sem assinatura e com assinatura falsa: **401**.
+
+**Pendência declarada:** o `SUPERFRETE_WEBHOOK_SECRET` está vazio no `.env`, então o Webhook App
+ainda não pode ser criado (o segredo é o `secret_token` devolvido por `POST /api/v0/webhook`). O
+caminho real foi provado com um segredo efêmero no container, já revertido. A vitrine usa tag por
+sessão (`orders-<cacheId>`), que o backend não alcança: a cliente vê a situação nova quando a
+entrada de cache expira.
+
 
 ### RV-045 · Notificação de envio à cliente
 

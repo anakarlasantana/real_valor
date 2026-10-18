@@ -229,7 +229,14 @@ com a regra em `superfrete/servicos.ts`. Três armadilhas: o serviço de uma op�
 seed); a regra `enabled_in_store` é **reescrita inteira** a cada troca (duas regras iguais e
 o Medusa não diz qual vale); e desligar todos os serviços é um checkout sem entrega, então
 o `PUT` responde **422** em vez de gravar. A cotação de teste usa a caixa padrão e o mesmo
-CEP de origem do checkout, mas **fora do cache**: um preço de 5 minutos atrás não prova nada.
+**O webhook (F3).** `POST /webhooks/superfrete`, com a regra em `superfrete/webhook.ts` e o
+I/O no subscriber `superfrete-webhook`. Quatro armadilhas, todas medidas na doc e rodando:
+a assinatura é **HMAC-SHA256 do corpo cru** em `x-me-signature` (por isso `req.rawBody`, e não
+o JSON reserializado, que muda a ordem das chaves); o aviso chega em `event` + `data` e o
+`tracking` só existe **a partir do `generated`**; a SuperFrete **reentrega** por 15 minutos até
+5 vezes, e regravar o igual emitiria `order.updated` à toa; e `listOrders` **não filtra por
+`metadata`**, então o vínculo etiqueta → pedido é varredura limitada (`vinculo.ts`), com
+`skip`/`take` em **config** e `$gte` — `skip`/`gte` no filtro viram "coluna inexistente".
 
 
 
