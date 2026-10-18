@@ -8,7 +8,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 
 import { setShippingMethod } from "@lib/data/cart"
-import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
+import { calculatePriceForShippingOption, cotarFrete } from "@lib/data/fulfillment"
+import { descreverPrazo } from "@lib/checkout/shipping-quote"
 import { convertToLocale } from "@lib/ui/money"
 import ErrorMessage from "@modules/checkout/components/error-message"
 
@@ -83,10 +84,7 @@ function formatAddress(address: PrintableAddress | null | undefined) {
  *
  * Duas escolhas de conteúdo, e as duas são para não prometer o que não se sabe:
  *
- *  - **não há "3 a 5 dias úteis" no cartão.** A referência escreve um prazo fixo
- *    ali; a loja não tem esse dado por opção de frete — o que ela tem é o preço
- *    calculado para o CEP. Escrever um prazo seria a mesma promessa por escrito que
- *    a página da peça já recusou uma vez (ver o comentário do `product-actions`).
+ *  - **o prazo vem do SuperFrete**, quando há cotação; sem ela, só o preço.
  *  - **"Grátis" em vez de "R$ 0,00"**: o zero do frete é boa notícia, e é a mesma
  *    palavra que o resumo usa para o frete grátis.
  */
@@ -96,6 +94,7 @@ const Shipping: React.FC<ShippingProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingPrices, setIsLoadingPrices] = useState(true)
+  const [prazos, setPrazos] = useState<Record<string, string>>({})
 
   const [showPickupOptions, setShowPickupOptions] =
     useState<string>(PICKUP_OPTION_OFF)
@@ -123,8 +122,26 @@ const Shipping: React.FC<ShippingProps> = ({
 
   const hasPickupOptions = !!_pickupMethods?.length
 
+  /** O prazo da modalidade, pelo nome que o SuperFrete devolveu. */
+  const prazoDe = (nome: string) => prazos[nome] ?? null
+
   useEffect(() => {
     setIsLoadingPrices(true)
+
+    // Falha aqui não quebra o passo: a linha mostra só o preço.
+    cotarFrete(cart.id).then((cotacoes) => {
+      const mapa: Record<string, string> = {}
+
+      for (const cotacao of cotacoes ?? []) {
+        const prazo = descreverPrazo(cotacao.prazo)
+
+        if (prazo) {
+          mapa[cotacao.nome] = prazo
+        }
+      }
+
+      setPrazos(mapa)
+    })
 
     if (_shippingMethods?.length) {
       const promises = _shippingMethods
@@ -293,6 +310,11 @@ const Shipping: React.FC<ShippingProps> = ({
                     />
                     <span className="rv-option-body">
                       <strong>{option.name}</strong>
+                      {prazoDe(option.name) && (
+                        <small data-testid="delivery-option-prazo">
+                          {prazoDe(option.name)}
+                        </small>
+                      )}
                     </span>
                     <span
                       className={clx("rv-option-price", {

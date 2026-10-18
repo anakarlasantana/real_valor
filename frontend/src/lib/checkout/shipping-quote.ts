@@ -15,9 +15,7 @@
  *      da região (backend). Sem eles, o componente devolve `null` e a caixa não
  *      existe. O campo que responde sempre é pior do que campo nenhum.
  *
- * O **prazo em palavras** ("3 a 5 dias úteis") é o que a loja escreve na opção de
- * entrega; o que a tabela de frete dá é preço por região e peso, sem prazo. Uma
- * modalidade sem prazo continua entrando na linha — sem a parte do meio.
+ * O prazo vem do SuperFrete (`descreverPrazo`); sem ele, a linha mostra só nome e preço.
  */
 import { convertToLocale } from "@lib/ui/money"
 
@@ -54,6 +52,17 @@ export function normalizarCep(valor: string | null | undefined): string {
   }
 
   return valor.replace(/\D/g, "").slice(0, CEP_DIGITOS)
+}
+
+/** "até 5 dias úteis". Zero ou ausente não promete prazo. */
+export function descreverPrazo(dias: number | null | undefined): string | null {
+  if (typeof dias !== "number" || !Number.isFinite(dias) || dias <= 0) {
+    return null
+  }
+
+  const inteiro = Math.round(dias)
+
+  return `até ${inteiro} ${inteiro === 1 ? "dia útil" : "dias úteis"}`
 }
 
 /** O CEP está completo? */

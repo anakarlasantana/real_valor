@@ -5,7 +5,7 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 36938,
+      "lines": 37020,
       "comments": 8791
     },
     "admin/src": {
@@ -13,7 +13,7 @@
       "comments": 1832
     },
     "backend/src": {
-      "lines": 17372,
+      "lines": 17440,
       "comments": 4377
     },
     "packages/contrato/src": {
@@ -218,13 +218,13 @@
     },
     "frontend/src/lib/checkout/__tests__/shipping-quote.unit.spec.ts": {
       "comments": 17,
-      "lines": 137,
+      "lines": 161,
       "header": 16
     },
     "frontend/src/lib/checkout/shipping-quote.ts": {
-      "comments": 64,
-      "lines": 124,
-      "header": 21
+      "comments": 63,
+      "lines": 133,
+      "header": 19
     },
     "frontend/src/lib/content/__tests__/hero.unit.spec.ts": {
       "comments": 22,

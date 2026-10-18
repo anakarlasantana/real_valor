@@ -20,6 +20,7 @@ import {
   CEP_DIGITOS,
   cepValido,
   descreverOpcao,
+  descreverPrazo,
   formatarCep,
   normalizarCep,
   type OpcaoDeEntrega,
@@ -132,5 +133,28 @@ describe("descreverOpcao — a linha da modalidade", () => {
   it("sem título não há linha: ela começaria com o separador", () => {
     expect(descreverOpcao({ ...base, titulo: "  " })).toBeNull()
     expect(descreverOpcao({ ...base, titulo: "" })).toBeNull()
+  })
+})
+
+describe("descreverPrazo — o prazo do SuperFrete", () => {
+  it("escreve o prazo em dias úteis", () => {
+    expect(descreverPrazo(5)).toBe("até 5 dias úteis")
+  })
+
+  it("um dia no singular: 'até 1 dia útil'", () => {
+    expect(descreverPrazo(1)).toBe("até 1 dia útil")
+  })
+
+  it("arredonda o prazo fracionado", () => {
+    expect(descreverPrazo(2.4)).toBe("até 2 dias úteis")
+    expect(descreverPrazo(2.6)).toBe("até 3 dias úteis")
+  })
+
+  it("zero, negativo ou ausente não prometem prazo", () => {
+    expect(descreverPrazo(0)).toBeNull()
+    expect(descreverPrazo(-3)).toBeNull()
+    expect(descreverPrazo(null)).toBeNull()
+    expect(descreverPrazo(undefined)).toBeNull()
+    expect(descreverPrazo(NaN)).toBeNull()
   })
 })

@@ -66,3 +66,30 @@ export const calculatePriceForShippingOption = async (
       return null
     })
 }
+
+/** Uma cotação dos Correios: o serviço, o preço em reais e o prazo em dias úteis. */
+export type CotacaoDeFrete = {
+  servico: "PAC" | "SEDEX" | "MINI"
+  nome: string
+  preco: number
+  prazo: number
+}
+
+/** Preço **e prazo**: o `calculatePriceForShippingOption` devolve só o valor. */
+export const cotarFrete = async (
+  cartId: string
+): Promise<CotacaoDeFrete[] | null> => {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  return sdk.client
+    .fetch<{ cotacoes: CotacaoDeFrete[] }>("/store/shipping/quote", {
+      method: "GET",
+      query: { cart_id: cartId },
+      headers,
+      cache: "no-store",
+    })
+    .then(({ cotacoes }) => cotacoes ?? [])
+    .catch(() => null)
+}
