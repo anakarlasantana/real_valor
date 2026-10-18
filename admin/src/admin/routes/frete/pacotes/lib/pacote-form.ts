@@ -21,13 +21,20 @@ export type RascunhoPacote = {
   ativo: boolean
 }
 
+/**
+ * Medidas dos Correios. O peso é o teto mais baixo entre os serviços — a J&T
+ * para em 11 kg, então uma caixa acima disso passaria aqui e falharia na cotação.
+ */
 export const LIMITES = {
   altura: { min: 2, max: 100 },
   largura: { min: 11, max: 105 },
   comprimento: { min: 16, max: 105 },
   soma: 200,
-  peso_gramas: 30_000,
+  peso_gramas: 11_000,
 } as const
+
+/** O maior que alguma transportadora aceita; acima disso nenhuma cota. */
+const PESO_MAXIMO = 30_000
 
 export const RASCUNHO_VAZIO: RascunhoPacote = {
   nome: "",
@@ -87,8 +94,15 @@ export function problemasDoRascunho(rascunho: RascunhoPacote): string[] {
 
   if (!Number.isFinite(peso) || peso <= 0) {
     problemas.push("O peso deve ser maior que zero.")
+  } else if (peso > PESO_MAXIMO) {
+    problemas.push(
+      `O peso passa do limite de ${PESO_MAXIMO / 1000} kg de todas as transportadoras.`,
+    )
   } else if (peso > LIMITES.peso_gramas) {
-    problemas.push("O peso passa do limite de 30 kg dos Correios.")
+    // Acima de 11 kg só as dos Correios, a Jadlog e a Loggi cotam.
+    problemas.push(
+      `Acima de ${LIMITES.peso_gramas / 1000} kg a caixa deixa de servir para a J&T.`,
+    )
   }
 
   return problemas

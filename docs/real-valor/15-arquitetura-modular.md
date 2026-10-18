@@ -200,6 +200,38 @@ no repositório, sem uma única entrada que subisse: `contract.ts` 1.340 → 375
 régua 207/197/158/158 → 70/60/54/55. O que se corta é o **ensaio** (o bloco de 15 a 60 linhas), não a
 armadilha nem o dono da peça — e é por isso que os 28 arquivos seguem no baseline: cabeçalho e linha
 de campo são a documentação que o arquivo tem, e num arquivo pequeno eles sozinhos passam dos 12%.
+### 15.4.2 SuperFrete: a etiqueta (F2)
+
+**A porta e o núcleo.** As rotas `admin/shipping/[id]/etiqueta{,/pdf,/cancelar}` e
+`admin/shipping/saldo` têm I/O (query do pedido, `updateOrders`, HTTP). A regra mora em
+`modules/fulfillment/superfrete/etiqueta.ts` (contrato, validação, corpo do `/cart`,
+situações) e `pedido.ts` (tradução do pedido do Medusa: `address_1` → rua/número/
+complemento, CPF do `metadata`, `servico` de `shipping_option.data`) — funções puras,
+testadas em `etiqueta.unit.spec.ts` com o cliente HTTP injetado.
+
+**Três armadilhas, medidas na API real** (`superfrete.readme.io/reference/*.md`):
+
+| Armadilha | Consequência |
+| :--- | :--- |
+| `/cart` cria `pending`; `/checkout` paga e vira `released` | Duas chamadas, não uma: sem o segundo, a etiqueta existe e **não sai** |
+| `/checkout` falha depois do `/cart` ter criado | O erro devolve o `id` — recriar cobraria duas etiquetas |
+| `/tag/print` devolve **link assinado**, não PDF | A rota devolve `{ url }`; quem baixa é o navegador |
+
+Outros: `unit_price` do Medusa **já vem em centavos** (multiplicar por 100 erra 100×);
+`service` é o código (`"1"`, não `"PAC"`); `name` exige duas palavras (`nomeCompleto`);
+o volume é o da caixa padrão — o mesmo da cotação, senão o pago diverge do cobrado; o
+cancelamento estorna para a **carteira SuperFrete**, não para o cartão da cliente; o
+saldo lido de `/api/v0/user` (`balance`) e uma falha é 502, nunca zero.
+
+**Os serviços (F2b).** `GET/PUT /admin/shipping/servicos` e `POST /admin/shipping/testar`,
+com a regra em `superfrete/servicos.ts`. Três armadilhas: o serviço de uma opção está em
+**dois** lugares (`data.servico`, que é o que o `calculatePrice` recebe, e o `type.code` do
+seed); a regra `enabled_in_store` é **reescrita inteira** a cada troca (duas regras iguais e
+o Medusa não diz qual vale); e desligar todos os serviços é um checkout sem entrega, então
+o `PUT` responde **422** em vez de gravar. A cotação de teste usa a caixa padrão e o mesmo
+CEP de origem do checkout, mas **fora do cache**: um preço de 5 minutos atrás não prova nada.
+
+
 
 ## 15.5 "Ler antes de mover"
 

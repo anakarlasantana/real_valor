@@ -10,7 +10,7 @@ import type {
 import { caixaValida, padraoUnico, pesoTaxavel, type Pacote } from "../pacotes/pacotes"
 import { calcularVolumes } from "../pacotes/volumes"
 import { cotarPedido, type ConfigSuperFrete } from "./servico"
-import { SERVICOS, ROTULOS, type Servico } from "./catalogo"
+import { SERVICOS, ROTULOS, ehServico, type Servico } from "./catalogo"
 import { ambienteDaConfig, chamarSuperFrete } from "./cliente"
 
 
@@ -52,8 +52,8 @@ export class SuperFreteFulfillmentService extends AbstractFulfillmentProviderSer
   ): Promise<CalculatedShippingOptionPrice> {
     const servico = (optionData as OpcoesDoServico)?.servico
 
-    if (!servico || !(servico in SERVICOS)) {
-      throw new Error("A opção de frete não diz qual serviço dos Correios ela é.")
+    if (!servico || !ehServico(servico)) {
+      throw new Error("A opção de frete não diz qual serviço de entrega ela é.")
     }
 
     const cepOrigem = this.cepDeOrigem(context)
@@ -112,7 +112,7 @@ export class SuperFreteFulfillmentService extends AbstractFulfillmentProviderSer
   }
 
   async validateOption(data: Record<string, any>): Promise<boolean> {
-    return !data?.servico || Object.keys(SERVICOS).includes(data.servico)
+    return !data?.servico || ehServico(data.servico)
   }
 
   async validateFulfillmentData(

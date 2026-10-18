@@ -13,9 +13,13 @@ import { criarVinculo } from "./vinculo";
 
 
 const OPCOES = [
-  { name: "PAC", servico: "PAC", label: "Econômico", description: "Entrega econômica dos Correios." },
-  { name: "SEDEX", servico: "SEDEX", label: "Expresso", description: "Entrega expressa dos Correios." },
-  { name: "Mini Envios", servico: "MINI", label: "Mini Envios", description: "Encomenda pequena, com prazo maior." },
+  { name: "PAC", servico: "PAC", tipo: "correios_pac", label: "Econômico", description: "Entrega econômica dos Correios.", ativa: true },
+  { name: "SEDEX", servico: "SEDEX", tipo: "correios_sedex", label: "Expresso", description: "Entrega expressa dos Correios.", ativa: true },
+  { name: "Mini Envios", servico: "MINI", tipo: "correios_mini", label: "Mini Envios", description: "Encomenda pequena, com prazo maior.", ativa: true },
+  // Nascem desligadas: ligar é decisão de quem opera, na tela de serviços.
+  { name: "Jadlog", servico: "JADLOG", tipo: "jadlog_jadlog", label: "Jadlog", description: "Entrega pela Jadlog, em ponto de postagem.", ativa: false },
+  { name: "J&T", servico: "JNT", tipo: "jnt_jnt", label: "J&T Express", description: "Entrega pela J&T, até 11 kg.", ativa: false },
+  { name: "Loggi", servico: "LOGGI", tipo: "loggi_loggi", label: "Loggi", description: "Entrega pela Loggi.", ativa: false },
 ] as const;
 
 /** Passo 6b: perfil de envio, opções do SuperFrete e vínculos do local. */
@@ -98,13 +102,17 @@ export async function garantirFrete(
   // `createShippingOptionsWorkflow` DUPLICA numa base já semeada.
   const { data: existingShippingOptions } = await query.graph({
     entity: "shipping_option",
-    fields: ["id", "name", "provider_id", "price_type"],
+    fields: ["id", "name", "provider_id", "price_type", "rules", "data"],
     filters: { shipping_profile_id: shippingProfile.id },
   });
 
   const opcoesExistentes = existingShippingOptions ?? [];
-  const nomes = new Set(opcoesExistentes.map((o) => o.name));
-  const faltando = OPCOES.filter((opcao) => !nomes.has(opcao.name));
+
+  // Casa pelo serviço, não pelo nome: o nome é editável na tela do admin.
+  const servicosExistentes = new Set(
+    opcoesExistentes.map((o) => String((o.data as any)?.servico ?? ""))
+  );
+  const faltando = OPCOES.filter((opcao) => !servicosExistentes.has(opcao.servico));
 
   if (faltando.length === 0) {
     logger.info("[Real Valor] Opções de envio já existem — pulando.");
@@ -122,16 +130,19 @@ export async function garantirFrete(
         type: {
           label: opcao.label,
           description: opcao.description,
-          code: `correios_${opcao.servico.toLowerCase()}`,
+          code: opcao.tipo,
         },
         rules: [
-          { attribute: "enabled_in_store", value: "true", operator: "eq" as const },
+          { attribute: "enabled_in_store", value: String(opcao.ativa), operator: "eq" as const },
           { attribute: "is_return", value: "false", operator: "eq" as const },
         ],
       })),
     });
 
-    logger.info(`[Real Valor] ${faltando.length} opção(ões) de envio criada(s).`);
+    logger.info(
+      `[Real Valor] ${faltando.length} opção(ões) de envio criada(s): ` +
+        faltando.map((o) => `${o.servico}${o.ativa ? "" : " (desligada)"}`).join(", ")
+    );
   }
 
   // Desativar, e não apagar: o histórico de pedidos aponta para elas.

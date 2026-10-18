@@ -1,9 +1,20 @@
 
 import { corpoDaCotacao, cepValido, lerCotacoes, type Cotacao, type Servico } from "./catalogo"
+
+/** A mensagem não pode dizer "Correios" quando o serviço pedido é outra. */
+export function semEntrega(asServicos: Servico[]): string {
+  return asServicos.length === 1
+    ? `Não há entrega por este serviço para este CEP e este peso.`
+    : "Não há entrega para este CEP e este peso."
+}
+import { caixaDoEnvio } from "./etiqueta"
+import { pesoTaxavel, type Pacote } from "../pacotes/pacotes"
 import { PACOTES_MODULE } from "../pacotes"
 import type PacotesModuleService from "../pacotes/service"
 import type { ItemDoPedido } from "../pacotes/volumes"
 import type { chamarSuperFrete } from "./cliente"
+
+export type Chamar = typeof chamarSuperFrete
 
 export type ConfigSuperFrete = { token: string; ambiente: "sandbox" | "producao" }
 
@@ -91,7 +102,7 @@ export async function cotarPedido({
     return {
       ok: false,
       status: 422,
-      erro: "Não há entrega dos Correios para este CEP e este peso.",
+      erro: semEntrega(servicos),
     }
   }
 
@@ -108,6 +119,77 @@ export async function cotarPedido({
     cotacoes: total,
     volumes: calculo.volumes.length,
     pesoGramas: calculo.pesoGramas,
+  }
+}
+
+
+/** A cotação de teste: a mesma caixa padrão do checkout, sem cache e sem gravar nada. */
+export async function testarCotacao({
+  config,
+  cepOrigem,
+  cepDestino,
+  caixas,
+  servicos,
+  chamar,
+}: {
+  config: ConfigSuperFrete
+  cepOrigem: string
+  cepDestino: string
+  caixas: Pacote[]
+  servicos: Servico[]
+  chamar: Chamar
+}): Promise<ResultadoCotacao> {
+  if (!cepValido(cepOrigem)) {
+    return {
+      ok: false,
+      status: 422,
+      erro:
+        "O CEP de origem não está configurado. Configure o endereço do centro de distribuição.",
+    }
+  }
+
+  if (!cepValido(cepDestino)) {
+    return { ok: false, status: 400, erro: "Informe um CEP de destino válido." }
+  }
+
+  const caixa = caixaDoEnvio(caixas)
+
+  if (!caixa) {
+    return { ok: false, status: 422, erro: "Nenhuma caixa ativa e válida para cotar." }
+  }
+
+  const volume = {
+    peso_gramas: pesoTaxavel(caixa),
+    altura_cm: caixa.altura_cm,
+    largura_cm: caixa.largura_cm,
+    comprimento_cm: caixa.comprimento_cm,
+  }
+
+  try {
+    const resposta = await chamar({
+      ambiente: config.ambiente,
+      token: config.token,
+      caminho: "/api/v0/calculator",
+      metodo: "POST",
+      corpo: corpoDaCotacao({ cepOrigem, cepDestino, volume, servicos }),
+    })
+    const cotacoes = lerCotacoes(resposta)
+
+    if (cotacoes.length === 0) {
+      return {
+        ok: false,
+        status: 422,
+        erro: semEntrega(servicos),
+      }
+    }
+
+    return { ok: true, cotacoes, volumes: 1, pesoGramas: volume.peso_gramas }
+  } catch (erro: any) {
+    return {
+      ok: false,
+      status: Number(erro?.status) || 502,
+      erro: erro?.message ?? "O cálculo de frete falhou.",
+    }
   }
 }
 

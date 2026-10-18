@@ -1231,6 +1231,91 @@ link é escrito `/rastreio` (pt-BR, como `/carrinho` e `/conta`) e não `/track`
 pressiona o botão e não recebe nenhuma confirmação de que a página respondeu. Os três campos têm
 `<label>` ligado por `htmlFor`, e o botão desabilita durante a consulta para impedir envio duplo.
 
+### ✅ F2 · Etiqueta SuperFrete no painel — **FEITO (18/10/2026)**
+
+**Descrição:** gerar, imprimir e cancelar a etiqueta dos Correios a partir da fila de envios, pagando
+com o saldo da carteira SuperFrete.
+**Tipo:** funcional + admin · **Prioridade:** ALTA · **Complexidade:** média
+**Depende de:** F1b (provider + cotação) · **Arquivo-alvo:** `modules/fulfillment/superfrete/etiqueta.ts`
+
+**Entregue:**
+- `POST /admin/shipping/:id/etiqueta` (409 pedido não pago, 422 endereço/CPF, idempotente por
+  `superfrete_id`), `GET .../etiqueta/pdf` e `POST .../etiqueta/cancelar`, mais `GET /admin/shipping/saldo`.
+- `etiqueta.ts` (contrato + as três chamadas, cliente injetado) e `pedido.ts` (pedido do Medusa →
+  etiqueta). **A etiqueta mora no `metadata`**: `superfrete_id`, `superfrete_preco`, `tracking_url`.
+- A tela de envios ganhou Gerar / Imprimir / Cancelar, o saldo da carteira e a etiqueta do pedido; o
+  formulário manual (`envio-form.ts`) continua como fallback sem token.
+- **Revisão:** `tracking.ts` — o link dos Correios aponta para `rastreamento.correios.com.br` (o antigo
+  `rastreios.correios.com.br` é página morta) e `etiquetaDe()` lê a etiqueta do `metadata`.
+- **Testes:** +45 no backend (529 no total) e +10 no CRM (158).
+
+**Pendência declarada:** o caminho real nunca rodou — `SUPERFRETE_TOKEN` vazio para o provider na
+primeira chamada. Falta o token do sandbox e saldo na carteira de teste.
+
+### ✅ F2b · Serviços de frete e cotação de teste — **FEITO (18/10/2026)**
+
+**Descrição:** escolher, no painel, quais serviços dos Correios o checkout oferece, ver o saldo da
+carteira e cotar um CEP antes de confiar na loja.
+**Tipo:** admin + API · **Prioridade:** ALTA · **Complexidade:** baixa
+**Depende de:** F1b (provider + cotação) · **Arquivo-alvo:** `superfrete/servicos.ts`
+
+**Entregue:**
+- `servicos.ts` (puro): o serviço de cada opção vem de `data.servico` e, sem ele, do `type.code` do
+  seed; `enabled_in_store` diz se está na loja; `mudancas()` só devolve o que difere do banco.
+- `GET/PUT /admin/shipping/servicos` — o `PUT` **reescreve** a regra (não acumula as duas) e
+  responde 422 se a escolha desligar todas: loja sem frete é checkout sem entrega.
+- `POST /admin/shipping/testar` + `testarCotacao()` — cota com a caixa padrão, CEP de origem do
+  local de estoque, **fora do cache** de 5 min e sem tocar a carteira.
+- Tela nova **Frete → Serviços de frete** (`/frete/servicos`): interruptor por serviço, saldo da
+  carteira, "Testar cotação" com preço e prazo. Só os serviços ativos entram no teste.
+- **Testes:** +22 no backend (551 no total) e +11 no CRM no pacote novo (175, contando os 6 de
+  `pacote-form` que o filtro `frete/` também roda).
+- **Bug pego pelo teste, antes de rodar:** a escolha chegava com `ativa` e a regra lia `ativo` —
+  `undefined`, então `mudancas()` devolveria "nada mudou" e o painel salvaria sem gravar.
+
+### ✅ F2b+ · As 6 transportadoras e a tela sem "Correios" no nome — **FEITO (18/10/2026)**
+
+**Descrição:** a tela oferecia 3 serviços e se chamava "Serviços dos Correios", mas o SuperFrete
+cota 6. Abrir as outras três e parar de fingir que o catálogo é dos Correios.
+**Tipo:** admin + API · **Prioridade:** MÉDIA · **Complexidade:** baixa
+**Depende de:** F2b · **Arquivo-alvo:** `superfrete/catalogo.ts`
+
+**Descoberta que definiu o desenho:** o SuperFrete **não tem** rota que liste serviços (só cotação,
+pacotes, etiqueta, usuário e webhook). Os 6 códigos existem só na documentação, e a disponibilidade
+depende da conta, do ponto de postagem e do peso. Logo: a tela não pode ser um "catálogo do
+SuperFrete" — ela lista as opções de envio do Medusa.
+
+**Entregue:**
+- `catalogo.ts`: `SERVICOS` ganhou `JADLOG` (3), `JNT` (33) e `LOGGI` (31); `TRANSPORTADORAS`,
+  `PESO_MAXIMO_GRAMAS` (J&T para em 11 kg) e `ehServico()`, que substitui o `in SERVICOS` — este
+  aceitava `"toString"` como serviço.
+- Seed cria as três **desligadas** e casa por `data.servico`, não por `name` (o nome é editável no
+  painel; casar por nome recriaria a opção renomeada).
+- `carrier` da etiqueta deixou de ser `"Correios"` fixo: vem do serviço. Mensagens que diziam
+  "Correios" (`servico.ts`, `service.ts`, `etiqueta.ts`, rota da etiqueta) agora dizem o que é.
+- `POST /admin/shipping/testar` aceita `{ todos: true }` e cota **também as desligadas** — é a
+  única forma de saber se a Jadlog funciona antes de ligá-la. A tela lista quem não cotou com o
+  motivo (desligado ≠ defeito).
+- Ordenação explícita `PAC, SEDEX, MINI, JADLOG, JNT, LOGGI` (o `indexOf → -1` jogava a novidade
+  para o topo).
+- `pacote-form.ts` avisa: acima de 11 kg a caixa deixa de servir para a J&T.
+
+**Bug real pego ao rodar a aplicação:** o `PUT /admin/shipping/servicos` recusava desligar **um**
+serviço com 422 ("deixe ao menos um ativo"), porque validava o corpo (que traz só o que mudou) em
+vez do estado final. A tela de Correios nunca disparava isso — desligar é o uso normal agora.
+Corrigido em `problemaDasEscolhas(escolhas, atuais)`, com dois testes novos.
+
+**Validado rodando:** seed criou as 3 sem duplicar; `GET /admin/shipping/servicos` devolve os 6 na
+ordem; ligar a Jadlog a fez aparecer no `/store/shipping-options` de um carrinho real (`J&T` e
+`Loggi` seguem fora); desligá-la voltou a escondê-la; desligar todas segue 422.
+
+**Pendência declarada:** `SUPERFRETE_TOKEN` continua vazio — a cotação real de Jadlog/J&T/Loggi
+não foi vista. `POST /admin/shipping/testar` responde "O SuperFrete não está configurado". Com o
+token, o teste já cota as três (`todos: true`).
+
+
+### RV-045 · Notificação de envio à cliente
+
 ### RV-045 · Notificação de envio à cliente
 **Descrição:** e-mail com o código quando o admin salva o rastreio pela primeira vez.
 **Tipo:** funcional · **Prioridade:** MÉDIA · **Complexidade:** média

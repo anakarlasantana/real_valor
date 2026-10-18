@@ -105,11 +105,16 @@ describe("lerCotacoes", () => {
     { id: 17, name: "MiniEnvios", price: 12, delivery_time: 8, has_error: true },
   ]
 
-  it("só os Correios que a loja vende, com preço em centavos e prazo", () => {
+  it("lê todas as transportadoras do catálogo, com preço em centavos e prazo", () => {
     expect(lerCotacoes(resposta)).toEqual([
       { servico: "PAC", nome: "PAC", preco: 1861, prazo: 5 },
       { servico: "SEDEX", nome: "SEDEX", preco: 3120, prazo: 1 },
+      { servico: "JADLOG", nome: "Jadlog", preco: 2000, prazo: 4 },
     ])
+  })
+
+  it("descarta o código que não está no catálogo, em vez de inventar", () => {
+    expect(lerCotacoes([{ id: 99, name: "Outra", price: 10, delivery_time: 3 }])).toEqual([])
   })
 
   it("descarta o serviço com `has_error`, mesmo vindo com preço", () => {

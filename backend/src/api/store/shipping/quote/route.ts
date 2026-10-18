@@ -5,14 +5,14 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
 import { ambienteDaConfig, chamarSuperFrete } from "../../../../modules/fulfillment/superfrete/cliente"
 import { cotarPedido, type ConfigSuperFrete } from "../../../../modules/fulfillment/superfrete/servico"
-import { SERVICOS, type Servico } from "../../../../modules/fulfillment/superfrete/catalogo"
+import { SERVICOS, ehServico, type Servico } from "../../../../modules/fulfillment/superfrete/catalogo"
 
 
 function servicosDoPedido(valor: unknown): Servico[] {
   const pedidos = String(valor ?? "")
     .split(",")
     .map((item) => item.trim().toUpperCase())
-    .filter((item): item is Servico => item in SERVICOS)
+    .filter((item): item is Servico => ehServico(item))
 
   return pedidos.length > 0 ? pedidos : (Object.keys(SERVICOS) as Servico[])
 }

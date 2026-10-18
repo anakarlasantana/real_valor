@@ -9,12 +9,12 @@
       "comments": 8791
     },
     "admin/src": {
-      "lines": 8517,
-      "comments": 1832
+      "lines": 9518,
+      "comments": 1860
     },
     "backend/src": {
-      "lines": 17440,
-      "comments": 4377
+      "lines": 19434,
+      "comments": 4404
     },
     "packages/contrato/src": {
       "lines": 2760,
@@ -1203,12 +1203,12 @@
     },
     "admin/src/admin/routes/shipping/page.tsx": {
       "comments": 29,
-      "lines": 322,
+      "lines": 482,
       "header": 20
     },
     "admin/src/admin/routes/shipping/types.ts": {
       "comments": 9,
-      "lines": 27,
+      "lines": 33,
       "header": 9
     },
     "admin/src/admin/widgets/product-enrichment.tsx": {
@@ -1248,7 +1248,7 @@
     },
     "backend/src/api/admin/shipping/route.ts": {
       "comments": 23,
-      "lines": 73,
+      "lines": 74,
       "header": 20
     },
     "backend/src/api/hooks/payment/[provider]/route.ts": {
@@ -1457,9 +1457,9 @@
       "header": 5
     },
     "backend/src/modules/content/validation.ts": {
-      "comments": 143,
-      "lines": 316,
-      "header": 32
+      "comments": 134,
+      "lines": 307,
+      "header": 30
     },
     "backend/src/modules/content/view.ts": {
       "comments": 19,
@@ -1593,7 +1593,7 @@
     },
     "backend/src/modules/shipping/tracking.ts": {
       "comments": 64,
-      "lines": 208,
+      "lines": 225,
       "header": 21
     },
     "backend/src/scripts/flags.ts": {

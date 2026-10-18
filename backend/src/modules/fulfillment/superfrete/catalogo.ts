@@ -1,8 +1,15 @@
-/** Só Correios; as outras transportadoras são outra decisão. */
+/**
+ * Os 6 serviços da `/api/v0/calculator`. A API não tem rota que liste serviços:
+ * os códigos só existem na documentação, e acrescentar um aqui não cria a opção
+ * no checkout — isso é o seed.
+ */
 export const SERVICOS = {
   PAC: "1",
   SEDEX: "2",
   MINI: "17",
+  JADLOG: "3",
+  JNT: "33",
+  LOGGI: "31",
 } as const
 
 export type Servico = keyof typeof SERVICOS
@@ -12,12 +19,53 @@ export const ROTULOS: Record<Servico, string> = {
   PAC: "PAC",
   SEDEX: "SEDEX",
   MINI: "Mini Envios",
+  JADLOG: "Jadlog",
+  JNT: "J&T",
+  LOGGI: "Loggi",
+}
+
+/** O nome que o cliente lê na etiqueta — deixa de ser "Correios" para todos. */
+export const TRANSPORTADORAS: Record<Servico, string> = {
+  PAC: "Correios",
+  SEDEX: "Correios",
+  MINI: "Correios",
+  JADLOG: "Jadlog",
+  JNT: "J&T",
+  LOGGI: "Loggi",
+}
+
+/**
+ * O teto de peso de cada uma, em gramas.
+ *
+ * Não é o mesmo para todas: a J&T para em 11 kg. Cotar acima disso não adianta,
+ * e a caixa padrão pode servir a uma e não à outra.
+ */
+export const PESO_MAXIMO_GRAMAS: Record<Servico, number> = {
+  PAC: 30_000,
+  SEDEX: 30_000,
+  MINI: 30_000,
+  JADLOG: 30_000,
+  JNT: 11_000,
+  LOGGI: 30_000,
 }
 
 const POR_CODIGO: Record<string, Servico> = {
   "1": "PAC",
   "2": "SEDEX",
   "17": "MINI",
+  "3": "JADLOG",
+  "33": "JNT",
+  "31": "LOGGI",
+}
+
+/** `true` só para chave do catálogo: `"toString" in SERVICOS` também seria. */
+export function ehServico(valor: unknown): valor is Servico {
+  return typeof valor === "string" && Object.prototype.hasOwnProperty.call(SERVICOS, valor)
+}
+
+/** A transportadora da etiqueta; serviço fora do catálogo cai no genérico. */
+export function transportadoraDo(servico: string): string {
+  return ehServico(servico) ? TRANSPORTADORAS[servico] : "Transportadora"
 }
 
 /** `preco` em centavos, `prazo` em dias úteis. */

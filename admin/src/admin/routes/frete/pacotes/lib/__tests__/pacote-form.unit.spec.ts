@@ -62,13 +62,23 @@ describe("problemasDoRascunho", () => {
     expect(problemas.some((problema) => problema.includes("soma"))).toBe(true)
   })
 
-  it("recusa peso zero e acima de 30 kg", () => {
+  it("recusa peso zero e acima de 30 kg, que nenhuma transportadora leva", () => {
     expect(problemasDoRascunho(rascunho({ peso_gramas: "0" }))[0]).toContain(
       "maior que zero"
     )
     expect(problemasDoRascunho(rascunho({ peso_gramas: "30001" }))[0]).toContain(
       "30 kg"
     )
+  })
+
+  it("avisa que acima de 11 kg a caixa não serve para a J&T", () => {
+    expect(problemasDoRascunho(rascunho({ peso_gramas: "11001" }))[0]).toContain(
+      "J&T"
+    )
+  })
+
+  it("aceita 11 kg, que é o teto da J&T", () => {
+    expect(problemasDoRascunho(rascunho({ peso_gramas: "11000" }))).toEqual([])
   })
 })
 
