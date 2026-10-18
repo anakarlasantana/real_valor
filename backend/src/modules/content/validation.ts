@@ -16,12 +16,10 @@
  * - **obrigatório** — só no POST (`strict`): no PATCH um campo ausente continua
  *   valendo o que está gravado, e exigir os obrigatórios acusaria erro em
  *   qualquer edição de um campo só;
- * - **faixa de número** — `min`/`max` vêm do CAMPO (`contract.ts`), e não desta
- *   função: o `<input>` do painel mostra a mesma, e um campo numérico novo nasce
- *   com a faixa que precisa;
- * - **lista fechada** — `select`, `color` e `font` são a mesma coisa para a
- *   validação (`CHOICE_KINDS`): quem garante que não viram texto livre é a
- *   comparação com `options`;
+ * - **faixa de número** — `min`/`max` vêm do CAMPO (`contract.ts`): o `<input>` do
+ *   painel mostra a mesma faixa;
+ * - **lista fechada** — `select`, `color` e `font` são `CHOICE_KINDS`: o valor é
+ *   comparado com `options`;
  * - **formato** — campo com `pattern` (`hex` da paleta da estação, `MM-DD` da
  *   janela de datas): a regex vem do CAMPO, como a faixa do número, e o que não
  *   casar é recusado aqui. É a forma do valor que o `kind` não descreve.
@@ -40,18 +38,11 @@ import {
 } from "./contract"
 import type { ContentSchemaPayload } from "./schema"
 
-/**
- * Os `kind` que guardam um valor de `options` — escolha dentro de uma lista
- * fechada. `color` e `font` são a mesma coisa que `select` para a
- * validação: mudam só no desenho do editor (bolinha de cor, lista de fontes
- * com prévia). Quem garante que eles não viram texto livre é esta lista.
- */
+// Os `kind` de lista fechada: `color`/`font` mudam só no desenho do editor.
 const CHOICE_KINDS: readonly FieldKind[] = ["select", "color", "font"]
 
 /**
  * Validação de entrada do admin contra `contract.ts`.
- *
- * Devolve a lista de erros legíveis, ou `[]` se estiver válido.
  *
  * `strict` controla os campos obrigatórios:
  *   true  → POST. Todo campo obrigatório precisa vir no corpo.
