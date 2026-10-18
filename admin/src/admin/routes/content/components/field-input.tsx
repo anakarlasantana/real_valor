@@ -18,13 +18,19 @@ import { parseTextList } from "../lib/form-draft"
 import { HrefInput } from "./href-input"
 import { ImageInput } from "./image-input"
 import { itemSummary, move } from "../lib/list-order"
-import { markExample, toggleMark, type MarkSelection } from "../lib/markdown-bar"
+import {
+  markExample,
+  toggleMark,
+  type MarkSelection,
+} from "../lib/markdown-bar"
+import { cropNameOf, type CropHelp } from "./crop-field"
 
 /**
  * Os tipos vêm do **contrato**, por `import type` pelo alias `@conteudo/*`
  * (`admin/tsconfig.json`): some no build, e um campo novo no contrato vira erro
  * de compilação aqui em vez de sumir da tela em silêncio.
  */
+import type { CropFrames } from "@conteudo/crop"
 import type {
   CategoryRef,
   ContentDestination,
@@ -34,6 +40,7 @@ import type {
   ItemFields,
   MarkdownMark,
 } from "@conteudo/contract"
+import type { Draft } from "../lib/types"
 
 export type { FieldKind, FieldSpec, ItemFieldSpec, ItemFields }
 
@@ -61,6 +68,8 @@ type HandledKind =
   // Lista de textos formatados (as linhas de um `prose`): uma caixa com barra
   // por item, **sem** sub-formulário — e sem entrada em `ITEM_FIELDS`.
   | "list:markdown"
+  // Enquadramento: o par do `image`, desenhado pelo `ImageInput`.
+  | "imageCrop"
   // Referência ao catálogo: os ids que viram chip, escolhidos em `categories`.
   | "list:category"
   | `list:${string}`
@@ -81,7 +90,7 @@ export const UNHANDLED_KINDS: [UnhandledKind] extends [never]
  * o `addLabel` evita repetir "Adicionar item" sob o rótulo "Links".
  *
  * É recursivo de propósito: a coluna do rodapé (`list:column`) guarda outra
- * lista. O cabeçalho de cada item diz **o que ele é** e é onde a ordem se mexe;
+ * lista. O cabeçalho de cada item diz **o que ele é** e é onde a ordem se mexe
  * as setas e o `itemSummary` são de `list-order.ts`.
  */
 function ObjectListInput({
@@ -91,6 +100,10 @@ function ObjectListInput({
   onChange,
   marks,
   destinations,
+  cropFrames,
+  cropHelp,
+  variant,
+  layout,
   addLabel = "Adicionar item",
 }: {
   kind: FieldKind
@@ -101,17 +114,31 @@ function ObjectListInput({
   marks: readonly MarkdownMark[]
   /** Os destinos conhecidos (`schema.destinations`): o item tem `href`. */
   destinations?: readonly ContentDestination[]
+  /** `schema.cropFrames` e `schema.crop`: a moldura e as frases do modal. */
+  cropFrames?: Record<string, CropFrames>
+  cropHelp?: CropHelp
+  /** A seção e o formato dela (`variantBox`): a moldura da foto do item. */
+  variant?: string
+  layout?: unknown
   addLabel?: string
 }) {
   const fields = itemFields[kind] ?? []
-  const items = Array.isArray(value) ? (value as Record<string, unknown>[]) : []
+  const items = Array.isArray(value)
+    ? (value as Record<string, unknown>[])
+    : []
 
   // O que cada item diz de si mesmo no cabeçalho, para a lista ser navegável.
   const summaries = items.map((item) => itemSummary(fields, item))
 
+  // O campo de recorte que o contrato declara nesta lista (`imageUrlCrop`).
+  const cropField = fields.find((field) => field.kind === "imageCrop")
+
+  const pairFor = (imageName: string) =>
+    cropField?.name === cropNameOf(imageName) ? cropField.name : undefined
+
   const update = (index: number, name: string, next: unknown) => {
     onChange(
-      items.map((item, i) => (i === index ? { ...item, [name]: next } : item))
+      items.map((item, i) => (i === index ? { ...item, [name]: next } : item)),
     )
   }
 
@@ -128,7 +155,10 @@ function ObjectListInput({
                 Item {index + 1}
               </Text>
               {summaries[index] && (
-                <Text size="xsmall" className="min-w-0 truncate text-ui-fg-subtle">
+                <Text
+                  size="xsmall"
+                  className="min-w-0 truncate text-ui-fg-subtle"
+                >
                   {summaries[index]}
                 </Text>
               )}
@@ -172,6 +202,13 @@ function ObjectListInput({
             // Campo com escolha vira `<select>`: as opções vêm do contrato.
             const choices = field.options ?? []
 
+            // O recorte não se desenha sozinho: quem o abre é a foto acima.
+            if (nested === "imageCrop") {
+              return null
+            }
+
+            const pair = nested === "image" ? pairFor(field.name) : undefined
+
             return (
               <div key={field.name} className="flex flex-col gap-y-1">
                 <Label size="xsmall">{field.label}</Label>
@@ -209,11 +246,17 @@ function ObjectListInput({
                     addLabel={`Adicionar ${field.label.toLowerCase()}`}
                   />
                 ) : nested === "image" ? (
-                  // O mesmo controle da seção: o item com foto precisa de envio —
-                  // a chave é consequência dele, não algo que se digita.
                   <ImageInput
                     value={item[field.name]}
                     onChange={(next) => update(index, field.name, next)}
+                    crop={pair ? item[pair] : undefined}
+                    onCropChange={
+                      pair ? (next) => update(index, pair, next) : undefined
+                    }
+                    frames={cropFrames?.[kind]?.item ?? []}
+                    variant={variant}
+                    layout={layout}
+                    cropHelp={cropHelp}
                   />
                 ) : nested === "document" ? (
                   // Idem para o anexo: o item pode trazer um PDF.
@@ -268,8 +311,8 @@ function ObjectListInput({
             Object.fromEntries(
               fields.map((f) => [
                 f.name,
-                f.kind?.startsWith("list:") ? [] : f.options?.[0] ?? "",
-              ])
+                f.kind?.startsWith("list:") ? [] : (f.options?.[0] ?? ""),
+              ]),
             ),
           ])
         }
@@ -318,7 +361,9 @@ function TextListInput({
             placeholder={`Mensagem ${index + 1}`}
             onChange={(e) =>
               onChange(
-                items.map((current, i) => (i === index ? e.target.value : current))
+                items.map((current, i) =>
+                  i === index ? e.target.value : current,
+                ),
               )
             }
             // Colar uma lista abre em várias caixas; colar uma parte é comum.
@@ -442,7 +487,7 @@ function FormattedTextarea({
         start: element?.selectionStart ?? text.length,
         end: element?.selectionEnd ?? text.length,
       },
-      mark
+      mark,
     )
 
     // A seleção nova vai por `ref`: quem a aplica é o efeito acima.
@@ -502,7 +547,7 @@ function MarkdownListInput({
               value={item}
               onChange={(next) =>
                 onChange(
-                  items.map((current, i) => (i === index ? next : current))
+                  items.map((current, i) => (i === index ? next : current)),
                 )
               }
               marks={marks}
@@ -558,7 +603,7 @@ function CategoryChipsInput({
   const chips = Array.isArray(value) ? (value as CategoryRef[]) : []
   const chosen = new Set(chips.map((chip) => chip.categoryId))
   const available = categories.filter(
-    (category) => !chosen.has(category.categoryId)
+    (category) => !chosen.has(category.categoryId),
   )
 
   // A troca de lugar é a mesma do editor de itens (`list-order.ts`).
@@ -614,7 +659,7 @@ function CategoryChipsInput({
           value=""
           onChange={(e) => {
             const picked = categories.find(
-              (category) => category.categoryId === e.target.value
+              (category) => category.categoryId === e.target.value,
             )
 
             if (picked) {
@@ -679,6 +724,17 @@ type FieldInputProps = {
    * `kind: "href"`. Sem a chave o campo degrada para caixa de texto.
    */
   destinations?: readonly ContentDestination[]
+  /** `schema.cropFrames`: a moldura da foto, da seção (`[type]`) e dos itens. */
+  sectionType?: string
+  /** O formato da seção (`collections`: `cards` ou `banners`), do rascunho. */
+  sectionLayout?: unknown
+  cropFrames?: Record<string, CropFrames>
+  /** `schema.crop`: o teto do zoom e as frases do modal. */
+  cropHelp?: CropHelp
+  /** O rascunho: o recorte da seção é o irmão do `imageUrl` nele. */
+  data?: Draft
+  /** Grava mais de um campo de uma vez (a foto e o recorte juntos). */
+  onPatch?: (patch: Record<string, unknown>) => void
 }
 
 export const FieldInput = ({
@@ -691,6 +747,12 @@ export const FieldInput = ({
   categories,
   marks,
   destinations,
+  sectionType,
+  sectionLayout,
+  cropFrames,
+  cropHelp,
+  data,
+  onPatch,
 }: FieldInputProps) => {
   const label = (
     <div className="flex flex-col">
@@ -768,16 +830,34 @@ export const FieldInput = ({
           onChange={onChange}
           marks={marks ?? []}
           destinations={destinations}
+          cropFrames={cropFrames}
+          cropHelp={cropHelp}
+          variant={sectionType}
+          layout={sectionLayout}
         />
       </div>
     )
   }
 
   if (spec.kind === "image") {
+    // O recorte é o irmão da foto no rascunho (`imageUrlCrop`).
+    const crop = cropNameOf(spec.name)
+
     return (
       <div className="flex flex-col gap-y-2">
         {label}
-        <ImageInput value={value} onChange={onChange} />
+        <ImageInput
+          value={value}
+          onChange={onChange}
+          crop={data?.[crop]}
+          onCropChange={
+            onPatch ? (next) => onPatch({ [crop]: next }) : undefined
+          }
+          frames={cropFrames?.[sectionType ?? ""]?.section ?? []}
+          variant={sectionType}
+          layout={sectionLayout}
+          cropHelp={cropHelp}
+        />
       </div>
     )
   }
@@ -808,11 +888,7 @@ export const FieldInput = ({
     return (
       <div className="flex flex-col gap-y-2">
         {label}
-        {/*
-          A faixa vem do CAMPO (`min`/`max`/`step`), não daqui: era daqui que
-          todo número herdava a faixa do primeiro campo numérico que a tivesse
-          (o scrim da capa, 0 a 1), e um campo novo ficaria impossível.
-        */}
+        {/* A faixa vem do campo (`min`/`max`/`step`), não daqui. */}
         <Input
           type="number"
           step={spec.step ?? 1}
@@ -851,10 +927,7 @@ export const FieldInput = ({
       <div className="flex flex-col gap-y-2">
         {label}
         <div className="flex items-center gap-x-2">
-          {/* A roda de cores é a do navegador: o valor dela é `#rrggbb`, o
-              mesmo formato que o `pattern` do contrato cobra. Vazio (herda o
-              tema) não tem cor para mostrar e o campo nativo não aceita `""` —
-              daí o branco como partida, sem gravar nada. */}
+          {/* A roda do navegador exige uma cor: branco é só o ponto de partida. */}
           <input
             type="color"
             aria-label={spec.label}

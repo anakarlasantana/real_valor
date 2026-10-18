@@ -1360,4 +1360,109 @@ sobra. Por isso o `readPageSections` recebe `onlyEnabled` do chamador: o CRM pre
 - **Os quatro itens da F1–F3a estão completos** (PR1–PR7). A **F3b** (`content_page` — criar, renomear e
   publicar página inteira) segue com gatilho, como em 14.6.4: nenhum dos três apareceu até aqui, e a
   descoberta não o exige — o que ela pede é que a página no ar apareça, e ela aparece.
+## 14.23 O enquadramento da foto executado: recorte e zoom por seção (2026-10-18)
+
+A foto de uma seção era enquadrada **pelo CSS**: `.rv-hero-photo { object-position: center 34% }` e
+`.rv-callout-photo { center 28% }` decidiam, para todo mundo, onde o rosto de um retrato caía na moldura.
+Com uma foto diferente da do protótipo, o lojista só tinha dois caminhos: trocar a foto ou aceitar o corte.
+Este PR dá o terceiro: **o enquadramento é conteúdo**, um campo ao lado de cada foto, gravado como
+`"<h>:<v>:<z>"` (`"center:34"`, `"50:50:1.4"`) e desenhado na loja pela mesma conta que o CRM usa na prévia.
+
+O modelo do valor é a **gramática do `object-position`** mais um zoom opcional: cada eixo é `center` ou um
+percentual inteiro (é a mesma leitura do CSS — `34` = "34% da foto à esquerda da moldura"), e o zoom (1 a 3)
+é a foto crescendo dentro da caixa. Vazio é "a régua", que é o desenho de antes do campo existir: nenhuma
+seção muda de aparência até alguém gravar um recorte de propósito.
+
+| Arquivo | O que entrou |
+| :--- | :--- |
+| `packages/contrato/src/crop.ts` *(novo)* | a **geometria única**: `parseCrop`/`formatCrop`, `cropImageStyle` (sem zoom só o `objectPosition`; com zoom a foto em `100/z` e deslocada para o ponto ficar no meio), `frameBox`/`CROP_FRAMES` (a moldura de cada seção por degrau de tela) e `cropFitsBox` |
+| `packages/contrato/package.json` | o subcaminho `./crop` (`@rv/contrato/crop`) — a loja importa a geometria sem puxar os tipos das seções |
+| `packages/contrato/src/contract.ts` | `kind: "imageCrop"`, `CROP_HELP`, `imageField(...)` (o par `imageUrl` → `imageUrlCrop`, com o `pattern` no campo) e `imageUrlCrop?: string` em `HeroSlide`, `CollectionHighlight`, `EditorialSection`, `BannerSection` e nos itens do Instagram |
+| `packages/contrato/src/schema.ts` | `SCHEMA_VERSION` **16 → 17**, `cropFrames` (a moldura por tipo de seção e por `kind` de lista) e `crop` (`pattern`, `zoomMax`, as frases do modal) no payload |
+| `backend/.../modules/content/crop.ts` *(novo)* | re-export de `@rv/contrato/crop` — o CRM lê a geometria por `@conteudo/crop`, sem caminho de arquivo do backend |
+| `backend/.../scripts/seed-schema.ts` | o `--check` passa a comparar **as chaves do contrato**: uma chave que o registro gravado tem e o contrato não declara mais não reprova (senão o `--check` mandaria rodar `seed-schema` para sempre) |
+| `admin/.../lib/crop-window.ts` *(novo)* | a conta do painel: `cropFromPoint`/`pointFromCrop` (o arrasto), `zoomCrop`/`stepCrop` (a roda e o botão), presa à faixa 1–3 e à forma canônica |
+| `admin/.../components/{crop-frame,crop-preview,crop-field,image-crop-modal}.tsx` *(novos)* | a moldura da seção, a prévia com a conta do contrato, o par `imageUrl`→`imageUrlCrop` e o `FocusModal` (arrastar, roda, controle, duplo clique = padrão) |
+| `admin/.../components/image-input.tsx` | a prévia vira **a moldura da seção** (não um quadrado de 64px) e ganha "Ajustar enquadramento" |
+| `admin/.../components/{field-input,SectionRow}.tsx` | o ramo `imageCrop` (desenhado pelo `ImageInput`), o par resolvido pelo nome na seção (`data`/`onPatch`) e no item (`pairFor`), e `cropFrames`/`crop` passados do `schema` |
+| `frontend/.../lib/ui/media.ts` | `mediaImageProps(value, crop?)` — o `style` sai do `cropImageStyle` do contrato |
+| `frontend/.../modules/common/crop/crop-style.ts` *(novo)* | `cropStyle(crop)` — o `style` que os blocos espalham no `<Image>` |
+| `frontend/.../modules/home/components/{hero,instagram-grid/tile,editorial-callout,editorial-banner,collection-highlights}` | `style={cropStyle(...imageUrlCrop)}` nas cinco fotos (as duas versões do bloco de coleções) |
+| `frontend/.../styles/brand/{16-home,17-vitrine-secoes}.css` | o `object-position` da régua passa a ser documentado como **fallback** de quem não tem recorte |
+| `frontend/.../lib/content/hero.ts` | `HeroSlide` (o tipo normalizado da loja) ganha `imageUrlCrop` |
+| `frontend/vitest.config.ts` | o alias `@rv/contrato/crop` **antes** do `@rv/contrato` (a ordem importa: o Vite resolve por prefixo) |
+| `admin/jest.config.js` | `moduleNameMapper` de `@conteudo/*` — o jest não lê `paths` do tsconfig, e o teste da janela importa valor do contrato |
+
+### As três decisões que fazem o campo valer
+
+1. **Uma conta só.** O zoom é `height: 100/z` + `top: -v(z-1)/z` — a foto crescendo **dentro** da caixa,
+   com `object-fit: cover` intocado. Não é `background-size` nem `object-fit: fill`, que mudariam a **forma**
+   da foto. O `cropImageStyle` mora no contrato porque três leitores o pedem: a loja (`mediaImageProps`), o
+   CRM (a prévia) e a API (a validação do valor).
+2. **A moldura vem do contrato, não do React.** `CROP_FRAMES` declara, por seção e por degrau de tela, a
+   altura da seção (a capa: 570/760px) ou a proporção da caixa (o manifesto: 4/5 e 5/6; o Instagram: 1/1).
+   O painel desenha nessa moldura e as frases do modal viajam no payload (`crop.help`) — o CRM não importa
+   **valor** de `@conteudo/*` (o Vite do painel reprova), e a paridade com o CSS fica presa pelo
+   `__checks__/ruler.spec.ts` da loja, que compara a tabela com o `brand.css` de verdade.
+3. **Vazio é a régua.** O campo é opcional em todas as fotos: sem valor, o `style` não existe e o CSS
+   desenha o de antes. O modal grava a forma canônica (`center:34`, e o zoom 1 não se escreve), e o
+   "Voltar ao padrão" grava o centro **explicitamente** — vazio também vale, mas um campo preenchido diz
+   o que se fez.
+
+### Onde o recorte existe, e onde ele não existe
+
+Só nas cinco fotos que a loja **lê**: o slide da capa, o item de coleção, a foto do manifesto (`editorial`),
+a faixa editorial (`banner`) e os itens do Instagram. A faixa de benefícios, o texto longo e o cromo não têm
+foto com moldura, e um `imageCrop` ali seria uma tela de enquadramento sem imagem para arrastar — o teste de
+paridade do contrato cobra a lista nos dois sentidos (`"o recorte existe exatamente nas fotos que a loja lê"`).
+
+### Medido na stack local (loja `:8000`, backend `:9000`)
+
+| Medição | Resultado |
+| :--- | :--- |
+| `make check` | **0** — artefato, fronteiras, camadas, comentário e convenção de teste em dia (a catraca de comentário foi reancorada, e o volume só desceu) |
+| `make types` | **0** — `tsc` do backend, do CRM e da loja |
+| `make seed-schema` / `make check-schema` | grava a **v17** / *"Registro do schema em dia (chave "content", versão 17)"* |
+| `make test` | verde: backend **434** (os 2 novos da validação e os 5 do `panel-crop`), CRM **120** (os 8 da janela do recorte + as ligações novas no `panel-wiring`), loja **471** (3 novos do `media` e 2 novos da régua) |
+| `make build-admin` | **0** — *"Frontend build completed successfully"*: nenhum import de valor por `@conteudo/*` no bundle |
+| o valor inválido na API | `PATCH /admin/content?id=editorial` com `"esquerda:meio"`, `"50:50:9"` e `"50:50:0.5"` → **400** com *"Campo "imageUrlCrop" deve estar no formato esperado (…)"*; `"center:34:1.4"` → **200** |
+| o recorte na loja | com `"center:34:1.4"` gravado, o SSR de `/br` entrega ao `next/image` `style: { objectPosition: "center 34%", position: "absolute", top: "-9.71%", left: "-14.29%", width: "71.43%", height: "71.43%", maxWidth: "none" }` (zoom 1,4: `100/1,4`) |
+| a volta ao padrão | `imageUrlCrop: ""` → `/br` volta a desenhar só o `object-position` do `.rv-manifesto-photo` — a régua, sem resíduo |
+
+### O que ficou fora
+
+- **O zoom numa moldura de proporção fixa** (o Instagram quadrado): o modal **avisa** (`cropFitsBox` →
+  "o zoom corta a foto em dois lados") mas não proíbe — proibir exigiria saber a proporção da foto enviada,
+  que o painel não mede hoje. O aviso chega antes de a loja mostrar o corte.
+- **A proporção real da foto**: o modal enquadra dentro da moldura da seção sem medir a imagem
+  (`naturalWidth/naturalHeight`); o aviso do zoom cobre o caso que dói, e medir a foto seria um PR próprio.
+- **O recorte na foto de produto** (o catálogo): é a Medusa que a edita, e o campo é do conteúdo — não há
+  lugar para o par `imageUrl`/`imageUrlCrop` ali.
+
+### O modal de uma janela só (a revisão do mesmo dia)
+
+As **abas de tela** (celular, tablet, tela larga) saíram. A foto é **uma**, e um recorte por aba seria três
+recortes para escolher um — mas cada aba tinha de desenhar a moldura daquele degrau, e os degraus não têm a
+mesma proporção: no hero o celular é alto (`1024/570`) e o monitor é largo (`1440/760`), então a aba de
+celular mostrava um retângulo deitado e o `object-fit: cover` comia o topo e o pé da foto ("a imagem não
+renderiza"). A janela passou a ser a **mais apertada** entre os degraus — a que mais corta —, porque um
+recorte aprovado nela vale nas outras.
+
+| Arquivo | O que mudou |
+| :--- | :--- |
+| `admin/.../lib/crop-window.ts` | `slotBox(frames)` (a proporção mais alta entre os degraus), `variantBox(frames, variant, layout)` (o card de `collections` é 1/3 da largura; o banner, 1/2), `ratioOf(box)` e `fitFrame(box, área)` (o maior retângulo da proporção que cabe no palco medido) |
+| `admin/.../components/image-crop-modal.tsx` | **uma** moldura que ocupa a altura do modal: o `FocusModal.Body` leva `h-full min-h-0` (o `flex-1` dele nasce com base 0, e sem altura a janela flutuava no meio da tela), o palco mede com `ResizeObserver` e o `fitFrame` dá o tamanho — sem `max-w`/`max-h` já que a conta encaixa; o zoom fica no trilho de cima, as frases e a prévia compacta no de baixo, e as ações no `Footer`; o **erro honesto** quando a foto não carrega (`onError` → *"Não foi possível carregar esta imagem"* + o endereço); o arrasto parte do **centro gravado** (`pointFromCrop`), e não da posição do dedo — com zoom, a foto pulava |
+| `admin/.../components/crop-frame.tsx` | recebe a proporção pronta (`box`) em vez de recalcular degraus com a largura da janela, e o tamanho medido (`size`) quando há palco; o resto das props (`onPointer*`, `onWheel`) vai para o `div` |
+| `admin/.../components/{image-input,field-input,SectionRow}.tsx` | a miniatura usa a mesma caixa do modal, e o `layout` do rascunho (e o tipo da seção) chega até ela |
+| `packages/contrato/src/schema.ts` | só as frases de `crop.help` — a janela agora tem a forma da seção, e o aviso de zoom fala de proporção fixa |
+
+O `SCHEMA_VERSION` fica em **17**: nenhum tipo de campo mudou, e o `--check` compara as chaves do contrato.
+O aviso de zoom (`cropFitsBox`) só aparece onde a caixa tem proporção fixa (`editorial` 5/6, `instagram`
+1/1): nos degraus de altura ele falaria de telas que não são daquela seção.
+
+**O limite dito com todas as letras:** uma janela num breakpoint só não é exata em todos. Enquadrar por
+degrau (o valor `"<celular>|<desktop>"`) exigiria mudar o contrato **e** as cinco fotos da loja — é um PR
+próprio, e não entrou neste.
+
+
 

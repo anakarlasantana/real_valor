@@ -27,6 +27,7 @@
 /** Uma capa, já normalizada: todo campo é texto (possivelmente vazio). */
 export type HeroSlide = {
   imageUrl: string
+  imageUrlCrop: string
   imageAlt: string
   eyebrow: string
   headline: string
@@ -68,6 +69,7 @@ function toSlide(source: unknown): HeroSlide {
 
   return {
     imageUrl: text(slide.imageUrl),
+    imageUrlCrop: text(slide.imageUrlCrop),
     imageAlt: text(slide.imageAlt),
     eyebrow: text(slide.eyebrow),
     headline: text(slide.headline),

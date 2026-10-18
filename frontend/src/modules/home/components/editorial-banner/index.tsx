@@ -1,5 +1,6 @@
 import { type EditorialSection } from "@lib/content/home-sections"
 import { mediaImageProps } from "@lib/ui/media"
+import { cropStyle } from "@modules/common/crop/crop-style"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 
@@ -34,6 +35,7 @@ export default function EditorialBanner({
 }) {
   const imageFirst = section.imagePosition === "left"
   const image = mediaImageProps(section.imageUrl)
+  const style = cropStyle(section.imageUrlCrop)
 
   const media = (
     <div className="rv-manifesto-media">
@@ -43,6 +45,7 @@ export default function EditorialBanner({
           alt={section.imageAlt}
           fill
           sizes="(min-width: 1024px) 50vw, 100vw"
+          style={style}
           className="rv-manifesto-photo"
         />
       )}

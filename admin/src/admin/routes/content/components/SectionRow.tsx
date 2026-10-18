@@ -55,11 +55,10 @@ export function SectionRow({
    * `type` é o identificador do render. `titleField: null` é o caso das seções.
    */
   const title = String(
-    (surface.titleField ? draft[surface.titleField] : "") || typeLabel
+    (surface.titleField ? draft[surface.titleField] : "") || typeLabel,
   )
 
-  // Um campo de conteúdo e um campo de trilho se desenham do mesmo jeito: quem
-  // muda o desenho é o `kind`, que veio do contrato.
+  // O rascunho vai inteiro porque o recorte é irmão da foto (`imageUrlCrop`).
   const field = (spec: FieldSpec) => (
     <FieldInput
       key={spec.name}
@@ -72,6 +71,12 @@ export function SectionRow({
       categories={categories}
       marks={schema?.markdownMarks}
       destinations={schema?.destinations}
+      sectionType={section.type}
+      sectionLayout={draft.layout}
+      cropFrames={schema?.cropFrames}
+      cropHelp={schema?.crop}
+      data={draft}
+      onPatch={(patch) => onUpdate(section.id, patch)}
     />
   )
 
@@ -85,7 +90,10 @@ export function SectionRow({
    * lojista escolheu a três linhas de distância.
    */
   const resetRail = (rail: readonly FieldSpec[]) => {
-    onUpdate(section.id, Object.fromEntries(rail.map((spec) => [spec.name, ""])))
+    onUpdate(
+      section.id,
+      Object.fromEntries(rail.map((spec) => [spec.name, ""])),
+    )
   }
 
   return (
@@ -226,7 +234,7 @@ export function SectionRow({
               >
                 {row.specs.map(field)}
               </AppearanceRail>
-            )
+            ),
           )}
 
           <div className="flex items-center gap-x-3">

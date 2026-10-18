@@ -9,7 +9,7 @@ import type { Schema } from "../lib/types"
 
 export function ThemeSections({ schema }: { schema: Schema | null }) {
   const surface = schema?.surfaces?.find(
-    (spec: ContentSurfaceSpec) => spec.id === "theme"
+    (spec: ContentSurfaceSpec) => spec.id === "theme",
   )
 
   if (!surface) return null

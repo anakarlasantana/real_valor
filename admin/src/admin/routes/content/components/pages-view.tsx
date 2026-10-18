@@ -86,7 +86,7 @@ export function PagesView({ onOpen }: { onOpen: (id: string) => void }) {
   /** O vocabulário por `id` — o rótulo, o tom e a frase de cada estado. */
   const byState = useMemo(
     () => new Map(states.map((spec) => [spec.id, spec])),
-    [states]
+    [states],
   )
 
   return (

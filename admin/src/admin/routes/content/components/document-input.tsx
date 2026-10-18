@@ -59,8 +59,8 @@ export const DocumentInput = ({
     if (file.size > MAX_BYTES) {
       toast.error(
         `O arquivo tem ${inMegabytes(file.size)} MB e o limite é ${inMegabytes(
-          MAX_BYTES
-        )} MB.`
+          MAX_BYTES,
+        )} MB.`,
       )
       return
     }
@@ -147,7 +147,11 @@ export const DocumentInput = ({
           Enviar PDF
         </Button>
         {stored && (
-          <Button variant="transparent" size="small" onClick={() => onChange("")}>
+          <Button
+            variant="transparent"
+            size="small"
+            onClick={() => onChange("")}
+          >
             Remover
           </Button>
         )}

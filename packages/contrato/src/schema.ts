@@ -24,37 +24,39 @@ import {
   type ItemFieldSpec,
   type MarkdownMark,
 } from "./contract.ts"
+import {
+  CROP_FRAMES,
+  CROP_PATTERN,
+  CROP_ZOOM_MAX,
+  itemFrames,
+  type CropFrames,
+} from "./crop.ts"
 
 /**
  * A versão do schema: `seed-schema` carimba na escrita, e ela sobe quando o
  * formato muda (chave, campo ou tipo novo). Sem `make seed-schema` o CRM desenha
  * o formulário antigo e a API **recusa** os campos novos — o `--check` acusa.
  */
-export const SCHEMA_VERSION = 16
+export const SCHEMA_VERSION = 17
 
-/** A chave da linha do registro — uma só, texto fixo (e não o `id`
- * automático) porque o `saveSchema` precisa ser um upsert determinístico. */
+/** A chave da linha do registro — fixa, para o `saveSchema` ser um upsert. */
 export const SCHEMA_KEY = "content"
 
-/** O que o CRM recebe em `schema`: o "formulário inteiro" — tipos, rótulos,
- * campos por tipo, sub-formulário de item e a aparência usada só para desenhar. */
+/** O que o CRM recebe em `schema`: o "formulário inteiro", em um objeto. */
 export type ContentSchemaPayload = {
   /** Os tipos de **conteúdo** que o CRM edita: as seções e o bloco de tema
    * (`CONTENT_TYPES`). O nome `types` vem do registro; a rota valida por aqui. */
   types: readonly string[]
-  /** Tipo → nome que o lojista lê (`editorial` se chama "Sobre"). */
+  /** Nome de cada tipo para a listagem (`editorial` se chama "Sobre"). */
   typeLabels: Record<string, string>
   /** Tipo → campos de `data`, na ordem do editor. Inclui o tema (`fields.theme`
    * = `THEME_FIELDS`): a validação e o editor leem daqui. */
   fields: Record<string, readonly FieldSpec[]>
   /** `kind` de lista → campos de dentro do item. */
   itemFields: Partial<Record<string, readonly ItemFieldSpec[]>>
-  /** As rotas que a loja **tem** (`CONTENT_DESTINATIONS`), para o `datalist` do
-   * campo `kind: "href"`. O storefront ignora esta chave. */
+  /** As rotas que a loja tem (`CONTENT_DESTINATIONS`), para o `datalist` do `href`. */
   destinations: readonly ContentDestination[]
-  /** As marcas do texto formatado (`MARKDOWN_MARKS`): a barra que o editor
-   * desenha acima de toda caixa `markdown`, que não pode divergir do parser
-   * da loja. */
+  /** As marcas do texto formatado (`MARKDOWN_MARKS`), que a loja interpreta. */
   markdownMarks: readonly MarkdownMark[]
   /** Prévia de aparência para o editor: o hex de cada cor e a família/pilha de
    * cada fonte, só para **desenhar** — o gravável vem de `options`. */
@@ -70,6 +72,17 @@ export type ContentSchemaPayload = {
   /** As superfícies que o CRM edita — a vitrine e o tema —, com rótulo, título e
    * aviso (`CONTENT_SURFACES`): é o que monta o seletor e o diálogo de cada aba. */
   surfaces: readonly ContentSurfaceSpec[]
+  /** Tipo de seção e `kind` de lista → a moldura da foto em cada tela (`CROP_FRAMES`). */
+  cropFrames: Record<string, CropFrames>
+  /** O formato do valor, o teto do zoom e as frases do modal de enquadramento. */
+  crop: CropPayload
+}
+
+/** O que o modal de enquadramento lê: o formato, o teto do zoom e as frases. */
+export type CropPayload = {
+  pattern: string
+  zoomMax: number
+  help: { gesture: string; ratioZoom: string; reset: string }
 }
 
 /** O schema que o CRM consome, e de onde ele veio. `source` é o que diz se o
@@ -131,5 +144,29 @@ export function buildSchema(): ContentSchemaPayload {
     /** As superfícies que a tela edita: uma superfície nova (ou um tipo novo
      * numa superfície) aparece no CRM sem edição em React. */
     surfaces: CONTENT_SURFACES,
+    // As molduras por seção, e pelos `kind` de lista que têm foto de item.
+    cropFrames: {
+      ...CROP_FRAMES,
+      ...Object.fromEntries(
+        Object.keys(ITEM_FIELDS)
+          .map((kind) => [kind, { item: itemFrames(kind) }] as const)
+          .filter(([, frames]) => frames.item.length > 0)
+      ),
+    },
+    // As frases do modal falam das molduras declaradas acima.
+    crop: {
+      pattern: CROP_PATTERN,
+      zoomMax: CROP_ZOOM_MAX,
+      help: {
+        gesture:
+          "A janela tem a forma que a seção desenha: arraste a foto para " +
+          "escolher o recorte e use a roda do mouse, o controle abaixo ou o " +
+          "duplo clique para voltar ao enquadramento original.",
+        ratioZoom:
+          "Esta seção mostra a foto inteira (proporção fixa): o zoom corta em " +
+          "dois lados. Para caber inteira, deixe o zoom em 1.",
+        reset: "Voltar ao padrão",
+      },
+    },
   }
 }

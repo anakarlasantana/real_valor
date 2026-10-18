@@ -9,16 +9,16 @@
       "comments": 8792
     },
     "admin/src": {
-      "lines": 6865,
-      "comments": 1794
+      "lines": 7917,
+      "comments": 1830
     },
     "backend/src": {
-      "lines": 15420,
-      "comments": 4346
+      "lines": 15622,
+      "comments": 4358
     },
     "packages/contrato/src": {
-      "lines": 2273,
-      "comments": 541
+      "lines": 2633,
+      "comments": 556
     },
     "scripts": {
       "lines": 1539,
@@ -1052,8 +1052,8 @@
       "header": 53
     },
     "admin/src/admin/routes/content/__tests__/panel-wiring.unit.spec.ts": {
-      "comments": 128,
-      "lines": 309,
+      "comments": 130,
+      "lines": 369,
       "header": 37
     },
     "admin/src/admin/routes/content/components/OrderDirtyBar.tsx": {
@@ -1078,12 +1078,12 @@
     },
     "admin/src/admin/routes/content/components/SectionCreator.tsx": {
       "comments": 36,
-      "lines": 175,
+      "lines": 177,
       "header": 13
     },
     "admin/src/admin/routes/content/components/SectionRow.tsx": {
-      "comments": 51,
-      "lines": 248,
+      "comments": 50,
+      "lines": 256,
       "header": 16
     },
     "admin/src/admin/routes/content/components/SurfaceSectionsPanel.tsx": {
@@ -1108,12 +1108,12 @@
     },
     "admin/src/admin/routes/content/components/document-input.tsx": {
       "comments": 42,
-      "lines": 163,
+      "lines": 167,
       "header": 29
     },
     "admin/src/admin/routes/content/components/field-input.tsx": {
-      "comments": 133,
-      "lines": 925,
+      "comments": 135,
+      "lines": 998,
       "header": 5
     },
     "admin/src/admin/routes/content/components/href-input.tsx": {
@@ -1122,9 +1122,9 @@
       "header": 32
     },
     "admin/src/admin/routes/content/components/image-input.tsx": {
-      "comments": 58,
-      "lines": 207,
-      "header": 21
+      "comments": 24,
+      "lines": 247,
+      "header": 8
     },
     "admin/src/admin/routes/content/components/pages-view.tsx": {
       "comments": 40,
@@ -1302,9 +1302,9 @@
       "header": 22
     },
     "backend/src/modules/content/__tests__/contract.unit.spec.ts": {
-      "comments": 101,
-      "lines": 479,
-      "header": 11
+      "comments": 95,
+      "lines": 536,
+      "header": 5
     },
     "backend/src/modules/content/__tests__/curation.unit.spec.ts": {
       "comments": 34,
@@ -1358,7 +1358,7 @@
     },
     "backend/src/modules/content/__tests__/validation.unit.spec.ts": {
       "comments": 65,
-      "lines": 410,
+      "lines": 436,
       "header": 22
     },
     "backend/src/modules/content/__tests__/wiring.unit.spec.ts": {
@@ -1623,7 +1623,7 @@
     },
     "backend/src/scripts/seed-schema.ts": {
       "comments": 26,
-      "lines": 117,
+      "lines": 125,
       "header": 5
     },
     "backend/src/scripts/seed.ts": {
@@ -1648,18 +1648,13 @@
     },
     "packages/contrato/src/contract.ts": {
       "comments": 375,
-      "lines": 1667,
+      "lines": 1734,
       "header": 4
     },
     "packages/contrato/src/defaults.ts": {
       "comments": 70,
       "lines": 375,
       "header": 5
-    },
-    "packages/contrato/src/index.ts": {
-      "comments": 21,
-      "lines": 25,
-      "header": 21
     },
     "packages/contrato/src/payment.ts": {
       "comments": 20,
@@ -1668,7 +1663,7 @@
     },
     "packages/contrato/src/schema.ts": {
       "comments": 55,
-      "lines": 136,
+      "lines": 173,
       "header": 5
     },
     "scripts/check-admin-modules.mjs": {

@@ -1,65 +1,69 @@
 /**
- * Campo de imagem do editor de conteúdo (`kind: "image"`).
- * -------------------------------------------------------------------------
- * Três coisas juntas, porque separá-las é o que faz o lojista se perder:
- * a prévia (para ele ver o que a loja mostra), o envio (o botão) e o valor
- * gravado (a caixa de texto, que continua aceitando um caminho ou uma URL
- * colada à mão — é assim que o conteúdo padrão aponta para `/brand/...`).
+ * Campo de imagem (`kind: "image"`): a prévia na moldura da seção, o envio e o
+ * valor gravado (a caixa aceita caminho ou URL colada).
  *
- * **O que é gravado é a CHAVE do arquivo** (`1699999999-hero.jpg`), o `id` que
- * `POST /admin/uploads` devolve — e não a URL absoluta do backend. A URL tem o
- * endereço de quem respondeu o upload dentro dela; gravada, o conteúdo
- * passaria a apontar para `http://localhost:9000` e quebraria no dia em que a
- * loja for para outro domínio. Quem traduz chave → endereço é o storefront
- * (`resolveMediaUrl`, em `frontend/src/lib/ui/media.ts`) — e é por isso que
- * este arquivo não precisa saber o endereço do backend para a prévia: a chave
- * vira `/static/<chave>`, que responde nos **dois** endereços do painel — no
- * local, no próprio backend, e no publicado, pela reescrita `/static/:path*` do
- * storefront (`frontend/next.config.js`, que já exclui `static` do `matcher` do
- * middleware; ver §11.6.2 de `docs/real-valor/11-ambiente-local.md`). É o
- * contraste com o `fetch` abaixo, que **precisa** do endereço da API.
+ * O que se grava é a CHAVE do arquivo, nunca a URL do backend: quem traduz
+ * chave → endereço é o storefront. A prévia usa `/static/<chave>`, que responde
+ * nos dois endereços do painel (§11.6.2 de `docs/real-valor/11-ambiente-local.md`).
  */
 import { Button, Input, Text, toast } from "@medusajs/ui"
+import type { CropFrame } from "@conteudo/crop"
 import { useRef, useState } from "react"
 
 import { apiUrl } from "../../../lib/api-url"
+import type { CropHelp } from "./crop-field"
+import { CropFrame as PreviewFrame } from "./crop-frame"
+import { CropPreview } from "./crop-preview"
+import { ImageCropModal } from "./image-crop-modal"
+import { variantBox, type FrameBox } from "../lib/crop-window"
 
-/**
- * O que `POST /admin/uploads` devolve por arquivo (`file-module-service` põe a
- * chave do provider no `id`).
- */
+/** O que `POST /admin/uploads` devolve por arquivo (a chave vem no `id`). */
 type UploadedFile = { id: string; url: string }
 
-/**
- * Teto do envio, conferido ANTES de subir: o arquivo vai em base64 dentro de
- * um multipart que o Medusa monta em memória (`upload.array` no middleware de
- * `/admin/uploads`), então o custo no backend é maior que o arquivo. Foto de
- * vitrine é imagem para a web: 8 MB já é generoso para um hero em tela grande,
- * e é melhor recusar com uma frase do que travar o navegador de quem escolheu
- * a foto errada.
- */
+/** Teto do envio, conferido antes de subir: o multipart do Medusa custa memória. */
 const MAX_BYTES = 8 * 1024 * 1024
+
+/** As frases do modal, quando o payload não as traz (`schema.crop.help`). */
+const FALLBACK_HELP = {
+  gesture: "Arraste a foto e use o zoom para escolher o enquadramento.",
+  ratioZoom:
+    "Esta moldura tem proporção fixa: com zoom, a foto não cabe inteira.",
+  reset: "Voltar ao padrão",
+}
 
 export const ImageInput = ({
   value,
   onChange,
+  crop,
+  onCropChange,
+  frames = [],
+  variant,
+  layout,
+  cropHelp,
 }: {
   value: unknown
   onChange: (value: string) => void
+  /** O recorte gravado (`"<h>:<v>:<z>"`), irmão do `imageUrl` no mesmo objeto. */
+  crop?: unknown
+  /** Grava o recorte. Sem ele o campo não oferece o enquadramento. */
+  onCropChange?: (value: string) => void
+  /** As molduras da seção (`schema.cropFrames`): a prévia tem a forma da loja. */
+  frames?: readonly CropFrame[]
+  /** `schema.crop`: o teto do zoom e as frases do modal. */
+  cropHelp?: CropHelp
+  /** A seção e o formato dela (`collections`: `cards` ou `banners`). */
+  variant?: string
+  layout?: unknown
 }) => {
   const stored = typeof value === "string" ? value : ""
-
-  /**
-   * A URL que o envio acabou de devolver, só para a prévia. Fica fora do valor
-   * gravado de propósito: é dado do momento, não conteúdo — e depois de salvar
-   * a página recarrega o rascunho do servidor, quando a prévia volta a ser
-   * derivada da chave.
-   */
   const [fresh, setFresh] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [cropping, setCropping] = useState(false)
   const picker = useRef<HTMLInputElement>(null)
 
   const preview = fresh ?? previewFromValue(stored)
+  const editable = typeof onCropChange === "function" && frames.length > 0
+  const box: FrameBox = variantBox(frames, variant, layout)
 
   /** Editar à mão descarta a URL do último envio: ela não vale mais. */
   const edit = (next: string) => {
@@ -71,8 +75,8 @@ export const ImageInput = ({
     if (file.size > MAX_BYTES) {
       toast.error(
         `A imagem tem ${inMegabytes(file.size)} MB e o limite é ${inMegabytes(
-          MAX_BYTES
-        )} MB.`
+          MAX_BYTES,
+        )} MB.`,
       )
       return
     }
@@ -83,10 +87,8 @@ export const ImageInput = ({
       const body = new FormData()
       body.append("files", file)
 
-      // O envio sai pelo `apiUrl`, como todo o resto do painel: o endereço da
-      // API é o que o bundle recebeu (`__BACKEND_URL__`), e não a origem da
-      // página — publicado pelo storefront, `"/admin/uploads"` não chega à API
-      // (ver `src/admin/lib/api-url.ts` e a medição da §11.6.2).
+      // O envio sai pelo `apiUrl`: publicado pelo storefront, "/admin/uploads"
+      // não chega à API (ver `src/admin/lib/api-url.ts`).
       const res = await fetch(apiUrl("/admin/uploads"), {
         method: "POST",
         credentials: "include",
@@ -120,11 +122,23 @@ export const ImageInput = ({
   return (
     <div className="flex items-start gap-x-3">
       {preview ? (
-        <img
-          src={preview}
-          alt=""
-          className="h-16 w-16 shrink-0 rounded-md border border-ui-border-base object-cover"
-        />
+        // A prévia na moldura da seção: o recorte na forma em que a loja o desenha.
+        <div className={frames.length > 0 ? "w-40 shrink-0" : "contents"}>
+          {frames.length > 0 ? (
+            <PreviewFrame
+              box={box}
+              className="rounded-md border border-ui-border-base"
+            >
+              <CropPreview src={preview} crop={crop} />
+            </PreviewFrame>
+          ) : (
+            <img
+              src={preview}
+              alt=""
+              className="h-16 w-16 shrink-0 rounded-md border border-ui-border-base object-cover"
+            />
+          )}
+        </div>
       ) : (
         <div className="h-16 w-16 shrink-0 rounded-md border border-dashed border-ui-border-base" />
       )}
@@ -139,6 +153,31 @@ export const ImageInput = ({
           O campo guarda a chave do arquivo enviado (ou um caminho do site /
           URL); a loja publica a chave em /uploads.
         </Text>
+
+        {editable && (
+          <div className="flex items-center gap-x-2">
+            <Button
+              variant="secondary"
+              size="small"
+              disabled={!preview}
+              onClick={() => setCropping(true)}
+            >
+              Ajustar enquadramento
+            </Button>
+            {typeof crop === "string" && crop !== "" && (
+              <Button
+                variant="transparent"
+                size="small"
+                onClick={() => onCropChange?.("")}
+              >
+                Limpar
+              </Button>
+            )}
+            <Text size="xsmall" className="text-ui-fg-subtle tabular-nums">
+              {typeof crop === "string" && crop ? crop : "automático"}
+            </Text>
+          </div>
+        )}
       </div>
 
       <input
@@ -148,8 +187,8 @@ export const ImageInput = ({
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
-          // Zera o input para o MESMO arquivo poder ser reenviado: o navegador
-          // não dispara `change` de novo com o mesmo valor selecionado.
+
+          // Zera o input para o MESMO arquivo poder ser reenviado.
           e.target.value = ""
           if (file) {
             void send(file)
@@ -172,20 +211,21 @@ export const ImageInput = ({
           </Button>
         )}
       </div>
+
+      {editable && preview && (
+        <ImageCropModal
+          open={cropping}
+          target={{ box, crop, src: preview }}
+          help={cropHelp ?? { help: FALLBACK_HELP }}
+          onClose={() => setCropping(false)}
+          onSave={(next) => onCropChange?.(next)}
+        />
+      )}
     </div>
   )
 }
 
-/**
- * O `src` da prévia a partir do valor gravado.
- *
- * O `/static/<chave>` responde nos **dois** endereços do painel: no local, no
- * próprio backend, e no publicado, pela reescrita `/static/:path*` do storefront
- * — o mesmo `next.config.js` que serve as imagens da loja em `/uploads/...`. Por
- * isso a prévia pode continuar relativa à origem da página, ao contrário do
- * `fetch`, que precisa do endereço da API (`apiUrl`). Um valor que já é caminho
- * (`/brand/...`) ou URL passa como está; o resto é chave.
- */
+/** O `src` da prévia: caminho e URL passam como estão; o resto é chave. */
 function previewFromValue(value: string): string | undefined {
   const src = value.trim()
 

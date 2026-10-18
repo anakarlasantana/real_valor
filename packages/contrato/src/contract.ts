@@ -3,6 +3,18 @@
  * (`SECTION_FIELDS`) e as listas fechadas do tema. CRM, backend e storefront
  * importam o pacote `@rv/contrato`; `scripts/gen-content.mjs` só deriva daqui. */
 
+export {
+  CROP_FRAMES,
+  CROP_ZOOM_MAX,
+  CROP_ZOOM_MIN,
+  IMAGE_CROP_KIND,
+  itemFrames,
+  frameItemLabel,
+  frameOwnerOf,
+  sectionFrames,
+} from "./crop.ts"
+import { CROP_PATTERN } from "./crop.ts"
+
 // ===========================================================================
 // INÍCIO DO BLOCO COMPARTILHADO — o que a loja lê em runtime: tipos das seções
 // e listas fechadas do tema; abaixo do fim do bloco é só backend/CRM.
@@ -78,6 +90,7 @@ export type HeroSection = SectionBase & {
  * a do sub-formulário no CRM (`ITEM_FIELDS["list:hero-slide"]`); o scrim é desenho. */
 export type HeroSlide = {
   imageUrl: string
+  imageUrlCrop?: string
   imageAlt: string
   eyebrow: string
   headline: string
@@ -104,6 +117,7 @@ export type CollectionHighlight = {
   title: string
   subtitle: string
   imageUrl: string
+  imageUrlCrop?: string
   imageAlt: string
   href: string
   ctaLabel: string
@@ -175,6 +189,7 @@ export type EditorialSection = SectionBase &
     ctaLabel: string
     ctaHref: string
     imageUrl: string
+      imageUrlCrop?: string
     imageAlt: string
     imagePosition: "left" | "right"
   }
@@ -193,6 +208,7 @@ export type BannerSection = SectionBase &
      * `editorial`. Vazio, o título é uma linha só. */
     titleEmphasis?: string
     imageUrl: string
+      imageUrlCrop?: string
     imageAlt: string
     ctaLabel: string
     ctaHref: string
@@ -269,7 +285,11 @@ export type InstagramSection = SectionBase &
     type: "instagram"
     handle: string
     title: string
-    images: { imageUrl: string; imageAlt: string }[]
+    images: {
+      imageUrl: string
+      imageUrlCrop?: string
+      imageAlt: string
+    }[]
     /** Quantos segundos **cada imagem** leva para atravessar a faixa
      * (`INSTAGRAM_SPEED_*`): com duas ou mais ela rola em laço; com uma, é grade. */
     secondsPerImage?: number
@@ -640,6 +660,7 @@ export type FieldKind =
   // Imagem: campo com envio de arquivo. Grava a **chave** (`1699999999-hero.jpg`),
   // nunca a URL; quem traduz é `resolveMediaUrl` (`lib/util/media.ts`).
   | "image"
+  | "imageCrop"
   // Documento anexo: envio de arquivo, como a imagem — e a loja **não desenha**,
   // publica um botão que baixa. O anexo **complementa** o texto (14.6.3).
   | "document"
@@ -715,6 +736,38 @@ const HREF_HELP =
   "endereço: um caminho do site (ex.: /sobre), uma âncora da vitrine " +
   "(ex.: /#editorial), uma URL completa (https://…) ou um contato " +
   "(mailto:, tel:)."
+
+const CROP_HELP =
+  "Arraste a foto para escolher o recorte, use a roda do mouse (ou o zoom) " +
+  "para aproximar, e clique duas vezes para voltar ao enquadramento original."
+
+/** O campo da foto, ou o par foto + enquadramento (o recorte é opcional). */
+function imageField(
+  name: string,
+  label: string,
+  help: string,
+  options: { required?: boolean; crop?: boolean } = {}
+): FieldSpec[] {
+  const image: FieldSpec = { name, label, kind: "image", help }
+
+  if (options.required) {
+    image.required = true
+  }
+
+  return options.crop === false
+    ? [image]
+    : [
+        image,
+        {
+          name: `${name}Crop`,
+          label: "Enquadramento",
+          kind: "imageCrop",
+          // Sem o padrão, a rota admin aceitaria qualquer texto no recorte.
+          pattern: CROP_PATTERN,
+          help: CROP_HELP,
+        },
+      ]
+}
 
 /** Campos de `data` por tipo de seção, na ordem em que o admin os mostra. */
 export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
@@ -882,12 +935,11 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
       kind: "href",
       help: HREF_HELP,
     },
-    {
-      name: "imageUrl",
-      label: "Imagem",
-      kind: "image",
-      help: "Envie a foto pelo botão, ou informe um caminho do site (ex.: /brand/story-1.jpg) ou uma URL.",
-    },
+    ...imageField(
+      "imageUrl",
+      "Imagem",
+      "Envie a foto pelo botão, ou informe um caminho do site (ex.: /brand/story-1.jpg) ou uma URL."
+    ),
     { name: "imageAlt", label: "Imagem (alt)", kind: "text" },
     {
       name: "imagePosition",
@@ -899,14 +951,13 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     ...appearanceBackground("imagePosition"),
   ],
   banner: [
-    {
-      name: "imageUrl",
-      label: "Imagem",
-      kind: "image",
-      // A foto é o fundo inteiro: sem ela não há faixa — por isso é obrigatória.
-      required: true,
-      help: "A foto que ocupa a faixa inteira. Envie pelo botão, ou informe um caminho do site (ex.: /brand/story-2.jpg) ou uma URL.",
-    },
+    // A foto é o fundo inteiro: sem ela não há faixa — por isso é obrigatória.
+    ...imageField(
+      "imageUrl",
+      "Imagem",
+      "A foto que ocupa a faixa inteira. Envie pelo botão, ou informe um caminho do site (ex.: /brand/story-2.jpg) ou uma URL.",
+      { required: true }
+    ),
     { name: "imageAlt", label: "Imagem (alt)", kind: "text" },
     { name: "eyebrow", label: "Eyebrow", kind: "text" },
     { name: "title", label: "Título", kind: "text", required: true },
@@ -1129,14 +1180,18 @@ export const ITEM_FIELDS: ItemFields = {
     { name: "title", label: "Título" },
     { name: "subtitle", label: "Subtítulo" },
   ],
-  /** O slide da capa: os mesmos oito campos do hero, sem os de bloco. A ordem desta
-   * lista **é** a de `HeroSlide` — a paridade compara as duas (`ITEM_TYPES`). */
   "list:hero-slide": [
     {
       name: "imageUrl",
       label: "Imagem",
       kind: "image",
       help: "Envie a foto pelo botão, ou informe um caminho do site (ex.: /brand/hero.jpg) ou uma URL.",
+    },
+    {
+      name: "imageUrlCrop",
+      label: "Enquadramento",
+      kind: "imageCrop",
+      help: CROP_HELP,
     },
     { name: "imageAlt", label: "Imagem (alt)" },
     { name: "eyebrow", label: "Eyebrow" },
@@ -1160,6 +1215,12 @@ export const ITEM_FIELDS: ItemFields = {
       kind: "image",
       help: "Envie a foto pelo botão, ou informe um caminho do site (ex.: /brand/collection-1.jpg) ou uma URL.",
     },
+    {
+      name: "imageUrlCrop",
+      label: "Enquadramento",
+      kind: "imageCrop",
+      help: CROP_HELP,
+    },
     { name: "imageAlt", label: "Imagem (alt)" },
     {
       name: "href",
@@ -1175,6 +1236,12 @@ export const ITEM_FIELDS: ItemFields = {
       label: "Imagem",
       kind: "image",
       help: "Envie a foto pelo botão, ou informe um caminho do site ou uma URL. A moldura é quadrada: corte a foto nesse formato para ela não ser recortada sozinha.",
+    },
+    {
+      name: "imageUrlCrop",
+      label: "Enquadramento",
+      kind: "imageCrop",
+      help: "Escolha o recorte da foto quadrada arrastando-a: a moldura é a do Instagram, e o enquadramento vale na faixa e na grade parada.",
     },
     { name: "imageAlt", label: "Imagem (alt)" },
   ],

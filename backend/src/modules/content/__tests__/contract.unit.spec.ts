@@ -1,13 +1,7 @@
 /**
- * Os invariantes do contrato — os que a guarda de paridade caçava em texto.
- *
- * Aqui eles são **testes**: `import` de verdade, tipos de verdade, e o erro
- * aponta o dado que quebrou em vez de um `detail` em string. A guarda vai
- * perder esses casos (fase G4); este arquivo é o motivo pelo qual isso é
- * seguro.
- *
- * Nenhum teste aqui precisa de container, banco ou API: o contrato é dado puro,
- * e o conteúdo padrão é a cópia do protótipo.
+ * Os invariantes do contrato — os que a guarda de paridade caçava em texto —
+ * como testes: `import` de verdade, e o erro aponta o dado que quebrou. Nada
+ * aqui precisa de container, banco ou API: o contrato é dado puro.
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -36,13 +30,8 @@ import { DEFAULT_HOME_SECTIONS } from "../defaults"
 import { bandFor, reservedPositions } from "../order"
 
 /**
- * Os `list:*` que **não** têm sub-formulário.
- *
- * São as listas de caixa de texto: uma caixa por item, sem campos dentro —
- * `list:text` (as mensagens do ticker) e `list:markdown` (as linhas de uma lista
- * do texto longo). É a exceção que a guarda de `ITEM_FIELDS` declara, e o que
- * faz o editor do CRM dar a elas um ramo próprio **antes** do ramo genérico dos
- * `list:*` (que desenharia um cartão de item vazio).
+ * Os `list:*` que não têm sub-formulário: `list:text` e `list:markdown`, uma
+ * caixa por item — o ramo que o editor desenha antes do genérico dos `list:*`.
  */
 const LIST_KINDS_WITHOUT_ITEM_FORM = ["list:text", "list:markdown"]
 
@@ -268,14 +257,8 @@ describe("aparência por seção", () => {
 })
 
 /**
- * As **casas** da numeração.
- *
- * A posição de uma seção é a casa dela na página, e a faixa de casas é da
- * superfície (`CONTENT_SURFACES[i].order`). O que este bloco trava é o que dá
- * sentido ao bloco ancorado da home: cada tipo dele tem uma casa, nenhuma
- * casa serve a dois tipos, e a faixa das seções ordenáveis **não começa** numa
- * casa ancorada — a renumeração as pula (`order.ts`), e uma faixa que começasse
- * na casa 1 escreveria em cima da barra de anúncio.
+ * As casas da numeração: cada tipo do bloco ancorado tem a sua, nenhuma casa
+ * serve a dois, e a faixa das seções ordenáveis não começa numa casa ancorada.
  */
 describe("as casas da numeração", () => {
   const houses = Object.values(FIXED_SECTION_POSITIONS)
@@ -317,6 +300,30 @@ describe("as casas da numeração", () => {
   })
 })
 
+/**
+ * Os campos de um `export type NOME = …`, lidos do texto do contrato: o tipo é
+ * apagado na compilação, e é ele que a loja lê. A forma do bloco é ` {` no tipo
+ * simples ou `A &\n  B &\n{` no composto, e a busca é ancorada no `=`.
+ */
+const contractSource = readFileSync(
+  join(__dirname, "../../../../..", "packages/contrato/src/contract.ts"),
+  "utf8"
+)
+
+const TYPE_BODY = "(?: (?:\\{\\n|(?:[^\\n]*\\n){0,3}?[^\\n]*\\{\\n))([\\s\\S]*?)\\n\\}"
+
+function typeFields(name: string): string[] | null {
+  const match = new RegExp(`export type ${name} =${TYPE_BODY}`).exec(
+    contractSource
+  )
+
+  return match
+    ? [...match[1].matchAll(/^\s*([A-Za-z_$][\w$]*)\??\s*:/gm)].map(
+        (field) => field[1]
+      )
+    : null
+}
+
 describe("ITEM_FIELDS ⇔ o tipo do item", () => {
   /**
    * O editor de item é dado do contrato e o **tipo** é a forma que a loja lê:
@@ -329,24 +336,6 @@ describe("ITEM_FIELDS ⇔ o tipo do item", () => {
    * ganha: o lado do editor vem do `import` de verdade (`ITEM_FIELDS`) em vez de
    * uma segunda leitura de texto, e o erro aponta o campo que faltou.
    */
-  const contractSource = readFileSync(
-    join(__dirname, "../../../../..", "packages/contrato/src/contract.ts"),
-    "utf8"
-  )
-
-  /** Campos `nome: tipo` de um `export type NOME = { ... }`, lido como texto. */
-  const typeFields = (name: string): string[] | null => {
-    const match = new RegExp(`export type ${name} = \\{([\\s\\S]*?)\\n\\}`).exec(
-      contractSource
-    )
-
-    return match
-      ? [...match[1].matchAll(/^\s*([A-Za-z_$][\w$]*)\??\s*:/gm)].map(
-          (field) => field[1]
-        )
-      : null
-  }
-
   // `list:image` fica fora: os itens do Instagram são inline (não têm tipo
   // nomeado), e por isso o editor deles não tem um `ItemFieldSpec` próprio. Os
   // `list:*` de caixa de texto (`LIST_KINDS_WITHOUT_ITEM_FORM`) também ficam
@@ -371,6 +360,74 @@ describe("ITEM_FIELDS ⇔ o tipo do item", () => {
       expect(editor.map((field) => field.name)).toEqual(typeFields(typeName))
     })
   }
+})
+
+/**
+ * O par imagem ⇔ enquadramento (`imageUrl` → `imageUrlCrop`): o recorte mora ao
+ * lado da foto, só onde a loja lê o par, e o tipo da seção tem o campo. O valor
+ * em si é do `crop.ts`; aqui mora a forma do formulário.
+ */
+describe("o par imagem ⇔ enquadramento", () => {
+  const IMAGE_FIELDS = [
+    "list:hero-slide.imageUrl",
+    "list:highlight.imageUrl",
+    "list:image.imageUrl",
+    "editorial.imageUrl",
+    "banner.imageUrl",
+  ]
+
+  const IMAGE_OWNER_TYPES: Record<string, string> = {
+    "list:hero-slide": "HeroSlide",
+    "list:highlight": "CollectionHighlight",
+    editorial: "EditorialSection",
+    banner: "BannerSection",
+  }
+
+  const allFields = [
+    ...Object.entries(SECTION_FIELDS).flatMap(([type, fields]) =>
+      fields.map((field) => ({ where: type, ...field }))
+    ),
+    ...Object.entries(ITEM_FIELDS).flatMap(([kind, fields]) =>
+      (fields ?? []).map((field) => ({ where: kind, ...field }))
+    ),
+  ]
+
+  it("todo recorte tem a imagem de quem ele é o par, logo acima", () => {
+    for (const field of allFields.filter((f) => f.kind === "imageCrop")) {
+      const owner = allFields.filter((f) => f.where === field.where)
+      const names = owner.map((f) => f.name)
+      const image = field.name.replace(/Crop$/, "")
+
+      expect(names).toContain(image)
+      // O par fica na ordem do editor: a foto, e o enquadramento logo abaixo.
+      expect(names.indexOf(field.name)).toBe(names.indexOf(image) + 1)
+    }
+  })
+
+  it("o recorte existe exatamente nas fotos que a loja lê", () => {
+    const comRecorte = allFields
+      .filter((field) => field.kind === "imageCrop")
+      .map((field) => `${field.where}.${field.name.replace(/Crop$/, "")}`)
+
+    expect(comRecorte.sort()).toEqual([...IMAGE_FIELDS].sort())
+  })
+
+  it("o tipo do bloco compartilhado tem o campo do recorte", () => {
+    for (const [where, typeName] of Object.entries(IMAGE_OWNER_TYPES)) {
+      const field = allFields.find(
+        (f) => f.where === where && f.kind === "imageCrop"
+      )
+
+      expect(field).toBeDefined()
+      expect(typeFields(typeName)).not.toBeNull()
+      expect(typeFields(typeName) ?? []).toContain(field?.name)
+    }
+
+    // `list:image` não tem tipo de item: os itens são inline no `InstagramSection`.
+    const inline = /images: \{([\s\S]*?)\}\[\]/.exec(contractSource)
+
+    expect(inline?.[1]).toMatch(/imageUrl: string[\s\S]*imageUrlCrop\??:/)
+  })
 })
 
 /**

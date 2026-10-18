@@ -49,6 +49,9 @@
  * não é conhecida aqui (e nem deve ser — o caminho `/uploads/...` é resolvido
  * pelo servidor do Next, não pelo navegador).
  */
+import { cropImageStyle } from "@rv/contrato/crop"
+import type { CSSProperties } from "react"
+
 const UPLOAD_PATH = "/uploads/"
 /** A rota pública de arquivos do Medusa — ver `express-loader` do framework. */
 const BACKEND_FILE_PATH = "/static/"
@@ -102,11 +105,11 @@ export function resolveMediaUrl(value: unknown): string | undefined {
 }
 
 /**
- * O `src` e a decisão de otimização de uma imagem do **conteúdo**.
+ * O `src`, a decisão de otimização e o **recorte** de uma imagem do conteúdo.
  * -------------------------------------------------------------------------
  * É o par que todo bloco da vitrine espalha no `<Image>`:
  *
- *     const image = mediaImageProps(section.imageUrl)
+ *     const image = mediaImageProps(section.imageUrl, section.imageUrlCrop)
  *     {image && <Image {...image} alt={...} fill sizes={...} />}
  *
  * `undefined` quando não há endereço — o bloco continua de pé, com o fundo da
@@ -130,13 +133,19 @@ export function resolveMediaUrl(value: unknown): string | undefined {
  * redimensionamento de um arquivo que já vem pronto do site antigo.
  */
 export function mediaImageProps(
-  value: unknown
-): { src: string; unoptimized: boolean } | undefined {
+  value: unknown,
+  crop?: unknown
+): { src: string; unoptimized: boolean; style?: CSSProperties } | undefined {
   const src = resolveMediaUrl(value)
 
-  return src === undefined
-    ? undefined
-    : { src, unoptimized: !canOptimize(src) }
+  if (src === undefined) {
+    return undefined
+  }
+
+  const style = cropImageStyle(crop)
+  const media = { src, unoptimized: !canOptimize(src) }
+
+  return style ? { ...media, style: style as CSSProperties } : media
 }
 
 /**

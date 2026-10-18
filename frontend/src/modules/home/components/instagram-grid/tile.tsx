@@ -1,5 +1,6 @@
 import { type InstagramSection } from "@lib/content/home-sections"
 import { mediaImageProps } from "@lib/ui/media"
+import { cropStyle } from "@modules/common/crop/crop-style"
 import Image from "next/image"
 
 /** Uma foto da lista da seção — o par que o CRM grava. */
@@ -21,6 +22,7 @@ export type InstagramImage = InstagramSection["images"][number]
  */
 export function InstagramTile({ image }: { image: InstagramImage }) {
   const media = mediaImageProps(image.imageUrl)
+  const style = cropStyle(image.imageUrlCrop)
 
   return (
     <li className="rv-insta-tile">
@@ -30,6 +32,7 @@ export function InstagramTile({ image }: { image: InstagramImage }) {
           alt={image.imageAlt}
           fill
           sizes="(min-width: 1440px) 340px, 24vw"
+          style={style}
           className="object-cover object-center"
           /*
            * A foto não é o que se arrasta: o gesto é da faixa (`./strip.tsx`). Sem

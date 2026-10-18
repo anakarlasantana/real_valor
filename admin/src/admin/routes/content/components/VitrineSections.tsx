@@ -9,7 +9,7 @@ import type { Schema } from "../lib/types"
 
 export function VitrineSections({ schema }: { schema: Schema | null }) {
   const surface = schema?.surfaces?.find(
-    (spec: ContentSurfaceSpec) => spec.id === "home"
+    (spec: ContentSurfaceSpec) => spec.id === "home",
   )
 
   if (!surface) return null

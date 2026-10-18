@@ -34,6 +34,11 @@ export default defineConfig({
     // `…/src/index.ts/payment` e o teste morre com
     // `ENOTDIR: not a directory`. O mais específico vem PRIMEIRO.
     alias: {
+      // O recorte entra antes do `@rv/contrato` pelo mesmo motivo do `payment`.
+      "@rv/contrato/crop": resolve(
+        __dirname,
+        "../packages/contrato/src/crop.ts"
+      ),
       "@rv/contrato/payment": resolve(
         __dirname,
         "../packages/contrato/src/payment.ts"

@@ -49,8 +49,7 @@
 }
 
 /*
- * O recorte da foto: alto, com o enquadramento acima do meio (`center 34%`) —
- * é onde o rosto de um retrato de moda está, e é o que a régua enquadra.
+ * O recorte da capa: o rosto de um retrato de moda está acima do meio.
  */
 .rv-hero-photo {
   object-position: center 34%;

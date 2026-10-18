@@ -1,5 +1,6 @@
 import { type BannerSection } from "@lib/content/home-sections"
 import { mediaImageProps } from "@lib/ui/media"
+import { cropStyle } from "@modules/common/crop/crop-style"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 import { type CSSProperties } from "react"
@@ -45,6 +46,7 @@ export default function EditorialCallout({
   section: BannerSection
 }) {
   const image = mediaImageProps(section.imageUrl)
+  const style = cropStyle(section.imageUrlCrop)
 
   return (
     <section
@@ -57,6 +59,7 @@ export default function EditorialCallout({
           alt={section.imageAlt}
           fill
           sizes="100vw"
+          style={style}
           className="rv-callout-photo"
         />
       )}

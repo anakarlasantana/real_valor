@@ -8,12 +8,12 @@
  *   - espelho de dado (`const ITEM_FIELDS = …`) ou de **forma** (`type FieldKind
  *     = { … }`) dentro do painel: medido na R2, um tipo estrutural copiado num
  *     arquivo que **não importa o nome** compila verde — tipo estrutural não
- *     enxerga cópia, e é a cópia que se proíbe;
+ *     enxerga cópia, e é a cópia que se proíbe
  *   - a página e o editor de item **lendo** o schema (`itemFields`,
- *     `typeLabels`): um `schema` que ninguém lê é campo que some da tela;
+ *     `typeLabels`): um `schema` que ninguém lê é campo que some da tela
  *   - a declaração de exaustividade por `kind`, que é o que faz o `tsc` reprovar
  *     um `kind` sem ramo — apagá-la numa refatoração devolveria a cobertura ao
- *     silêncio, sem erro em lugar nenhum;
+ *     silêncio, sem erro em lugar nenhum
  *   - o seletor de superfície e o numeral da ordem pendente, que vêm do payload.
  *
  * Desde o defeito do painel publicado (§11.6.2 de
@@ -61,14 +61,21 @@ const pagesView = readFileSync(join(COMPONENTS, "pages-view.tsx"), "utf8")
  */
 const surfacePanel = readFileSync(
   join(COMPONENTS, "SurfaceSectionsPanel.tsx"),
-  "utf8"
+  "utf8",
 )
 const sectionRow = readFileSync(join(COMPONENTS, "SectionRow.tsx"), "utf8")
+const imageInput = readFileSync(join(COMPONENTS, "image-input.tsx"), "utf8")
+const cropModal = readFileSync(
+  join(COMPONENTS, "image-crop-modal.tsx"),
+  "utf8",
+)
+const cropPreview = readFileSync(join(COMPONENTS, "crop-preview.tsx"), "utf8")
+const cropFrame = readFileSync(join(COMPONENTS, "crop-frame.tsx"), "utf8")
 const navigation = readFileSync(join(LIB, "navigation.ts"), "utf8")
 const utils = readFileSync(join(LIB, "utils.ts"), "utf8")
 const hook = readFileSync(
   join(CONTENT_DIR, "hooks", "useSurfaceSections.ts"),
-  "utf8"
+  "utf8",
 )
 
 /** Um arquivo do painel: o caminho (para a falha nomear o culpado) e o texto. */
@@ -126,10 +133,13 @@ describe("o painel não declara o contrato", () => {
       // painel inventando a palavra — e a palavra tem de ser a do servidor,
       // que é quem de fato sabe se a página está no ar (ver `pages-view.tsx`).
       "PAGE_STATES",
+      "CROP_FRAMES",
+      "CROP_ZOOM_MIN",
+      "CROP_ZOOM_MAX",
     ]
     const sources = panelSources()
     const declarados = MIRRORS.filter((name) =>
-      sources.some((source) => new RegExp(`const ${name}\\b`).test(source))
+      sources.some((source) => new RegExp(`const ${name}\\b`).test(source)),
     )
 
     expect(declarados).toEqual([])
@@ -150,10 +160,11 @@ describe("o painel não declara o contrato", () => {
     const sources = panelSources()
     const copiados = SHAPES.filter((name) =>
       sources.some((source) =>
-        new RegExp(`^\\s*(export )?type ${name} = (\\{|\\n\\s*\\||\\|)`, "m").test(
-          source
-        )
-      )
+        new RegExp(
+          `^\\s*(export )?type ${name} = (\\{|\\n\\s*\\||\\|)`,
+          "m",
+        ).test(source),
+      ),
     )
 
     expect(copiados).toEqual([])
@@ -196,6 +207,55 @@ describe("o painel lê o schema", () => {
     for (const kind of ["list:text", "list:markdown"]) {
       expect(fieldInput).toContain(`spec.kind === "${kind}"`)
     }
+  })
+
+  it("o campo de enquadramento lê as molduras e as frases do payload", () => {
+    expect(sectionRow).toContain("cropFrames")
+    expect(fieldInput).toContain("cropFrames")
+    expect(imageInput).toContain("frames")
+    expect(cropModal).toContain("target.box")
+  })
+
+  it("o modal tem **uma** janela, na forma do componente, e a prévia embaixo", () => {
+    // A foto é uma: as abas de tela saíram, e a janela vem do `variantBox`.
+    expect(imageInput).toContain("variantBox(")
+    expect(cropModal).not.toContain("setStep")
+    expect(cropModal).not.toMatch(/frames\.map/)
+    expect(cropModal).toContain("onError")
+  })
+
+  it("a janela ocupa a tela: o corpo com altura, sem teto na moldura", () => {
+    expect(cropModal).toContain("min-h-0")
+    expect(cropModal).toContain("flex-1 items-center justify-center")
+    expect(cropModal).toContain("fitFrame(")
+    expect(cropModal).not.toMatch(/max-h-\[min\(/)
+    expect(imageInput).not.toContain("fitFrame(")
+  })
+
+  it("a moldura se desenha antes da medida — o palco é caixa de container", () => {
+    expect(cropFrame).toContain("100cqh")
+    expect(cropFrame).toContain("ratioValue(")
+    expect(cropModal).toContain('containerType: "size"')
+  })
+
+  it("o formato da seção chega até a moldura da foto", () => {
+    // `collections` desenha cards em pé e banners deitados: só o `layout` diz.
+    expect(sectionRow).toContain("sectionLayout=")
+    expect(fieldInput).toContain("sectionLayout")
+    expect(imageInput).toContain("variantBox(frames, variant, layout)")
+  })
+
+  it("o par foto ⇔ recorte é resolvido pelo nome, nos dois donos da foto", () => {
+    expect(fieldInput).toContain("cropNameOf(")
+    expect(fieldInput).toContain("pairFor(")
+    expect(fieldInput).toContain("onPatch")
+  })
+
+  it("a tela desenha o recorte com a conta do painel, não com estilo próprio", () => {
+    expect(cropPreview).toContain("cropImageStyle(")
+    expect(cropModal).toContain("cropFitsBox(")
+    expect(cropFrame).toContain("ratioOf(")
+    expect(cropPreview).not.toMatch(/objectPosition\s*:/)
   })
 
   it("o campo de destino desenha a lista do payload (`destinations`)", () => {
@@ -275,7 +335,7 @@ describe("a exaustividade por `kind`", () => {
     // asserções de texto). Apagá-la numa limpeza "que não muda nada" devolveria
     // a cobertura ao silêncio.
     expect(fieldInput).toMatch(
-      /type UnhandledKind = Exclude<FieldKind, HandledKind>/
+      /type UnhandledKind = Exclude<FieldKind, HandledKind>/,
     )
     expect(fieldInput).toContain("UNHANDLED_KINDS")
   })
@@ -302,7 +362,7 @@ describe("as chamadas do painel à API", () => {
     expect(
       panelFiles()
         .filter((file) => RELATIVE_TO_ROOT.test(file.source))
-        .map((file) => file.path)
+        .map((file) => file.path),
     ).toEqual([])
   })
 })

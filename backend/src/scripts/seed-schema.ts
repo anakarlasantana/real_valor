@@ -45,8 +45,16 @@ export default async function seedSchema({
   if (check) {
     // `isDeepStrictEqual`, e não comparar string: o `data` é `jsonb`, que não
     // preserva a ordem das chaves — o `JSON.stringify` acusaria divergência
-    // numa base recem-gravada e o `--check` viraria alarme falso.
-    if (source === "db" && isDeepStrictEqual(stored, fromContract)) {
+    // numa base recem-gravada. A comparação é conduzida pelo contrato.
+    if (
+      source === "db" &&
+      Object.keys(fromContract).every((key) =>
+        isDeepStrictEqual(
+          (stored as Record<string, unknown>)[key],
+          (fromContract as Record<string, unknown>)[key]
+        )
+      )
+    ) {
       console.log(
         `Registro do schema em dia (chave "${SCHEMA_KEY}", versão ${version}).`
       )

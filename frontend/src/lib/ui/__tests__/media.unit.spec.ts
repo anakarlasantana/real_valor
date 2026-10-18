@@ -157,3 +157,34 @@ describe("mediaImageProps", () => {
     expect(mediaImageProps({ url: "/uploads/x.jpg" })).toBeUndefined()
   })
 })
+
+describe("mediaImageProps com recorte", () => {
+  it("sem recorte o objeto é o de antes (a régua desenha)", () => {
+    expect(mediaImageProps("/brand/hero.jpg")).toEqual({
+      src: "/brand/hero.jpg",
+      unoptimized: false,
+    })
+    expect(mediaImageProps("/brand/hero.jpg", "")).not.toHaveProperty("style")
+    expect(mediaImageProps("/brand/hero.jpg", "esquerda:meio")).not.toHaveProperty(
+      "style"
+    )
+  })
+
+  it("sem zoom sai só o `object-position`", () => {
+    expect(mediaImageProps("/brand/hero.jpg", "center:34")?.style).toEqual({
+      objectPosition: "center 34%",
+    })
+  })
+
+  it("com zoom sai a foto ampliada e deslocada dentro da caixa", () => {
+    expect(mediaImageProps("/brand/hero.jpg", "50:50:2")?.style).toEqual({
+      objectPosition: "50% 50%",
+      position: "absolute",
+      top: "-25%",
+      left: "-25%",
+      width: "50%",
+      height: "50%",
+      maxWidth: "none",
+    })
+  })
+})

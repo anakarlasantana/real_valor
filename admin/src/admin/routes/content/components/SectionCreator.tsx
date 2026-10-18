@@ -58,7 +58,9 @@ export function SectionCreator({
 
     if (seeded) return
 
-    const first = schema ? creatableTypes(schema, sections, surface)[0] ?? "" : ""
+    const first = schema
+      ? (creatableTypes(schema, sections, surface)[0] ?? "")
+      : ""
 
     setNewType(first)
     setNewId(first ? freeAnchor(first, sections) : "")
@@ -71,7 +73,7 @@ export function SectionCreator({
       setNewType(type)
       setNewId(freeAnchor(type, sections))
     },
-    [sections]
+    [sections],
   )
 
   const handleCreate = useCallback(async () => {
@@ -100,8 +102,8 @@ export function SectionCreator({
           Nova {surface.blockLabel ?? "seção"}
         </Heading>
         <Text size="small" className="mb-4 text-ui-fg-subtle">
-          A {surface.blockLabel ?? "seção"} nasce com o conteúdo padrão do tipo e
-          entra no fim da lista: crie, edite e salve.
+          A {surface.blockLabel ?? "seção"} nasce com o conteúdo padrão do tipo
+          e entra no fim da lista: crie, edite e salve.
         </Text>
 
         <div className="flex flex-col gap-y-4">

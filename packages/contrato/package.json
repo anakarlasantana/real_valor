@@ -9,6 +9,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./contract": "./src/contract.ts",
+    "./crop": "./src/crop.ts",
     "./defaults": "./src/defaults.ts",
     "./schema": "./src/schema.ts",
     "./payment": "./src/payment.ts"

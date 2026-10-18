@@ -20,7 +20,13 @@
  * - a **âncora** (`id`) é validada como apelido e precisa estar livre: ela é o
  *   `id` da linha e o fragmento que o menu usa.
  */
-import { SECTION_FIELDS, THEME_FIELDS, THEME_SURFACE, THEME_TYPE } from "../contract"
+import { CROP_PATTERN } from "@rv/contrato/crop"
+import {
+  SECTION_FIELDS,
+  THEME_FIELDS,
+  THEME_SURFACE,
+  THEME_TYPE,
+} from "../contract"
 import type { QueryGraph } from "../curation"
 import {
   readPosition,
@@ -108,6 +114,26 @@ describe("validateData", () => {
     expect(validateData("featured", { appearanceHeadingColor: "" }, base)).toEqual(
       []
     )
+  })
+
+  it("o enquadramento da foto é conferido pelo padrão do campo", () => {
+    const data = (imageUrlCrop: string) => ({ imageUrlCrop })
+
+    expect(validateData("editorial", data("center:34:1.4"), base)).toEqual([])
+    expect(validateData("editorial", data(""), base)).toEqual([])
+
+    for (const invalido of ["esquerda:meio", "50:50:9", "50:50:0.5"]) {
+      expect(validateData("editorial", data(invalido), base)).toEqual([
+        `Campo "imageUrlCrop" deve estar no formato esperado ` +
+          `(${CROP_PATTERN}).`,
+      ])
+    }
+  })
+
+  it("o recorte só é aceito onde o contrato declara o par", () => {
+    expect(
+      validateData("launches", { imageUrlCrop: "center:34" }, base)
+    ).toEqual(['Campo desconhecido para "launches": "imageUrlCrop".'])
   })
 
   it("tipo sem campos no schema é erro de contrato, não de dado", () => {

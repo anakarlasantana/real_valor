@@ -46,6 +46,14 @@ module.exports = {
    * resolve o transform relativo ao `rootDir`, que aqui é `admin/` — sem
    * `require.resolve(..., { paths })` o `@swc/jest` seria procurado subindo a
    * partir de `admin/` e não existiria. */
+  /* O alias do contrato (`@conteudo/*`), declarado no `tsconfig.json` e que o
+   * `tsc` resolve — o jest não lê `paths`, e sem esta linha um teste que importa
+   * valor do contrato (`crop-window` lê `formatCrop` de `@conteudo/crop`) morre
+   * no resolver antes de rodar. O alvo é o mesmo do tsconfig. */
+  moduleNameMapper: {
+    "^@conteudo/(.*)$": join(__dirname, "..", "backend", "src", "modules", "content", "$1"),
+  },
+
   transform: {
     "^.+\\.[jt]sx?$": [
       require.resolve("@swc/jest", { paths: [BACKEND_MODULES] }),

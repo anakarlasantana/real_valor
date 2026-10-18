@@ -1,5 +1,6 @@
 import { type CollectionsSection } from "@lib/content/home-sections"
 import { mediaImageProps } from "@lib/ui/media"
+import { cropStyle } from "@modules/common/crop/crop-style"
 import ArrowIcon from "@modules/common/components/arrow-icon"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
@@ -82,6 +83,7 @@ export default function CollectionHighlights({
             // do site antigo da loja): `mediaImageProps` resolve **e** responde
             // se o otimizador pode buscá-la — ver `lib/ui/media.ts`.
             const image = mediaImageProps(item.imageUrl)
+            const style = cropStyle(item.imageUrlCrop)
 
             return (
               <li key={item.title}>
@@ -96,6 +98,7 @@ export default function CollectionHighlights({
                         alt={item.imageAlt}
                         fill
                         sizes={layout.sizes}
+                        style={style}
                         className="rv-collection-photo"
                       />
                     )}

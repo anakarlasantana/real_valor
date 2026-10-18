@@ -235,9 +235,8 @@
   background-color: var(--rv-cacao);
 }
 
-/* A foto: recorte alto e o enquadramento acima do meio (`center 28%`), onde o
- * rosto está, e o véu por cima — mesma decisão do `.rv-hero-photo`. O `opacity`
- * é do desenho (a foto entra apagada para o texto vencer), e não um campo. */
+/* A foto: o enquadramento acima do meio é o **fallback** do recorte (o campo
+ * `imageUrlCrop` manda inline), e o `opacity` é do desenho, não um campo. */
 .rv-callout-photo {
   object-fit: cover;
   object-position: center 28%;
@@ -349,6 +348,7 @@
   background-color: color-mix(in srgb, var(--rv-dourado) 20%, transparent);
 }
 
+/* `center` sem recorte: com `imageUrlCrop` o `object-position` vem inline. */
 .rv-manifesto-photo {
   object-fit: cover;
   object-position: center;

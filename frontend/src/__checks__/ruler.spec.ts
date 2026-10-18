@@ -3,9 +3,10 @@
  * régua** (o componente escreve a classe, não o valor; o Tailwind ganha do
  * `brand.css`), a **cor herdada** que não chega e o **cascade** que perde.
  */
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import { CROP_FRAMES } from "@rv/contrato/crop"
 import { describe, expect, it } from "vitest"
 
 const fonte = (...partes: string[]) =>
@@ -255,6 +256,84 @@ describe("a régua das seções da abertura", () => {
 
     expect(semMovimento).toContain(".rv-insta-strip.rv-insta-dragging {")
     expect(semMovimento).toContain("cursor: default")
+  })
+
+  it("nenhum componente escreve `object-position` à mão (o recorte vem do CMS)", () => {
+    const HOME = join(__dirname, "..", "modules", "home")
+
+    const arquivos = (pasta: string): string[] =>
+      readdirSync(pasta, { withFileTypes: true }).flatMap((entrada) => {
+        const caminho = join(pasta, entrada.name)
+
+        if (entrada.isDirectory()) {
+          return arquivos(caminho)
+        }
+
+        return /\.tsx?$/.test(entrada.name) ? [caminho] : []
+      })
+
+    const violacoes = arquivos(HOME)
+      .map((arquivo) => ({
+        arquivo,
+        codigo: semComentarios(readFileSync(arquivo, "utf8")),
+      }))
+      .filter(({ codigo }) => /objectPosition\s*:/.test(codigo))
+      .map(({ arquivo }) => arquivo)
+
+    expect(violacoes).toEqual([])
+  })
+
+  it("as molduras declaradas no contrato são as do CSS", () => {
+    const declaradas = (seletor: string) => {
+      const base = Number(/height: (\d+)px/.exec(bloco(seletor))?.[1])
+
+      return { base, ...v17(seletor) }
+    }
+
+    const v17 = (seletor: string) => {
+      const media = CSS.slice(CSS.indexOf("@media (min-width: 1024px) {"))
+      const inicio = media.indexOf(`${seletor} {`)
+
+      if (inicio < 0) {
+        return {}
+      }
+
+      const corpo = media.slice(inicio, media.indexOf("}", inicio))
+      const height = /height: (\d+)px/.exec(corpo)?.[1]
+      const ratio = /aspect-ratio: ([\d\s/]+)/.exec(corpo)?.[1]
+
+      return {
+        ...(height ? { height: Number(height) } : {}),
+        ...(ratio ? { ratio: ratio.trim() } : {}),
+      }
+    }
+
+    const degraus = (chave: string) =>
+      CROP_FRAMES[chave]?.section?.map((frame) =>
+        frame.height ? { height: frame.height } : { ratio: frame.ratio }
+      )
+
+    expect(degraus("hero")).toEqual([{ height: 570 }, { height: 760 }])
+    expect(degraus("banner")).toEqual([{ height: 520 }, { height: 600 }])
+    expect(degraus("editorial")).toEqual([{ ratio: "4/5" }, { ratio: "5/6" }])
+    expect(degraus("instagram")).toEqual([{ ratio: "1/1" }, { ratio: "1/1" }])
+
+    expect(bloco(".rv-hero")).toContain("height: min(77vh, 760px)")
+    expect(CSS.slice(CSS.indexOf("@media (max-width: 1023px) {"))).toContain(
+      ".rv-hero {"
+    )
+
+    expect(bloco(".rv-callout")).toMatch(/min-height: 520px/)
+    expect(bloco(".rv-manifesto-media")).toContain("aspect-ratio: 4 / 5")
+    expect(CSS).toContain("aspect-ratio: 5 / 6")
+
+    const colecoes = declaradas(".rv-collection-card")
+
+    expect(colecoes.base).toBe(520)
+    expect(CSS).toContain("height: 450px")
+    expect(bloco(".rv-collection-card")).toContain("height: 520px")
+
+    expect(bloco(".rv-insta-tile")).toContain("aspect-ratio: 1;")
   })
 
   it("o degrau de desktop do ritmo vence a base do tema", () => {

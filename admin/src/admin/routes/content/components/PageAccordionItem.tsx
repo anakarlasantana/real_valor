@@ -59,7 +59,7 @@ export function PageAccordionItem({
       try {
         const res = await fetch(
           apiUrl(`/admin/content?surface=${encodeURIComponent(surface.id)}`),
-          { credentials: "include" }
+          { credentials: "include" },
         )
         const json = await res.json()
 

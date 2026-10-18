@@ -1,6 +1,7 @@
 import { type HeroSection } from "@lib/content/home-sections"
 import { heroSlides, type HeroSlide } from "@lib/content/hero"
 import { mediaImageProps } from "@lib/ui/media"
+import { cropStyle } from "@modules/common/crop/crop-style"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 import { type CSSProperties } from "react"
@@ -176,6 +177,7 @@ function HeroPane({
   priority?: boolean
 }) {
   const image = mediaImageProps(slide.imageUrl)
+  const style = cropStyle(slide.imageUrlCrop)
 
   return (
     <div className="rv-hero">
@@ -186,6 +188,7 @@ function HeroPane({
           fill
           priority={priority}
           sizes="100vw"
+          style={style}
           className="rv-hero-photo object-cover"
         />
       )}
