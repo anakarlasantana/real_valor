@@ -3,6 +3,7 @@
 import { resolvePayment } from "@lib/payments"
 import { placeOrder } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
+import { documentoValido } from "@rv/contrato"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
 
@@ -55,7 +56,11 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
   // muda entre os dois é o que acontece ANTES (a preference já foi criada e a
   // cliente foi redirecionada) ou se há cobrança a fazer por fora.
   return (
-    <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
+    <ManualTestPaymentButton
+      notReady={notReady}
+      cart={cart}
+      data-testid={dataTestId}
+    />
   )
 }
 
@@ -69,9 +74,11 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
  */
 const ManualTestPaymentButton = ({
   notReady,
+  cart,
   "data-testid": dataTestId,
 }: {
   notReady: boolean
+  cart: HttpTypes.StoreCart
   "data-testid"?: string
 }) => {
   const [submitting, setSubmitting] = useState(false)
@@ -87,7 +94,16 @@ const ManualTestPaymentButton = ({
       })
   }
 
+  const faltaDocumento = !documentoValido(
+    (cart?.metadata as Record<string, unknown> | null)?.cpf
+  )
+
   const handlePayment = () => {
+    if (faltaDocumento) {
+      setErrorMessage("Informe o CPF no passo 1 antes de finalizar.")
+      return
+    }
+
     setSubmitting(true)
 
     onPaymentCompleted()

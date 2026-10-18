@@ -1,4 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
+import { formatarDocumento, lerDocumento } from "@rv/contrato"
 import { mapKeys } from "lodash"
 import React, { useEffect, useMemo, useState } from "react"
 import AddressSelect from "../address-select"
@@ -24,9 +25,8 @@ import CountrySelect from "../country-select"
  *    "Complemento", e o Medusa tem os dois campos (`address_1` e `address_2`); o
  *    formulário antigo simplesmente não pedia o complemento e gravava
  *    `address_2: ""` (ver `setAddresses`). Quem entrega precisa dele.
- *  - **CPF não entrou**, embora a referência o tenha. O `StoreCartAddress` do
- *    Medusa não tem esse campo: pedi-lo e não gravá-lo seria pedir um dado à toa.
- *    Ele é assunto do cadastro de cliente, não do endereço de entrega.
+ *  - **entrou o CPF**, obrigatório: o SuperFrete não emite etiqueta sem ele, e a
+ *    cliente não pode descobrir isso depois de pagar.
  */
 const ShippingAddress = ({
   customer,
@@ -39,6 +39,9 @@ const ShippingAddress = ({
   checked: boolean
   onChange: () => void
 }) => {
+  const documentoDoCarrinho = (cart?.metadata as Record<string, unknown> | null)
+    ?.cpf
+
   const [formData, setFormData] = useState<Record<string, any>>({
     "shipping_address.first_name": cart?.shipping_address?.first_name || "",
     "shipping_address.last_name": cart?.shipping_address?.last_name || "",
@@ -50,8 +53,14 @@ const ShippingAddress = ({
     "shipping_address.country_code": cart?.shipping_address?.country_code || "",
     "shipping_address.province": cart?.shipping_address?.province || "",
     "shipping_address.phone": cart?.shipping_address?.phone || "",
+    cpf: documentoDoCarrinho ? formatarDocumento(documentoDoCarrinho) : "",
     email: cart?.email || "",
   })
+
+  const documentoLido = lerDocumento(formData.cpf)
+  const erroDoDocumento = formData.cpf && !documentoLido.valido
+    ? documentoLido.mensagem
+    : null
 
   const countriesInRegion = useMemo(
     () => cart?.region?.countries?.map((c) => c.iso_2),
@@ -170,6 +179,34 @@ const ShippingAddress = ({
             required
             data-testid="shipping-last-name-input"
           />
+        </label>
+        <label className="rv-form-field">
+          CPF
+          <input
+            name="cpf"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="000.000.000-00"
+            value={formData.cpf}
+            onChange={(e) =>
+              // Máscara a cada tecla.
+              setFormData({ ...formData, cpf: formatarDocumento(e.target.value) })
+            }
+            required
+            aria-invalid={Boolean(erroDoDocumento)}
+            aria-describedby="cpf-hint"
+            data-testid="shipping-cpf-input"
+          />
+          {erroDoDocumento ? (
+            <span className="rv-form-hint rv-form-hint-error" id="cpf-hint">
+              {erroDoDocumento}
+            </span>
+          ) : (
+            <span className="rv-form-hint" id="cpf-hint">
+              Obrigatório para emitir a etiqueta de envio.
+            </span>
+          )}
         </label>
         <label className="rv-form-field">
           Telefone

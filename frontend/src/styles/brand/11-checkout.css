@@ -578,9 +578,20 @@
   line-height: 1.6;
 }
 
-/* O aviso do meio de pagamento de teste, que só existe em desenvolvimento. Ele é
- * uma linha de texto e não um selo colorido: quem o lê é quem está desenvolvendo, e
- * não a cliente. */
+/* Desfaz a caixa alta que a dica herda do rótulo. */
+.rv-form-hint {
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.rv-form-hint-error {
+  color: var(--rv-danger);
+}
+
+/* O aviso do meio de teste: uma linha, para quem desenvolve. */
 .rv-dev-note {
   color: var(--rv-danger);
   font-size: var(--rv-text-xs);

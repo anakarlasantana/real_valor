@@ -15,6 +15,7 @@ import {
 } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "@lib/data/locale-actions"
+import { lerDocumento } from "@rv/contrato"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -278,13 +279,49 @@ export async function applyPromotions(codes: string[]) {
     .catch(medusaError)
 }
 
+export async function setDocumentoDoCarrinho(
+  documento: unknown
+): Promise<HttpTypes.StoreCart> {
+  const cartId = await getCartId()
+
+  if (!cartId) {
+    throw new Error("No existing cart found when setting the document")
+  }
+
+  const lido = lerDocumento(documento)
+
+  if (typeof documento === "string" && documento.trim() !== "" && !lido.valido) {
+    throw new Error(lido.mensagem)
+  }
+
+  const cart = await retrieveCart(cartId)
+
+  if (!cart) {
+    throw new Error("No existing cart found when setting the document")
+  }
+
+  const metadata: Record<string, unknown> = {
+    ...((cart.metadata || {}) as Record<string, unknown>),
+  }
+
+  if (lido.valido) {
+    metadata.cpf = lido.documento.numero
+    metadata.tipo_documento = lido.documento.tipo
+  } else {
+    delete metadata.cpf
+    delete metadata.tipo_documento
+  }
+
+  return updateCart({ metadata } as HttpTypes.StoreUpdateCart)
+}
+
 // TODO: Pass a POJO instead of a form entity here
 export async function setAddresses(currentState: unknown, formData: FormData) {
   try {
     if (!formData) {
       throw new Error("No form data found when setting addresses")
     }
-    const cartId = getCartId()
+    const cartId = await getCartId()
     if (!cartId) {
       throw new Error("No existing cart found when setting addresses")
     }
@@ -324,6 +361,25 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
         province: formData.get("billing_address.province"),
         phone: formData.get("billing_address.phone"),
       }
+
+    const documentoNoFormulario = formData.get("cpf")
+
+    if (documentoNoFormulario !== null) {
+      const lido = lerDocumento(documentoNoFormulario)
+
+      if (!lido.valido) {
+        throw new Error(lido.mensagem)
+      }
+
+      const cartAtual = await retrieveCart(cartId)
+
+      data.metadata = {
+        ...((cartAtual?.metadata || {}) as Record<string, unknown>),
+        cpf: lido.documento.numero,
+        tipo_documento: lido.documento.tipo,
+      }
+    }
+
     await updateCart(data)
   } catch (e: any) {
     return e.message

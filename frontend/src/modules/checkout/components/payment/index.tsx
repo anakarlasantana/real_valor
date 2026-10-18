@@ -7,6 +7,7 @@ import { Fragment, useCallback, useEffect, useState } from "react"
 
 import { initiatePaymentSession } from "@lib/data/cart"
 import { needsInlineInput, resolvePayment } from "@lib/payments"
+import { lerDocumento } from "@rv/contrato"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PaymentContainer from "@modules/checkout/components/payment-container"
 
@@ -68,6 +69,11 @@ const Payment = ({
   const paidByGiftcard =
     cart?.gift_cards && cart?.gift_cards?.length > 0 && cart?.total === 0
 
+  const documento = lerDocumento(
+    (cart?.metadata as Record<string, unknown> | null)?.cpf
+  )
+  const faltaDocumento = !documento.valido
+
   const paymentReady =
     (activeSession && cart?.shipping_methods.length !== 0) || paidByGiftcard
 
@@ -88,6 +94,13 @@ const Payment = ({
   }
 
   const handleSubmit = async () => {
+    if (faltaDocumento) {
+      setError(
+        "Informe o CPF no passo 1 — ele é obrigatório para emitir a etiqueta de envio."
+      )
+      return
+    }
+
     setIsLoading(true)
     try {
       // **Este é o ponto de desacoplamento do RV-002.** Antes era
@@ -191,6 +204,12 @@ const Payment = ({
 
           {paidByGiftcard && resumoDoPagamento}
 
+          {faltaDocumento && (
+            <p className="rv-form-error" data-testid="payment-missing-document">
+              Volte ao passo 1 e informe o CPF: sem ele não há etiqueta.
+            </p>
+          )}
+
           <ErrorMessage
             error={error}
             data-testid="payment-method-error-message"
@@ -202,6 +221,7 @@ const Payment = ({
             onClick={handleSubmit}
             disabled={
               isLoading ||
+              faltaDocumento ||
               (needsInlineInput(selectedPaymentMethod) && !cardComplete) ||
               (!selectedPaymentMethod && !paidByGiftcard)
             }

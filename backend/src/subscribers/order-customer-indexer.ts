@@ -1,14 +1,8 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { Modules, ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { lerDocumento } from "@rv/contrato"
 
-/**
- * Subscriber responsável por indexar e catalogar o cliente automaticamente
- * quando um pedido é realizado sem login (Guest Checkout).
- *
- * Utiliza Email + CPF (em metadata.cpf) + Telefone/WhatsApp para identificar
- * ou criar o perfil do cliente no Medusa v2, garantindo histórico consolidado
- * sem necessidade de autenticação/senha.
- */
+/** Cataloga o cliente no guest checkout: e-mail + CPF + telefone (o doc 15). */
 export default async function orderCustomerIndexerHandler({
   event: { data },
   container,
@@ -30,11 +24,13 @@ export default async function orderCustomerIndexerHandler({
 
     const email = order.email
     const metadata = (order.metadata || {}) as Record<string, any>
-    const cpf = metadata.cpf ? String(metadata.cpf).replace(/\D/g, "") : null
+
+    const documentoLido = lerDocumento(metadata.cpf)
+    const cpf = documentoLido.valido ? documentoLido.documento.numero : null
 
     logger.info(`[Real Valor] Cataloging customer for order ${orderId} (Email: ${email}, CPF: ${cpf || "N/A"})`)
 
-    // Se a order já tem cliente associado com conta existente, apenas atualiza metadados se necessário
+    // Já tem cliente: só completa o que falta no `metadata`.
     if (order.customer_id) {
       const existingCustomer = await customerModuleService.retrieveCustomer(order.customer_id)
       if (existingCustomer && cpf && (!existingCustomer.metadata || !existingCustomer.metadata.cpf)) {
@@ -65,7 +61,6 @@ export default async function orderCustomerIndexerHandler({
       }
     }
 
-    // Se cliente não existe, cria um novo perfil sem conta de login (has_account: false)
     if (!targetCustomer && email) {
       targetCustomer = await customerModuleService.createCustomers({
         email,
@@ -82,7 +77,6 @@ export default async function orderCustomerIndexerHandler({
       logger.info(`[Real Valor] Created new guest customer profile (${targetCustomer.id}) for ${email}`)
     }
 
-    // Se o cliente existe mas ainda não tinha CPF cadastrado nos metadados
     if (targetCustomer && cpf && (!targetCustomer.metadata || !targetCustomer.metadata.cpf)) {
       await customerModuleService.updateCustomers(targetCustomer.id, {
         metadata: {
@@ -93,7 +87,7 @@ export default async function orderCustomerIndexerHandler({
       })
     }
 
-    // Vincula a order ao customer catalogado
+    // Vincula o pedido ao cliente catalogado.
     if (targetCustomer) {
       await orderModuleService.updateOrders(orderId, {
         customer_id: targetCustomer.id,

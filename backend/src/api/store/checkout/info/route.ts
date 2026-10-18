@@ -1,11 +1,28 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { Modules } from "@medusajs/framework/utils"
+import { documentoValido } from "@rv/contrato"
 
-/**
- * Informações institucionais e de pagamento da Loja Real Valor.
- * `GET /store/checkout/info` — o `custom/` do caminho antigo era o nome de
- * exemplo do Medusa e não dizia nada sobre o recurso (ver doc 15).
- */
+/** O institucional e o de pagamento da loja.
+ * `documento_presente` vem do banco: o `metadata` do navegador pode estar velho. */
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
+  const cartId =
+    typeof req.query.cart_id === "string" ? req.query.cart_id : undefined
+
+  let documentoPresente = false
+
+  if (cartId) {
+    try {
+      const cartModuleService = req.scope.resolve(Modules.CART)
+      const cart = await cartModuleService.retrieveCart(cartId)
+
+      documentoPresente = documentoValido(
+        (cart?.metadata as Record<string, unknown> | null)?.cpf
+      )
+    } catch {
+      documentoPresente = false
+    }
+  }
+
   res.json({
     store: {
       name: "Real Valor Modas",
@@ -18,6 +35,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     checkout_policy: {
       no_login_required: true,
       accepted_documents: ["CPF"],
+      // Exigido: sem ele a etiqueta não é emitida.
+      document_required: true,
+      documento_presente: documentoPresente,
       installments: {
         max_installments: 12,
         interest_free_installments: 3,

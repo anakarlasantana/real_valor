@@ -5,20 +5,20 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 36653,
-      "comments": 8792
+      "lines": 36938,
+      "comments": 8791
     },
     "admin/src": {
       "lines": 7917,
       "comments": 1830
     },
     "backend/src": {
-      "lines": 15622,
-      "comments": 4358
+      "lines": 15893,
+      "comments": 4357
     },
     "packages/contrato/src": {
-      "lines": 2633,
-      "comments": 556
+      "lines": 2760,
+      "comments": 563
     },
     "scripts": {
       "lines": 1539,
@@ -33,7 +33,7 @@
     },
     "frontend/src/__checks__/ruler.spec.ts": {
       "comments": 68,
-      "lines": 303,
+      "lines": 382,
       "header": 5
     },
     "frontend/src/app/[countryCode]/(checkout)/layout.tsx": {
@@ -273,7 +273,7 @@
     },
     "frontend/src/lib/content/hero.ts": {
       "comments": 37,
-      "lines": 80,
+      "lines": 82,
       "header": 25
     },
     "frontend/src/lib/content/home-sections.ts": {
@@ -368,8 +368,8 @@
     },
     "frontend/src/lib/data/tracking.ts": {
       "comments": 59,
-      "lines": 131,
-      "header": 25
+      "lines": 133,
+      "header": 30
     },
     "frontend/src/lib/hooks/use-toggle-state.tsx": {
       "comments": 12,
@@ -453,7 +453,7 @@
     },
     "frontend/src/lib/ui/__tests__/media.unit.spec.ts": {
       "comments": 39,
-      "lines": 160,
+      "lines": 191,
       "header": 15
     },
     "frontend/src/lib/ui/__tests__/motion.unit.spec.ts": {
@@ -468,7 +468,7 @@
     },
     "frontend/src/lib/ui/media.ts": {
       "comments": 120,
-      "lines": 190,
+      "lines": 199,
       "header": 51
     },
     "frontend/src/lib/ui/money.ts": {
@@ -553,7 +553,7 @@
     },
     "frontend/src/modules/checkout/components/payment-button/index.tsx": {
       "comments": 27,
-      "lines": 117,
+      "lines": 133,
       "header": 5
     },
     "frontend/src/modules/checkout/components/payment-container/index.tsx": {
@@ -658,17 +658,17 @@
     },
     "frontend/src/modules/home/components/collection-highlights/index.tsx": {
       "comments": 43,
-      "lines": 147,
+      "lines": 150,
       "header": 5
     },
     "frontend/src/modules/home/components/editorial-banner/index.tsx": {
       "comments": 24,
-      "lines": 111,
+      "lines": 114,
       "header": 5
     },
     "frontend/src/modules/home/components/editorial-callout/index.tsx": {
       "comments": 33,
-      "lines": 100,
+      "lines": 103,
       "header": 5
     },
     "frontend/src/modules/home/components/featured-products/index.tsx": {
@@ -683,7 +683,7 @@
     },
     "frontend/src/modules/home/components/hero/index.tsx": {
       "comments": 109,
-      "lines": 227,
+      "lines": 230,
       "header": 5
     },
     "frontend/src/modules/home/components/instagram-grid/index.tsx": {
@@ -698,7 +698,7 @@
     },
     "frontend/src/modules/home/components/instagram-grid/tile.tsx": {
       "comments": 20,
-      "lines": 45,
+      "lines": 48,
       "header": 5
     },
     "frontend/src/modules/home/components/launches-rail/index.tsx": {
@@ -987,8 +987,8 @@
       "header": 1
     },
     "frontend/src/styles/brand/11-checkout.css": {
-      "comments": 132,
-      "lines": 672,
+      "comments": 131,
+      "lines": 683,
       "header": 1
     },
     "frontend/src/styles/brand/12-conta.css": {
@@ -1012,8 +1012,8 @@
       "header": 5
     },
     "frontend/src/styles/brand/16-home.css": {
-      "comments": 143,
-      "lines": 405,
+      "comments": 142,
+      "lines": 404,
       "header": 40
     },
     "frontend/src/styles/brand/17-vitrine-secoes.css": {
@@ -1639,11 +1639,6 @@
     "backend/src/subscribers/catalog-revalidate.ts": {
       "comments": 54,
       "lines": 96,
-      "header": 5
-    },
-    "backend/src/subscribers/order-customer-indexer.ts": {
-      "comments": 16,
-      "lines": 111,
       "header": 5
     },
     "packages/contrato/src/contract.ts": {

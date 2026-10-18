@@ -11,6 +11,7 @@
     "./contract": "./src/contract.ts",
     "./crop": "./src/crop.ts",
     "./defaults": "./src/defaults.ts",
+    "./documento": "./src/documento.ts",
     "./schema": "./src/schema.ts",
     "./payment": "./src/payment.ts"
   }
