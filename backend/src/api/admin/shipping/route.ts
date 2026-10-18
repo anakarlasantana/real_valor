@@ -21,7 +21,7 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
-import { shippingSummary } from "../../../modules/shipping/tracking"
+import { etiquetaDe, shippingSummary } from "../../../modules/shipping/tracking"
 
 /** Quantos pedidos a tela carrega. Suficiente para uma fila de envio. */
 const LIMITE = 100
@@ -66,6 +66,7 @@ export async function GET(
         .map((item: Record<string, any>) => `${item.quantity}x ${item.title}`)
         .join(", "),
       envio: shippingSummary((p.metadata ?? {}) as Record<string, unknown>),
+      etiqueta: etiquetaDe(p.metadata),
     }
   })
 

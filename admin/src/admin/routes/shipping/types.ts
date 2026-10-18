@@ -24,4 +24,10 @@ export type PedidoEnvio = {
   created_at: string
   resumo: string
   envio: ResumoEnvio
+  etiqueta?: {
+    id: string
+    situacao: string
+    trackingUrl: string
+    preco: number
+  }
 }

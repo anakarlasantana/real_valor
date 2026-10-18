@@ -45,8 +45,7 @@ const CARRIER_URL_PATTERNS: Array<{
   {
     // Correios: BR123456789BR
     match: /^[A-Z]{2}\d{9,10}BR$/i,
-    url: (code) =>
-      `https://rastreios.correios.com.br/app/instalamento/app?codigo=${code}`,
+    url: (code) => `https://rastreamento.correios.com.br/app/index.php?objetos=${code}`,
   },
   {
     // Jadlog/FedEx: 12-345678901234 (com ou sem hífen)
@@ -184,7 +183,7 @@ export function buildShippingMetadata(
   }
 }
 
-/** O que a tela precisa saber para mostrar a situação do pedido. */
+// O que a tela precisa saber para mostrar a situação do pedido.
 export function shippingSummary(metadata: Record<string, unknown> | null): {
   enviado: boolean
   carrier: string
@@ -203,5 +202,23 @@ export function shippingSummary(metadata: Record<string, unknown> | null): {
     trackingUrl: String(m.tracking_url ?? "").trim(),
     statusLabel:
       String(m.status_label ?? "").trim() || DEFAULT_STATUS_LABEL,
+  }
+}
+
+export function etiquetaDe(
+  metadata: Record<string, unknown> | null
+): { id: string; situacao: string; trackingUrl: string; preco: number } | null {
+  const m = (metadata ?? {}) as Record<string, unknown>
+  const id = String(m.superfrete_id ?? "").trim()
+
+  if (!id) {
+    return null
+  }
+
+  return {
+    id,
+    situacao: String(m.status_label ?? "").trim(),
+    trackingUrl: String(m.tracking_url ?? "").trim(),
+    preco: Number(m.superfrete_preco) || 0,
   }
 }

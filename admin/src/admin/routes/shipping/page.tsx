@@ -39,6 +39,7 @@ import {
   rotuloDaFila,
   type EstadoEnvio,
 } from "./envio-form"
+import { acaoDoPedido, etiquetaDoPedido, reais } from "./etiqueta-fila"
 import type { PedidoEnvio } from "./types"
 
 /** Um pedido aberto para edição, e o rascunho do formulário dele. */
@@ -54,6 +55,29 @@ function ShippingPage() {
   const [erro, setErro] = useState<string | null>(null)
   const [aberto, setAberto] = useState<Aberto | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [saldo, setSaldo] = useState<number | null>(null)
+  const [saldoErro, setSaldoErro] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState<string | null>(null)
+
+  const carregarSaldo = useCallback(async () => {
+    try {
+      const res = await fetch(apiUrl("/admin/shipping/saldo"), {
+        credentials: "include",
+      })
+      const json = await readJson(res)
+
+      if (!res.ok) {
+        setSaldoErro(json.message ?? "Não foi possível ler a carteira SuperFrete.")
+        setSaldo(null)
+        return
+      }
+
+      setSaldo(Number(json.saldo) || 0)
+      setSaldoErro(null)
+    } catch {
+      setSaldoErro("Não foi possível falar com o servidor.")
+    }
+  }, [])
 
   const carregar = useCallback(async () => {
     setCarregando(true)
@@ -86,7 +110,84 @@ function ShippingPage() {
 
   useEffect(() => {
     void carregar()
-  }, [carregar])
+    void carregarSaldo()
+  }, [carregar, carregarSaldo])
+
+  const gerar = async (pedido: PedidoEnvio) => {
+    setOcupado(pedido.id)
+
+    try {
+      const res = await fetch(apiUrl(`/admin/shipping/${pedido.id}/etiqueta`), {
+        method: "POST",
+        credentials: "include",
+      })
+      const json = await readJson(res)
+
+      if (!res.ok) {
+        toast.error(json.message ?? "Não foi possível gerar a etiqueta.")
+        return
+      }
+
+      toast.success(`Etiqueta gerada (${reais(Number(json.preco) || 0)}).`)
+      await Promise.all([carregar(), carregarSaldo()])
+    } catch {
+      toast.error("Não foi possível falar com o servidor.")
+    } finally {
+      setOcupado(null)
+    }
+  }
+
+  const imprimir = async (pedido: PedidoEnvio) => {
+    setOcupado(pedido.id)
+
+    try {
+      const res = await fetch(apiUrl(`/admin/shipping/${pedido.id}/etiqueta/pdf`), {
+        credentials: "include",
+      })
+      const json = await readJson(res)
+
+      if (!res.ok || !json.url) {
+        toast.error(json.message ?? "Não foi possível gerar o PDF.")
+        return
+      }
+
+      window.open(String(json.url), "_blank", "noopener")
+    } catch {
+      toast.error("Não foi possível falar com o servidor.")
+    } finally {
+      setOcupado(null)
+    }
+  }
+
+  const cancelarEtiqueta = async (pedido: PedidoEnvio) => {
+    if (!window.confirm("Cancelar a etiqueta? O valor volta para a carteira SuperFrete.")) {
+      return
+    }
+
+    setOcupado(pedido.id)
+
+    try {
+      const res = await fetch(apiUrl(`/admin/shipping/${pedido.id}/etiqueta/cancelar`), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo: "Cancelado pelo lojista" }),
+      })
+      const json = await readJson(res)
+
+      if (!res.ok) {
+        toast.error(json.message ?? "Não foi possível cancelar a etiqueta.")
+        return
+      }
+
+      toast.success(json.estorno ?? "Etiqueta cancelada.")
+      await Promise.all([carregar(), carregarSaldo()])
+    } catch {
+      toast.error("Não foi possível falar com o servidor.")
+    } finally {
+      setOcupado(null)
+    }
+  }
 
   const pendentes = useMemo(
     () => pedidos.filter((p) => !p.envio.enviado),
@@ -159,6 +260,20 @@ function ShippingPage() {
         gravado aqui.
       </Text>
 
+      <div className="flex items-center gap-3 py-3">
+        <Text size="small" weight="plus">
+          Carteira SuperFrete: {saldo === null ? "—" : reais(saldo)}
+        </Text>
+        {saldoErro && (
+          <Text size="small" color="fg-danger">
+            {saldoErro}
+          </Text>
+        )}
+        <Button variant="transparent" size="small" onClick={() => void carregarSaldo()}>
+          Atualizar saldo
+        </Button>
+      </div>
+
       {erro && (
         <Text size="small" color="fg-danger">
           {erro}
@@ -181,6 +296,10 @@ function ShippingPage() {
               key={pedido.id}
               pedido={pedido}
               onAbrir={() => abrir(pedido)}
+              onGerar={() => gerar(pedido)}
+              onImprimir={() => imprimir(pedido)}
+              onCancelar={() => cancelarEtiqueta(pedido)}
+              ocupado={ocupado === pedido.id}
             />
           ))}
         </>
@@ -194,6 +313,10 @@ function ShippingPage() {
               key={pedido.id}
               pedido={pedido}
               onAbrir={() => abrir(pedido)}
+              onGerar={() => gerar(pedido)}
+              onImprimir={() => imprimir(pedido)}
+              onCancelar={() => cancelarEtiqueta(pedido)}
+              ocupado={ocupado === pedido.id}
             />
           ))}
         </>
@@ -214,11 +337,21 @@ function ShippingPage() {
 function Linha({
   pedido,
   onAbrir,
+  onGerar,
+  onImprimir,
+  onCancelar,
+  ocupado,
 }: {
   pedido: PedidoEnvio
   onAbrir: () => void
+  onGerar: () => void
+  onImprimir: () => void
+  onCancelar: () => void
+  ocupado: boolean
 }) {
   const { texto, cor } = rotuloDaFila(pedido.envio)
+  const etiqueta = etiquetaDoPedido(pedido)
+  const { acao, rotulo, motivo } = acaoDoPedido(pedido)
 
   return (
     <Container className="flex items-center justify-between gap-4 py-2">
@@ -227,14 +360,41 @@ function Linha({
           #{pedido.display_id} — {pedido.resumo || "Sem itens"}
         </Text>
         <Text size="small" color="fg-subtle">
-          {pedido.envio.enviado
-            ? `${pedido.envio.carrier} · ${pedido.envio.trackingNumber}`
-            : pedido.email}
+          {etiqueta
+            ? `SuperFrete ${etiqueta.id} · ${etiqueta.situacao}${
+                etiqueta.preco ? ` · ${reais(etiqueta.preco)}` : ""
+              }`
+            : pedido.envio.enviado
+              ? `${pedido.envio.carrier} · ${pedido.envio.trackingNumber}`
+              : pedido.email}
         </Text>
+        {motivo && (
+          <Text size="small" color="fg-subtle">
+            {motivo}
+          </Text>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
         <Badge color={cor}>{texto}</Badge>
+
+        {acao === "gerar" && (
+          <Button size="small" onClick={onGerar} isLoading={ocupado} disabled={ocupado}>
+            {rotulo}
+          </Button>
+        )}
+
+        {acao === "imprimir" && (
+          <>
+            <Button size="small" onClick={onImprimir} isLoading={ocupado} disabled={ocupado}>
+              {rotulo}
+            </Button>
+            <Button size="small" variant="danger" onClick={onCancelar} disabled={ocupado}>
+              Cancelar
+            </Button>
+          </>
+        )}
+
         <Button variant="secondary" size="small" onClick={onAbrir}>
           {pedido.envio.enviado ? "Editar" : "Registrar envio"}
         </Button>
