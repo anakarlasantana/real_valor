@@ -209,6 +209,11 @@ services:
       # alheio sabendo um `cart_id`. Vazio = a rota responde 404 indistinto, e a
       # pagina de confirmacao mostra "aguardando" em vez do pedido.
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
+      # SuperFrete: cotacao e etiqueta. Vazio = a cotacao falha com recado claro
+      # e o checkout mostra "nao foi possivel calcular" — nunca um preco inventado.
+      SUPERFRETE_TOKEN: ${SUPERFRETE_TOKEN:-}
+      SUPERFRETE_AMBIENTE: ${SUPERFRETE_AMBIENTE:-sandbox}
+      SUPERFRETE_WEBHOOK_SECRET: ${SUPERFRETE_WEBHOOK_SECRET:-}
     volumes:
       # Uploads do painel (`@medusajs/file-local`, ver medusa-config.ts): o que
       # o CRM envia fica no volume, e nao na camada de escrita do container —

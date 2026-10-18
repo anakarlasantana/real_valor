@@ -14,18 +14,10 @@
  * `ModuleProvider` não é um módulo — `defaultExport.service` é `undefined` e o
  * `defineConfig` estoura em `defaultExport.service.prototype`.
  *
- * O segundo perigo, mais silencioso: ao declarar o módulo, a lista
- * `providers` precisa vir **completa**. O loader do FULFILLMENT sincroniza o
- * banco a cada boot e **desabilita** (`providersToDisable`) tudo que está no
- * banco e fora da lista. Esquecer o `manual` desligaria as PAC/SEDEX do seed
- * **sem dar erro nenhum** — a loja abriria sem uma única opção de frete. Um
- * erro que não aparece em log nenhum é o pior tipo de erro, e por isso ele
- * também precisa de teste.
+ * O segundo perigo: a lista `providers` precisa vir **completa** — o loader
+ * desabilita no banco (`providersToDisable`) tudo que está fora dela, sem erro.
  *
- * Por que os testes não cobriram: unitário testa a regra isolada e o typecheck
- * testa os tipos. O formato do `defineConfig` é um detalhe de runtime do
- * framework, e o único jeito de pegá-lo é **rodando o `defineConfig`** — o que
- * este arquivo faz.
+ * O único jeito de pegar é **rodando o `defineConfig`** — o que este arquivo faz.
  */
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -84,17 +76,17 @@ describe("o registro do provider de frete", () => {
     expect(item).toContain('id: "manual"')
   })
 
-  it("registra a tabela como provider do fulfillment, com id", () => {
-    // O `id` da lista é metade do identificador persistido: o
-    // `getRegistrationIdentifier` monta `` `${identifier}_${id}` ``, e é esse
-    // o valor que o Admin mostra no seletor e que a shipping option referencia.
-    // Sem `id`, o provider fica com identificador `tabela_undefined`.
+  it("registra o provider do SuperFrete como provider do fulfillment, com id", () => {
+    // `identifier_id` é o que a shipping option referencia (`superfrete_superfrete`).
     const item = fulfillmentItem()
 
-    expect(item).toContain(
-      'resolve: "./src/modules/fulfillment/tabela"'
-    )
-    expect(item).toContain('id: "tabela"')
+    expect(item).toContain('resolve: "./src/modules/fulfillment/superfrete"')
+    expect(item).toContain('id: "superfrete"')
+  })
+
+  it("o provider `tabela` saiu da lista", () => {
+    // Números fictícios, nunca teve opção criada: o loader o desabilita no banco.
+    expect(fulfillmentItem()).not.toContain("fulfillment/tabela")
   })
 
   it("mantém os outros módulos que a loja já tinha", () => {

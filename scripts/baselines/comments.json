@@ -13,7 +13,7 @@
       "comments": 1832
     },
     "backend/src": {
-      "lines": 16674,
+      "lines": 17372,
       "comments": 4377
     },
     "packages/contrato/src": {
@@ -1467,9 +1467,9 @@
       "header": 19
     },
     "backend/src/modules/fulfillment/tabela/__tests__/registro.unit.spec.ts": {
-      "comments": 67,
-      "lines": 161,
-      "header": 29
+      "comments": 57,
+      "lines": 153,
+      "header": 21
     },
     "backend/src/modules/fulfillment/tabela/__tests__/tabela.unit.spec.ts": {
       "comments": 48,

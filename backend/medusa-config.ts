@@ -210,8 +210,8 @@ module.exports = defineConfig({
             id: "manual",
           },
           {
-            resolve: "./src/modules/fulfillment/tabela",
-            id: "tabela",
+            resolve: "./src/modules/fulfillment/superfrete",
+            id: "superfrete",
           },
         ],
       },

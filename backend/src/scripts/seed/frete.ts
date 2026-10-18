@@ -11,12 +11,18 @@ import {
 
 import { criarVinculo } from "./vinculo";
 
-/** Passo 6: o perfil de envio, as opções PAC e SEDEX e o vínculo do local. */
+
+const OPCOES = [
+  { name: "PAC", servico: "PAC", label: "Econômico", description: "Entrega econômica dos Correios." },
+  { name: "SEDEX", servico: "SEDEX", label: "Expresso", description: "Entrega expressa dos Correios." },
+  { name: "Mini Envios", servico: "MINI", label: "Mini Envios", description: "Encomenda pequena, com prazo maior." },
+] as const;
+
+/** Passo 6b: perfil de envio, opções do SuperFrete e vínculos do local. */
 export async function garantirFrete(
   container: ExecArgs["container"],
   {
     local,
-    regiao,
     canalOnline,
   }: { local: string; regiao: string; canalOnline: string }
 ): Promise<void> {
@@ -24,7 +30,6 @@ export async function garantirFrete(
   const query = container.resolve(ContainerRegistrationKeys.QUERY);
   const fulfillmentModuleService = container.resolve(Modules.FULFILLMENT);
 
-  // 6. Opções de Frete (PAC e SEDEX)
   logger.info("[Real Valor] Configurando perfis e opções de envio...");
   const shippingProfiles = await fulfillmentModuleService.listShippingProfiles({
     type: "default",
@@ -35,167 +40,120 @@ export async function garantirFrete(
     const { result: shippingProfileResult } =
       await createShippingProfilesWorkflow(container).run({
         input: {
-          data: [
-            {
-              name: "Perfil Padrão de Vestuário",
-              type: "default",
-            },
-          ],
+          data: [{ name: "Perfil Padrão de Vestuário", type: "default" }],
         },
       });
     shippingProfile = shippingProfileResult[0];
   }
 
-  // Idempotente pelo mesmo motivo: `createFulfillmentSets` falha com
-  // "Fulfillment set with name: ..., already exists" numa base já semeada. O
-  // `service_zones.id` é usado pelas opções de frete abaixo, então a busca
-  // precisa trazer as zonas, não só o id.
+  // Idempotente: `createFulfillmentSets` falha numa base já semeada.
   const { data: existingFulfillmentSets } = await query.graph({
     entity: "fulfillment_set",
     fields: ["id", "name", "service_zones.id"],
     filters: { name: "Envio Nacional Brasil" },
-  })
+  });
 
-  // Tipo mínimo: o `id` e o `service_zones[].id` das opções de frete.
   let fulfillmentSet:
     | { id: string; service_zones: { id: string }[] }
-    | undefined = existingFulfillmentSets?.[0]
+    | undefined = existingFulfillmentSets?.[0];
 
   if (!fulfillmentSet) {
-    fulfillmentSet =
-      await fulfillmentModuleService.createFulfillmentSets({
-        name: "Envio Nacional Brasil",
-        type: "shipping",
-        service_zones: [
-          {
-            name: "Todo o Brasil",
-            geo_zones: [
-              {
-                country_code: "br",
-                type: "country",
-              },
-            ],
-          },
-        ],
-      })
+    fulfillmentSet = await fulfillmentModuleService.createFulfillmentSets({
+      name: "Envio Nacional Brasil",
+      type: "shipping",
+      service_zones: [
+        { name: "Todo o Brasil", geo_zones: [{ country_code: "br", type: "country" }] },
+      ],
+    });
   }
 
   await criarVinculo(container, {
-    [Modules.STOCK_LOCATION]: {
-      stock_location_id: local,
-    },
-    [Modules.FULFILLMENT]: {
-      fulfillment_set_id: fulfillmentSet.id,
-    },
+    [Modules.STOCK_LOCATION]: { stock_location_id: local },
+    [Modules.FULFILLMENT]: { fulfillment_set_id: fulfillmentSet.id },
   });
 
-  // Idempotente, pelo mesmo motivo dos produtos: `createShippingOptionsWorkflow`
-  // não falha numa base já semeada — ele **duplica**. Cada `make seed` somava
-  // mais um PAC e mais um SEDEX, e o cliente via a lista de frete da loja com
-  // "Entrega Econômica (PAC)" repetida sete vezes, indistinguível, com o mesmo
-  // preço. Não dá erro, não quebra o checkout, e não aparece em nenhum log:
-  // a loja simplesmente mostra a mesma opção várias vezes.
-  //
-  // A chave é o par (nome, perfil de envio) do serviço de fulfillment, e não o
-  // id — o id muda a cada execução, então comparar por ele não encontraria a
-  // opção da rodada anterior.
+
+  // Sem o vínculo local ↔ provider, o Medusa recusa criar a opção.
+  const { data: locais } = await query.graph({
+    entity: "stock_location",
+    fields: ["id", "fulfillment_providers.id"],
+    filters: { id: local },
+  });
+
+  const habilitados = new Set(
+    (locais?.[0]?.fulfillment_providers ?? []).map((provider: any) =>
+      String(provider?.id)
+    )
+  );
+
+  for (const providerId of ["manual_manual", "superfrete_superfrete"]) {
+    if (!habilitados.has(providerId)) {
+      await criarVinculo(container, {
+        [Modules.STOCK_LOCATION]: { stock_location_id: local },
+        [Modules.FULFILLMENT]: { fulfillment_provider_id: providerId },
+      });
+    }
+  }
+
+  // `createShippingOptionsWorkflow` DUPLICA numa base já semeada.
   const { data: existingShippingOptions } = await query.graph({
     entity: "shipping_option",
-    fields: ["id", "name", "shipping_profile_id"],
+    fields: ["id", "name", "provider_id", "price_type"],
     filters: { shipping_profile_id: shippingProfile.id },
-  })
+  });
 
-  const opcoesExistentes = new Set(
-    (existingShippingOptions ?? []).map((o) => o.name)
-  )
+  const opcoesExistentes = existingShippingOptions ?? [];
+  const nomes = new Set(opcoesExistentes.map((o) => o.name));
+  const faltando = OPCOES.filter((opcao) => !nomes.has(opcao.name));
 
-  if (
-    opcoesExistentes.has("Entrega Econômica (PAC)") &&
-    opcoesExistentes.has("Entrega Expressa (SEDEX)")
-  ) {
-    logger.info(
-      "[Real Valor] Opcoes de envio ja existem (PAC e SEDEX) — pulando."
-    )
+  if (faltando.length === 0) {
+    logger.info("[Real Valor] Opções de envio já existem — pulando.");
   } else {
     await createShippingOptionsWorkflow(container).run({
-      input: [
-        {
-          name: "Entrega Econômica (PAC)",
-          price_type: "flat",
-          provider_id: "manual_manual",
-          service_zone_id: fulfillmentSet.service_zones[0].id,
-          shipping_profile_id: shippingProfile.id,
-          type: {
-            label: "Econômico",
-            description: "Prazo estimado de 5 a 8 dias úteis.",
-            code: "economico_pac",
-          },
-          prices: [
-            {
-              currency_code: "brl",
-              amount: 19.9,
-            },
-            {
-              region_id: regiao,
-              amount: 19.9,
-            },
-          ],
-          rules: [
-            {
-              attribute: "enabled_in_store",
-              value: "true",
-              operator: "eq",
-            },
-            {
-              attribute: "is_return",
-              value: "false",
-              operator: "eq",
-            },
-          ],
+      input: faltando.map((opcao) => ({
+        name: opcao.name,
+        // `calculated` e sem `prices`: o valor vem do SuperFrete.
+        price_type: "calculated" as const,
+        provider_id: "superfrete_superfrete",
+        service_zone_id: fulfillmentSet!.service_zones[0].id,
+        shipping_profile_id: shippingProfile!.id,
+        // Vai no `data`: é ele que chega ao `calculatePrice` como `optionData`.
+        data: { servico: opcao.servico },
+        type: {
+          label: opcao.label,
+          description: opcao.description,
+          code: `correios_${opcao.servico.toLowerCase()}`,
         },
-        {
-          name: "Entrega Expressa (SEDEX)",
-          price_type: "flat",
-          provider_id: "manual_manual",
-          service_zone_id: fulfillmentSet.service_zones[0].id,
-          shipping_profile_id: shippingProfile.id,
-          type: {
-            label: "Expresso",
-            description: "Prazo estimado de 1 a 3 dias úteis.",
-            code: "expresso_sedex",
-          },
-          prices: [
-            {
-              currency_code: "brl",
-              amount: 34.9,
-            },
-            {
-              region_id: regiao,
-              amount: 34.9,
-            },
-          ],
-          rules: [
-            {
-              attribute: "enabled_in_store",
-              value: "true",
-              operator: "eq",
-            },
-            {
-              attribute: "is_return",
-              value: "false",
-              operator: "eq",
-            },
-          ],
-        },
+        rules: [
+          { attribute: "enabled_in_store", value: "true", operator: "eq" as const },
+          { attribute: "is_return", value: "false", operator: "eq" as const },
+        ],
+      })),
+    });
+
+    logger.info(`[Real Valor] ${faltando.length} opção(ões) de envio criada(s).`);
+  }
+
+  // Desativar, e não apagar: o histórico de pedidos aponta para elas.
+  const antigas = opcoesExistentes.filter(
+    (opcao) => opcao.provider_id === "manual_manual" && opcao.price_type === "flat"
+  );
+
+  for (const antiga of antigas) {
+    await fulfillmentModuleService.updateShippingOptions(antiga.id, {
+      rules: [
+        { attribute: "enabled_in_store", value: "false", operator: "eq" as const },
       ],
-    })
+    } as any);
+  }
+
+  if (antigas.length > 0) {
+    logger.info(
+      `[Real Valor] ${antigas.length} opção(ões) de preço fixo desativada(s).`
+    );
   }
 
   await linkSalesChannelsToStockLocationWorkflow(container).run({
-    input: {
-      id: local,
-      add: [canalOnline],
-    },
+    input: { id: local, add: [canalOnline] },
   });
 }
-
