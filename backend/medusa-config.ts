@@ -272,5 +272,11 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/content",
     },
+    // As caixas de envio (peso e medidas): cotação no checkout e etiqueta. O
+    // provider do SuperFrete resolve este módulo pelo container, inclusive fora
+    // de uma requisição. Ver src/modules/fulfillment/pacotes.
+    {
+      resolve: "./src/modules/fulfillment/pacotes",
+    },
   ]
 })

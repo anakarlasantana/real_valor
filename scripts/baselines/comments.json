@@ -9,12 +9,12 @@
       "comments": 8791
     },
     "admin/src": {
-      "lines": 7917,
-      "comments": 1830
+      "lines": 8517,
+      "comments": 1832
     },
     "backend/src": {
-      "lines": 15893,
-      "comments": 4357
+      "lines": 16674,
+      "comments": 4377
     },
     "packages/contrato/src": {
       "lines": 2760,
@@ -1628,7 +1628,7 @@
     },
     "backend/src/scripts/seed.ts": {
       "comments": 22,
-      "lines": 53,
+      "lines": 55,
       "header": 4
     },
     "backend/src/subscribers/__tests__/catalog-revalidate.unit.spec.ts": {

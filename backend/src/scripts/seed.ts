@@ -10,6 +10,7 @@ import { configurarCanais } from "./seed/canais";
 import { imprimirChaveDoStorefront } from "./seed/chave";
 import { garantirEstoque } from "./seed/estoque";
 import { garantirFrete } from "./seed/frete";
+import { garantirPacotes } from "./seed/pacotes";
 import { garantirRegiao } from "./seed/regiao";
 
 /**
@@ -17,9 +18,9 @@ import { garantirRegiao } from "./seed/regiao";
  * canais de venda, moeda e metadados, região Brasil, região fiscal (sem as duas
  * a Store API não calcula preço nem frete — o storefront responde 500), centro
  * de distribuição e vínculo ao canal (todo nível de estoque é o par item ×
- * local), frete e a publishable key de **um só** canal, impressa no fim para o
- * `.env` do storefront. O que atravessa de um passo ao outro é o id do anterior,
- * e os vínculos toleram o que já existe (`criarVinculo`, em `seed/`).
+ * local), as caixas de envio, o frete e a publishable key de **um só** canal,
+ * impressa no fim para o `.env` do storefront. O que atravessa de um passo ao
+ * outro é o id do anterior, e os vínculos toleram o que já existe.
  *
  * **Nenhuma peça, categoria ou nível de estoque sai daqui**: o catálogo é do
  * lojista, pelo painel.
@@ -35,6 +36,7 @@ export default async function seedStoreBootstrap({ container }: ExecArgs) {
   const { regiao } = await garantirRegiao(container);
   const { local } = await garantirEstoque(container);
 
+  await garantirPacotes(container);
   await garantirFrete(container, { local, regiao, canalOnline });
   await imprimirChaveDoStorefront(container, { canalOnline });
 
