@@ -1,14 +1,19 @@
 import {
   corpoDosServicos,
+  curlDaCotacao,
   escolhasDosServicos,
   motivoDaAusencia,
   nadaAtivo,
+  origemDaCotacao,
   prazoDaCotacao,
   problemaDaCotacao,
   reaisDaCotacao,
   rotuloDaCotacao,
+  servicosDoCorpo,
   servicosDoTeste,
+  tempoDaCotacao,
   testaveis,
+  type RequisicaoDaCotacao,
   type ServicoDaTela,
 } from "../servicos-form"
 
@@ -161,5 +166,106 @@ describe("rotuloDaCotacao", () => {
     expect(
       rotuloDaCotacao({ servico: "PAC", nome: "", preco: 1, prazo: 1 }),
     ).toBe("PAC")
+  })
+})
+
+const requisicao: RequisicaoDaCotacao = {
+  metodo: "POST",
+  url: "https://sandbox.superfrete.com/api/v0/calculator",
+  caminho: "/api/v0/calculator",
+  cabecalhos: {
+    Authorization: "Bearer ••••••••",
+    "User-Agent": "RealValor v1.0.0 (userealvalor@gmail.com)",
+    accept: "application/json",
+    "content-type": "application/json",
+  },
+  corpo: {
+    from: { postal_code: "01310100" },
+    to: { postal_code: "20040020" },
+    services: "1,2,99",
+    options: {
+      own_hand: false,
+      receipt: false,
+      insurance_value: 0,
+      use_insurance_value: false,
+    },
+    package: { height: 10, width: 20, length: 30, weight: 1 },
+  },
+}
+
+describe("auditoria da cotação", () => {
+  const AP = String.fromCharCode(39)
+  const BS = String.fromCharCode(92)
+  it("ordem dos serviços vira nome, e o desconhecido mantém o código", () => {
+    expect(servicosDoCorpo(requisicao.corpo, servicos)).toBe(
+      "PAC, SEDEX, código 99",
+    )
+  })
+
+  it("a origem fala português e não inventa valor", () => {
+    expect(origemDaCotacao("rede")).toBe("resposta da API")
+    expect(origemDaCotacao("redis")).toBe("cache do Redis")
+    expect(origemDaCotacao("memoria")).toBe("cache em memória")
+    expect(origemDaCotacao(undefined)).toBe("origem não informada")
+  })
+
+  it("tempo curto em ms, longo em segundos", () => {
+    expect(tempoDaCotacao(0)).toBe("0 ms")
+    expect(tempoDaCotacao(180)).toBe("180 ms")
+    expect(tempoDaCotacao(1200)).toBe("1,2 s")
+    expect(tempoDaCotacao(NaN)).toBe("0 ms")
+  })
+
+  it("o cURL leva método, URL, cabeçalhos e o corpo exato", () => {
+    const curl = curlDaCotacao(requisicao)
+
+    expect(curl).toContain("curl -X POST 'https://sandbox.superfrete.com/api/v0/calculator'")
+    expect(curl).toContain("-H 'content-type: application/json'")
+    expect(curl).toContain('--data-raw \'{\n  "from"')
+    expect(curl).toContain('"services": "1,2,99"')
+  })
+
+  it("o token nunca entra no cURL: sai como variável de ambiente", () => {
+    const curl = curlDaCotacao(requisicao)
+
+    expect(curl).toContain("-H 'Authorization: Bearer $SUPERFRETE_TOKEN'")
+    expect(curl).not.toContain("••••••••")
+  })
+
+  it("aspas simples no cabeçalho não quebram o comando", () => {
+    const comAspas: RequisicaoDaCotacao = {
+      ...requisicao,
+      cabecalhos: { ...requisicao.cabecalhos, "User-Agent": "RealValor's app" },
+    }
+    const curl = curlDaCotacao(comAspas)
+
+    // A sequência shell é: fecha a aspa, escapa a aspa, reabre a aspa.
+    // A aspa entra escapada: fecha, contrabarra, aspa, aspa.
+    expect(curl).toContain("-H " + AP + "User-Agent: RealValor" + AP + BS + AP + AP + "s app" + AP)
+
+  })
+})
+
+/**
+ * O que "Copiar como cURL" entrega: cada argumento numa linha, terminada em
+ * contrabarra, para colar no terminal de uma vez.
+ */
+describe("saída do cURL", () => {
+  const BS = String.fromCharCode(92)
+  const NL = String.fromCharCode(10)
+
+  it("cada argumento do comando termina em contrabarra, antes do corpo", () => {
+    const linhas = curlDaCotacao(requisicao).split(NL)
+    const corpo = linhas.findIndex((linha) => linha.includes("--data-raw"))
+
+    // URL + 4 cabeçalhos vêm antes do corpo.
+    expect(corpo).toBe(5)
+
+    for (const linha of linhas.slice(0, corpo)) {
+      expect(linha.endsWith(" " + BS)).toBe(true)
+    }
+
+    expect(linhas[0]).toContain("calculator")
+    expect(linhas[0].endsWith(" " + BS)).toBe(true)
   })
 })

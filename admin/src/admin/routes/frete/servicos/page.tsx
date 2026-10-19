@@ -16,15 +16,20 @@ import { useCallback, useEffect, useState } from "react"
 import { apiUrl, readJson } from "../../../lib/api-url"
 import {
   corpoDosServicos,
+  curlDaCotacao,
   escolhasDosServicos,
   motivoDaAusencia,
   nadaAtivo,
+  origemDaCotacao,
   prazoDaCotacao,
   problemaDaCotacao,
   reaisDaCotacao,
   rotuloDaCotacao,
+  servicosDoCorpo,
   servicosDoTeste,
+  tempoDaCotacao,
   testaveis,
+  type AuditoriaDaCotacao,
   type CotacaoDaTela,
   type ServicoDaTela,
 } from "./lib/servicos-form"
@@ -47,6 +52,8 @@ function ServicosPage() {
   const [cotacoes, setCotacoes] = useState<CotacaoDaTela[] | null>(null)
   const [semCotacao, setSemCotacao] = useState<string[]>([])
   const [testando, setTestando] = useState(false)
+  // O que saiu para a API: fica visível mesmo quando a cotação falha.
+  const [auditoria, setAuditoria] = useState<AuditoriaDaCotacao | null>(null)
 
   const carregar = useCallback(async () => {
     setCarregando(true)
@@ -149,6 +156,13 @@ function ServicosPage() {
         body: JSON.stringify({ cep, todos: true }),
       })
       const json = await readJson(res)
+
+      // Mesmo no erro: a requisição é o que explica o erro.
+      setAuditoria({
+        requisicao: json.requisicao,
+        latenciaMs: json.latenciaMs,
+        origem: json.origem ?? "rede",
+      })
 
       if (!res.ok) {
         setCotacoes(null)
@@ -295,6 +309,88 @@ function ServicosPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {auditoria?.requisicao && (
+          <details className="border-ui-border-base mt-4 rounded-md border">
+            <summary className="flex cursor-pointer items-center justify-between px-4 py-2">
+              <Text size="small" weight="plus">
+                Requisição enviada — {auditoria.requisicao.metodo}{" "}
+                {auditoria.requisicao.caminho}
+              </Text>
+              <Text size="small" className="text-ui-fg-subtle">
+                {tempoDaCotacao(auditoria.latenciaMs ?? 0)} ·{" "}
+                {origemDaCotacao(auditoria.origem)}
+              </Text>
+            </summary>
+
+            <div className="flex flex-col gap-3 border-t px-4 py-4">
+              <div>
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  URL
+                </Text>
+                <Text size="small" className="break-all font-mono">
+                  {auditoria.requisicao.url}
+                </Text>
+              </div>
+
+              <div>
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  Resumo
+                </Text>
+                <Text size="small">
+                  {servicosDoCorpo(auditoria.requisicao.corpo, servicos)} ·{" "}
+                  {auditoria.requisicao.corpo.package.weight} kg ·{" "}
+                  {auditoria.requisicao.corpo.package.height}×
+                  {auditoria.requisicao.corpo.package.width}×
+                  {auditoria.requisicao.corpo.package.length} cm
+                </Text>
+              </div>
+
+              <div>
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  Cabeçalhos (token mascarado)
+                </Text>
+                <pre className="text-ui-fg-subtle mt-1 overflow-x-auto text-xs">
+                  {Object.entries(auditoria.requisicao.cabecalhos)
+                    .map(([nome, valor]) => `${nome}: ${valor}`)
+                    .join("\n")}
+                </pre>
+              </div>
+
+              <div>
+                <Text size="xsmall" className="text-ui-fg-subtle">
+                  Corpo
+                </Text>
+                <pre className="mt-1 overflow-x-auto rounded-md bg-ui-bg-subtle p-3 text-xs">
+                  {JSON.stringify(auditoria.requisicao.corpo, null, 2)}
+                </pre>
+              </div>
+
+              <div>
+                <Button
+                  size="small"
+                  variant="secondary"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        curlDaCotacao(auditoria.requisicao!),
+                      )
+                      toast.success(
+                        "cURL copiado. O token entra por $SUPERFRETE_TOKEN.",
+                      )
+                    } catch {
+                      toast.error(
+                        "O navegador não deixou copiar. Selecione o corpo acima.",
+                      )
+                    }
+                  }}
+                >
+                  Copiar como cURL
+                </Button>
+              </div>
+            </div>
+          </details>
         )}
       </div>
     </Container>

@@ -60,6 +60,9 @@ module.exports = {
       {
         jsc: {
           parser: { syntax: "typescript", tsx: true, decorators: true },
+          /* Alvo moderno igual ao do `tsc`/Vite do painel: sem ele o SWC usa o
+           * default e o output diverge do que roda no navegador. */
+          target: "es2022",
         },
       },
     ],
