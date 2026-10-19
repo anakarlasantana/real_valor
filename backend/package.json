@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@medusajs/admin-sdk": "2.18.0",
+    "@medusajs/cache-redis": "2.18.0",
     "@medusajs/cli": "2.18.0",
     "@medusajs/file-local": "2.18.0",
     "@medusajs/framework": "2.18.0",

@@ -14775,6 +14775,7 @@ __metadata:
   resolution: "real-valor-backend@workspace:backend"
   dependencies:
     "@medusajs/admin-sdk": "npm:2.18.0"
+    "@medusajs/cache-redis": "npm:2.18.0"
     "@medusajs/cli": "npm:2.18.0"
     "@medusajs/file-local": "npm:2.18.0"
     "@medusajs/framework": "npm:2.18.0"

@@ -143,6 +143,21 @@ const notificationProviders =
         },
       ]
 
+/**
+ * O cache do Medusa (a L2 da cotação de frete).
+ *
+ * `@medusajs/medusa/cache-redis` e `@medusajs/medusa/cache-inmemory` são
+ * **módulos** (não providers), então entram direto na lista `modules`. O
+ * `undefined` some na resolução do `defineConfig`, por isso o filtro no fim —
+ * sem Redis, a escolha é o de memória, que não tem `options` a passar.
+ */
+const cacheModule = process.env.REDIS_URL
+  ? {
+      resolve: "@medusajs/medusa/cache-redis",
+      options: { redisUrl: process.env.REDIS_URL },
+    }
+  : { resolve: "@medusajs/medusa/cache-inmemory" }
+
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
@@ -351,5 +366,13 @@ module.exports = defineConfig({
         providers: notificationProviders,
       },
     },
+    // **Cache (L2 da cotação).** O `Modules.CACHE` não vem do `redisUrl`: aquele
+    // só liga o event bus e o workflow engine. Sem este item, o cache de frete
+    // fica só na memória de cada processo — perdido no restart e diferente entre
+    // workers (ver `servico.ts`).
+    //
+    // Com `REDIS_URL`, o cache é o Redis que já existe no Compose; sem ele, o do
+    // próprio Medusa (memória), para o `make dev`/CI não depender de Redis.
+    cacheModule,
   ]
 })
