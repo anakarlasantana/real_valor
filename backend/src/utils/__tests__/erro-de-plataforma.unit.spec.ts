@@ -44,7 +44,7 @@ describe("lerDetalhe", () => {
 })
 
 describe("mensagemDe", () => {
-  it("põe o motivo da plataforma À FRENTE da dica, no 401", () => {
+  it("põe o motivo da plataforma À FRENTE do texto genérico, no 401", () => {
     const texto = mensagemDe({
       plataforma: "SuperFrete",
       status: 401,
@@ -53,8 +53,37 @@ describe("mensagemDe", () => {
     })
 
     expect(texto).toBe(
-      "O SuperFrete recusou a credencial (Token inválida!). Gere o token de aplicação."
+      "Token inválida! — o SuperFrete recusou a credencial. Gere o token de aplicação."
     )
+    expect(texto.indexOf("Token inválida!")).toBeLessThan(
+      texto.indexOf("recusou a credencial")
+    )
+  })
+
+  it("o genérico é o fallback quando o provedor não diz por quê", () => {
+    const texto = mensagemDe({
+      plataforma: "Mercado Pago",
+      status: 400,
+      detalhe: "Invalid payment_method_id",
+    })
+
+    expect(texto).toBe(
+      "Invalid payment_method_id — o Mercado Pago recusou os dados."
+    )
+    expect(mensagemDe({ plataforma: "Mercado Pago", status: 400 })).toBe(
+      "o Mercado Pago recusou os dados."
+    )
+  })
+
+  it("põe o motivo à frente no limite e no 5xx sem resposta também", () => {
+    expect(
+      mensagemDe({ plataforma: "Resend", status: 429, detalhe: "rate limit" })
+    ).toBe(
+      "rate limit — o Resend recusou por limite de chamadas; tente de novo em instantes."
+    )
+    expect(
+      mensagemDe({ plataforma: "Resend", status: STATUS_SEM_RESPOSTA, detalhe: "ECONNREFUSED" })
+    ).toBe("ECONNREFUSED — não foi possível falar com o Resend.")
   })
 
   it("NÃO manda conferir o ambiente quando a credencial é recusada", () => {
@@ -79,12 +108,12 @@ describe("mensagemDe", () => {
     ).toContain("não respondeu em 10s")
     expect(
       mensagemDe({ plataforma: "Resend", status: STATUS_SEM_RESPOSTA })
-    ).toBe("Não foi possível falar com o Resend.")
+    ).toBe("não foi possível falar com o Resend.")
   })
 
   it("não deixa sobrar parêntese vazio quando não há detalhe", () => {
     expect(mensagemDe({ plataforma: "Resend", status: 401 })).toBe(
-      "O Resend recusou a credencial."
+      "o Resend recusou a credencial."
     )
   })
 })
@@ -111,7 +140,9 @@ describe("classificarFalha", () => {
     expect(falha.codigo).toBe("CREDENCIAL")
     expect(falha.operacao).toBe("POST /api/v0/calculator")
     expect(falha.detalhe).toEqual({ message: "Token inválida!" })
-    expect(falha.message).toContain("Token inválida!")
+    expect(falha.message).toBe(
+      "Token inválida! — o SuperFrete recusou a credencial. Gere o token de aplicação."
+    )
   })
 
   it("redige o corpo — o erro do SuperFrete ecoa o destinatário", () => {

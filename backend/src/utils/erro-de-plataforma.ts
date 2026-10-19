@@ -198,7 +198,34 @@ export type EntradaDaMensagem = {
   dica?: string
 }
 
-/** A frase do log: o detalhe da plataforma entra no texto, entre parênteses. */
+function classificacaoDe(plataforma: string, status: number, limiteSegundos?: number): string {
+  switch (codigoDoStatus(status)) {
+    case "CREDENCIAL":
+      return `o ${plataforma} recusou a credencial`
+
+    case "DADOS":
+      return `o ${plataforma} recusou os dados`
+
+    case "NAO_ENCONTRADO":
+      return `o ${plataforma} não encontrou o recurso pedido`
+
+    case "LIMITE":
+      return `o ${plataforma} recusou por limite de chamadas; tente de novo em instantes`
+
+    case "TEMPO":
+      return `o ${plataforma} não respondeu${
+        limiteSegundos ? ` em ${limiteSegundos}s` : ""
+      }`
+
+    case "SEM_RESPOSTA":
+      return `não foi possível falar com o ${plataforma}`
+
+    default:
+      return `o ${plataforma} respondeu HTTP ${status}`
+  }
+}
+
+/** O motivo da plataforma primeiro; o genérico depois (ou como fallback). */
 export function mensagemDe({
   plataforma,
   status,
@@ -206,32 +233,10 @@ export function mensagemDe({
   limiteSegundos,
   dica,
 }: EntradaDaMensagem): string {
-  const motivo = detalhe ? ` (${detalhe})` : ""
+  const classificacao = classificacaoDe(plataforma, status, limiteSegundos)
+  const frase = detalhe ? `${detalhe} — ${classificacao}.` : `${classificacao}.`
 
-  switch (codigoDoStatus(status)) {
-    case "CREDENCIAL":
-      return `O ${plataforma} recusou a credencial${motivo}.${dica ? ` ${dica}` : ""}`
-
-    case "DADOS":
-      return `O ${plataforma} recusou os dados${motivo}.`
-
-    case "NAO_ENCONTRADO":
-      return `O ${plataforma} não encontrou o recurso pedido${motivo}.`
-
-    case "LIMITE":
-      return `O ${plataforma} recusou por limite de chamadas${motivo}. Tente de novo em instantes.`
-
-    case "TEMPO":
-      return `O ${plataforma} não respondeu${
-        limiteSegundos ? ` em ${limiteSegundos}s` : ""
-      }.`
-
-    case "SEM_RESPOSTA":
-      return `Não foi possível falar com o ${plataforma}${motivo}.`
-
-    default:
-      return `O ${plataforma} respondeu HTTP ${status}${motivo}.`
-  }
+  return dica ? `${frase} ${dica}` : frase
 }
 
 export type EntradaDaFalha = {
