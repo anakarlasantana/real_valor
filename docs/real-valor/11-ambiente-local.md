@@ -453,8 +453,10 @@ backend**, que é quem lê o valor. As chamadas do painel passam a sair na **mes
 > e `https://<endereço>/painel/content` (publicado) têm de mostrar os blocos, e não "Não foi possível
 > carregar o schema." Na lista de seis recados do console, só os dois últimos eram deste defeito: os
 > outros quatro são ruído de terceiros — um aviso do React Router e o pedido da fonte Roboto Mono, os
-> dois do dashboard instalado — e o HMR, que não passa no túnel e já está declarado nos *Limites*
-> abaixo.
+> dois do dashboard instalado. O HMR **não** atravessa o túnel: o ngrok free não transporta o upgrade
+> WebSocket, e forçar `HMR_CLIENT_PORT=443` só produz refresh em laço no painel local (ver os dois
+> *Limites* correspondentes). O painel publicado roda **sem** hot reload; o HMR vive em
+> `http://localhost:9000`, onde `ws://localhost:9001` responde **101**.
 
 Depois de publicar, o próprio `make tunnel` fecha a conta: `GET /painel` (espera **200**; **403**
 significa a armadilha 2, **307** significa que `painel` não está na exclusão do `matcher`),
@@ -498,7 +500,8 @@ nasce (passo 5–6 do roteiro da §11.6).
 | Limite | Consequência |
 | :--- | :--- |
 | Plano gratuito do ngrok: um domínio e uma cota mensal de requisições — **medido**: 165 requisições na página de login e 207 numa carga autenticada do painel (Vite quente; a primeira carga é maior, porque o Vite compila e serve os módulos sob demanda) | o painel publicado serve para **conferir**, não para trabalhar o dia inteiro: cada carga consome ~200 da cota, então a conta fecha em poucas dezenas de cargas por mês |
-| O HMR do Vite (`:9001`) não passa no túnel | o painel publicado não recarrega sozinho ao salvar um arquivo; o local continua com HMR |
+| **O HMR do Vite (`:9001`) não passa no túnel** — limite do plano free, medido em 2026-10-19 | o ngrok free **não transporta o upgrade WebSocket**: `GET /painel` pelo túnel volta **200**, mas o handshake `Upgrade: websocket` **nunca recebe um byte** (testado com o caminho do Vite, com uma rota qualquer e com `:443` explícito; o mesmo cliente direto na 9001 responde **101** + `{"type":"connected"}`). O free também recusa um segundo túnel (`The endpoint ... is already online`), então publicar a 9001 num domínio próprio não é alternativa. Consequência: o painel publicado funciona **sem hot reload**, e o HMR vive em `http://localhost:9000`. **Não existe "desligar o HMR"**: o `getViteConfig` do `@medusajs/admin-bundler` sempre monta `server.hmr`, então a alavanca é só a porta/protocolo anunciados |
+| ⚠️ **Não fixe `443`/`wss` no `.env`** — medido em 2026-10-19 | `HMR_CLIENT_PORT=443` + `HMR_PROTOCOL=wss` valem para **todos** os clientes do container, inclusive o painel **local** em `localhost:9000`. Ali o 443 é de **outro** servidor, que responde **404**; o `@vite/client` pinga com `fetch("https://localhost:443/painel/", {mode:"no-cors"})`, e em `no-cors` **404 não lança** — o ping se declara OK e o cliente executa `location.reload()`: **refresh em laço**, medido como dezenas de `GET /painel` seguidos no log do backend. Por isso as duas variáveis têm **default vazio** no override e o `make tunnel` **não** as escreve (repouso = `ws://localhost:9001`, `socketProtocol = null`). O `make tunnel-stop` ainda as zera, para limpar um `.env` legado que tenha ficado com `443` |
 | Interstitial do plano gratuito ("Visit Site") | quem abre a URL no navegador vê a página de aviso uma vez; um cliente HTTP (o provedor de pagamento) não passa por ela |
 | `http://localhost:8000/painel` (painel pelo storefront local) | a página chega, mas o bundle chama a API em `localhost:9000` (o valor do `.env`) — e agora **todas** as telas saem por lá, as custom do CRM inclusive (era o defeito da armadilha 3): outra origem, e o login passa a depender de `ADMIN_CORS`. Em local use `:9000/painel`; de fora, o endereço do túnel |
 | `make down` / `make tunnel-stop` | o painel publicado deixa de existir junto com o endereço — é o mesmo endereço |

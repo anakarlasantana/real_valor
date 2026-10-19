@@ -118,7 +118,7 @@ BAK="$RUN/tunnel.env.bak"
 ENVF="$ROOT/.env"
 API="http://127.0.0.1:4040/api/tunnels"
 
-CHAVES=(NEXT_PUBLIC_BASE_URL MP_NOTIFICATION_URL MP_BACK_URL STORE_CORS ADMIN_CORS AUTH_CORS MEDUSA_BACKEND_URL __MEDUSA_ADMIN_ADDITIONAL_ALLOWED_HOSTS)
+CHAVES=(NEXT_PUBLIC_BASE_URL MP_NOTIFICATION_URL MP_BACK_URL STORE_CORS ADMIN_CORS AUTH_CORS MEDUSA_BACKEND_URL __MEDUSA_ADMIN_ADDITIONAL_ALLOWED_HOSTS HMR_CLIENT_PORT HMR_PROTOCOL)
 
 # A senha de exemplo do `.env.example`. Nao e' um segredo: e' um valor que existe
 # em qualquer copia do repositorio, e por isso mesmo nao pode ir para um endereco
@@ -283,6 +283,13 @@ restaurar() {
     case "$chave" in
       MEDUSA_BACKEND_URL) env_set "$chave" "http://localhost:9000" ;;
       __MEDUSA_ADMIN_ADDITIONAL_ALLOWED_HOSTS) env_set "$chave" "backend" ;;
+      # O HMR do admin fica em modo LOCAL: vazio faz o `@vite/client` anunciar a
+      # `HMR_PORT` (9001) em `ws://`, que e' o que o painel em `localhost:9000`
+      # precisa. Ver o bloco `HMR_CLIENT_PORT` do `docker-compose.override.yml`.
+      # `443`/`wss` aqui (ou em qualquer `.env` legado) poe o painel local em
+      # refresh em laco — o `start` nao os grava mais, mas versoes antigas podem
+      # ter deixado o valor para tras.
+      HMR_CLIENT_PORT | HMR_PROTOCOL) env_set "$chave" "" ;;
     esac
   done
 
@@ -555,10 +562,30 @@ cmd_start() {
   # entra junto para o navegador que alcancar o painel direto no backend (o
   # caminho de dois tuneis da §11.6).
   env_set __MEDUSA_ADMIN_ADDITIONAL_ALLOWED_HOSTS "backend,${url#*//}"
+  # O HMR do painel NAO e' ajustado aqui, de proposito. Medido em 2026-10-19:
+  #
+  #   1. O ngrok free NAO transporta o upgrade WebSocket. `GET /painel` volta
+  #      200, mas o handshake `Upgrade: websocket` nunca recebe um byte — testado
+  #      com o caminho do Vite e com uma rota qualquer, enquanto o MESMO cliente
+  #      direto na 9001 responde 101 + `{"type":"connected"}`. Anunciar `:443`
+  #      nao faz o HMR atravessar: o socket simplesmente nao sobe.
+  #   2. Gravar `HMR_CLIENT_PORT=443` + `HMR_PROTOCOL=wss` no `.env` atinge TODO
+  #      cliente do container, inclusive o painel LOCAL em `localhost:9000`. Ali
+  #      a 443 e' de outro servidor, que responde 404; o `@vite/client` pinga com
+  #      `fetch(..., {mode:"no-cors"})`, 404 NAO lanca, o ping se declara OK e o
+  #      cliente roda `location.reload()`: refresh em laco, medido como dezenas
+  #      de `GET /painel` em sequencia no log do backend.
+  #   3. O free tambem recusa um segundo tunel (`The endpoint ... is already
+  #      online`), entao publicar a 9001 num dominio proprio tambem nao da'.
+  #
+  # Resultado: o painel publicado funciona SEM hot reload, e o HMR fica no
+  # ambiente local (`localhost:9000`), onde a 9001 responde 101. Ver §11.6.2 da
+  # `docs/real-valor/11-ambiente-local.md`.
   ok "MP_NOTIFICATION_URL = $url/webhooks/mercadopago"
   ok "MP_BACK_URL         = $url/$PAIS/pedido/confirmacao"
   ok "painel              = $url/painel"
   ok "API do painel       = $url/painel-api"
+  ok "HMR do painel       = desligado no tunel (limite do free); hot reload so em localhost:9000"
 
   # O outro caso e' a variavel exportada COM valor (e diferente do que gravamos
   # agora). Para o check oficial isso pode ser intencional

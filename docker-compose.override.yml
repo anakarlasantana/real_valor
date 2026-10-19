@@ -106,12 +106,57 @@ services:
       # presa no grafo antigo e os imports dinamicos passam a apontar para
       # chunks que nao existem mais -> "Error loading dynamically imported
       # module" no painel. Publicada logo abaixo (dev so liga o que esta aqui).
+      #
+      # NAO existe "desligar o HMR": o `getViteConfig` do admin-bundler chama
+      # `getHmrConfig(hmrPort)` SEMPRE, e sem `HMR_PORT` volta a sortear. O que
+      # da' para escolher e' o ENDERECO ANUNCIADO ao browser — as duas proximas.
       HMR_PORT: 9001
+      # Porta que o `@vite/client` anuncia no `socketHost`
+      # (`@medusajs/admin-bundler` le `HMR_CLIENT_PORT` em `getHmrConfig`).
+      #
+      # ⚠️ VAZIO POR PADRAO — e isso NAO e' descuido. O `@vite/client` faz
+      # `port = clientPort || port`, entao VAZIO = usa a `HMR_PORT` (9001), que e'
+      # o comportamento nativo do painel em `localhost:9000`. So' o tunel precisa
+      # de outro valor, e quem o escreve e' o `scripts/tunnel.sh` (`make tunnel`),
+      # que grava `443` no `.env` e o remove no `make tunnel-stop`.
+      #
+      # NAO coloque 443 aqui por padrao. Medido em 2026-10-19: com 443 fixo, o
+      # painel LOCAL entra em REFRESH AUTOMATICO em laco. O socket primario
+      # (`ws://localhost:443/painel/`) falha, o cliente cai em
+      # `waitForSuccessfulPing`, que faz `fetch("http://localhost:443/painel/")`
+      # com `mode: no-cors` — e nesta maquina o 443 e' de OUTRO servidor, que
+      # responde **404**. O `fetch` nao lanca (404 e' resposta valida para
+      # no-cors), o ping se declara bem-sucedido e o cliente executa
+      # `location.reload()`, recomecando o ciclo a cada ~1s.
+      #
+      # PELO TUNEL (`443`) o mesmo valor esta' correto: o ngrok atende so' no 443
+      # do proprio dominio e o documento e' `https`, entao `wss://<host>:443/`
+      # acerta o TLS do tunel no primeiro try.
+      HMR_CLIENT_PORT: ${HMR_CLIENT_PORT:-}
+      # `wss` so' quando o tunel esta' ativo. Tambem vazio por padrao, para o
+      # painel local continuar em `ws://` (o `import.meta.url` de
+      # `http://localhost:9000` decide). Fixo em `wss`, o socket LOCAL sairia
+      # como `wss://localhost:9001` num documento `http` e a maquina de
+      # desenvolvimento precisaria de um certificado que nao tem.
+      HMR_PROTOCOL: ${HMR_PROTOCOL:-}
     # WebSocket de HMR do Vite do admin (par do HMR_PORT acima). A lista de
     # `ports` do Compose CONCATENA base + override, entao o 9000:9000 da base
     # continua publicado.
+    #
+    # Publicada em LOOPBACK de proposito: serve ao painel aberto em
+    # `localhost:9000` e ao `@vite/client` local, e nao ha' motivo para um
+    # servidor de desenvolvimento ficar alcancavel pela rede da maquina.
+    #
+    # O TUNEL NAO PUBLICA ESTA PORTA, e o HMR NAO ATRAVESSA o tunel: o ngrok
+    # free nao transporta o upgrade WebSocket (medido em 2026-10-19; o mesmo
+    # cliente direto aqui responde 101). Quem abre o painel pelo endereco
+    # publico usa o painel SEM hot reload — e por isso `HMR_CLIENT_PORT` e
+    # `HMR_PROTOCOL` ficam VAZIOS tambem durante o tunel: preenche-las com
+    # `443`/`wss` atinge o painel local e o poe em refresh em laco (o 443 desta
+    # maquina responde 404, e `no-cors` deixa o ping passar). O `scripts/tunnel.sh`
+    # sobe o agente em 8000 e o `/painel` chega ao Vite pela reescrita do storefront.
     ports:
-      - "9001:9001"
+      - "127.0.0.1:9001:9001"
     volumes:
       # Codigo do host -> container (habilita o hot reload). Os caminhos sao os
       # da imagem desde o G5: a raiz do workspace e' `/app` e o backend vive em

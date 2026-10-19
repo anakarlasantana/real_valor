@@ -301,7 +301,7 @@ logs-admin:
 	  echo "Ultimas ocorrencias:"; \
 	  $(COMPOSE) logs --tail=400 backend 2>&1 | grep -aE "$(ADMIN_FALLBACK_200)" | tail -5; \
 	  echo "Correcao: reload no browser (F5; Ctrl+Shift+R se a aba insistir). O HMR do Vite cura isso sozinho; se"; \
-	  echo "          a aba nao se recuperar, confira o HMR_PORT do docker-compose.override.yml (make health)."; \
+	  echo "          a aba nao se recuperar, confira o bloco HMR_* do docker-compose.override.yml (make health)."; \
 	  exit 1; \
 	else \
 	  echo "OK (log): nenhuma falha do Vite do admin nos ultimos 400 logs do backend. O veredito e' o grafo de modulos, abaixo."; \
