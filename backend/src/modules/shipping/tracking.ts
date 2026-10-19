@@ -1,23 +1,11 @@
 /**
  * O registro de envio de um pedido.
- * -------------------------------------------------------------------------
- * **A lacuna que este arquivo fecha.** `GET /store/orders/track` lê
- * `order.metadata.tracking_number`, `.tracking_url`, `.carrier` e
- * `.status_label` — mas **nada no backend escreve nesses campos**. A rota
- * existe e está bem feita (aceita nº do pedido + CPF **ou** e-mail, valida a
- * identidade com 403); o que falta é quem alimenta os dados. Sem isso, a
- * cliente consulta o rastreio e vê sempre `null`.
  *
- * Por que a regra mora aqui, e não na rota: a rota tem I/O (lê o pedido, grava,
- * responde). A parte que precisa de teste — normalizar o texto que o lojista
- * digitou, montar o link quando ele não vem, rejeitar o que não é código — é
- * função pura, e não se testa pelo meio da API.
- *
- * **Modelo genérico de propósito.** `carrier`, `tracking_number` e
- * `tracking_url` são TEXTO LIVRE, e não uma lista de transportadoras: o
- * provedor de frete ainda não foi decidido, e modelar o painel para a
- * transportadora de hoje obrigaria a refatorar quando a de amanhã for escolhida.
- * É a regra que mantém o RV-046 (adapter de transportadora) sem retrabalho.
+ * A regra mora aqui, e não na rota, porque a rota tem I/O: a parte que precisa
+ * de teste (normalizar o texto do lojista, deduzir o link, rejeitar o que não é
+ * código) é função pura. `carrier`/`tracking_number`/`tracking_url` são TEXTO
+ * LIVRE, não uma lista de transportadoras — é o que mantém o RV-046 sem
+ * retrabalho quando outra transportadora entrar.
  */
 
 /** O status padrão de um pedido que já foi pago e ainda não saiu. */
@@ -31,13 +19,7 @@ export type ShippingUpdate = {
   statusLabel?: string
 }
 
-/**
- * Os padrões de link das transportadoras brasileiras.
- *
- * Usados **só quando o lojista não digita a URL** — o campo continua sendo
- * texto livre, e um transportador novo não precisa entrar aqui: basta digitar
- * a URL. Estes são o atalho, não a regra.
- */
+/** O atalho para as transportadoras conhecidas; a URL digitada sempre vence. */
 const CARRIER_URL_PATTERNS: Array<{
   match: RegExp
   url: (code: string) => string
@@ -203,6 +185,96 @@ export function shippingSummary(metadata: Record<string, unknown> | null): {
     statusLabel:
       String(m.status_label ?? "").trim() || DEFAULT_STATUS_LABEL,
   }
+}
+
+/** O que a cliente lê sobre o pedido, já decidido. */
+export type SituacaoPublica = {
+  rotulo: string
+  cancelado: boolean
+}
+
+/**
+ * O cancelamento vence o rótulo: um pedido cancelado antes de postar não tem
+ * código e apareceria como "Pedido recebido" na tela.
+ */
+export function situacaoDoPedido(
+  metadata: Record<string, unknown> | null | undefined
+): SituacaoPublica {
+  const m = (metadata ?? {}) as Record<string, unknown>
+
+  if (m.superfrete_cancelada === true) {
+    return { rotulo: "Cancelado", cancelado: true }
+  }
+
+  return {
+    rotulo: String(m.status_label ?? "").trim() || DEFAULT_STATUS_LABEL,
+    cancelado: false,
+  }
+}
+
+/** O JSON de `GET /store/orders/track`; o e-mail do pedido não sai. */
+export function rastreioPublico(
+  order: Record<string, any>,
+  metadata: Record<string, unknown> | null | undefined
+): Record<string, unknown> {
+  const m = (metadata ?? {}) as Record<string, unknown>
+  const situacao = situacaoDoPedido(m)
+  const endereco = order.shipping_address ?? {}
+
+  return {
+    order: {
+      id: order.id,
+      display_id: order.display_id,
+      status: order.status,
+      payment_status: order.payment_status,
+      created_at: order.created_at,
+      total: order.total,
+      currency_code: order.currency_code,
+      shipping_address: {
+        first_name: endereco.first_name ?? null,
+        city: endereco.city ?? null,
+        province: endereco.province ?? null,
+        postal_code: endereco.postal_code ?? null,
+      },
+      items: (order.items ?? []).map((item: Record<string, any>) => ({
+        id: item.id,
+        title: item.title,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        thumbnail: item.thumbnail,
+      })),
+      tracking: {
+        tracking_number: String(m.tracking_number ?? "").trim() || null,
+        tracking_url: String(m.tracking_url ?? "").trim() || null,
+        carrier: String(m.carrier ?? "").trim() || null,
+      },
+      metadata: {
+        order_status_label: situacao.rotulo,
+        situacao: String(m.superfrete_situacao ?? "").trim() || null,
+        cancelado: situacao.cancelado,
+      },
+    },
+  }
+}
+
+/** O fato que merece um aviso à cliente. */
+export type EventoDeAviso = "saiu" | "cancelado" | "atualizado"
+
+/**
+ * O ponto único de aviso à cliente — **mudo até a RV-045**: sem provider de
+ * e-mail, só o corpo desta função muda no dia em que ele existir.
+ */
+export async function avisar(
+  evento: EventoDeAviso,
+  pedido: { display_id?: number | null },
+  metadata: Record<string, unknown> | null | undefined
+): Promise<void> {
+  const m = (metadata ?? {}) as Record<string, unknown>
+  const codigo = String(m.tracking_number ?? "").trim()
+
+  console.log(
+    `[aviso] evento=${evento} pedido=${pedido.display_id ?? "?"} codigo=${codigo || "-"} (sem provider de e-mail)`
+  )
 }
 
 export function etiquetaDe(

@@ -1,23 +1,14 @@
 /**
- * POST /admin/shipping/:id — grava o registro de envio de um pedido.
- * -------------------------------------------------------------------------
- * É a outra ponta de `GET /store/orders/track`: a rota pública lê o que esta
- * porta grava. Sem esta porta, a rota pública está pronta e sempre responde
- * `null` — foi a lacuna que o RV-043 fecha.
- *
- * **A porta é deliberadamente simples:** valida, monta o `metadata` e grava.
- * A regra mora em `modules/shipping/tracking.ts`, porque é a parte que precisa
- * de teste e não tem I/O.
- *
- * O corpo aceita campos **ausentes** de propósito: a tela de envio manda só o
- * que o lojista mudou. Ausente é "deixe como está", e string vazia é "limpe".
- * Essa distinção é o que permite corrigir a transportadora sem redigitar o
- * código, e é conferida por teste em `tracking.unit.spec.ts`.
+ * POST /admin/shipping/:id — grava o registro de envio de um pedido, que é o
+ * que `GET /store/orders/track` lê. A porta valida e grava; a regra mora em
+ * `modules/shipping/tracking.ts`. Campo **ausente** é "deixe como está";
+ * string vazia é "limpe".
  */
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import {
+  avisar,
   buildShippingMetadata,
   shippingSummary,
   validateShippingUpdate,
@@ -91,6 +82,10 @@ export async function POST(
       ...envio,
     },
   })
+
+  // O aviso à cliente (RV-045) sai daqui: `avisar` só registra no log até
+  // existir provider de e-mail.
+  await avisar(envio.tracking_number ? "saiu" : "atualizado", pedido, envio)
 
   res.status(200).json({
     id,

@@ -1176,12 +1176,24 @@ abandono e mensagens de suporte.
 
 ### Comportamento visual
 - Título em `rv-display`; formulário com dois campos grandes (nº do pedido + CPF/e-mail).
-- Linha do tempo: `Em processamento` → `Enviado` → `Entregue`, com o `status_label` do pedido.
+- **Situação atual** do pedido, em uma linha: o `order_status_label` que o painel ou o
+  webhook gravou ("Em processamento", "Postada", "Entregue", "Cancelado").
 - Bloco de rastreio com transportadora e código copiável.
 
+> **Sem linha do tempo.** Esta seção prometia `Em processamento → Enviado → Entregue`, mas
+> a tela nunca a renderizou — e não há de onde tirá-la: o `metadata` guarda **uma** situação
+> (§15.4.2), não o histórico. Uma timeline de verdade exigiria guardar cada transição do
+> webhook, o que é escopo novo (e o SuperFrete reentrega o mesmo aviso). A tela mostra a
+> situação atual; o histórico é o que o código da transportadora mostra.
+
 ### Estados
-`inicial` · `carregando` · `encontrado com rastreio` · `encontrado sem rastreio` · `não encontrado`
-(404 amigável) · `identificação não confere` (403 → "Verifique o CPF/e-mail") · `erro`.
+`inicial` · `carregando` · `encontrado com rastreio` · `encontrado sem rastreio` ·
+**`cancelado`** · `não encontrado` (404 amigável) · `identificação não confere`
+(403 → "Verifique o CPF/e-mail") · `erro`.
+
+`cancelado` é decidido pelo **backend** (`metadata.cancelado`), não pela ausência de código:
+um pedido cancelado antes de postar nunca teve `tracking_number`, e sem essa ordem a tela
+diria "Pedido recebido" a quem teve o pedido cancelado.
 
 ### Critérios de aceite
 1. Consulta correta mostra pedido, itens e status.
@@ -1189,6 +1201,7 @@ abandono e mensagens de suporte.
 3. Pedido sem rastreio mostra status, sem bloco vazio.
 4. Funciona sem login.
 5. Acessível por teclado, com `aria-live` no resultado.
+6. Pedido cancelado mostra **"Pedido cancelado"**, com ou sem código de rastreio.
 
 ---
 
@@ -1205,6 +1218,16 @@ Avisar a cliente quando a peça saiu, com o código de rastreio — reduzindo "c
 2. Não reenvia em edições posteriores do mesmo código.
 3. Falha de envio **não** desfaz o salvamento do rastreio — são operações independentes.
 4. Envio por e-mail transacional; se não houver provider (ver 8.4.4), registrar como pendência.
+
+### O que já está no lugar
+`avisar(evento, pedido, metadata)` em `modules/shipping/tracking.ts` é o **ponto único** de
+aviso, e hoje só registra no log. Quem chama: o subscriber do webhook (evento `saiu` /
+`cancelado`) e `POST /admin/shipping/[id]` (`saiu` quando há código, `atualizado` sem). A
+tela de rastreio **não** avisa — ela é consulta.
+
+Falta só o corpo da função e o provider. Não chamar `Modules.NOTIFICATION.create()` antes
+disso: sem provider registrado ele **lança**, e transformaria o webhook numa fonte de erro.
+A regra 2 (não reenviar) e a regra 3 (falha não desfaz o salvamento) continuam por fazer.
 
 ### Critérios de aceite
 1. Salvar o código pela primeira vez dispara a notificação.

@@ -1,6 +1,11 @@
 /** O vínculo etiqueta → pedido: `listOrders` não filtra por `metadata`. */
 
-export type PedidoNoVinculo = { id: string; metadata?: Record<string, unknown> | null }
+export type PedidoNoVinculo = {
+  id: string
+  display_id?: number | null
+  metadata?: Record<string, unknown> | null
+}
+
 
 /** Idade máxima de um pedido que ainda pode receber aviso de etiqueta. */
 export const DIAS_DE_JANELA = 120

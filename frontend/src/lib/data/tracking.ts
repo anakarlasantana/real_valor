@@ -1,11 +1,8 @@
 /**
  * Consulta de rastreio do storefront.
  * -------------------------------------------------------------------------
- * Fala com `GET /store/orders/track`, que já existe no backend e já está certa:
- * exige o **número do pedido + CPF ou e-mail**, e devolve 403 quando a
- * identidade não bate com o pedido. Esta camada não repete essa regra — ela
- * traduz a resposta HTTP em uma situação que a página sabe desenhar, e é só
- * isso.
+ * Fala com `GET /store/orders/track` e não repete a regra de identidade do
+ * backend (403): traduz a resposta HTTP numa situação que a página desenha.
  *
  * **Três decisões que valem explicar.**
  *
@@ -43,6 +40,7 @@ export type ResultadoRastreio =
   | { situacao: "recusado" }
   | { situacao: "erro"; mensagem: string }
   | { situacao: "pendente" }
+  | { situacao: "cancelado" }
   | { situacao: "encontrado"; dados: RespostaRastreio }
 
 /** A rota que o backend expõe. */
@@ -103,6 +101,11 @@ export async function consultarRastreio(
 
 /** O que a resposta 200 significa: existe, mas a loja ainda não preencheu. */
 function interpretar(resposta: RespostaRastreio): ResultadoRastreio {
+  // Cancelado vence o código: sem código, cairia em "pendente".
+  if (resposta?.order?.metadata?.cancelado) {
+    return { situacao: "cancelado" }
+  }
+
   const codigo = resposta?.order?.tracking?.tracking_number
 
   // Sem código é o caso comum do dia a dia: o pedido existe e está pago, e a

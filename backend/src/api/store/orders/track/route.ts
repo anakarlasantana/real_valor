@@ -1,6 +1,8 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
 
+import { rastreioPublico } from "../../../../modules/shipping/tracking"
+
 /**
  * Endpoint de Rastreamento de Pedido sem Login (Zero Fricção)
  * GET /store/orders/track?display_id=123&cpf=12345678900 ou ?order_id=...&email=...
@@ -67,38 +69,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     }
 
     // Retorna os dados sanitizados para o cliente (sem expor credenciais internas)
-    return res.json({
-      order: {
-        id: order.id,
-        display_id: order.display_id,
-        status: order.status,
-        created_at: order.created_at,
-        email: order.email,
-        total: order.total,
-        currency_code: order.currency_code,
-        shipping_address: {
-          first_name: order.shipping_address?.first_name,
-          city: order.shipping_address?.city,
-          province: order.shipping_address?.province,
-          postal_code: order.shipping_address?.postal_code,
-        },
-        items: (order.items || []).map((item) => ({
-          id: item.id,
-          title: item.title,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          thumbnail: item.thumbnail,
-        })),
-        tracking: {
-          tracking_number: orderMetadata.tracking_number || null,
-          tracking_url: orderMetadata.tracking_url || null,
-          carrier: orderMetadata.carrier || null,
-        },
-        metadata: {
-          order_status_label: orderMetadata.status_label || "Em Processamento",
-        },
-      },
-    })
+    return res.json(rastreioPublico(order, orderMetadata))
   } catch (error) {
     return res.status(500).json({
       message: "Erro interno ao consultar pedido.",

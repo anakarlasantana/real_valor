@@ -238,6 +238,20 @@ o JSON reserializado, que muda a ordem das chaves); o aviso chega em `event` + `
 `metadata`**, então o vínculo etiqueta → pedido é varredura limitada (`vinculo.ts`), com
 `skip`/`take` em **config** e `$gte` — `skip`/`gte` no filtro viram "coluna inexistente".
 
+**A resposta pública (F4).** `GET /store/orders/track` monta o JSON com
+`rastreioPublico()` (`modules/shipping/tracking.ts`), não na rota — é a única forma de
+testar a resposta sem o Medusa de pé. O `metadata` da resposta leva
+`{ order_status_label, situacao, cancelado }`, e a **ordem de precedência do cancelamento
+vence todas as outras**: o webhook grava `superfrete_cancelada` sem tocar em código nem
+rótulo, então um pedido cancelado antes de postar aparecia como "Pedido recebido"; a tela
+só obedece a `cancelado === true`. `payment_status` passou a sair na resposta — o tipo do
+storefront o exigia e a rota nunca o devolvia, sem nenhum teste vermelho (a divergência
+só apareceu porque faltava teste da rota; agora há `track/api/.../route.unit.spec.ts`
+conferindo as chaves contra o tipo). O **e-mail saiu da resposta**: a cliente já o conhece,
+e devolvê-lo a quem provou só o CPF expõe o dado de outra pessoa. O aviso à cliente
+(`avisar()`) é no-op até a RV-045 — chamado pelo webhook e pela rota do admin, nunca pela
+tela de rastreio, que é só consulta.
+
 
 
 ## 15.5 "Ler antes de mover"

@@ -14,7 +14,9 @@
 import {
   buildShippingMetadata,
   guessTrackingUrl,
+  rastreioPublico,
   shippingSummary,
+  situacaoDoPedido,
   validateShippingUpdate,
   DEFAULT_STATUS_LABEL,
 } from "../tracking"
@@ -216,5 +218,131 @@ describe("shippingSummary", () => {
 
   it("cai no status padrão quando não há situação", () => {
     expect(shippingSummary({}).statusLabel).toBe(DEFAULT_STATUS_LABEL)
+  })
+})
+
+describe("situacaoDoPedido", () => {
+  it("lê o rótulo que o lojista ou o webhook gravou", () => {
+    expect(situacaoDoPedido({ status_label: "Postada" })).toEqual({
+      rotulo: "Postada",
+      cancelado: false,
+    })
+  })
+
+  it("usa o padrão quando não há rótulo", () => {
+    expect(situacaoDoPedido({}).rotulo).toBe(DEFAULT_STATUS_LABEL)
+    expect(situacaoDoPedido(null).rotulo).toBe(DEFAULT_STATUS_LABEL)
+  })
+
+  it("CANCELADO vence o rótulo: a tela não mostra 'Postada' num pedido cancelado", () => {
+    const s = situacaoDoPedido({
+      status_label: "Postada",
+      superfrete_cancelada: true,
+    })
+
+    expect(s).toEqual({ rotulo: "Cancelado", cancelado: true })
+  })
+
+  it("só `true` cancela — o texto 'false' de um metadata antigo não cancela", () => {
+    expect(situacaoDoPedido({ superfrete_cancelada: "true" }).cancelado).toBe(
+      false
+    )
+  })
+})
+
+describe("rastreioPublico", () => {
+  const pedido = {
+    id: "order_123",
+    display_id: 42,
+    status: "pending",
+    payment_status: "captured",
+    created_at: "2026-10-01T10:00:00.000Z",
+    total: 15990,
+    currency_code: "brl",
+    email: "cliente@exemplo.com",
+    shipping_address: {
+      first_name: "Ana",
+      city: "Curitiba",
+      province: "PR",
+      postal_code: "80000-000",
+      address_1: "Rua que não deve sair",
+    },
+    items: [
+      {
+        id: "item_1",
+        title: "Tapete",
+        quantity: 1,
+        unit_price: 15990,
+        thumbnail: "tapete.jpg",
+      },
+    ],
+  }
+
+  it("devolve o payment_status — o campo que o tipo do storefront exige", () => {
+    const { order } = rastreioPublico(pedido, {}) as any
+
+    expect(order.payment_status).toBe("captured")
+  })
+
+  it("NUNCA devolve o e-mail do pedido", () => {
+    const resposta = rastreioPublico(pedido, {})
+
+    expect(JSON.stringify(resposta)).not.toContain("cliente@exemplo.com")
+  })
+
+  it("não devolve o endereço completo, só o que a cliente precisa confirmar", () => {
+    const { order } = rastreioPublico(pedido, {}) as any
+
+    expect(order.shipping_address).toEqual({
+      first_name: "Ana",
+      city: "Curitiba",
+      province: "PR",
+      postal_code: "80000-000",
+    })
+    expect(order.shipping_address.address_1).toBeUndefined()
+  })
+
+  it("devolve null (e não string vazia) quando o envio não foi registrado", () => {
+    const { order } = rastreioPublico(pedido, {}) as any
+
+    expect(order.tracking).toEqual({
+      tracking_number: null,
+      tracking_url: null,
+      carrier: null,
+    })
+  })
+
+  it("leva ao storefront a situação e o cancelamento que o webhook gravou", () => {
+    const { order } = rastreioPublico(pedido, {
+      tracking_number: "BR123456789BR",
+      status_label: "Postada",
+      superfrete_situacao: "posted",
+    }) as any
+
+    expect(order.metadata).toEqual({
+      order_status_label: "Postada",
+      situacao: "posted",
+      cancelado: false,
+    })
+  })
+
+  it("um pedido cancelado SEM código sai como cancelado, não como pendente", () => {
+    const { order } = rastreioPublico(pedido, {
+      superfrete_cancelada: true,
+    }) as any
+
+    expect(order.tracking.tracking_number).toBeNull()
+    expect(order.metadata.cancelado).toBe(true)
+    expect(order.metadata.order_status_label).toBe("Cancelado")
+  })
+
+  it("aceita pedido sem endereço nem itens sem quebrar", () => {
+    const resposta = rastreioPublico(
+      { id: "o", display_id: 1 },
+      null
+    ) as any
+
+    expect(resposta.order.shipping_address.first_name).toBeNull()
+    expect(resposta.order.items).toEqual([])
   })
 })

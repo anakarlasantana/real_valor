@@ -50,6 +50,10 @@ const MENSAGENS: Record<
     titulo: "Pedido recebido",
     texto: "Assim que o envio for registrado, o código de rastreio aparece aqui.",
   },
+  cancelado: {
+    titulo: "Pedido cancelado",
+    texto: "Este pedido foi cancelado e não será enviado. Fale com a gente para saber do reembolso.",
+  },
 }
 
 export default function RastreioTemplate() {

@@ -1,16 +1,9 @@
 /**
  * A tradução da resposta de rastreio em situação de tela.
- * -------------------------------------------------------------------------
- * O que este teste protege são as **quatro saídas possíveis** e uma garantia
- * de configuração que é a mais importante de todas: a consulta nunca pode ser
- * cacheada.
  *
- * A razão é o dado que trafega. Todas as outras respostas do storefront são
- * públicas e idênticas para todo mundo; esta tem o CPF da cliente dentro. Com
- * qualquer cache — do Next, do CDN na frente, ou do fetch do Node — uma
- * consulta poderia ser servida para outra pessoa, e o erro aqui é mostrar o
- * pedido de uma cliente para outra. Por isso o teste confere o `cache:
- * "no-store"` e não confia em uma constante compartilhada com o resto.
+ * Este teste protege as **cinco saídas possíveis** e a garantia de que a
+ * consulta nunca é cacheada: a resposta carrega o CPF da cliente, e um cache
+ * serviria o pedido de uma cliente para outra.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -33,7 +26,6 @@ const RESPOSTA_COM_RASTREIO = {
   order: {
     id: "ped_1",
     display_id: 123,
-    email: "cliente@email.com",
     status: "completed",
     payment_status: "captured",
     created_at: "2026-01-01T00:00:00Z",
@@ -43,7 +35,11 @@ const RESPOSTA_COM_RASTREIO = {
       tracking_url: "https://rastreios.correios.com.br/x",
       carrier: "Correios",
     },
-    metadata: { order_status_label: "Entregue" },
+    metadata: {
+      order_status_label: "Entregue",
+      situacao: "delivered",
+      cancelado: false,
+    },
   },
 }
 
@@ -87,6 +83,58 @@ describe("consultarRastreio", () => {
       order: {
         ...RESPOSTA_COM_RASTREIO.order,
         tracking: { tracking_number: null, tracking_url: null, carrier: null },
+      },
+    })
+
+    const r = await consultarRastreio("123", "12345678900", "")
+
+    expect(r.situacao).toBe("pendente")
+  })
+
+  it("um pedido CANCELADO sem código é 'cancelado', não 'pendente'", async () => {
+    // Cancelado antes de postar: sem código, a tela dizia "Pedido recebido".
+    fetchMock.mockResolvedValue({
+      order: {
+        ...RESPOSTA_COM_RASTREIO.order,
+        tracking: { tracking_number: null, tracking_url: null, carrier: null },
+        metadata: {
+          order_status_label: "Cancelado",
+          situacao: null,
+          cancelado: true,
+        },
+      },
+    })
+
+    const r = await consultarRastreio("123", "12345678900", "")
+
+    expect(r.situacao).toBe("cancelado")
+  })
+
+  it("cancelado vence até um código já registrado", async () => {
+    // O código continua no metadata, mas o envio não vai acontecer.
+    fetchMock.mockResolvedValue({
+      order: {
+        ...RESPOSTA_COM_RASTREIO.order,
+        metadata: {
+          order_status_label: "Cancelado",
+          situacao: "cancelled",
+          cancelado: true,
+        },
+      },
+    })
+
+    const r = await consultarRastreio("123", "12345678900", "")
+
+    expect(r.situacao).toBe("cancelado")
+  })
+
+  it("resposta antiga, sem o campo `cancelado`, continua pendente", async () => {
+    // `undefined` não pode virar cancelamento — só `true` cancela.
+    fetchMock.mockResolvedValue({
+      order: {
+        ...RESPOSTA_COM_RASTREIO.order,
+        tracking: { tracking_number: null, tracking_url: null, carrier: null },
+        metadata: {},
       },
     })
 

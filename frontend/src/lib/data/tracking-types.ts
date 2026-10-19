@@ -1,17 +1,16 @@
 /**
  * A resposta de `GET /store/orders/track`, em português.
  *
- * espelha o que a rota devolve (`backend/src/api/store/orders/track/route.ts`).
- * Os nomes seguem a rota de propósito: renomear aqui sem renomear lá faria o
- * `dados.order.title` virar `undefined` em silêncio, e a página mostraria um
- * pedido sem nome sem nenhum erro.
- *
- * Tudo que é opcional **é** opcional de verdade: um pedido recém-pago não tem
- * rastreio, e a página precisa saber lidar com a ausência sem quebrar.
+ * Espelha o que a rota devolve (`backend/src/api/store/orders/track/route.ts`):
+ * renomear aqui sem renomear lá faria o campo virar `undefined` em silêncio.
  */
 export type SituacaoRastreio = {
-  /** A situação que o lojista escreveu no painel ("Entregue", "Em trânsito"). */
+  /** A situação que o painel ou o webhook gravou ("Postada", "Cancelado"). */
   order_status_label: string
+  /** O estado da máquina no SuperFrete (`posted`). `null` sem etiqueta. */
+  situacao: string | null
+  /** Decidido pelo backend — a tela nunca infere cancelamento. */
+  cancelado: boolean
 }
 
 export type ItemRastreio = {
