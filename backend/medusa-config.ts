@@ -80,6 +80,69 @@ if (
   )
 }
 
+// -----------------------------------------------------------------------------
+// E-mail transacional — o módulo de NOTIFICAÇÃO
+// -----------------------------------------------------------------------------
+// É o que faltava para a frase "Enviamos todos os detalhes para o seu e-mail"
+// (na página de pedido confirmado) ser verdadeira. O texto dos e-mails mora em
+// templates do Resend, editáveis no painel; o código manda o alias e as
+// variáveis. Ver `src/modules/notification/README.md`.
+//
+// **UM PROVIDER POR CANAL.** O loader do NOTIFICATION
+// (`@medusajs/notification/dist/loaders/providers.js`) recusa dois providers
+// com o mesmo canal — `validateProviders` lança e o backend não sobe. Daí a
+// lista ser montada condicionalmente:
+//
+//   - com `RESEND_API_KEY` **e** `RESEND_FROM`: o Resend responde por "email"
+//     e o `local` fica só com "feed" (o sino do painel);
+//   - sem as duas: o `local` responde por "email" e "feed" — o e-mail é
+//     registrado no log, e a loja não quebra por falta de credencial.
+//
+// A condição é "as duas", e não "a chave": um remetente sem domínio verificado
+// não envia, e um provider configurado pela metade derrubaria o boot no
+// `validateOptions`. Meia configuração é avisada e ignorada — a mesma escolha
+// do Mercado Pago, que sem token abre a loja e só marca o pagamento como
+// indisponível.
+const resendApiKey = process.env.RESEND_API_KEY?.trim()
+const resendFrom = process.env.RESEND_FROM?.trim()
+
+if (!!resendApiKey !== !!resendFrom) {
+  console.warn(
+    "[Real Valor] E-mail transacional desligado: RESEND_API_KEY e RESEND_FROM precisam estar as duas definidas. " +
+      "Sem elas, o provider local registra o e-mail no log em vez de enviá-lo."
+  )
+}
+
+const notificationProviders =
+  resendApiKey && resendFrom
+    ? [
+        {
+          resolve: "./src/modules/notification/resend",
+          id: "resend",
+          options: {
+            channels: ["email"],
+            apiKey: resendApiKey,
+            from: resendFrom,
+          },
+        },
+        {
+          resolve: "@medusajs/medusa/notification-local",
+          id: "local",
+          options: {
+            channels: ["feed"],
+          },
+        },
+      ]
+    : [
+        {
+          resolve: "@medusajs/medusa/notification-local",
+          id: "local",
+          options: {
+            channels: ["email", "feed"],
+          },
+        },
+      ]
+
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
@@ -277,6 +340,16 @@ module.exports = defineConfig({
     // de uma requisição. Ver src/modules/fulfillment/pacotes.
     {
       resolve: "./src/modules/fulfillment/pacotes",
+    },
+    // Módulo de NOTIFICAÇÃO: o e-mail transacional (Resend) e o sino do painel
+    // (`feed`). A lista de providers é montada acima, e é condicional porque o
+    // loader recusa dois providers no mesmo canal. Ver o bloco antes de
+    // `defineConfig`.
+    {
+      resolve: "@medusajs/medusa/notification",
+      options: {
+        providers: notificationProviders,
+      },
     },
   ]
 })

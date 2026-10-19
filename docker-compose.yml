@@ -209,6 +209,15 @@ services:
       # alheio sabendo um `cart_id`. Vazio = a rota responde 404 indistinto, e a
       # pagina de confirmacao mostra "aguardando" em vez do pedido.
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
+      # E-mail transacional (Resend). Vazio = nenhum e-mail sai: o provider
+      # `local` registra a tentativa no log. As duas chaves valem juntas — com
+      # so' uma, o provider do Resend nem e' registrado e o boot avisa.
+      # Ver o bloco no `.env.example` e modules/notification/README.md.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM: ${RESEND_FROM:-}
+      # URL PUBLICA da loja para os links do e-mail. NAO use o `FRONTEND_URL`
+      # (interno): um link para `http://frontend:8000` nao abre no navegador.
+      STOREFRONT_URL: ${STOREFRONT_URL:-}
       # SuperFrete: cotacao e etiqueta. Vazio = a cotacao falha com recado claro
       # e o checkout mostra "nao foi possivel calcular" — nunca um preco inventado.
       SUPERFRETE_TOKEN: ${SUPERFRETE_TOKEN:-}

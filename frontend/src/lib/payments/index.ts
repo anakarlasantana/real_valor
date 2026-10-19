@@ -11,6 +11,7 @@
  * o nome preso a um provedor.
  */
 export { paymentLabel } from "./labels"
+export { MEIO_MANUAL_DO_MEDUSA } from "./providers"
 export { listPaymentAdapters, resolvePayment } from "./registry"
 export type {
   FulfillmentMode,

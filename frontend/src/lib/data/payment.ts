@@ -1,6 +1,7 @@
 "use server"
 
 import { sdk } from "@lib/config"
+import { meiosDePagamentoVisiveis } from "@lib/payments/providers"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
 
@@ -24,10 +25,13 @@ export const listCartPaymentMethods = async (regionId: string) => {
         cache: "force-cache",
       }
     )
+    // O `pp_system_default` do Medusa é filtrado aqui, e não no componente:
+    // é a fronteira entre "o que o backend registrou" e "o que a loja
+    // oferece". Ver `lib/payments/providers.ts` para o motivo de o filtro ser
+    // incondicional. Uma lista vazia é um estado legítimo — o checkout mostra
+    // "pagamento indisponível" em vez de sumir.
     .then(({ payment_providers }) =>
-      payment_providers.sort((a, b) => {
-        return a.id > b.id ? 1 : -1
-      })
+      meiosDePagamentoVisiveis(payment_providers)
     )
     .catch(() => {
       return null

@@ -299,6 +299,7 @@ junto (`admin/`, `COPY admin/ /app/admin`) e o storefront leva o pacote do contr
 | [`docs/real-valor/14-paginas-de-conteudo-no-cms.md`](docs/real-valor/14-paginas-de-conteudo-no-cms.md) | **páginas institucionais editáveis no CMS:** diagnóstico, três estratégias e o plano F1/F2/F3 |
 | [`docs/real-valor/15-arquitetura-modular.md`](docs/real-valor/15-arquitetura-modular.md) | **as camadas e as guardas:** a política de comentário, as fases F0–F10 e a convenção de um módulo novo (§15.9) |
 | [`docs/real-valor/16-requisitos-admin.md`](docs/real-valor/16-requisitos-admin.md) | **engenharia reversa do painel (CRM):** o que ele permite, o que recusa e o que grava — cada regra com `arquivo:linha` de evidência |
+| [`docs/real-valor/17-roteiro-validacao-checkout-e-email.md`](docs/real-valor/17-roteiro-validacao-checkout-e-email.md) | **roteiro manual dos quatro P0:** os estados da entrega, o filtro do meio manual, os três e-mails e o `INTERNAL_API_SECRET` — com o que ainda falta configurar |
 
 A numeração tem buracos **de propósito**: os docs 01, 02, 03, 07, 08 e 10 foram podados (ver a nota
 abaixo), e o código cita "doc 11", "doc 13", "doc 14" e "doc 15" por número.
@@ -490,6 +491,44 @@ que só o disco responde: o artefato gerado fora de dia
 
 O alvo nunca foi o número — é o *tipo*: o que o compilador e um teste garantem
 não precisa de asserção.
+
+---
+
+## ✅ Antes de ir para produção
+
+Quatro coisas que **não** podem ficar para depois — e o que cada uma protege:
+
+1. **`INTERNAL_API_SECRET` gerado e igual nos dois serviços.**
+   O storefront o envia em `x-rv-internal` para a rota interna
+   `GET /internal/orders/by-cart` (o status do pedido do carrinho). Sem ele, a
+   rota responde 404 indistinto e a página de confirmação mostra "aguardando" —
+   o pedido existe, mas não dá para consultá-lo por ali.
+   `openssl rand -hex 32`; o backend e o frontend leem a **mesma** variável do
+   `.env` (o Compose a repassa aos dois). O bloco completo está no
+   `.env.example`, em "Chamada INTERNA entre o storefront e o backend".
+
+2. **E-mail transacional configurado.** `RESEND_API_KEY`, `RESEND_FROM` (domínio
+   verificado) e `STOREFRONT_URL` (URL pública, para os links). Os três
+   templates — `pedido-confirmado`, `pedido-enviado`, `pedido-cancelado` —
+   precisam estar **publicados** no painel do Resend. Sem as credenciais, o
+   provider `local` registra o e-mail no log e nada sai; a página de pedido
+   confirmado continua prometendo um e-mail que não chega.
+   Passo a passo e variáveis: [`backend/src/modules/notification/README.md`](backend/src/modules/notification/README.md).
+   O teste de ponta a ponta (incluindo os caminhos de falha e idempotência) está em
+   [`docs/real-valor/17-roteiro-validacao-checkout-e-email.md`](docs/real-valor/17-roteiro-validacao-checkout-e-email.md).
+
+3. **`make migrate` depois de subir esta mudança.** O módulo de notificação tem
+   tabelas próprias (`notification`), criadas pelas migrations do Medusa. Em
+   DEV o `RUN_MIGRATIONS` é `0` por padrão — rode o alvo uma vez; em produção o
+   container roda as migrations na subida (`RUN_MIGRATIONS=1`).
+
+4. **Pagamento real conferido.** O meio manual (`pp_system_default`) já é
+   **filtrado no storefront** (`frontend/src/lib/payments/providers.ts`), então
+   não aparece mais como opção. O que falta é a venda de verdade: `MP_*`
+   coerente com `MP_AMBIENTE`, `MP_NOTIFICATION_URL` público e HTTPS, e uma
+   compra de valor baixo com cartão de produção. Ver
+   [`backend/src/modules/payment/mercadopago/README.md`](backend/src/modules/payment/mercadopago/README.md),
+   seção "Antes de ir para produção".
 
 ---
 

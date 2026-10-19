@@ -1,6 +1,6 @@
 "use client"
 
-import { resolvePayment } from "@lib/payments"
+import { MEIO_MANUAL_DO_MEDUSA, resolvePayment } from "@lib/payments"
 import { placeOrder } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
 import { documentoValido } from "@rv/contrato"
@@ -36,7 +36,13 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     !cart.email ||
     (cart.shipping_methods?.length ?? 0) < 1
 
-  const paymentSession = cart.payment_collection?.payment_sessions?.[0]
+  const paymentSession = cart.payment_collection?.payment_sessions
+    ?.filter(
+      (session) =>
+        session.status === "pending" &&
+        session.provider_id !== MEIO_MANUAL_DO_MEDUSA
+    )
+    .at(-1)
   const adapter = resolvePayment(paymentSession?.provider_id)
 
   // `inline`: o meio tem uma confirmação própria — hoje, o cartão do Stripe,

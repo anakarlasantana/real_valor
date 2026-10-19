@@ -6,7 +6,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Fragment, useCallback, useEffect, useState } from "react"
 
 import { initiatePaymentSession } from "@lib/data/cart"
-import { needsInlineInput, resolvePayment } from "@lib/payments"
+import {
+  MEIO_MANUAL_DO_MEDUSA,
+  needsInlineInput,
+  resolvePayment,
+} from "@lib/payments"
 import { lerDocumento } from "@rv/contrato"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PaymentContainer from "@modules/checkout/components/payment-container"
@@ -35,8 +39,15 @@ const Payment = ({
   cart: any
   availablePaymentMethods: any[]
 }) => {
+  // O meio manual do Medusa não conta como sessão ativa: um carrinho que já
+  // tinha `pp_system_default` pendente (de antes do filtro) não pode terminar
+  // a compra sem cobrança. Ele some da lista em `listCartPaymentMethods`, e
+  // aqui some também do estado inicial — o resto do formulário segue como se
+  // não houvesse sessão, e a cliente escolhe um meio de verdade.
   const activeSession = cart.payment_collection?.payment_sessions?.find(
-    (paymentSession: any) => paymentSession.status === "pending"
+    (paymentSession: any) =>
+      paymentSession.status === "pending" &&
+      paymentSession.provider_id !== MEIO_MANUAL_DO_MEDUSA
   )
 
   const [isLoading, setIsLoading] = useState(false)

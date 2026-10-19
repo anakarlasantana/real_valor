@@ -49,11 +49,20 @@ export async function POST(
 
   const { data } = await query.graph({
     entity: "order",
-    fields: ["id", "metadata"],
+    fields: [
+      "id",
+      "display_id",
+      "email",
+      "metadata",
+      "shipping_address.first_name",
+      "shipping_address.country_code",
+    ],
     filters: { id },
   })
 
-  const pedido = (data ?? [])[0] as Record<string, any> | undefined
+  const pedido = (data ?? [])[0] as
+    | (Record<string, any> & { id: string })
+    | undefined
 
   if (!pedido) {
     return res.status(404).json({ message: "Pedido não encontrado." })
@@ -83,9 +92,21 @@ export async function POST(
     },
   })
 
-  // O aviso à cliente (RV-045) sai daqui: `avisar` só registra no log até
-  // existir provider de e-mail.
-  await avisar(envio.tracking_number ? "saiu" : "atualizado", pedido, envio)
+  // Só avisa quando o código ou a situação mudam: salvar sem mexer não é fato.
+  const antes = shippingSummary(pedido.metadata)
+  const depois = shippingSummary(envio)
+  const mudou =
+    antes.trackingNumber !== depois.trackingNumber ||
+    antes.statusLabel !== depois.statusLabel
+
+  if (mudou) {
+    await avisar(
+      req.scope,
+      depois.trackingNumber ? "saiu" : "atualizado",
+      pedido,
+      envio
+    )
+  }
 
   res.status(200).json({
     id,

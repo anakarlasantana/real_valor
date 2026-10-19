@@ -1,3 +1,17 @@
+import type { MedusaContainer } from "@medusajs/framework/types"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+
+import { enviarEmail, mascararEmail } from "../notification/enviar"
+import {
+  dadosDoEnvio,
+  dadosDoPedidoCancelado,
+  type PedidoParaEmail,
+} from "../notification/pedido"
+import {
+  TEMPLATE_PEDIDO_CANCELADO,
+  TEMPLATE_PEDIDO_ENVIADO,
+} from "../notification/templates"
+
 /**
  * O registro de envio de um pedido.
  *
@@ -259,21 +273,54 @@ export function rastreioPublico(
 /** O fato que merece um aviso à cliente. */
 export type EventoDeAviso = "saiu" | "cancelado" | "atualizado"
 
+export type PedidoParaAviso = PedidoParaEmail
+
 /**
- * O ponto único de aviso à cliente — **mudo até a RV-045**: sem provider de
- * e-mail, só o corpo desta função muda no dia em que ele existir.
+ * O ponto único de aviso à cliente (envio e cancelamento), com idempotência por
+ * fato. Sem e-mail, avisa no log e volta. Ver doc 15, §15.10.
  */
 export async function avisar(
+  container: MedusaContainer,
   evento: EventoDeAviso,
-  pedido: { display_id?: number | null },
+  pedido: PedidoParaAviso,
   metadata: Record<string, unknown> | null | undefined
 ): Promise<void> {
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
   const m = (metadata ?? {}) as Record<string, unknown>
   const codigo = String(m.tracking_number ?? "").trim()
+  const cancelado = evento === "cancelado"
 
-  console.log(
-    `[aviso] evento=${evento} pedido=${pedido.display_id ?? "?"} codigo=${codigo || "-"} (sem provider de e-mail)`
-  )
+  if (!String(pedido.email ?? "").trim()) {
+    logger.warn(
+      `[aviso] evento=${evento} pedido=${
+        pedido.display_id ?? "?"
+      }: sem e-mail de contato.`
+    )
+    return
+  }
+
+  const enviado = await enviarEmail(container, {
+    to: pedido.email,
+    template: cancelado ? TEMPLATE_PEDIDO_CANCELADO : TEMPLATE_PEDIDO_ENVIADO,
+    data: cancelado
+      ? dadosDoPedidoCancelado(pedido, process.env.STOREFRONT_URL)
+      : dadosDoEnvio(pedido, m, process.env.STOREFRONT_URL),
+    idempotencyKey: cancelado
+      ? `order-canceled:${pedido.id}`
+      : `order-shipped:${pedido.id}:${codigo}:${String(
+          m.status_label ?? ""
+        ).trim()}`,
+    triggerType: "superfrete.entrega",
+    resourceId: pedido.id,
+  })
+
+  if (enviado) {
+    logger.info(
+      `[aviso] evento=${evento} pedido=${
+        pedido.display_id ?? "?"
+      } codigo=${codigo || "-"} avisado em ${mascararEmail(pedido.email)}`
+    )
+  }
 }
 
 export function etiquetaDe(

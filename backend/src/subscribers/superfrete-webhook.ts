@@ -10,10 +10,18 @@ import {
   type EntregaDoAviso,
 } from "../modules/fulfillment/superfrete/webhook"
 import { pedidoDaEtiqueta, type PedidoNoVinculo } from "../modules/fulfillment/superfrete/vinculo"
-import { avisar } from "../modules/shipping/tracking"
+import { avisar, situacaoDoPedido } from "../modules/shipping/tracking"
 
 /** O nome do evento, duplicado da rota de propósito: subscriber não importa `api/`. */
 export const EVENTO_DA_ENTREGA = "superfrete.entrega"
+
+type PedidoDoAviso = PedidoNoVinculo & {
+  email?: string | null
+  shipping_address?: {
+    first_name?: string | null
+    country_code?: string | null
+  } | null
+}
 
 export default async function superfreteWebhookHandler({
   event,
@@ -29,7 +37,7 @@ export default async function superfreteWebhookHandler({
     listOrders: (
       filtro: Record<string, unknown>,
       config: Record<string, unknown>
-    ) => Promise<PedidoNoVinculo[]>
+    ) => Promise<PedidoDoAviso[]>
     updateOrders: (id: string, data: Record<string, unknown>) => Promise<unknown>
   }>(Modules.ORDER)
 
@@ -46,7 +54,10 @@ export default async function superfreteWebhookHandler({
 
   const [pedido] = await pedidos.listOrders(
     { id: pedidoId },
-    { select: ["id", "display_id", "metadata"] }
+    {
+      select: ["id", "display_id", "email", "metadata"],
+      relations: ["shipping_address"],
+    }
   )
 
   const depois = metadataDoAviso(aviso, pedido?.metadata)
@@ -60,11 +71,12 @@ export default async function superfreteWebhookHandler({
   // estava lá, e é o que preserva o CPF que o rastreio valida.
   await pedidos.updateOrders(pedidoId, { metadata: depois })
 
-  // O aviso à cliente (RV-045): quem sabe do fato é o webhook. Hoje `avisar`
-  // só registra no log.
+  // O aviso à cliente (RV-045). O cancelamento vem de `situacaoDoPedido`, não
+  // de `superfrete_cancelada === true` (o campo é o id da etiqueta, texto).
   await avisar(
-    depois.superfrete_cancelada === true ? "cancelado" : "saiu",
-    pedido as { display_id?: number | null },
+    container,
+    situacaoDoPedido(depois).cancelado ? "cancelado" : "saiu",
+    pedido,
     depois
   )
 

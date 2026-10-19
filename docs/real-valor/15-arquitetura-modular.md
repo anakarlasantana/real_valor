@@ -392,3 +392,101 @@ backend/src/api/webhooks/<provedor>/route.ts   # webhook, se houver
 ele entra como item da lista `providers` do módulo dono, e a lista precisa vir **inteira** (o
 `transformModules` termina em `acc[serviceName] = moduleConfig`, e o loader **desabilita no banco** o
 que está fora da lista). O caso medido está no `README.md` do `fulfillment/tabela/`.
+
+## 15.10 Checkout legível e e-mail transacional (os dois P0)
+
+**Origem:** a varredura de outubro de 2026 achou quatro bloqueadores de checkout — três de
+código e um de operação/documentação. Esta seção guarda a narrativa deles, porque os arquivos
+que os resolvem têm cabeçalho de cinco linhas e um ponteiro para cá.
+
+### 15.10.1 Falha de entrega não é página em branco
+
+O `CheckoutForm` chamava `listCartShippingMethods` e fazia `if (!shippingMethods) return null`.
+A função também devolvia `null` no `catch`, então **duas** coisas diferentes — "a chamada
+falhou" e "não há opção para este endereço" — terminavam no mesmo `null`, e o formulário
+sumia sem dizer nada. O resumo continuava ao lado, e a conclusão de quem estava comprando
+era "o site quebrou".
+
+A correção separa os estados em `lib/checkout/delivery-availability.ts`:
+
+| Estado | Origem | O que a tela faz |
+| :--- | :--- | :--- |
+| `ok` | resposta com opções | desenha o formulário |
+| `sem-opcoes` | resposta `[]` | "Não há entrega para este endereço" + conferir endereço |
+| `indisponivel` | `null`/`catch` | "Não conseguimos calcular a entrega" + tentar de novo |
+
+`listCartShippingMethods` passou a devolver esse tipo e a usar `cache: "no-store"`: a
+resposta depende do carrinho e do endereço, e uma falha passageira do SuperFrete não pode
+ficar gravada no cache do Next — o checkout ficaria indisponível depois que a transportadora
+voltasse. O componente `checkout-unavailable` reaproveita o `EmptyState` da casa e escolhe a
+saída pelo motivo (tentar de novo só faz sentido quando a falha é de serviço).
+
+**O que continua fora:** uma opção de frete cujo `calculatePrice` falha é desenhada
+desabilitada, com "-" no preço, e o botão "Continuar" fica travado. É o mesmo fato visto
+depois da listagem; a mensagem de página inteira cobre a chamada que falha, não o preço
+individual.
+
+### 15.10.2 O meio manual não é oferecido
+
+O `SystemPaymentProvider` do Medusa (`pp_system_default`) cria pedido **sem cobrar** e é
+registrado incondicionalmente; o loader do PAYMENT ainda o reabilita no banco a cada boot,
+então desmarcar "ativo" no Admin não resolve. O filtro vive no storefront:
+
+- `lib/payments/providers.ts` remove o id exato da lista e mantém a ordem;
+- `lib/data/payment.ts` aplica o filtro **antes** de o checkout ver a lista;
+- `Payment` ignora uma sessão pendente desse provedor (um carrinho criado antes do deploy
+  não pode terminar sem pagamento);
+- o adapter manual **continua** no registry: uma sessão antiga ainda renderiza, o que sai é
+  a opção de escolhê-la.
+
+O filtro é incondicional, e não `NODE_ENV === "production"`: um ambiente de homologação com
+`NODE_ENV=production` voltaria a oferecer o meio falso, e o mesmo build teria dois
+comportamentos.
+
+### 15.10.3 E-mail transacional: por que o Resend
+
+A página de pedido confirmado diz "Enviamos todos os detalhes para o seu e-mail" desde a R3,
+e não havia provider nenhum. A exigência era **de graça** e com **texto editável pela loja**.
+O Resend tem plano gratuito de 3.000 e-mails/mês e 100/dia, três domínios, e um editor de
+templates no painel com variáveis e histórico de versão. O texto não mora no código: o
+backend manda o alias e as variáveis (`template: { id, variables }`) e o Resend renderiza.
+
+O módulo de notificação **não existia** em `medusa-config.ts`. Ele entra com uma lista de
+providers condicional, porque o loader recusa dois providers no mesmo canal:
+
+| Configuração | `email` | `feed` (sino do painel) |
+| :--- | :--- | :--- |
+| `RESEND_API_KEY` + `RESEND_FROM` | `resend` | `local` |
+| sem as duas | `local` (log) | `local` |
+
+A condição é "as duas": meia configuração é avisada no boot e ignorada, em vez de derrubar o
+boot no `validateOptions`. Em produção sem Resend, o `local` registra as variáveis no log —
+por isso o README do módulo diz para configurar o Resend e não deixar o `local` no lugar dele.
+
+### 15.10.4 Os três e-mails e a idempotência
+
+| Template | Evento | Chave |
+| :--- | :--- | :--- |
+| `pedido-confirmado` | `order.placed` | `order-placed:<id>` |
+| `pedido-enviado` | `superfrete.entrega` / painel de envio | `order-shipped:<id>:<código>:<situação>` |
+| `pedido-cancelado` | `order.canceled` / SuperFrete | `order-canceled:<id>` |
+
+O e-mail de confirmação sai em `order.placed`, **não** em `order.payment_captured`: no fluxo
+do Mercado Pago o pedido só nasce quando o pagamento é aprovado, e ouvir os dois mandaria
+dois e-mails para a mesma compra. O cancelamento tem dois caminhos (Admin e etiqueta) e usa
+a **mesma** chave, então um cancelamento que dispara os dois gera um e-mail só.
+
+O ponto único é `enviarEmail` (`modules/notification/enviar.ts`), que cria a linha em
+`notification` **antes** de chamar o provider. A linha guarda `status`, `external_id` e
+`idempotency_key`; é o que segura a reentrega do webhook e deixa rastro do que falhou. O erro
+é engolido e mascarado no log (o destinatário é dado pessoal): **um e-mail que não saiu não
+desfaz um pedido**.
+
+As variáveis e o passo a passo dos templates (com um texto de partida) estão em
+`backend/src/modules/notification/README.md`. O módulo tem tabela própria, então a mudança
+pede **`make migrate`** uma vez em DEV (`RUN_MIGRATIONS=0` no overlay); em produção o
+container roda as migrations na subida.
+
+O roteiro para provar tudo isso com a loja rodando — os três estados da entrega, a sessão
+manual antiga, os três e-mails, as falhas esperadas e o que ainda depende de configuração
+externa — está em [`17-roteiro-validacao-checkout-e-email.md`](17-roteiro-validacao-checkout-e-email.md).
