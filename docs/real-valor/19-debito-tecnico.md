@@ -156,6 +156,7 @@ Não bloqueiam a venda, mas deixam a loja "inacabada". Ordenados por impacto no 
 | RV-007 | Metadados de SEO | Remover "Medusa Store", descrições reais, sitemap, robots, JSON-LD | `frontend/src/app/layout.tsx`, `sitemap.ts`, `robots.ts` | Títulos e descrições reais em pt-BR |
 | RV-020 | Exceções de carrinho | Sessão expirada, alteração de preço, estoque excedido | `frontend/src/modules/cart/`, `frontend/src/lib/data/cart.ts` | Três cenários tratados com mensagem clara |
 | RV-019 | Acessibilidade | Foco visível, `aria-label` em ícones, `alt` nas imagens, `aria-live` no carrinho | Transversal (storefront) | axe-core sem violações críticas |
+| RV-030 | Estoque: produtos adicionados no admin aparecem esgotados | Investigar por que produtos criados no painel admin mostram "Esgotado" no site. O módulo `frontend/src/lib/catalog/product-availability.ts` decide o estado pelo `inventory_quantity` dos variants; pode ser que produtos novos não tenham inventory associado, tenham quantidade zero, ou o stock location não esteja vinculado. | `frontend/src/lib/catalog/product-availability.ts`, `backend/src/modules/content/`, `backend/src/scripts/seed/estoque.ts` | Produtos cadastrados pelo admin mostram estado correto (pronta entrega / sob demanda / últimas / esgotado) de acordo com o estoque real |
 
 ### 6.2 Média prioridade
 
@@ -195,6 +196,7 @@ Não bloqueiam a venda, mas deixam a loja "inacabada". Ordenados por impacto no 
 | `pp_system_default` filtrado mas registrado | `frontend/src/lib/payments/providers.ts` | Aparece filtrado, mas continua no backend | Deixar como está (filtrado no storefront é suficiente) |
 | Comentários cortados para baseline | Múltiplos arquivos | Histórico de decisões perdido no código | Os cortes estão documentados nos commits da F10 |
 | Seed de frete pode duplicar opções | `backend/src/scripts/seed.ts` | Corrigido parcialmente (guarda por nome+perfil) | Monitorar após múltiplos `make seed` |
+| Produtos adicionados no admin aparecem esgotados | `frontend/src/lib/catalog/product-availability.ts`, `backend/src/modules/content/` | O estado do chip é decidido pelo `inventory_quantity` dos variants; produtos criados pelo admin podem não ter inventory vinculado ou quantidade zero | Investigar o fluxo de criação de produto → inventory → stock location e confirmar que o admin grava a quantidade inicial |
 
 ### 8.2 Riscos de produção (doc 09 §9.11.5)
 
