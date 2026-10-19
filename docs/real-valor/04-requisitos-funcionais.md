@@ -28,12 +28,12 @@ Caminhos sem marcador já existem no repositório.
 | [RV-043](#rv-043--painel-de-envio) | Painel de envio (registro de rastreio) | **ALTA** |
 | [RV-044](#rv-044--pgina-pblica-de-rastreio) | Página pública de rastreio | **ALTA** |
 | [RV-045](#rv-045--notificao-de-envio-cliente) | Notificação de envio à cliente | MÉDIA |
-| [RV-046](#rv-046--adapter-de-transportadora) | Adapter de transportadora *(bloqueado)* | BAIXA |
+| [RV-046](#rv-046--segunda-transportadora) | Segunda transportadora *(opcional)* | BAIXA |
 
-> **Bloco de pedido e envio (RV-042 a RV-046):** o provedor de frete **ainda não foi decidido**, e
-> isso não segura nada — ver a correção no RV-006: **frete não precisa de registry no frontend**, e a
-> camada já foi construída (provider `tabela`). Os requisitos 042 a 045 são independentes da
-> transportadora; só o RV-046 depende da escolha.
+> **Bloco de pedido e envio (RV-042 a RV-046):** o provedor de frete **está decidido e implementado** —
+> SuperFrete por API (F1b–F3: cotação, etiqueta e webhook). O provider `tabela` (RV-006) continua como
+> camada anterior no histórico. Os requisitos 042 a 045 são independentes da transportadora; o RV-046
+> hoje significa **outra** transportadora, se a comercial quiser, e não bloqueia nada.
 
 ---
 
@@ -1236,27 +1236,27 @@ A regra 2 (não reenviar) e a regra 3 (falha não desfaz o salvamento) continuam
 
 ---
 
-## RV-046 — Transportadora real
+## RV-046 — Segunda transportadora
 
 **Prioridade:** BAIXA · **Tipo:** integração · **Complexidade:** média
-**Depende de:** **decisão comercial** · **BLOQUEADO — transportadora não escolhida**
+**Depende de:** **decisão comercial** · **NÃO BLOQUEADO — desejo opcional, a loja vende hoje**
 
 ### Objetivo
-Trocar o preço da tabela por cotação real, quando houver transportadora com API.
+Acrescentar **outra** transportadora, se a comercial quiser. A cotação real já existe: é o provider
+`superfrete` (F1b–F3), que cota pelo `calculatePrice`, emite etiqueta e recebe o webhook de rastreio.
+Este requisito **não** é "pôr frete real na loja" — isso foi feito.
 
 ### Estado atual
-**Bloqueado por decisão externa — mas não bloqueia nada mais.** A camada já está pronta e
-comprovada: o provider `tabela` (RV-006) calcula preço por peso × região e está registrado no
-`medusa-config.ts`. A loja já é vendável com ele.
+**Nada depende dele.** A camada está pronta: o `superfrete` e o `tabela` (RV-006) são providers de
+fulfillment registrados no `medusa-config.ts`, e o segundo adapter é cópia de formato, não desenho.
 
 ### O que será feito quando houver decisão
-1. Escrever `backend/src/modules/fulfillment/<transportadora>/service.ts` seguindo o mesmo formato
-   do `tabela` — três métodos: `getFulfillmentOptions()`, `canCalculate()`, `calculatePrice()`.
+1. Escrever `backend/src/modules/fulfillment/<transportadora>/` no mesmo formato do `superfrete/` —
+   `service.ts` (`AbstractFulfillmentProviderService`) + `catalogo.ts` + `cliente.ts`. As três
+   armadilhas do framework (medidas) estão no `README.md` do `superfrete/`.
 2. Registrar em `medusa-config.ts` — **mais nada**.
-3. Criar a shipping option no Admin apontando para o provider novo.
-4. Desligar a tabela, se ela deixar de ser usada.
-5. Se for integração por **API**, avaliar polling de status — o Medusa não avisa mudanças de status
-   sozinho (ver "O que não existe").
+3. Criar as shipping options no Admin apontando para o provider novo (o seed cria as do SuperFrete).
+4. Se for integração por **API**, avaliar webhook de status — o SuperFrete já tem (`§15.4.2`).
 
 ### O que NÃO precisa ser feito
 Carrinho, checkout, painel de envio e `/rastreio` **não mudam**. Todos leem `StoreCartShippingOption`

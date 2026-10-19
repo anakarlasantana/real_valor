@@ -194,22 +194,21 @@ export type SituacaoPublica = {
 }
 
 /**
- * O cancelamento vence o rótulo: um pedido cancelado antes de postar não tem
- * código e apareceria como "Pedido recebido" na tela.
+ * O cancelamento vence o rótulo. O valor é o id da etiqueta, não booleano — daí
+ * a leitura por presença (doc 15, §15.4.2).
  */
 export function situacaoDoPedido(
   metadata: Record<string, unknown> | null | undefined
 ): SituacaoPublica {
   const m = (metadata ?? {}) as Record<string, unknown>
 
-  if (m.superfrete_cancelada === true) {
+  if (String(m.superfrete_cancelada ?? "").trim()) {
     return { rotulo: "Cancelado", cancelado: true }
   }
 
-  return {
-    rotulo: String(m.status_label ?? "").trim() || DEFAULT_STATUS_LABEL,
-    cancelado: false,
-  }
+  const rotulo = String(m.status_label ?? "").trim()
+
+  return { rotulo: rotulo || DEFAULT_STATUS_LABEL, cancelado: false }
 }
 
 /** O JSON de `GET /store/orders/track`; o e-mail do pedido não sai. */

@@ -2,7 +2,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 
 import { ambienteDaConfig, chamarSuperFrete } from "../../../../../../modules/fulfillment/superfrete/cliente"
-import { cancelarEtiqueta } from "../../../../../../modules/fulfillment/superfrete/etiqueta"
+import { cancelarEtiqueta, situacaoDaEtiqueta } from "../../../../../../modules/fulfillment/superfrete/etiqueta"
 
 export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<void> {
   const id = String(req.params?.id ?? "")
@@ -54,7 +54,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<voi
     metadata: {
       ...metadata,
       superfrete_cancelada: etiqueta,
-      status_label: "Etiqueta cancelada",
+      status_label: situacaoDaEtiqueta("cancelled"),
     },
   })
 

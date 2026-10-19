@@ -234,19 +234,27 @@ describe("situacaoDoPedido", () => {
     expect(situacaoDoPedido(null).rotulo).toBe(DEFAULT_STATUS_LABEL)
   })
 
-  it("CANCELADO vence o rótulo: a tela não mostra 'Postada' num pedido cancelado", () => {
+  it("CANCELADO vence o rótulo", () => {
     const s = situacaoDoPedido({
       status_label: "Postada",
-      superfrete_cancelada: true,
+      superfrete_cancelada: "etiqueta_abc123",
     })
 
     expect(s).toEqual({ rotulo: "Cancelado", cancelado: true })
   })
 
-  it("só `true` cancela — o texto 'false' de um metadata antigo não cancela", () => {
-    expect(situacaoDoPedido({ superfrete_cancelada: "true" }).cancelado).toBe(
-      false
-    )
+  it("cancelado pela rota do admin conta (id, não booleano)", () => {
+    expect(
+      situacaoDoPedido({ superfrete_cancelada: "etiqueta_abc123" }).cancelado
+    ).toBe(true)
+  })
+
+  it("sem cancelamento — vazio, `null` ou ausente — não cancela", () => {
+    for (const valor of ["", "  ", null, undefined]) {
+      expect(situacaoDoPedido({ superfrete_cancelada: valor }).cancelado).toBe(
+        false
+      )
+    }
   })
 })
 
@@ -328,7 +336,7 @@ describe("rastreioPublico", () => {
 
   it("um pedido cancelado SEM código sai como cancelado, não como pendente", () => {
     const { order } = rastreioPublico(pedido, {
-      superfrete_cancelada: true,
+      superfrete_cancelada: "etiqueta_abc123",
     }) as any
 
     expect(order.tracking.tracking_number).toBeNull()

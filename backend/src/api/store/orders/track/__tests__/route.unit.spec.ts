@@ -147,7 +147,7 @@ describe("GET /store/orders/track", () => {
         cpf: "12345678900",
         status_label: "Postada",
         superfrete_situacao: "posted",
-        superfrete_cancelada: true,
+        superfrete_cancelada: "etiqueta_abc123",
       },
     }
 

@@ -1227,6 +1227,17 @@ link é escrito `/rastreio` (pt-BR, como `/carrinho` e `/conta`) e não `/track`
    algo quebrou. "Pendente" também é um estado de primeira classe: pedido pago, envio ainda não
    registrado.
 
+**Contrato de `GET /store/orders/track` (corrigido em 18/10/2026).** A rota devolve
+`payment_status` e `metadata { order_status_label, situacao, cancelado }` — o cancelamento é
+decidido no backend (`situacaoDoPedido`) e **vence** o rótulo; o `email` do pedido **não** sai na
+resposta.
+
+O cancelamento é lido por **presença**: `superfrete_cancelada` guarda o **id da etiqueta** (string),
+gravado pelo webhook e pela rota de cancelamento do admin. A primeira versão comparava com `=== true`,
+o que nunca era verdade — e o teste cobria justamente o valor `true`, que nenhum código grava, em vez
+do formato real. Os dois caminhos de cancelamento agora gravam o **mesmo** `status_label`
+(`situacaoDaEtiqueta("cancelled")` → "Cancelada"), e os testes usam o formato que o código grava.
+
 **Acessibilidade:** o resultado está em `aria-live="polite"` — sem ele, quem usa leitor de tela
 pressiona o botão e não recebe nenhuma confirmação de que a página respondeu. Os três campos têm
 `<label>` ligado por `htmlFor`, e o botão desabilita durante a consulta para impedir envio duplo.
@@ -1360,7 +1371,31 @@ sessão (`orders-<cacheId>`), que o backend não alcança: a cliente vê a situa
 entrada de cache expira.
 
 
-### RV-045 · Notificação de envio à cliente
+### ⚠️ F1b–F3 · O que o código prova e o que só o token prova
+
+As três fases acima estão **implementadas e verdes**, mas com `SUPERFRETE_TOKEN` e
+`SUPERFRETE_WEBHOOK_SECRET` vazios nada disso falou com `sandbox.superfrete.com` nem com
+`api.superfrete.com`. "Verde" aqui significa **cobertura unitária com cliente injetado** — não
+integração validada. A tabela separa as duas coisas, porque o risco não é uniforme:
+
+| Parte | O que o teste garante | O que só a API real responde |
+| :--- | :--- | :--- |
+| Cotação (F1b) | caixa → payload, resposta → preço, falha lança em vez de `0` | se o sandbox devolve os 6 códigos e o **teto de peso** por transportadora |
+| Etiqueta (F2) | `/cart` → `/checkout`, falha de pagamento preservando o `id`, PDF assinado | se o saldo realmente debita e o `/tag/print` devolve link válido |
+| Serviços (F2b/F2b+) | regra `enabled_in_store`, 422 no estado final | se **Jadlog, J&T e Loggi** cotam na conta do lojista |
+| Webhook (F3) | HMAC sobre bytes crus, reentrega, aviso atrasado, vínculo | se `POST /api/v0/webhook` **aceita** nosso endpoint e se o `secret_token` do SuperFrete é o HMAC-SHA256 que implementamos |
+
+**O caminho para fechar isto é o roteiro da F3**, nesta ordem (cada passo destrava o seguinte):
+
+1. `SUPERFRETE_TOKEN` no `.env` → `POST /admin/shipping/testar` (os 6 serviços, sem cache).
+2. Uma cotação no checkout e **uma** etiqueta de teste em `sandbox`.
+3. `SUPERFRETE_WEBHOOK_SECRET` → criar o Webhook App no painel → `order.posted` chega em
+   `/webhooks/superfrete` com **200** (não 401).
+
+**Enquanto o token estiver vazio, nenhum desses testes deixa de passar** — e é por isso que esta
+pendência existe em vez de um `skip` verde. O que muda no código quando o token chegar está no
+`README.md` de `backend/src/modules/fulfillment/superfrete/`.
+
 
 ### RV-045 · Notificação de envio à cliente
 **Descrição:** e-mail com o código quando o admin salva o rastreio pela primeira vez.
@@ -1370,14 +1405,18 @@ entrada de cache expira.
 **Aceite:** os 3 critérios da RV-045
 **Pré-requisito:** **provider de e-mail transacional** (ver 8.4.4 — não auditado)
 
-### RV-046 · Adapter de transportadora
-**Descrição:** substituir o `manual` por cálculo real de frete. **BLOQUEADO** — provedor não definido.
+### RV-046 · Segunda transportadora (adapter genérico)
+**Descrição:** o "transporte real" **já está feito** — é o provider `superfrete` (F1b–F3), que cota pelo
+`calculatePrice` e emite etiqueta. O que resta aqui é **outra** transportadora, se a comercial quiser
+comparar preço ou cobrir o que os Correios não atendem. **NÃO É BLOQUEIO** — a loja vende hoje.
 **Tipo:** integração · **Prioridade:** BAIXA · **Complexidade:** média
-**Depende de:** **decisão comercial**
-**Arquivos:** *novos:* `backend/src/modules/shipping/<transportadora>/`
+**Depende de:** **decisão comercial** (qual transportadora, se alguma)
+**Arquivos:** *novo:* `backend/src/modules/fulfillment/<transportadora>/` — o `superfrete/` é a
+referência de formato (`service.ts` + `catalogo.ts` + `cliente.ts`)
 **Aceite:** os 3 critérios da RV-046
 **Nota:** o contrato (`packages/contrato/src/shipping.ts`) já está definido no RV-006 — plugar é
-escrever o adapter, não redesenhar. **Não entra no caminho crítico da inauguração.**
+escrever o adapter, não redesenhar. O `README.md` do `superfrete/` lista as três armadilhas do
+framework que o segundo adapter vai reencontrar.
 
 ---
 
@@ -1598,12 +1637,13 @@ rastreio funcionando** — sem depender da escolha da transportadora.
 | RV-044 Página de rastreio | ALTA | Não |
 | RV-045 Notificação de envio | MÉDIA | Não |
 | RV-006 Frete automático | ALTA | **Não — ✅ feito** |
-| RV-046 Transportadora real | BAIXA | **Sim — bloqueado** |
+| RV-046 Segunda transportadora | BAIXA | **Não — opcional, sem bloqueio** |
 
-**Cinco dos seis independem da transportadora.** O RV-006 (frete automático) ficou resolvido sem
-esperar ninguém: o provider `tabela` calcula preço por peso × região hoje, e a transportadora real
-entra depois como **outro** provider, sem tocar em carrinho, checkout, painel de envio ou `/rastreio`.
-Só o RV-046 espera a decisão comercial — e o `fulfillment-manual` seedado mantém a loja vendável até lá.
+**Seis dos seis independem da transportadora.** O RV-006 (frete automático) ficou resolvido sem
+esperar ninguém: o provider `tabela` calcula preço por peso × região, e o `superfrete` (F1b–F3) cota
+por API e emite etiqueta. O RV-046 deixou de ser "a transportadora real" e passou a ser **outra**
+transportadora, se a comercial quiser — entra como **mais um** provider, sem tocar em carrinho,
+checkout, painel de envio ou `/rastreio`.
 
 A ordem de execução é a das fases acima — a Fase 1 é a que fecha a inauguração.
 
@@ -1620,7 +1660,8 @@ aqui, num lugar só. O status por requisito já está nas entradas por RV, acima
 | Questão | Bloqueia | Quem decide |
 | :--- | :--- | :--- |
 | **Modalidade do Mercado Pago** (Point, Pro, Advanced) | Parcelamento e split — define o que o `describe()` devolve | Comercial |
-| Provedor de frete definitivo | `RV-046` (adapter real) | Comercial |
+| Provedor de frete do dia a dia | `superfrete` — **decidido e implementado** (F1b–F3) | — |
+| Segunda transportadora, se houver | `RV-046` (adapter opcional) | Comercial |
 | Tabela de medidas: `metadata` ou módulo novo? | `RV-009` (guia de medidas) | Arquitetura |
 | Quantidade de imagens por produto | Layout da galeria | Comercial |
 | Catálogo real: tamanho e número de categorias | Facetas de filtro, paginação | Comercial |
@@ -1653,13 +1694,15 @@ notificação **real**: o que existe é cobertura unitária, não integração v
 cada uma decide estão no `README.md` do módulo
 (`backend/src/modules/payment/mercadopago/`).
 
-### 9.11.3 Frete: o que espera decisão comercial
+### 9.11.3 Frete: o que já está decidido e o que o `RV-046` ainda pediria
 
-Os quatro itens que o `RV-046` precisa, e nenhum deles é de código:
+**Decidido e implementado:** SuperFrete por **API** (Opção B), com cotação de PAC/SEDEX/Mini Envios,
+etiqueta e webhook — F1b–F3, com o roteiro de provas reais na seção F3. Nada nesta seção bloqueia a
+inauguração; o que ela descreve é **só** o que uma segunda transportadora (`RV-046`) ainda pediria:
 
 | O que é preciso | De quem |
 | :--- | :--- |
-| Qual transportadora | Comercial |
+| Qual transportadora (se alguma) | Comercial |
 | Se é link (Opção A) ou API (Opção B) | Comercial |
 | Tabela ou regra de preço | Comercial |
 | **Peso dos produtos cadastrado** | **Loja** — é trabalho de cadastro, não de integração |

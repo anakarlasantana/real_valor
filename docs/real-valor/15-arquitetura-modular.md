@@ -242,9 +242,13 @@ o JSON reserializado, que muda a ordem das chaves); o aviso chega em `event` + `
 `rastreioPublico()` (`modules/shipping/tracking.ts`), não na rota — é a única forma de
 testar a resposta sem o Medusa de pé. O `metadata` da resposta leva
 `{ order_status_label, situacao, cancelado }`, e a **ordem de precedência do cancelamento
-vence todas as outras**: o webhook grava `superfrete_cancelada` sem tocar em código nem
-rótulo, então um pedido cancelado antes de postar aparecia como "Pedido recebido"; a tela
-só obedece a `cancelado === true`. `payment_status` passou a sair na resposta — o tipo do
+vence todas as outras**: o webhook grava `superfrete_cancelada` (o **id da etiqueta**, string)
+sem tocar no rótulo, então um pedido cancelado antes de postar aparecia como "Pedido
+recebido"; a tela só obedece a `cancelado` (booleano derivado no backend).
+`superfrete_cancelada` é lido por **presença** — `String(...).trim()` —, como o próprio
+`webhook.ts` faz: comparar com `=== true` nunca reconhecia o cancelamento, porque nenhum
+caminho grava booleano, e o primeiro teste cobria justamente esse valor inexistente.
+`payment_status` passou a sair na resposta — o tipo do
 storefront o exigia e a rota nunca o devolvia, sem nenhum teste vermelho (a divergência
 só apareceu porque faltava teste da rota; agora há `track/api/.../route.unit.spec.ts`
 conferindo as chaves contra o tipo). O **e-mail saiu da resposta**: a cliente já o conhece,

@@ -84,7 +84,7 @@ código novo.
 | :--- | :--- |
 | Catálogo: produtos, categorias, coleções, preços, estoque | É o painel nativo do Medusa; o conteúdo apenas **referencia** categorias e produtos (`filters`, `productIds`) |
 | Pedidos, pagamentos, reembolsos | Painel nativo do Medusa; o bloco de pedido/envio é o `RV-042` |
-| Configuração de frete/transportadora | `RV-006` (provider `tabela`) e `RV-046` (bloqueado por decisão comercial) |
+| Configuração de frete/transportadora | `superfrete` (cotação + etiqueta + webhook) e `RV-046` (segunda transportadora, opcional) |
 | Contas de cliente e checkout | Painel/loja nativos |
 | E-mail transacional | `RV-045` |
 | **Criação e publicação de páginas** | A tela **não cria** página (é a entidade `content_page` da estratégia B, que segue com gatilho) e **não publica/despublica a página inteira**: publica **por bloco** (`content/components/pages-view.tsx:25-28`) |
