@@ -437,13 +437,13 @@ prontos. O status item a item está no doc 09; o requisito, no doc 04.
 | Variantes e estoque | ✅ `product-actions` | ✅ | **Pronto** |
 | Carrinho | ✅ `lib/data/cart.ts` | ✅ | **Pronto** |
 | Cupom | ✅ `discount-code` | ✅ | **Pronto** |
-| Opções de frete | ✅ `shipping/` | ✅ `fulfillment-manual` + `tabela` | **Pronto** |
+| Opções de frete | ✅ `shipping/` | ✅ `fulfillment-manual` + `tabela` + `superfrete` | **Pronto** — falta o `SUPERFRETE_TOKEN` e o saldo (§9.11.3 do doc 09); sem eles o checkout abre sem entrega |
 | Checkout (formulário) | ✅ 20 componentes | ✅ | **Pronto** |
 | Pagamento | ✅ adapters do MP (`lib/payments/`) | ✅ `payment/mercadopago` (Pix + cartão) | **Pronto** — falta a venda real (§9.11.2 do doc 09) |
 | Conta do cliente | ⚠️ `modules/account` | ✅ | **Parcial** |
 | Pedido confirmado | ✅ `order/…/confirmed` | ✅ | **Pronto** |
 | Rastreio | ✅ `modules/tracking` + `lib/data/tracking.ts` | ✅ `/store/orders/track` | **Pronto** (RV-044) |
-| `checkout-info` | ❌ | ⚠️ a rota existe e **ninguém a consome** | **Órfã** — ver §9.11.6 do doc 09 |
+| `checkout-info` | ❌ | ⚠️ a rota existe e **ninguém a consome** | **Órfã** — ver §9.11.7 do doc 09 |
 | Newsletter | ❌ | ❌ | **A implementar** (RV-012) |
 | SEO técnico | ✅ `app/sitemap.ts` + `app/robots.ts` | — | ⚠️ **metadados pendentes** (RV-007) |
 | Armazenamento de imagem | ✅ `resolveMediaUrl` | ⚠️ `file-local` | **Parcial** (RV-023) |

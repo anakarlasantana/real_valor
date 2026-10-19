@@ -109,4 +109,6 @@ não é conferência, e a rota seria um POST anônimo escrevendo em pedido de cl
 
 Para conferir a integração: **`POST /api/v0/calculator`** com o token do
 sandbox. A conta de teste precisa de saldo (o sandbox recarrega por Pix
-simulado).
+simulado) — sem saldo o `/cart` não paga, e a etiqueta falha como se fosse bug.
+O roteiro completo, do token ao webhook, é o §9.11.3 do
+`docs/real-valor/09-backlog-implementacao.md`.

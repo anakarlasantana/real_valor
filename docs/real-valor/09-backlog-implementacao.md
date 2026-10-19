@@ -1261,7 +1261,7 @@ com o saldo da carteira SuperFrete.
 - **Testes:** +45 no backend (529 no total) e +10 no CRM (158).
 
 **Pendência declarada:** o caminho real nunca rodou — `SUPERFRETE_TOKEN` vazio para o provider na
-primeira chamada. Falta o token do sandbox e saldo na carteira de teste.
+primeira chamada. O roteiro que fecha isto (token, saldo, cotação, etiqueta e webhook) está em §9.11.3.
 
 ### ✅ F2b · Serviços de frete e cotação de teste — **FEITO (18/10/2026)**
 
@@ -1322,7 +1322,7 @@ ordem; ligar a Jadlog a fez aparecer no `/store/shipping-options` de um carrinho
 
 **Pendência declarada:** `SUPERFRETE_TOKEN` continua vazio — a cotação real de Jadlog/J&T/Loggi
 não foi vista. `POST /admin/shipping/testar` responde "O SuperFrete não está configurado". Com o
-token, o teste já cota as três (`todos: true`).
+token, o teste já cota as três (`todos: true`) — é o passo 1 de §9.11.3.
 
 ### ✅ F3 · Webhook do SuperFrete — **FEITO (18/10/2026)**
 
@@ -1365,7 +1365,8 @@ ganhou teste de regressão.
 foi recusado. Sem assinatura e com assinatura falsa: **401**.
 
 **Pendência declarada:** o `SUPERFRETE_WEBHOOK_SECRET` está vazio no `.env`, então o Webhook App
-ainda não pode ser criado (o segredo é o `secret_token` devolvido por `POST /api/v0/webhook`). O
+ainda não pode ser criado (o segredo é o `secret_token` devolvido por `POST /api/v0/webhook`) — o
+passo 4 de §9.11.3. O
 caminho real foi provado com um segredo efêmero no container, já revertido. A vitrine usa tag por
 sessão (`orders-<cacheId>`), que o backend não alcança: a cliente vê a situação nova quando a
 entrada de cache expira.
@@ -1385,16 +1386,10 @@ integração validada. A tabela separa as duas coisas, porque o risco não é un
 | Serviços (F2b/F2b+) | regra `enabled_in_store`, 422 no estado final | se **Jadlog, J&T e Loggi** cotam na conta do lojista |
 | Webhook (F3) | HMAC sobre bytes crus, reentrega, aviso atrasado, vínculo | se `POST /api/v0/webhook` **aceita** nosso endpoint e se o `secret_token` do SuperFrete é o HMAC-SHA256 que implementamos |
 
-**O caminho para fechar isto é o roteiro da F3**, nesta ordem (cada passo destrava o seguinte):
-
-1. `SUPERFRETE_TOKEN` no `.env` → `POST /admin/shipping/testar` (os 6 serviços, sem cache).
-2. Uma cotação no checkout e **uma** etiqueta de teste em `sandbox`.
-3. `SUPERFRETE_WEBHOOK_SECRET` → criar o Webhook App no painel → `order.posted` chega em
-   `/webhooks/superfrete` com **200** (não 401).
-
-**Enquanto o token estiver vazio, nenhum desses testes deixa de passar** — e é por isso que esta
-pendência existe em vez de um `skip` verde. O que muda no código quando o token chegar está no
-`README.md` de `backend/src/modules/fulfillment/superfrete/`.
+**O roteiro que fecha isto é o de §9.11.3** — ele tem os quatro passos na ordem, incluindo os dois
+que não são variável de ambiente (saldo da carteira e URL pública). **Enquanto o token estiver vazio,
+nenhum desses testes deixa de passar** — e é por isso que esta pendência existe em vez de um `skip`
+verde.
 
 
 ### RV-045 · Notificação de envio à cliente
@@ -1660,8 +1655,9 @@ aqui, num lugar só. O status por requisito já está nas entradas por RV, acima
 | Questão | Bloqueia | Quem decide |
 | :--- | :--- | :--- |
 | **Modalidade do Mercado Pago** (Point, Pro, Advanced) | Parcelamento e split — define o que o `describe()` devolve | Comercial |
+| **Token e saldo do SuperFrete** | O frete do checkout — **sem os dois o checkout abre sem entrega** (§9.11.3) | Loja (token e recarga) |
 | Provedor de frete do dia a dia | `superfrete` — **decidido e implementado** (F1b–F3) | — |
-| Segunda transportadora, se houver | `RV-046` (adapter opcional) | Comercial |
+| Segunda transportadora, fora do SuperFrete | `RV-046` (adapter opcional) | Comercial |
 | Tabela de medidas: `metadata` ou módulo novo? | `RV-009` (guia de medidas) | Arquitetura |
 | Quantidade de imagens por produto | Layout da galeria | Comercial |
 | Catálogo real: tamanho e número de categorias | Facetas de filtro, paginação | Comercial |
@@ -1669,9 +1665,10 @@ aqui, num lugar só. O status por requisito já está nas entradas por RV, acima
 | Brand guide definitivo: logo vetorial e tom da marca | `RV-021` (wordmark e tipografia) | Marca |
 | Serviço de e-mail transacional | Avisos de pedido — **confirmar se já existe** | Infra |
 
-**A única verdadeiramente urgente é a modalidade do MP.** As duas últimas linhas têm indicativos no
-código (o comentário do logo vetorial; os tokens derivados de um brand guide), mas **não foram
-confirmadas** por auditoria.
+**Urgentes para inaugurar são duas:** a modalidade do MP e as credenciais do SuperFrete — a loja pode
+ficar de pé e não fechar venda por qualquer uma das duas. As duas últimas linhas da tabela têm
+indicativos no código (o comentário do logo vetorial; os tokens derivados de um brand guide), mas **não
+foram confirmadas** por auditoria.
 
 ### 9.11.2 O que falta para o Mercado Pago valer em produção
 
@@ -1694,21 +1691,61 @@ notificação **real**: o que existe é cobertura unitária, não integração v
 cada uma decide estão no `README.md` do módulo
 (`backend/src/modules/payment/mercadopago/`).
 
-### 9.11.3 Frete: o que já está decidido e o que o `RV-046` ainda pediria
+### 9.11.3 Frete: o que falta para a loja vender com frete real
 
 **Decidido e implementado:** SuperFrete por **API** (Opção B), com cotação de PAC/SEDEX/Mini Envios,
-etiqueta e webhook — F1b–F3, com o roteiro de provas reais na seção F3. Nada nesta seção bloqueia a
-inauguração; o que ela descreve é **só** o que uma segunda transportadora (`RV-046`) ainda pediria:
+etiqueta e webhook — F1b–F3. O código está pronto e testado; o que falta é a **conta**, não o
+programa.
+
+**O que acontece hoje, com o `.env` deste repositório** (`SUPERFRETE_TOKEN` e
+`SUPERFRETE_WEBHOOK_SECRET` vazios): o provider **lança** em vez de responder `0`, o Medusa tira a
+opção da lista e **o checkout abre sem nenhuma forma de entrega**. O frete falha visível — nunca a
+R$ 0,00. A loja não vende enquanto o passo 1 abaixo não rodar.
+
+| Etapa | Código | Variável | O que não está no `.env` | Estado |
+| :--- | :--- | :--- | :--- | :--- |
+| Cotação (F1b) | ✅ | `SUPERFRETE_TOKEN` | CEP no **local de estoque** | ⏳ não provado |
+| Serviços (F2b/F2b+) | ✅ | — | conta do lojista (Jadlog/J&T/Loggi dependem de ponto de postagem) | ⏳ 3 não cotadas |
+| Etiqueta (F2) | ✅ | `SUPERFRETE_TOKEN` | **saldo na carteira** | ⏳ não provado |
+| Rastreio (F3) | ✅ | `SUPERFRETE_WEBHOOK_SECRET` | **URL pública** + Webhook App criado | ⏳ não provado |
+
+**O roteiro, nesta ordem** (cada passo destrava o seguinte — e o 2 é o mais esquecido):
+
+1. **Token.** `SUPERFRETE_TOKEN` (painel → Integrações → Token da API) e `SUPERFRETE_AMBIENTE=sandbox`
+   no `.env`; reinicie o backend. Depois `POST /admin/shipping/testar` com `{ "todos": true }`: cota os
+   6 serviços, sem cache, sem gravar nada. **O resultado deste passo é o diagnóstico**: o que não cotar
+   aparece com o motivo, e um serviço pode falhar por conta (ponto de postagem) sem que haja bug.
+2. **Saldo.** `GET /admin/shipping/saldo`. O sandbox recarrega por Pix simulado, mas **sem saldo o
+   `/cart` não paga** — a cotação passa e a etiqueta falha, parecendo defeito de código.
+3. **Cotação e etiqueta.** Uma cotação no checkout e **uma** etiqueta de teste em `sandbox`
+   (`POST /admin/shipping/:id/etiqueta`, depois `.../etiqueta/pdf`).
+4. **Rastreio.** `openssl rand -hex 32` → `SUPERFRETE_WEBHOOK_SECRET`; `make tunnel` (a SuperFrete não
+   entrega em `localhost`); criar o Webhook App no painel. ⚠️ O valor que vale é o **`secret_token`
+   devolvido por `POST /api/v0/webhook`** — um valor inventado responde **401**. O aceite é
+   `order.posted` chegar em `/webhooks/superfrete` com **200**.
+
+**Três coisas que só a API real prova** (nenhum teste unitário alcança): se **Jadlog, J&T e Loggi**
+cotam na conta do lojista (passo 1); se a SuperFrete **aceita** nosso endpoint (passo 4); e se o
+`secret_token` deles é de fato o **HMAC-SHA256 sobre o corpo cru** que implementamos (passo 4).
+
+**Duas pré-condições que não são variável de ambiente** e não aparecem em nenhum `.env`: o **CEP do
+local de estoque** (Admin → Locations — é dado da loja, e origem escondida no `.env` é origem que
+ninguém acha quando o frete sai errado) e o **peso dos produtos cadastrado**, sem o qual não há
+cálculo possível.
+
+### 9.11.4 A segunda transportadora (`RV-046`)
+
+**Só isto a seção trata.** Com o roteiro acima fechado, o frete real está entregue — e o SuperFrete
+**já cota quatro transportadoras** (Correios, Jadlog, J&T e Loggi, ligáveis em *Frete → Serviços de
+frete*). O `RV-046` é para contratar uma transportadora **fora** do SuperFrete:
 
 | O que é preciso | De quem |
 | :--- | :--- |
 | Qual transportadora (se alguma) | Comercial |
 | Se é link (Opção A) ou API (Opção B) | Comercial |
 | Tabela ou regra de preço | Comercial |
-| **Peso dos produtos cadastrado** | **Loja** — é trabalho de cadastro, não de integração |
+| **Peso dos produtos cadastrado** | **Loja** — é trabalho de cadastro, não de integração (vale começar já: §9.11.3) |
 
-**Sem peso cadastrado não há cálculo possível**, e nenhuma API resolve isso: vale começar o cadastro
-antes de fechar a transportadora.
 
 **Três regras de desenho que mantêm isso barato:**
 
@@ -1731,7 +1768,7 @@ cada `make seed` somava um par de PAC/SEDEX (medido: 7 + 7). O seed hoje tem a m
 produtos, comparando por **(nome, perfil de envio)** — o `id` muda a cada execução, então comparar por
 ele não acharia a opção da rodada anterior.
 
-### 9.11.4 Riscos técnicos de produção
+### 9.11.5 Riscos técnicos de produção
 
 | # | Risco | Probabilidade | Impacto | Mitigação |
 | :--- | :--- | :--- | :--- | :--- |
@@ -1749,7 +1786,7 @@ ele não acharia a opção da rodada anterior.
 **R7 e R10 são os mais baratos de resolver e os mais fáceis de esquecer** — ambos estão na lista de
 critérios de produção em `05-requisitos-nao-funcionais.md`.
 
-### 9.11.5 Integrações que ainda não existem
+### 9.11.6 Integrações que ainda não existem
 
 - **E-mail transacional — não auditado.** A confirmação de pedido depende dele. O `medusa-config.ts`
   registra só `file` e `content`, o que sugere que **não há provider de notificação**: o pedido pode
@@ -1765,7 +1802,7 @@ critérios de produção em `05-requisitos-nao-funcionais.md`.
   redimensionadas no upload** — é o que evita o pior cenário com o armazenamento local (`RV-023` e
   `RV-024`).
 
-### 9.11.6 Uma ponta solta de código
+### 9.11.7 Uma ponta solta de código
 
 `GET /store/checkout/info` (`backend/src/api/store/checkout/info/route.ts`) **não tem consumo no
 frontend** — confirmado por grep em 13/10/2026. Pode ser código morto ou consumo externo: **não
