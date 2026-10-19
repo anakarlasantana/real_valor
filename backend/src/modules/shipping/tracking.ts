@@ -303,7 +303,7 @@ export async function avisar(
     to: pedido.email,
     template: cancelado ? TEMPLATE_PEDIDO_CANCELADO : TEMPLATE_PEDIDO_ENVIADO,
     data: cancelado
-      ? dadosDoPedidoCancelado(pedido, process.env.STOREFRONT_URL)
+      ? dadosDoPedidoCancelado(pedido, process.env.STOREFRONT_URL, m)
       : dadosDoEnvio(pedido, m, process.env.STOREFRONT_URL),
     idempotencyKey: cancelado
       ? `order-canceled:${pedido.id}`

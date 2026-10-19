@@ -115,7 +115,9 @@ TS_NODE_IGNORE="/node_modules/|/packages/contrato/" yarn --cwd backend build
 | :--- | :--- | :--- |
 | `RESEND_API_KEY` | Autentica o `POST /emails` | O provider `resend` não é registrado; o `local` só loga |
 | `RESEND_FROM` | Remetente verificado (`Real Valor <nao-responda@dominio>`) | Idem; meia configuração é avisada no boot |
-| `STOREFRONT_URL` | URL **pública** usada nos links do e-mail | O template recebe `LINK` vazio |
+| `STOREFRONT_URL` | URL **pública** usada nos links do e-mail | O template recebe `LINK_PEDIDO`/`LINK` vazio |
+| `EMAIL_LOGO_URL` | Logo do topo dos templates (URL **absoluta e pública**) | Remova a linha do `<img>` no Resend (`src=""` = ícone quebrado) |
+| `EMAIL_ATENDIMENTO` | E-mail do botão e do rodapé | Usa `atendimento@realvalor.com.br` (o mesmo do `/store/checkout/info`) |
 | `INTERNAL_API_SECRET` | `x-rv-internal` na rota `GET /internal/orders/by-cart` | A confirmação do pedido fica em "aguardando" |
 | `SUPERFRETE_TOKEN` | Cotação e etiqueta | A cotação falha e o checkout mostra `indisponivel` |
 | `MP_*` | Pagamento real | O checkout mostra "pagamento indisponível" (lista vazia) |
@@ -308,19 +310,23 @@ sem pagamento.
 **Esperado:**
 
 - assunto e corpo vêm do template `pedido-confirmado` publicado no Resend;
-- `NOME` é o primeiro nome do endereço de entrega (ou "Cliente");
-- `PEDIDO` é o `display_id`, não o `order_…` interno;
-- `ITENS` traz quantidade, título, variante e preço;
-- `TOTAL` está em reais (`R$ 349,90`);
+- `NOME_CLIENTE` é o primeiro nome do endereço de entrega (ou "Cliente");
+- `NUMERO_PEDIDO` é o `display_id`, não o `order_…` interno;
+- `DATA_PEDIDO` é a data do pedido como `dd/mm/aaaa` (fuso de São Paulo);
+- `RESUMO_ITENS` mostra uma linha por item, em texto:
+  `2× Vestido Midi (M / Rosa) — R$ 259,90`;
+- `VALOR_TOTAL` está em reais (`R$ 349,90`) e `STATUS_PAGAMENTO` aparece
+  traduzido (`Aprovado`, `Aguardando confirmação`…);
 - `ENTREGA` é o nome da modalidade escolhida;
-- `LINK` abre `STOREFRONT_URL/<país>/order/<id>/confirmed`;
+- o botão (`LINK_PEDIDO`) abre `STOREFRONT_URL/<país>/order/<id>/confirmed`;
 - o log mostra `[email] confirmação do pedido <display_id> enviada para a***@…`;
 - o Resend mostra o envio em *Emails*, e o `external_id` da linha em
   `notification` é o id do e-mail lá.
 
 **Teste de escape:** cadastre um produto com `<b>` ou `&` no título, refaça um
 pedido e confira que o e-mail mostra o texto literal — `ITENS` é HTML montado
-pelo backend e o título vem escapado.
+pelo backend e o título vem escapado. Em `RESUMO_ITENS` o texto vai como texto
+(variável de chaves duplas), então os mesmos caracteres aparecem literalmente.
 
 ### 17.6.2 `pedido-enviado` — a etiqueta saiu ou o rastreio mudou
 
@@ -328,7 +334,13 @@ pelo backend e o título vem escapado.
 2. Gere a etiqueta pelo SuperFrete **ou** preencha transportadora, código de
    rastreio e situação e clique em **Salvar**.
 3. **Esperado:** o e-mail `pedido-enviado` chega com `SITUACAO`,
-   `TRANSPORTADORA`, `RASTREIO`, `LINK_RASTREIO` e `LINK`.
+   `TRANSPORTADORA`, `CODIGO_RASTREIO`, `LINK_RASTREIO`, `PREVISAO_ENTREGA` e
+   `LINK_PEDIDO`.
+   - `SITUACAO` é o rótulo que o painel mostra ("Postada", "Em trânsito"…), ou
+     "Atualizado" quando não houver;
+   - `PREVISAO_ENTREGA` é sempre **"A confirmar"** — o sistema não registra prazo;
+   - sem código de rastreio, `CODIGO_RASTREIO` vem "Consulte a transportadora"
+     (e `RASTREIO` vem vazio).
 4. **Idempotência:** salve de novo **sem mudar nada**. Nada novo sai. Mude a
    situação (por exemplo, "Postada" → "Em trânsito") e salve: sai **um** e-mail
    novo, porque a chave inclui a situação.
@@ -342,7 +354,15 @@ duplica.
 ### 17.6.3 `pedido-cancelado` — uma vez, mesmo com dois caminhos
 
 1. Cancele um pedido pelo **Admin → Pedidos → Cancelar**.
-2. **Esperado:** um e-mail `pedido-cancelado`, com `NOME`, `PEDIDO` e `LINK`.
+2. **Esperado:** um e-mail `pedido-cancelado`, com `NOME_CLIENTE`,
+   `NUMERO_PEDIDO`, `LINK_PEDIDO`, `DATA_CANCELAMENTO`,
+   `MOTIVO_CANCELAMENTO` e `INFORMACAO_REEMBOLSO`.
+   - `DATA_CANCELAMENTO` é o dia do cancelamento (`dd/mm/aaaa`);
+   - `MOTIVO_CANCELAMENTO` vem "Cancelamento solicitado" e
+     `INFORMACAO_REEMBOLSO` traz o texto padrão de estorno — o sistema **não**
+     registra motivo nem reembolso, então não espere dado personalizado;
+   - o texto padrão **não** cita prazo em dias: o backend não sabe quando o
+     valor cai, e o e-mail não pode prometer o que a loja não controla.
 3. Se o mesmo pedido também tiver a etiqueta cancelada em `/painel/shipping`, o
    caminho do SuperFrete usa a **mesma** chave (`order-canceled:<id>`). O segundo
    evento **não** manda outro e-mail.
@@ -368,6 +388,24 @@ comportamento, quebre uma coisa de cada vez:
 | Resend fora do ar / lento | Bloqueie a saída ou use um host inválido | `O Resend não respondeu em 10s.` no log; pedido ok |
 | Pedido sem e-mail | Converta um rascunho sem e-mail | `[email] pedido … sem e-mail: confirmação não enviada.`; nada quebra |
 | Sem `RESEND_API_KEY`/`RESEND_FROM` | Deixe as duas vazias | `local` registra o conteúdo no log; nada sai |
+
+**Link quebrado no e-mail:** antes de culpar o backend, confira o template no
+Resend. As duas causas já encontradas nos arquivos desenhados fora do backend:
+
+| Sintoma | Causa | Correção no editor |
+| :--- | :--- | :--- |
+| Botão do pedido leva a uma URL vazia ou com `{LINK_PEDIDO` | `href="{{{{LINK_PEDIDO}}}}"` — quatro chaves | `href="{{{LINK_PEDIDO}}}"` |
+| Botão "falar com a gente" não abre o e-mail | `href="{{mailto:{{EMAIL_ATENDIMENTO}}}}"` | `href="mailto:{{{EMAIL_ATENDIMENTO}}}"` |
+| E-mail de envio não diz qual é a situação | template sem a linha `SITUACAO` | `<tr><td class="label">Situação</td><td class="value">{{SITUACAO}}</td></tr>` |
+| Logo do topo não aparece | `src="{{LOGO_URL}}"` — escapado | `src="{{{LOGO_URL}}}"` |
+| Texto mostra `{{NOME_CLIENTE}}` cru | variável não declarada no template | declare-a como `string` |
+
+Se `STOREFRONT_URL` estiver vazio, `LINK_PEDIDO` chega **vazio** — e isso é
+proposital: melhor um e-mail sem botão do que um link para `http://backend:9000`.
+
+**Logo quebrada:** `LOGO_URL` é o valor de `EMAIL_LOGO_URL`, e ele precisa ser
+uma URL absoluta que o Gmail consiga baixar. Com a variável vazia, remova a
+linha do `<img>` no editor; `src=""` aparece como ícone quebrado.
 
 **Conferindo o rastro no banco:**
 

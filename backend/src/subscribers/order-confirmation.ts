@@ -1,12 +1,9 @@
-import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
-import {
-  ContainerRegistrationKeys,
-  Modules,
-} from "@medusajs/framework/utils"
+import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework";
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 
-import { enviarEmail, mascararEmail } from "../modules/notification/enviar"
-import { dadosDoPedidoConfirmado } from "../modules/notification/pedido"
-import { TEMPLATE_PEDIDO_CONFIRMADO } from "../modules/notification/templates"
+import { enviarEmail, mascararEmail } from "../modules/notification/enviar";
+import { dadosDoPedidoConfirmado } from "../modules/notification/pedido";
+import { TEMPLATE_PEDIDO_CONFIRMADO } from "../modules/notification/templates";
 
 /**
  * O e-mail de pedido confirmado, em `order.placed` (o pedido só nasce quando o
@@ -18,19 +15,28 @@ export default async function orderConfirmationHandler({
   event: { data },
   container,
 }: SubscriberArgs<{ id: string }>) {
-  const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
-  const orders = container.resolve(Modules.ORDER)
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER);
+  const orders = container.resolve(Modules.ORDER);
 
   try {
     const order = await orders.retrieveOrder(data.id, {
       relations: ["items", "shipping_address", "shipping_methods"],
-    })
+      select: [
+        "id",
+        "display_id",
+        "email",
+        "currency_code",
+        "total",
+        "payment_status",
+        "created_at",
+      ],
+    });
 
     if (!order?.email) {
       logger.warn(
-        `[email] pedido ${data.id} sem e-mail: confirmação não enviada.`
-      )
-      return
+        `[email] pedido ${data.id} sem e-mail: confirmação não enviada.`,
+      );
+      return;
     }
 
     const enviado = await enviarEmail(container, {
@@ -40,24 +46,24 @@ export default async function orderConfirmationHandler({
       idempotencyKey: `order-placed:${order.id}`,
       triggerType: "order.placed",
       resourceId: order.id,
-    })
+    });
 
     if (enviado) {
       logger.info(
         `[email] confirmação do pedido ${order.display_id ?? order.id} enviada para ${mascararEmail(
-          order.email
-        )}.`
-      )
+          order.email,
+        )}.`,
+      );
     }
   } catch (erro) {
     // Nunca relança: o pedido já existe, e o evento não pode entrar em loop.
-    const mensagem = erro instanceof Error ? erro.message : String(erro)
+    const mensagem = erro instanceof Error ? erro.message : String(erro);
     logger.error(
-      `[email] falha ao preparar a confirmação do pedido ${data.id}: ${mensagem}`
-    )
+      `[email] falha ao preparar a confirmação do pedido ${data.id}: ${mensagem}`,
+    );
   }
 }
 
 export const config: SubscriberConfig = {
   event: "order.placed",
-}
+};

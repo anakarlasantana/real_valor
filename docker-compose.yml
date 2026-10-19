@@ -218,6 +218,12 @@ services:
       # URL PUBLICA da loja para os links do e-mail. NAO use o `FRONTEND_URL`
       # (interno): um link para `http://frontend:8000` nao abre no navegador.
       STOREFRONT_URL: ${STOREFRONT_URL:-}
+      # Logo do topo dos templates. Tem de ser URL publica absoluta — o Gmail
+      # baixa a imagem da internet. Vazio = template publicado sem o <img>.
+      EMAIL_LOGO_URL: ${EMAIL_LOGO_URL:-}
+      # E-mail de atendimento do botao e do rodape. Vazio =
+      # atendimento@realvalor.com.br (o codigo ja usa esse padrao).
+      EMAIL_ATENDIMENTO: ${EMAIL_ATENDIMENTO:-}
       # SuperFrete: cotacao e etiqueta. Vazio = a cotacao falha com recado claro
       # e o checkout mostra "nao foi possivel calcular" — nunca um preco inventado.
       SUPERFRETE_TOKEN: ${SUPERFRETE_TOKEN:-}
