@@ -223,6 +223,10 @@ describe("regrasDeAtivacao", () => {
 
 describe("testarCotacao", () => {
   const config = { token: "t", ambiente: "sandbox" as const }
+  // O que a rota do admin passa: a base do ambiente e o User-Agent da loja.
+  const base = "https://sandbox.superfrete.com"
+  const userAgent = "RealValor v1.0.0 (userealvalor@gmail.com)"
+  const daRota = { config, base, userAgent }
 
   it("cota com a caixa padrão e o peso taxável", async () => {
     const chamadas: any[] = []
@@ -237,7 +241,7 @@ describe("testarCotacao", () => {
     ]
 
     const resultado = await testarCotacao({
-      config,
+      ...daRota,
       cepOrigem: "01310100",
       cepDestino: "20040020",
       caixas: [caixa],
@@ -258,7 +262,7 @@ describe("testarCotacao", () => {
     let chamou = false
 
     const resultado = await testarCotacao({
-      config,
+      ...daRota,
       cepOrigem: "01310100",
       cepDestino: "20040020",
       caixas: [{ ...caixa, ativo: false }],
@@ -269,7 +273,7 @@ describe("testarCotacao", () => {
       }) as Chamar,
     })
 
-    expect(resultado).toEqual({
+    expect(resultado).toMatchObject({
       ok: false,
       status: 422,
       erro: "Nenhuma caixa ativa e válida para cotar.",
@@ -279,7 +283,7 @@ describe("testarCotacao", () => {
 
   it("sem CEP de origem, aponta o centro de distribuição", async () => {
     const resultado = await testarCotacao({
-      config,
+      ...daRota,
       cepOrigem: "",
       cepDestino: "20040020",
       caixas: [caixa],
@@ -295,7 +299,7 @@ describe("testarCotacao", () => {
 
   it("devolve o status do erro do cliente, não 200 vazio", async () => {
     const resultado = await testarCotacao({
-      config,
+      ...daRota,
       cepOrigem: "01310100",
       cepDestino: "20040020",
       caixas: [caixa],
@@ -308,6 +312,71 @@ describe("testarCotacao", () => {
     })
 
     expect(resultado).toMatchObject({ ok: false, status: 503 })
+  })
+
+  it("devolve a requisição enviada, com o token mascarado e sem vazá-lo", async () => {
+    const token = "tok_secreto_123"
+    const resultado = await testarCotacao({
+      ...daRota,
+      config: { ...config, token },
+      cepOrigem: "01310100",
+      cepDestino: "20040020",
+      caixas: [caixa],
+      servicos: ["PAC", "SEDEX"],
+      chamar: (async () => [
+        { id: 1, name: "PAC", price: 10, delivery_time: 5, has_error: false },
+        { id: 2, name: "SEDEX", price: 20, delivery_time: 2, has_error: false },
+      ]) as Chamar,
+    })
+
+    expect(resultado.requisicao.url).toBe(`${base}/api/v0/calculator`)
+    expect(resultado.requisicao.corpo).toMatchObject({
+      from: { postal_code: "01310100" },
+      to: { postal_code: "20040020" },
+      services: "1,2",
+    })
+    expect(resultado.requisicao.cabecalhos["User-Agent"]).toBe(userAgent)
+    // O token de verdade não aparece em lugar nenhum da resposta de teste.
+    expect(JSON.stringify(resultado)).not.toContain(token)
+    // O teste nunca passa pelo cache: sempre vai à rede.
+    expect(resultado.origem).toBe("rede")
+  })
+
+  it("mede a latência com o relógio injetado", async () => {
+    let agora = 1_000
+
+    const resultado = await testarCotacao({
+      ...daRota,
+      cepOrigem: "01310100",
+      cepDestino: "20040020",
+      caixas: [caixa],
+      servicos: ["PAC"],
+      relogio: () => agora,
+      chamar: (async () => {
+        agora += 250
+        return [{ id: 1, name: "PAC", price: 10, delivery_time: 5, has_error: false }]
+      }) as Chamar,
+    })
+
+    expect(resultado.latenciaMs).toBe(250)
+  })
+
+  it("na falha da API, a requisição vai junto com o status", async () => {
+    const resultado = await testarCotacao({
+      ...daRota,
+      cepOrigem: "01310100",
+      cepDestino: "20040020",
+      caixas: [caixa],
+      servicos: ["PAC"],
+      chamar: (async () => {
+        throw Object.assign(new Error("SuperFrete respondeu 400 — {invalid}"), {
+          status: 400,
+        })
+      }) as Chamar,
+    })
+
+    expect(resultado).toMatchObject({ ok: false, status: 400 })
+    expect(resultado.requisicao.corpo.services).toBe("1")
   })
 })
 

@@ -67,7 +67,10 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   if (!resultado.ok) {
     // Sem fallback: a resposta honesta é "não deu".
-    res.status(resultado.status).json({ message: resultado.erro })
+    res.status(resultado.status).json({
+      message: resultado.erro,
+      origem: resultado.origem,
+    })
     return
   }
 
@@ -75,5 +78,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     cotacoes: resultado.cotacoes,
     volumes: resultado.volumes,
     peso_gramas: resultado.pesoGramas,
+    // `rede` na primeira pergunta, `memoria`/`redis` nas seguintes: é o que
+    // explica o checkout rápido no segundo render.
+    origem: resultado.origem,
   })
 }

@@ -9,7 +9,7 @@ Envios**. É ele que responde ao `calculatePrice` do Medusa no checkout.
 | :--- | :--- |
 | `catalogo.ts` | os 6 códigos da calculadora (1, 2, 17, 3, 33, 31), teto de peso por transportadora, conversão de unidades, leitura da resposta |
 | `cliente.ts` | o `fetch` com token, ambiente, `User-Agent` e erro com status |
-| `servico.ts` | caixa (do módulo `pacotes`) + API → cotação, com cache de 5 min; `testarCotacao` cota sem cache |
+| `servico.ts` | caixa (do módulo `pacotes`) + API → cotação, com cache em duas camadas (memória 60 s + `Modules.CACHE` 5 min); `testarCotacao` vai sempre à rede e devolve a requisição enviada |
 | `servicos.ts` | lê as opções de envio (`data.servico` ou `type.code`) e liga/desliga pela regra `enabled_in_store` |
 | `service.ts` | o `AbstractFulfillmentProviderService` (`calculatePrice`) |
 | `etiqueta.ts` | `/cart` + `/checkout`, cancelamento, PDF, saldo — com o cliente injetado |
@@ -41,6 +41,13 @@ o Medusa tira a desligada do checkout sem apagar o histórico. `POST
 /admin/shipping/testar` cota com a caixa padrão **sem cache e sem gravar nada**;
 com `{ "todos": true }` cota também as desligadas, que é como se descobre se a
 Jadlog cotaria antes de ligá-la.
+
+A resposta do teste traz, além das cotações, **`requisicao`** (método, URL,
+cabeçalhos com o token mascarado e o corpo exato enviado), `latenciaMs` e
+`origem` — e a mesma `requisicao` vem junto do erro, porque um `400` da API só se
+explica vendo o que saiu. Na tela, isso vira um bloco "Requisição enviada" com o
+corpo e o botão **Copiar como cURL** (o comando usa `$SUPERFRETE_TOKEN`, nunca o
+token real).
 
 A tela é **"Serviços de frete"**, não um catálogo do SuperFrete: a API não tem
 rota que liste serviços (só cotação, etiqueta, pacotes, usuário e webhook), então

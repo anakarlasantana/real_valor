@@ -5,16 +5,16 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37340,
+      "lines": 37346,
       "comments": 8831
     },
     "admin/src": {
-      "lines": 9518,
-      "comments": 1860
+      "lines": 9839,
+      "comments": 1880
     },
     "backend/src": {
-      "lines": 21574,
-      "comments": 4519
+      "lines": 22425,
+      "comments": 4617
     },
     "packages/contrato/src": {
       "lines": 2760,
@@ -553,7 +553,7 @@
     },
     "frontend/src/modules/checkout/components/payment-button/index.tsx": {
       "comments": 27,
-      "lines": 133,
+      "lines": 139,
       "header": 5
     },
     "frontend/src/modules/checkout/components/payment-container/index.tsx": {

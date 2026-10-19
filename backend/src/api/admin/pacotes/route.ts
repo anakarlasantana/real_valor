@@ -5,6 +5,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { caixaParaTela } from "../../../modules/fulfillment/pacotes/tela"
 import { PACOTES_MODULE } from "../../../modules/fulfillment/pacotes"
 import type PacotesModuleService from "../../../modules/fulfillment/pacotes/service"
+import { invalidarCache } from "../../../modules/fulfillment/superfrete/servico"
 import { lerCaixa } from "./lib/caixa"
 
 /** `GET /admin/pacotes` — todas, a padrão primeiro. */
@@ -27,6 +28,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const criado = await pacotes.salvar(lido.caixa)
+
+  // Caixa nova, cotação nova: o preço guardado nas duas camadas ficou velho.
+  await invalidarCache()
 
   res.status(201).json({ pacote: caixaParaTela(criado as any) })
 }

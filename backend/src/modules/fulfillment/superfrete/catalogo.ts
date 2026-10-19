@@ -1,7 +1,6 @@
 /**
- * Os 6 serviços da `/api/v0/calculator`. A API não tem rota que liste serviços:
- * os códigos só existem na documentação, e acrescentar um aqui não cria a opção
- * no checkout — isso é o seed.
+ * Os 6 serviços da `/api/v0/calculator`. A API não lista serviços: os códigos só
+ * existem na documentação, e pôr um aqui não cria a opção — isso é o seed.
  */
 export const SERVICOS = {
   PAC: "1",
@@ -35,10 +34,9 @@ export const TRANSPORTADORAS: Record<Servico, string> = {
 }
 
 /**
- * O teto de peso de cada uma, em gramas.
- *
- * Não é o mesmo para todas: a J&T para em 11 kg. Cotar acima disso não adianta,
- * e a caixa padrão pode servir a uma e não à outra.
+ * O teto de peso de cada uma, em gramas. Não é o mesmo para todas: a J&T para em
+ * 11 kg — cotar acima disso não adianta, e a caixa padrão pode servir a uma e
+ * não à outra.
  */
 export const PESO_MAXIMO_GRAMAS: Record<Servico, number> = {
   PAC: 30_000,
@@ -86,6 +84,20 @@ export function paraCentavos(reais: number | string): number {
   return Math.round(Number(reais) * 100)
 }
 
+/** O corpo do `POST /api/v0/calculator` — o tipo é o contrato da doc. */
+export type CorpoDaCotacao = {
+  from: { postal_code: string }
+  to: { postal_code: string }
+  services: string
+  options: {
+    own_hand: boolean
+    receipt: boolean
+    insurance_value: number
+    use_insurance_value: boolean
+  }
+  package: { height: number; width: number; length: number; weight: number }
+}
+
 /** O corpo do `POST /api/v0/calculator`. */
 export function corpoDaCotacao({
   cepOrigem,
@@ -97,7 +109,7 @@ export function corpoDaCotacao({
   cepDestino: string
   volume: { peso_gramas: number; altura_cm: number; largura_cm: number; comprimento_cm: number }
   servicos: Servico[]
-}) {
+}): CorpoDaCotacao {
   return {
     from: { postal_code: apenasDigitos(cepOrigem) },
     to: { postal_code: apenasDigitos(cepDestino) },
@@ -120,6 +132,43 @@ export function corpoDaCotacao({
 
 export function apenasDigitos(valor: unknown): string {
   return String(valor ?? "").replace(/\D/g, "")
+}
+
+/**
+ * Serviços em ordem de catálogo, sem repetição. É o que entra no corpo **e** na
+ * chave do cache: `["2"]` e `["1","2"]` não podem virar a mesma chave, mas
+ * `["2","1"]` e `["1","2"]` precisam — a API devolve o mesmo resultado.
+ */
+export function servicosOrdenados(servicos: Servico[]): Servico[] {
+  const ordem = Object.keys(SERVICOS) as Servico[]
+  const unicos = new Set(servicos.filter(ehServico))
+
+  return ordem.filter((servico) => unicos.has(servico))
+}
+
+/**
+ * Os serviços que a transportadora aceita para este peso. A J&T para em 11 kg:
+ * cotá-la acima disso só gasta uma ida à API para voltar `has_error`.
+ */
+export function servicosQueAceitam({
+  servicos,
+  pesoGramas,
+}: {
+  servicos: Servico[]
+  pesoGramas: number
+}): { aceitos: Servico[]; recusados: Servico[] } {
+  const aceitos: Servico[] = []
+  const recusados: Servico[] = []
+
+  for (const servico of servicosOrdenados(servicos)) {
+    if (pesoGramas > PESO_MAXIMO_GRAMAS[servico]) {
+      recusados.push(servico)
+    } else {
+      aceitos.push(servico)
+    }
+  }
+
+  return { aceitos, recusados }
 }
 
 

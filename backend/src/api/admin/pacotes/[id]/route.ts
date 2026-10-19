@@ -3,6 +3,7 @@ import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { PACOTES_MODULE } from "../../../../modules/fulfillment/pacotes"
 import type PacotesModuleService from "../../../../modules/fulfillment/pacotes/service"
 import { caixaParaTela } from "../../../../modules/fulfillment/pacotes/tela"
+import { invalidarCache } from "../../../../modules/fulfillment/superfrete/servico"
 import { lerCaixa } from "../lib/caixa"
 
 /** `PUT /admin/pacotes/:id` — edita. */
@@ -19,6 +20,8 @@ export async function PUT(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const atualizado = await pacotes.salvar({ ...lido.caixa, id })
+
+  await invalidarCache()
 
   res.json({ pacote: caixaParaTela(atualizado as any) })
 }
@@ -44,6 +47,8 @@ export async function DELETE(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const desativado = await pacotes.salvar({ ...alvo[0], id, ativo: false } as any)
+
+  await invalidarCache()
 
   res.json({ pacote: caixaParaTela(desativado as any) })
 }

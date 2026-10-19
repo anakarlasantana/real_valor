@@ -9,7 +9,7 @@ import type {
 
 import { caixaValida, padraoUnico, pesoTaxavel, type Pacote } from "../pacotes/pacotes"
 import { calcularVolumes } from "../pacotes/volumes"
-import { cotarPedido, type ConfigSuperFrete } from "./servico"
+import { cotarPedido, registrarCache, type ConfigSuperFrete } from "./servico"
 import { SERVICOS, ROTULOS, ehServico, type Servico } from "./catalogo"
 import { ambienteDaConfig, chamarSuperFrete } from "./cliente"
 
@@ -61,6 +61,12 @@ export class SuperFreteFulfillmentService extends AbstractFulfillmentProviderSer
       quantidade: Number(item?.quantity) || 0,
       peso_gramas: item?.variant?.weight ?? null,
     }))
+
+    // O `calculatePrice` do Medusa não traz o container: sem esta chamada, a L2
+    // (Redis) nunca seria usada nas opções de frete do checkout. Em request o
+    // contexto tem `container`; no cálculo fora dele, não há — e o cache fica
+    // só na memória, sem quebrar nada.
+    registrarCache((context as any)?.container)
 
     const resultado = await cotarPedido({
       container: {

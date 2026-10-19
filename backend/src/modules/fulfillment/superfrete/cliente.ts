@@ -20,8 +20,24 @@ export function baseDaApi(ambiente: AmbienteSuperFrete): string {
   return BASES[ambiente]
 }
 
-/** Obrigatório: sem ele a API recusa. */
-export const USER_AGENT = "RealValor (contato@realvalor.com.br)"
+/**
+ * Obrigatório: sem ele a API recusa.
+ *
+ * A doc (`superfrete.readme.io`) pede o formato **"Nome e versão da aplicação
+ * (email para contato técnico)"** — é por ele que a SuperFrete avisa de mudança
+ * na API. `SUPERFRETE_USER_AGENT` sobrepõe, para quando o contato técnico mudar
+ * sem precisar de deploy.
+ */
+export const USER_AGENT_PADRAO = "RealValor v1.0.0 (userealvalor@gmail.com)"
+
+export function userAgent(): string {
+  const doAmbiente = process.env.SUPERFRETE_USER_AGENT?.trim()
+
+  return doAmbiente || USER_AGENT_PADRAO
+}
+
+/** Compatibilidade: quem importava a constante continua funcionando. */
+export const USER_AGENT = USER_AGENT_PADRAO
 
 /** 401 tem recado próprio — e o token nunca é ecoado no log. */
 export class ErroSuperFrete extends Error {
@@ -62,7 +78,7 @@ export async function chamarSuperFrete<T>({
     method: metodo,
     headers: {
       Authorization: `Bearer ${token}`,
-      "User-Agent": USER_AGENT,
+      "User-Agent": userAgent(),
       accept: "application/json",
       ...(corpo ? { "content-type": "application/json" } : {}),
     },
@@ -88,7 +104,7 @@ export async function chamarSuperFrete<T>({
     throw new ErroSuperFrete(
       typeof detalhe === "string" && detalhe
         ? `SuperFrete: ${detalhe}`
-        : `SuperFrete respondeu ${resposta.status}.`,
+        : `SuperFrete respondeu ${resposta.status}${resumoDe(texto)}.`,
       resposta.status
     )
   }
@@ -102,6 +118,23 @@ function safeJson(texto: string): unknown {
   } catch {
     return undefined
   }
+}
+
+/**
+ * Um 400 da calculadora vem com o corpo de validação (`{"from": ["..."}}`), que
+ * não tem `message`/`error`/`details`. Sem ele, sobra só "respondeu 400" e o
+ * payload errado fica invisível.
+ */
+function resumoDe(texto: string): string {
+  const corpo = texto.trim()
+
+  if (!corpo) {
+    return ""
+  }
+
+  const curto = corpo.length > 300 ? `${corpo.slice(0, 300)}…` : corpo
+
+  return ` — ${curto}`
 }
 
 export { apenasDigitos }

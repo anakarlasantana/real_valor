@@ -8,7 +8,9 @@ import {
 } from "../../../../modules/fulfillment/superfrete/catalogo"
 import {
   ambienteDaConfig,
+  baseDaApi,
   chamarSuperFrete,
+  userAgent,
 } from "../../../../modules/fulfillment/superfrete/cliente"
 import { PACOTES_MODULE } from "../../../../modules/fulfillment/pacotes"
 import type PacotesModuleService from "../../../../modules/fulfillment/pacotes/service"
@@ -89,20 +91,30 @@ export async function POST(
   )
 
   const pacotes = req.scope.resolve<PacotesModuleService>(PACOTES_MODULE)
+  const ambiente = ambienteDaConfig(process.env.SUPERFRETE_AMBIENTE)
+  const agente = userAgent()
   const resultado = await testarCotacao({
     config: {
       token: process.env.SUPERFRETE_TOKEN ?? "",
-      ambiente: ambienteDaConfig(process.env.SUPERFRETE_AMBIENTE),
+      ambiente,
     },
     cepOrigem: await cepDoEstoque(req),
     cepDestino,
     caixas: await pacotes.listar(),
     servicos,
     chamar: chamarSuperFrete,
+    base: baseDaApi(ambiente),
+    userAgent: agente,
   })
 
+  // A requisição vai junto do erro: um 400 da API só se explica vendo o corpo
+  // que saiu, e o log do servidor não está na mão de quem está testando.
   if (!resultado.ok) {
-    res.status(resultado.status).json({ message: resultado.erro })
+    res.status(resultado.status ?? 502).json({
+      message: resultado.erro,
+      requisicao: resultado.requisicao,
+      latenciaMs: resultado.latenciaMs,
+    })
     return
   }
 
@@ -114,6 +126,11 @@ export async function POST(
     // O que foi pedido e o que voltou: o que sumiu é o que não cotou.
     testados: servicos,
     pesoGramas: resultado.pesoGramas,
-    ambiente: ambienteDaConfig(process.env.SUPERFRETE_AMBIENTE),
+    ambiente,
+    // Auditoria da chamada: método, URL, cabeçalhos (token mascarado), corpo,
+    // tempo e de onde veio — o teste sempre vai à rede.
+    requisicao: resultado.requisicao,
+    latenciaMs: resultado.latenciaMs,
+    origem: resultado.origem,
   })
 }

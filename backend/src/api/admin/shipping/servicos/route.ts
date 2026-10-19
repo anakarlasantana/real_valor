@@ -7,6 +7,7 @@ import {
   regrasDeAtivacao,
   mudancas,
 } from "../../../../modules/fulfillment/superfrete/servicos"
+import { invalidarCache } from "../../../../modules/fulfillment/superfrete/servico"
 
 const PROVIDER = "superfrete_superfrete"
 
@@ -81,6 +82,12 @@ export async function PUT(
     await fulfillment.updateShippingOptions(mudanca.id, {
       rules: regrasDeAtivacao(mudanca.ativa),
     })
+  }
+
+  // Ligar/desligar não mexe no preço, mas o teste do admin e a tela leem a
+  // lista guardada; só invalida quando algo mudou de fato.
+  if (mudar.length > 0) {
+    await invalidarCache()
   }
 
   res
