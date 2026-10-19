@@ -13,8 +13,8 @@
       "comments": 1880
     },
     "backend/src": {
-      "lines": 22425,
-      "comments": 4617
+      "lines": 22866,
+      "comments": 4631
     },
     "packages/contrato/src": {
       "lines": 2760,
@@ -1343,7 +1343,7 @@
     },
     "backend/src/modules/content/__tests__/revalidate.unit.spec.ts": {
       "comments": 37,
-      "lines": 198,
+      "lines": 209,
       "header": 25
     },
     "backend/src/modules/content/__tests__/schema-record.unit.spec.ts": {
@@ -1437,8 +1437,8 @@
       "header": 36
     },
     "backend/src/modules/content/revalidate.ts": {
-      "comments": 66,
-      "lines": 123,
+      "comments": 64,
+      "lines": 127,
       "header": 37
     },
     "backend/src/modules/content/schema.ts": {
@@ -1532,9 +1532,9 @@
       "header": 5
     },
     "backend/src/modules/payment/mercadopago/cliente.ts": {
-      "comments": 86,
-      "lines": 222,
-      "header": 23
+      "comments": 84,
+      "lines": 230,
+      "header": 20
     },
     "backend/src/modules/payment/mercadopago/contexto.ts": {
       "comments": 42,
@@ -1567,8 +1567,8 @@
       "header": 22
     },
     "backend/src/modules/payment/mercadopago/redigir.ts": {
-      "comments": 86,
-      "lines": 233,
+      "comments": 67,
+      "lines": 128,
       "header": 29
     },
     "backend/src/modules/payment/mercadopago/service.ts": {

@@ -1,5 +1,6 @@
 
 
+import { classificarFalha, type CodigoDaFalha } from "../../../utils/erro-de-plataforma"
 import { apenasDigitos } from "./catalogo"
 
 /** `producao` é opt-in: saldo real não pode sair por engano. */
@@ -39,12 +40,21 @@ export function userAgent(): string {
 /** Compatibilidade: quem importava a constante continua funcionando. */
 export const USER_AGENT = USER_AGENT_PADRAO
 
+/**
+ * 401: o token é o de aplicação (Integrações → Desenvolvedores), não o da
+ * sessão. Não citar `SUPERFRETE_AMBIENTE` — as duas bases recusam igual.
+ */
+const FRASE_DA_CREDENCIAL =
+  "Gere o token de aplicação em Integrações → Integrar em Desenvolvedores, no " +
+  "ambiente configurado (sandbox ou produção)."
+
 /** 401 tem recado próprio — e o token nunca é ecoado no log. */
 export class ErroSuperFrete extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly codigo?: string
+    readonly codigo?: CodigoDaFalha | string,
+    readonly detalhe?: unknown
   ) {
     super(message)
     this.name = "ErroSuperFrete"
@@ -91,22 +101,16 @@ export async function chamarSuperFrete<T>({
   const json = texto ? safeJson(texto) : undefined
 
   if (!resposta.ok) {
-    const detalhe =
-      (json as any)?.message ?? (json as any)?.error ?? (json as any)?.details
+    const falha = classificarFalha({
+      plataforma: "SuperFrete",
+      operacao: `${metodo} ${caminho}`,
+      status: resposta.status,
+      corpo: json,
+      textoCru: texto,
+      dica: FRASE_DA_CREDENCIAL,
+    })
 
-    if (resposta.status === 401 || resposta.status === 403) {
-      throw new ErroSuperFrete(
-        "O SuperFrete recusou o token. Confira o SUPERFRETE_TOKEN e o SUPERFRETE_AMBIENTE.",
-        resposta.status
-      )
-    }
-
-    throw new ErroSuperFrete(
-      typeof detalhe === "string" && detalhe
-        ? `SuperFrete: ${detalhe}`
-        : `SuperFrete respondeu ${resposta.status}${resumoDe(texto)}.`,
-      resposta.status
-    )
+    throw new ErroSuperFrete(falha.message, resposta.status, falha.codigo, falha.detalhe)
   }
 
   return json as T
@@ -118,23 +122,6 @@ function safeJson(texto: string): unknown {
   } catch {
     return undefined
   }
-}
-
-/**
- * Um 400 da calculadora vem com o corpo de validação (`{"from": ["..."}}`), que
- * não tem `message`/`error`/`details`. Sem ele, sobra só "respondeu 400" e o
- * payload errado fica invisível.
- */
-function resumoDe(texto: string): string {
-  const corpo = texto.trim()
-
-  if (!corpo) {
-    return ""
-  }
-
-  const curto = corpo.length > 300 ? `${corpo.slice(0, 300)}…` : corpo
-
-  return ` — ${curto}`
 }
 
 export { apenasDigitos }

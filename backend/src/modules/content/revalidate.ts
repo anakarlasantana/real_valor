@@ -38,6 +38,8 @@
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import type { Logger, MedusaContainer } from "@medusajs/framework/types"
 
+import { lerDetalhe } from "../../utils/erro-de-plataforma"
+
 /** Teto do aviso: a rota do conteúdo não fica presa esperando o storefront. */
 const TIMEOUT_MS = 3000
 
@@ -80,9 +82,7 @@ export async function revalidateContent(logger: Logger): Promise<void> {
  * O núcleo: `POST /api/revalidate?tag=<tag>` no storefront.
  *
  * Nunca lança — a gravação já aconteceu e é ela que importa (ver o cabeçalho).
- * Sem `FRONTEND_URL` ou sem `REVALIDATE_SECRET` volta sem fazer nada: é o caso
- * do ambiente que não tem storefront para avisar, e o storefront responde 500
- * fail-closed quando o segredo dele não está definido, então tentar seria ruído.
+ * Sem `FRONTEND_URL` ou sem `REVALIDATE_SECRET`, volta sem fazer nada.
  */
 export async function revalidateStorefrontTag(
   logger: Logger,
@@ -102,14 +102,18 @@ export async function revalidateStorefrontTag(
     const res = await fetch(target, {
       method: "POST",
       headers: { "x-revalidate-secret": secret },
-      // O `fetch` do Node não tem timeout por padrão; sem isto, um storefront
-      // pendurado deixaria a requisição do CRM esperando.
+      // O `fetch` do Node não tem timeout: sem isto, o CRM fica esperando.
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
 
     if (!res.ok) {
+      // O corpo é a pista do 500 (segredo, tag); o status sempre fica no aviso.
+      const corpo = await res.text().catch(() => "")
+      const detalhe = lerDetalhe(corpo)
+
       logger.warn(
-        `O storefront recusou a revalidação de "${tag}" (HTTP ${res.status}). ` +
+        `O storefront recusou a revalidação de "${tag}" ` +
+          `(HTTP ${res.status}${detalhe ? `: ${detalhe}` : ""}). ` +
           `A loja continua correta e se atualiza sozinha em até um minuto.`
       )
     }

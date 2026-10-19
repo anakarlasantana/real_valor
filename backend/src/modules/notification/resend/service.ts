@@ -4,6 +4,8 @@ import {
 } from "@medusajs/framework/utils"
 import type { Logger, NotificationTypes } from "@medusajs/framework/types"
 
+import { lerDetalhe } from "../../../utils/erro-de-plataforma"
+
 /**
  * O e-mail transacional pelo Resend. O texto mora no template publicado (editor
  * do painel); aqui só vão o alias e as variáveis, por `POST /emails`.
@@ -158,18 +160,15 @@ export class ResendNotificationService extends AbstractNotificationProviderServi
       }
 
       if (!resposta.ok) {
-        const detalhe = String(json.message ?? "").trim() || "sem detalhe"
-
-        if (resposta.status === 429) {
-          throw new MedusaError(
-            MedusaError.Types.UNEXPECTED_STATE,
-            `O Resend recusou "${template}": limite de envios atingido (o plano gratuito permite 100 por dia). ${detalhe}`
-          )
-        }
+        const detalhe = lerDetalhe(json) ?? "sem detalhe"
+        const sufixo =
+          resposta.status === 429
+            ? " Limite de envios atingido (o plano gratuito permite 100 por dia)."
+            : ""
 
         throw new MedusaError(
           MedusaError.Types.UNEXPECTED_STATE,
-          `O Resend recusou "${template}" (HTTP ${resposta.status}): ${detalhe}`
+          `O Resend recusou "${template}" (HTTP ${resposta.status})${sufixo}: ${detalhe}`
         )
       }
 

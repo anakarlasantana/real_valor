@@ -10,17 +10,15 @@
  * manda para o provedor?". Duas funções com nome respondem essa pergunta em
  * dez segundos.
  *
- * **O que este arquivo garante, e é o motivo de existir.** Erro do provedor
- * nunca sai daqui com o corpo cru pendurado na exceção. O corpo do erro do
- * Mercado Pago pode conter eco do que mandamos — e o que mandamos contém o
- * e-mail da cliente. `ErroDoProvedor` carrega o **status** e o detalhe já
- * redigido; quem captura loga os dois sem pensar duas vezes.
+ * Erro do provedor nunca sai daqui com corpo cru: `ErroDoProvedor` carrega o
+ * status e o detalhe já redigido (`utils/redigir.ts`).
  *
  * **O timeout é obrigatório, não opcional.** Sem ele, uma lentidão do provedor
  * vira uma requisição do nosso backend pendurada até o *socket* desistir, e
  * quem está olhando a tela é a cliente. Cinco segundos é o limite do checkout:
  * além disso é melhor dizer "tente novamente" do que continuar esperando.
  */
+import { classificarFalha } from "../../../utils/erro-de-plataforma"
 import { API, ehTokenDeTeste, token } from "./credenciais"
 import { semPii } from "./redigir"
 
@@ -38,7 +36,9 @@ export class ErroDoProvedor extends Error {
   constructor(
     mensagem: string,
     readonly status: number,
-    readonly detalhe?: unknown
+    readonly detalhe?: unknown,
+    /** `CREDENCIAL`, `PLATAFORMA`… (opcional: o 503 local não tem). */
+    readonly codigo?: string
   ) {
     super(mensagem)
     this.name = "ErroDoProvedor"
@@ -119,10 +119,18 @@ async function chamar<T>(
   if (!resposta.ok) {
     const { erro, mensagem } = lerErro(corpo)
 
+    const falha = classificarFalha({
+      plataforma: "Mercado Pago",
+      operacao: `${init.method} ${caminho}`,
+      status: resposta.status,
+      corpo,
+    })
+
     throw new ErroDoProvedor(
-      `O Mercado Pago recusou a chamada (HTTP ${resposta.status}).`,
+      falha.message,
       resposta.status,
-      erro ?? mensagem ?? corpo
+      erro ?? mensagem ?? corpo,
+      falha.codigo
     )
   }
 

@@ -50,13 +50,13 @@ function loggerFalso(passos: string[]): Logger {
  * chamadas para que a asserção seja sobre o pedido que saiu — URL, método,
  * cabeçalho e o `signal` do timeout.
  */
-function dublarFetch(resposta: { ok: boolean; status: number }) {
+function dublarFetch(resposta: { ok: boolean; status: number }, corpo = "") {
   const chamadas: Array<{ url: string; init?: RequestInit }> = []
 
   global.fetch = (async (url: string | URL, init?: RequestInit) => {
     chamadas.push({ url: String(url), init })
 
-    return resposta as unknown as Response
+    return { ...resposta, text: async () => corpo } as unknown as Response
   }) as unknown as typeof fetch
 
   return chamadas
@@ -168,6 +168,17 @@ describe("as falhas que não podem subir", () => {
     // A tag no aviso é o que diz QUAL cache ficou defasado.
     expect(passos.join(" ")).toContain("products")
     expect(passos.join(" ")).toContain("500")
+  })
+
+  it("o motivo que o storefront deu chega ao aviso", async () => {
+    const passos: string[] = []
+    dublarFetch(
+      { ok: false, status: 401 },
+      JSON.stringify({ message: "segredo de revalidação inválido" })
+    )
+
+    await revalidateStorefrontTag(loggerFalso(passos), "products")
+    expect(passos.join(" ")).toContain("segredo de revalidação inválido")
   })
 
   it("⭐ rede fora do ar também vira warn", async () => {
