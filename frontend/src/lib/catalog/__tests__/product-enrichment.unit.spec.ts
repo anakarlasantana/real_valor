@@ -182,6 +182,7 @@ describe("enriquecimentoDoProduto", () => {
       care: "Lavar à mão, não usar secadora.",
       contraindications: null,
       sizeGuide: "https://exemplo.com.br/guia-de-medidas.pdf",
+      shippingReturns: null,
       colors: [
         { name: "Rosa", hex: "#B97872" },
         { name: "Preto", hex: null },
@@ -196,8 +197,25 @@ describe("enriquecimentoDoProduto", () => {
       care: null,
       contraindications: null,
       sizeGuide: null,
+      shippingReturns: null,
       colors: [],
     })
+  })
+
+  it("lê `shipping_returns` do metadata, e só ele", () => {
+    expect(
+      enriquecimentoDoProduto({
+        metadata: {
+          shipping_returns: "Enviamos em até 2 dias úteis.",
+          shippingReturns: "não é esta",
+        },
+      }).shippingReturns
+    ).toBe("Enviamos em até 2 dias úteis.")
+
+    expect(
+      enriquecimentoDoProduto({ metadata: { shipping_returns: "   " } })
+        .shippingReturns
+    ).toBeNull()
   })
 })
 

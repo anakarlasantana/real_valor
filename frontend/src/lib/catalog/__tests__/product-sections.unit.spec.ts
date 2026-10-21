@@ -22,6 +22,7 @@ const SEM_ENRIQUECIMENTO: ProductEnrichment = {
   care: null,
   contraindications: null,
   sizeGuide: null,
+  shippingReturns: null,
   colors: [],
 }
 
@@ -91,6 +92,7 @@ describe("secoesDaPeca", () => {
         care: "Lavar à mão.",
         contraindications: "Não indicado para pele sensível.",
         sizeGuide: "https://exemplo.com.br/guia.pdf",
+        shippingReturns: null,
         colors: [],
       }
     )
@@ -100,11 +102,11 @@ describe("secoesDaPeca", () => {
       "Composição e tecido",
       "Cuidados",
       "Guia de medidas",
-      "Contraindicações",
+      "Contra Indicações",
     ])
     expect(secoes[4]).toEqual({
       kind: "aviso",
-      titulo: "Contraindicações",
+      titulo: "Contra Indicações",
       texto: "Não indicado para pele sensível.",
     })
     expect(secoes[3]).toEqual({
@@ -142,5 +144,36 @@ describe("secoesDaPeca", () => {
     expect(
       secoesDaPeca({ description: "   " }, SEM_ENRIQUECIMENTO)
     ).toEqual([])
+  })
+
+  it("entrega e trocas vem do metadata da peça, e fecha a página", () => {
+    const secoes = secoesDaPeca(
+      { description: "Vestido midi." },
+      {
+        ...SEM_ENRIQUECIMENTO,
+        contraindications: "Não indicado para pele sensível.",
+        shippingReturns: "Enviamos em até 2 dias úteis.",
+      }
+    )
+
+    expect(titulos(secoes)).toEqual([
+      "Descrição",
+      "Contra Indicações",
+      "Entrega e trocas",
+    ])
+    expect(secoes[2]).toEqual({
+      kind: "texto",
+      titulo: "Entrega e trocas",
+      texto: "Enviamos em até 2 dias úteis.",
+    })
+  })
+
+  it("peça sem texto de entrega não promete nada", () => {
+    const secoes = secoesDaPeca(
+      { description: "Vestido midi." },
+      SEM_ENRIQUECIMENTO
+    )
+
+    expect(titulos(secoes)).not.toContain("Entrega e trocas")
   })
 })

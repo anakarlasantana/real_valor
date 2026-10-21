@@ -28,5 +28,6 @@ export type ProductEnrichment = {
   care: string | null
   contraindications: string | null
   sizeGuide: string | null
+  shippingReturns: string | null
   colors: ProductColor[]
 }

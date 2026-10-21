@@ -13,11 +13,8 @@
  * `src/admin/lib/`, irmã do `api-url.ts`, vale a extensão normal do arquivo — e o
  * `make build-admin` é quem reprova o log que trouxer esse erro.
  *
- * As três chaves de texto são as do contrato de enriquecimento do storefront
- * (`docs/real-valor/12-script-enriquecimento-catalogo.md`, seção 12.4) — o
- * normalizador de lá lê **exatamente** estas e ignora qualquer outra. A quarta
- * chave, `hex`, não é texto do produto: é da **variante** (uma cor por variante,
- * porque a mesma peça tem cor por combinação).
+ * As **quatro** chaves de texto são as do contrato do storefront (doc 12, seção
+ * 12.4); `shipping_returns` entrou no RV-030. A quinta, `hex`, é da variante.
  *
  * Duas regras do Medusa mandam no desenho, e as duas foram lidas no código
  * instalado, não presumidas:
@@ -56,6 +53,7 @@ export const CHAVES_DE_TEXTO = [
   "care",
   "contraindications",
   "size_guide",
+  "shipping_returns",
 ] as const
 
 export type ChaveDeTexto = (typeof CHAVES_DE_TEXTO)[number]
@@ -160,7 +158,12 @@ export function normalizarHex(valor: string): string {
 
 export function estadoVazio(): EstadoEnriquecimento {
   return {
-    textos: { care: "", contraindications: "", size_guide: "" },
+    textos: {
+      care: "",
+      contraindications: "",
+      size_guide: "",
+      shipping_returns: "",
+    },
     hexes: {},
   }
 }

@@ -9,7 +9,7 @@
  * (preço/"De-Por", `get-product-price`); `inventory_quantity` (chip de estoque,
  * `product-availability`); `variants.images` (troca de imagem); `variants.options`
  * (a cor de cada variante); `variants.metadata` (hex da cor); `metadata` (cuidados,
- * contraindicações, medidas); `options`/`options.values` (cores da peça); `tags`
+ * Contra Indicações, medidas); `options`/`options.values` (cores da peça); `tags`
  * (etiquetas do chip); `categories` (a faceta "Categoria",
  * `lib/catalog/catalog-filters.ts` — sem ela restaria um valor só).
  * Quem passa `fields` manda: `listProducts` espalha os `queryParams` do chamador

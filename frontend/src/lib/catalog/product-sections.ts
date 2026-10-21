@@ -113,10 +113,7 @@ export function fichaDaPeca(produto: ProdutoDaFicha): ItemDaFicha[] {
 /**
  * As seções da página, na ordem em que a cliente lê.
  *
- * A ordem é fixa e é essa: descrição (o que é), ficha (de que é feito), cuidados
- * (como tratar), guia (que tamanho serve) e contraindicações (para quem **não**
- * serve) por último, porque aviso não é argumento de venda — é o que ela lê
- * depois de gostar da peça.
+ * A ordem é fixa: descrição, ficha, cuidados, guia, Contra Indicações e entrega.
  */
 export function secoesDaPeca(
   produto: ProdutoDaFicha,
@@ -166,8 +163,17 @@ export function secoesDaPeca(
   if (enriquecimento.contraindications !== null) {
     secoes.push({
       kind: "aviso",
-      titulo: "Contraindicações",
+      titulo: "Contra Indicações",
       texto: enriquecimento.contraindications,
+    })
+  }
+
+  // Sem chave, sem seção — como em `care` (RV-030).
+  if (enriquecimento.shippingReturns !== null) {
+    secoes.push({
+      kind: "texto",
+      titulo: "Entrega e trocas",
+      texto: enriquecimento.shippingReturns,
     })
   }
 

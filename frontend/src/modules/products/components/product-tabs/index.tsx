@@ -7,24 +7,16 @@ import {
   secoesDaPeca,
   type SecaoDaPeca,
 } from "@lib/catalog/product-sections"
-import Back from "@modules/common/icons/back"
-import FastDelivery from "@modules/common/icons/fast-delivery"
-import Refresh from "@modules/common/icons/refresh"
 import { HttpTypes } from "@medusajs/types"
 
 /**
- * As seções da página da peça — descrição, ficha, cuidados, guia e aviso.
+ * As seções da página da peça (RV-030: o bloco fixo de entrega saiu; a seção
+ * vem de `metadata.shipping_returns`).
  * -------------------------------------------------------------------------
  * O componente ficou com o que é só dele: **escolher a marcação de cada seção**.
  * O que existe, em que ordem e de que tipo é `secoesDaPeca`, em
  * `@lib/catalog/product-sections` (função pura, com teste): é ele que garante
  * que campo vazio **não vira travessão** — peça sem peso não desenha "Peso -".
- *
- * Era o defeito desta tela: um bloco fixo de dois acordeões com cinco "-"
- * esperando a cliente e os rótulos em inglês ("Product Information", "Type",
- * "Weight", "Dimensions") numa loja pt-BR. O texto de entrega, que é copy fixa da
- * loja, também estava em inglês: agora é pt-BR e continua aqui, porque não é dado
- * de produto — é a promessa da loja, e promessa não vem do catálogo.
  *
  * **O acordeão virou `<details>`**, como o resto da loja (`.rv-accordion`, a
  * mesma classe dos filtros do catálogo): o `<details>` nativo abre no teclado, é
@@ -60,20 +52,6 @@ const ProductTabs = ({ product }: ProductTabsProps) => {
           </div>
         </details>
       ))}
-
-      <details>
-        <summary>
-          Entrega e trocas
-          <Plus
-            aria-hidden="true"
-            focusable="false"
-            className="rv-accordion-icon"
-          />
-        </summary>
-        <div className="rv-accordion-body">
-          <EntregaETrocas />
-        </div>
-      </details>
     </div>
   )
 }
@@ -125,49 +103,6 @@ const Conteudo = ({ secao }: { secao: SecaoDaPeca }) => {
       return naoTratado
     }
   }
-}
-
-const EntregaETrocas = () => {
-  return (
-    <div className="grid grid-cols-1 gap-y-6">
-      <div className="flex items-start gap-x-2">
-        <FastDelivery className="mt-0.5 shrink-0 text-rv-rose" />
-        <div>
-          <span className="block font-semibold text-rv-preto">
-            Entrega rápida
-          </span>
-          <p>
-            Sua peça chega em 3 a 5 dias úteis, no endereço que você escolher ou
-            para retirada na loja.
-          </p>
-        </div>
-      </div>
-      <div className="flex items-start gap-x-2">
-        <Refresh className="mt-0.5 shrink-0 text-rv-rose" />
-        <div>
-          <span className="block font-semibold text-rv-preto">
-            Trocas simples
-          </span>
-          <p>
-            Não serviu? Sem problema — a gente troca por outro tamanho ou por
-            outra peça.
-          </p>
-        </div>
-      </div>
-      <div className="flex items-start gap-x-2">
-        <Back className="mt-0.5 shrink-0 text-rv-rose" />
-        <div>
-          <span className="block font-semibold text-rv-preto">
-            Devoluções fáceis
-          </span>
-          <p>
-            Se não for o que você esperava, devolva e a gente devolve o valor
-            pago, sem burocracia.
-          </p>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 export default ProductTabs

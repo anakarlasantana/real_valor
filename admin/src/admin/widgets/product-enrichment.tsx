@@ -1,7 +1,7 @@
 /**
  * Widget da página de produto: o que a loja mostra e o admin não tem onde pôr.
  * -------------------------------------------------------------------------
- * Cuidados, contraindicações e guia de medidas não são campos do Medusa — sem
+ * Cuidados, Contra Indicações e guia de medidas não são campos do Medusa — sem
  * este widget existiriam só em `metadata` escrito à mão no bloco "Metadata" da
  * página, que exige JSON válido e não valida nada. A cor de cada variante tem o
  * mesmo problema: o Medusa guarda o **nome** da cor na opção, e o hex não existe
@@ -71,7 +71,7 @@ const ROTULOS: Rotulos = {
     ajuda: "Aparece na seção de cuidados da página da peça.",
   },
   contraindications: {
-    label: "Contraindicações",
+    label: "Contra Indicações",
     placeholder: "Não indicado para pele com sensibilidade a fibra sintética.",
     ajuda: "Aparece como aviso. Em branco, a seção não é desenhada.",
   },
@@ -79,6 +79,13 @@ const ROTULOS: Rotulos = {
     label: "Guia de medidas",
     placeholder: "https://exemplo.com.br/guia-de-medidas.pdf",
     ajuda: "Link do PDF ou da página. Em branco, a seção não é desenhada.",
+  },
+  shipping_returns: {
+    label: "Entrega e trocas",
+    placeholder:
+      "Enviamos em até 2 dias úteis. Troca por outro tamanho em até 7 dias, sem custo.",
+    ajuda:
+      "O que esta peça promete sobre prazo e troca. Em branco, a seção não é desenhada e vale a página /trocas-e-devolucoes.",
   },
 }
 

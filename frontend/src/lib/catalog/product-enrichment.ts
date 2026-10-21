@@ -1,5 +1,5 @@
 /**
- * O enriquecimento da peça: cuidados, contraindicações, guia e cores.
+ * O enriquecimento da peça: cuidados, Contra Indicações, guia e cores.
  * -------------------------------------------------------------------------
  * Isto é o **tradutor** entre o que o painel grava e o que a tela desenha, e ele
  * existe por três razões medidas neste repositório:
@@ -63,6 +63,8 @@ export type ProdutoComEnriquecimento = {
 export const CHAVE_CUIDADOS = "care"
 export const CHAVE_CONTRAINDICACOES = "contraindications"
 export const CHAVE_GUIA = "size_guide"
+
+export const CHAVE_ENTREGA_TROCAS = "shipping_returns"
 
 /**
  * Os títulos de opção que contam como "a cor da peça".
@@ -294,6 +296,7 @@ export function enriquecimentoDoProduto(
       CHAVE_CONTRAINDICACOES
     ),
     sizeGuide: textoDoMetadata(produto.metadata, CHAVE_GUIA),
+    shippingReturns: textoDoMetadata(produto.metadata, CHAVE_ENTREGA_TROCAS),
     colors: coresDoProduto(produto),
   }
 }

@@ -14,6 +14,7 @@
  */
 import {
   CAMPOS_DO_PRODUTO,
+  CHAVES_DE_TEXTO,
   COR_PADRAO_DO_SELETOR,
   corDoSeletor,
   corpoDoEnriquecimento,
@@ -108,13 +109,15 @@ describe("a paleta do navegador", () => {
 })
 
 describe("estadoDoProduto", () => {
-  it("lê os três textos e o hex de cada variante", () => {
+  it("lê os quatro textos e o hex de cada variante", () => {
     const estado = estadoDe()
 
-    expect(estado.textos).toEqual({
+    expect(Object.keys(estado.textos)).toEqual([...CHAVES_DE_TEXTO])
+    expect(estado.textos).toMatchObject({
       care: "Lavar à mão.",
       contraindications: "",
       size_guide: "",
+      shipping_returns: "",
     })
     expect(estado.hexes).toEqual({
       var_rosa: "#B97872",
@@ -233,5 +236,38 @@ describe("corpoDoEnriquecimento", () => {
     delete estado.hexes.var_rosa
 
     expect(corpoDoEnriquecimento(PRODUTO, estado)).toEqual({})
+  })
+
+  it("entrega e trocas é mais uma chave de texto, com a mesma regra", () => {
+    expect(estadoDoProduto(PRODUTO).textos.shipping_returns).toBe("")
+
+    const escrita = estadoDe()
+    escrita.textos.shipping_returns = "Enviamos em até 2 dias úteis."
+
+    const comTexto = corpoDoEnriquecimento(PRODUTO, escrita)
+
+    expect(comTexto.metadata).toEqual({
+      alguma_chave_do_medusa: "intocada",
+      care: "Lavar à mão.",
+      numero: 7,
+      shipping_returns: "Enviamos em até 2 dias úteis.",
+    })
+
+    const comChaveNoProduto: ProdutoDoPainel = {
+      ...PRODUTO,
+      metadata: {
+        ...PRODUTO.metadata,
+        shipping_returns: "Enviamos em até 2 dias úteis.",
+      },
+    }
+    const apagando = estadoDoProduto(comChaveNoProduto)
+
+    apagando.textos.shipping_returns = ""
+
+    expect(corpoDoEnriquecimento(comChaveNoProduto, apagando).metadata).toEqual({
+      alguma_chave_do_medusa: "intocada",
+      care: "Lavar à mão.",
+      numero: 7,
+    })
   })
 })
