@@ -1,30 +1,9 @@
 /**
  * O estado de uma peça na loja: pronta entrega, sob demanda, últimas ou esgotado.
- * -------------------------------------------------------------------------
- * O chip que aparece no card e na página do produto é **estado do catálogo**,
- * e este módulo é quem decide qual dos quatro. A decisão mora aqui — e não
- * dentro do componente — por três razões:
  *
- *   1. **Ela é usada em dois lugares.** O card (`product-preview`) e a página
- *      do produto (`product-actions`) precisam concordar: um card dizendo
- *      "pronta entrega" que leva a um produto com o botão desabilitado é o
- *      defeito que esta função existe para não ter.
- *   2. **A precedência é do estoque para o rótulo.** A loja escreve
- *      `tag_status` no produto, e essa palavra entra só onde o estoque é
- *      ambíguo — nunca para afirmar disponibilidade que não existe (ver
- *      `productStatus`). Precedência é regra, e regra se testa sem renderizar.
- *   3. **Ela lê estoque — e o estoque engana.** Ver `variantIsAvailable`.
- *
- * **O rótulo é da loja, o estado é do catálogo.** As quatro palavras do chip
- * (`PRODUCT_STATUS_LABELS`) são copy da loja, não conteúdo do CRM: quem quiser
- * escrever "Chega em 2 dias" no lugar de "Pronta entrega" mexe neste arquivo.
- * Promover isso a campo editável é trabalho futuro, e não passa pelo contrato
- * hoje — pelo mesmo motivo que o chip "Todos" da vitrine é `ALL_LABEL` na
- * seção, e não um campo.
- *
- * A entrada é um tipo **estrutural**, e não `StoreProduct`: o que se lê são
- * três campos de estoque e dois de texto, e mantê-los declarados aqui é o que
- * permite testar a regra com um objeto de dez linhas, sem SDK e sem API.
+ * A decisão mora aqui, e não no componente, por duas razões: o card e a página
+ * do produto precisam concordar, e a precedência (estoque antes do rótulo) é
+ * regra — e regra se testa sem renderizar.
  */
 
 /** Os quatro estados possíveis — e nenhum a mais. */
@@ -52,8 +31,7 @@ export const PRODUCT_STATUS_LABELS: Record<ProductStatus, string> = {
  * Quantas peças compráveis ainda são "poucas".
  *
  * Três é o número em que a decisão de compra ainda é a tempo: o chip avisa que
- * acaba, sem virar urgência artificial. É a única constante de comportamento
- * deste módulo, e ela é do lado da loja — nenhum campo do CRM a controla.
+ * acaba, sem virar urgência artificial.
  */
 export const LAST_UNITS_THRESHOLD = 3
 
@@ -61,15 +39,9 @@ export const LAST_UNITS_THRESHOLD = 3
  * Os rótulos que o lojista escreve — em `metadata.tag_status` ou numa tag —
  * traduzidos para o estado.
  *
- * As chaves são o rótulo **normalizado** (`normalizeStatusLabel`): minúsculas,
- * sem acento, com espaço único. Por isso "Pronta Entrega", "pronta-entrega" e
- * "PRONTA_ENTREGA" não precisam de três entradas — quem iguala as três é a
- * normalização, e é lá que mora a tolerância.
- *
- * Rótulo fora desta lista **não é erro e não inventa estado**: ele cai para a
- * tag, e da tag para o estoque. Um `tag_status` novo ("Feito à mão") que o
- * lojista digite hoje aparece no card como o estoque diz, e entra nesta tabela
- * quando a loja combinar o que ele significa.
+ * As chaves são o rótulo **normalizado**: minúsculas, sem acento, com espaço
+ * único. Rótulo fora desta lista não é erro e não inventa estado: ele cai para
+ * a tag, e da tag para o estoque.
  */
 const STATUS_BY_LABEL: Record<string, ProductStatus> = {
   "pronta entrega": "pronta-entrega",
@@ -209,31 +181,15 @@ function statusFromInventory(variants: (VariantLike | null)[]): ProductStatus {
  * O estado da peça: **o estoque primeiro**, e a palavra do lojista só onde a
  * peça não pode contradizer o que é verdade.
  *
- * A ordem é a decisão, e ela **mudou** — o texto antigo era "o que o lojista
- * escreveu vence o estoque", e isso produzia exatamente o defeito que a loja
- * viu: "Pronta entrega" num produto sem estoque, com o botão de comprar
- * ligado. O rótulo era escrito pelo seed, e o seed não é a loja — a informação
- * de uma peça tem de vir da API e do que foi cadastrado no painel.
- *
- *   1. **Esgotado vence sempre.** Se nenhum variant é comprável, a peça está
- *      esgotada — e nenhum rótulo escrito à mão pode virar isso. Um chip de
- *      "Pronta entrega" sobre peça sem estoque é promessa que a loja não pode
- *      cumprir, e o card passa a mentir para a cliente.
- *   2. **O estoque decide o resto**, por `statusFromInventory`: soma o que é
- *      comprável e compara com `LAST_UNITS_THRESHOLD`.
- *   3. **O rótulo do lojista** (`metadata.tag_status`, depois as tags) só entra
- *      quando o estoque é **ambíguo** — isto é, quando ele não diz "esgotado"
- *      nem "últimas". "Sob demanda" é o caso que ele resolve: peça com estoque
- *      que a loja fabrica sob encomenda é "pronta entrega" pelo número, e é
- *      "sob demanda" pela palavra, e a palavra é a que sabe.
+ *   1. **Esgotado vence sempre.** Nenhum rótulo escrito à mão vira "esgotado".
+ *   2. **O estoque decide o resto**, por `statusFromInventory`.
+ *   3. **O rótulo do lojista** (`metadata.tag_status`, depois as tags) entra só
+ *      quando o estoque é ambíguo — "tem peça", mas não "últimas". Um
+ *      `tag_status` que contradiz o estoque é ignorado: ele pode dizer "sob
+ *      encomenda", não pode afirmar disponibilidade que não existe.
  *
  * Só a primeira tag reconhecida vale: duas tags dizendo coisas diferentes não
  * se somam.
- *
- * **O que a loja perde, e por quê.** Um `tag_status` que contradiz o estoque
- * agora é ignorado em vez de vencê-lo. É deliberado: o rótulo existe para dizer
- * "esta peça é sob encomenda", e ele continua fazendo isso. O que ele não pode
- * mais fazer é afirmar disponibilidade que não existe.
  */
 export function productStatus(product: AvailabilityProduct): ProductStatus {
   // 1. O estoque tem a palavra final sobre estar ou não esgotado.

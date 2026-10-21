@@ -4,7 +4,13 @@ import { DEFAULT_SORT, SortOptions } from "@lib/catalog/types"
 import { sdk } from "@lib/config"
 import { filtrarProdutos, construirFacetas, type Faceta, type SelecaoDoCatalogo } from "@lib/catalog/catalog-filters"
 import { sortProducts } from "@lib/catalog/sort-products"
+import type {
+  SitemapGroup,
+  SitemapProduct,
+} from "@lib/catalog/sitemap-catalog"
 import { HttpTypes } from "@medusajs/types"
+import { listCategories } from "./categories"
+import { listCollections } from "./collections"
 import { getAuthHeaders, getCatalogCacheOptions } from "./cookies"
 import { CAMPOS_DO_CATALOGO } from "./product-fields"
 import { getRegion, retrieveRegion } from "./regions"
@@ -175,6 +181,29 @@ export const listProductsWithSort = async ({
     },
     facets,
     catalogCount: catalogo.length,
+  }
+}
+
+
+export async function entradasDoCatalogo({
+  countryCode,
+}: {
+  countryCode: string
+}): Promise<{
+  produtos: SitemapProduct[]
+  categorias: SitemapGroup[]
+  colecoes: SitemapGroup[]
+}> {
+  const [{ response }, categorias, colecoes] = await Promise.all([
+    listProducts({ countryCode, queryParams: { limit: 100 } }),
+    listCategories({ limit: 100 }),
+    listCollections({ limit: "100" }),
+  ])
+
+  return {
+    produtos: response.products as SitemapProduct[],
+    categorias: categorias as SitemapGroup[],
+    colecoes: colecoes.collections as SitemapGroup[],
   }
 }
 
