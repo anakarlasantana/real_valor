@@ -5,16 +5,16 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37346,
-      "comments": 8831
+      "lines": 37562,
+      "comments": 8787
     },
     "admin/src": {
       "lines": 9839,
       "comments": 1880
     },
     "backend/src": {
-      "lines": 22866,
-      "comments": 4631
+      "lines": 23678,
+      "comments": 4627
     },
     "packages/contrato/src": {
       "lines": 2760,
@@ -122,8 +122,8 @@
       "header": 5
     },
     "frontend/src/app/sitemap.ts": {
-      "comments": 26,
-      "lines": 50,
+      "comments": 10,
+      "lines": 68,
       "header": 5
     },
     "frontend/src/lib/__tests__/theme.unit.spec.ts": {
@@ -192,9 +192,9 @@
       "header": 5
     },
     "frontend/src/lib/catalog/product-availability.ts": {
-      "comments": 139,
-      "lines": 271,
-      "header": 28
+      "comments": 95,
+      "lines": 227,
+      "header": 7
     },
     "frontend/src/lib/catalog/product-enrichment.ts": {
       "comments": 128,
@@ -348,7 +348,7 @@
     },
     "frontend/src/lib/data/products.ts": {
       "comments": 41,
-      "lines": 181,
+      "lines": 210,
       "header": 5
     },
     "frontend/src/lib/data/supported-sections.ts": {
@@ -1237,8 +1237,8 @@
       "header": 8
     },
     "backend/src/api/admin/content/route.ts": {
-      "comments": 134,
-      "lines": 439,
+      "comments": 103,
+      "lines": 408,
       "header": 5
     },
     "backend/src/api/admin/shipping/[id]/route.ts": {
@@ -1402,8 +1402,8 @@
       "header": 5
     },
     "backend/src/modules/content/models/content-contract.ts": {
-      "comments": 28,
-      "lines": 40,
+      "comments": 15,
+      "lines": 27,
       "header": 5
     },
     "backend/src/modules/content/models/content-section.ts": {
