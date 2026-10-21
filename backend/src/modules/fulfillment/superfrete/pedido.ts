@@ -12,6 +12,20 @@ export function cpfDoPedido(metadata: unknown): string {
   return String((metadata as any)?.cpf ?? "").trim()
 }
 
+/** `numero` e `bairro` moram no metadata do endereço: o Medusa não tem os campos (RV-041). */
+function metadataDoEndereco(endereco: Record<string, any>): Record<string, any> {
+  const metadata = endereco?.metadata
+
+  return metadata && typeof metadata === "object"
+    ? (metadata as Record<string, any>)
+    : {}
+}
+
+/** `123`, `45A`, `12 B`: o que pode ser número de casa — "Apto 42" não é. */
+function pareceNumero(valor: string): boolean {
+  return /^\d{1,6}\s?[A-Za-z]?$/.test(valor.trim())
+}
+
 export function separarRua(endereco: unknown): {
   rua: string
   numero: string
@@ -41,6 +55,22 @@ export function destinatarioDoPedido(
   const endereco = (pedido?.shipping_address ?? pedido?.billing_address ?? {}) as Record<string, any>
   const partes = separarRua(endereco.address_1)
   const cliente = (pedido?.customer ?? {}) as Record<string, any>
+  const doEndereco = metadataDoEndereco(endereco)
+  const address2 = String(endereco.address_2 ?? "").trim()
+
+  /**
+   * `metadata.numero` e, na falta dele, o que a cliente escreveu junto da rua. O
+   * `address_2` só vale como número quando **é** número — "Apto 42" não é.
+   */
+  const numero =
+    String(doEndereco.numero ?? "").trim() ||
+    (pareceNumero(address2) ? address2 : "") ||
+    partes.numero
+
+  const complemento =
+    partes.complemento ||
+    (pareceNumero(address2) ? "" : address2) ||
+    String(endereco.company ?? "").trim()
 
   return {
     nome: String(endereco.first_name ?? cliente.first_name ?? "").trim()
@@ -51,9 +81,13 @@ export function destinatarioDoPedido(
     telefone: String(endereco.phone ?? cliente.phone ?? "").trim(),
     cep: String(endereco.postal_code ?? "").trim(),
     rua: partes.rua,
-    numero: String(endereco.address_2 ?? "").trim() || partes.numero,
-    complemento: partes.complemento || String(endereco.company ?? "").trim(),
-    bairro: String(endereco.province ?? "").trim(),
+    numero,
+    complemento,
+    /**
+     * O bairro **nunca** sai do `province` (é a UF). Sem bairro,
+     * `problemaDaEtiqueta` barra a emissão: melhor que imprimir o campo errado.
+     */
+    bairro: String(doEndereco.bairro ?? "").trim(),
     cidade: String(endereco.city ?? "").trim(),
     estado: String(endereco.province ?? "").trim().slice(0, 2).toUpperCase(),
   }
@@ -61,6 +95,7 @@ export function destinatarioDoPedido(
 
 export function remetenteDoLocal(local: Record<string, any>): Remetente {
   const endereco = (local?.address ?? {}) as Record<string, any>
+  const doEndereco = metadataDoEndereco(endereco)
 
   return {
     nome: String(local?.name ?? "RealValor").trim(),
@@ -69,9 +104,15 @@ export function remetenteDoLocal(local: Record<string, any>): Remetente {
     email: String((endereco.metadata as any)?.email ?? (local?.metadata as any)?.email ?? "").trim(),
     cep: String(endereco.postal_code ?? "").trim(),
     rua: String(endereco.address_1 ?? "").trim(),
-    numero: String(endereco.address_2 ?? "").trim(),
+    numero: String(doEndereco.numero ?? "").trim() || String(endereco.address_2 ?? "").trim(),
     complemento: "",
-    bairro: String(endereco.province ?? "").trim(),
+    /**
+     * O local não tem bairro nem formulário para corrigi-lo: até alguém preencher
+     * `metadata.bairro`, a UF é o que existe — vazio trava **toda** etiqueta.
+     */
+    bairro:
+      String(doEndereco.bairro ?? "").trim() ||
+      String(endereco.province ?? "").trim(),
     cidade: String(endereco.city ?? "").trim(),
     estado: String(endereco.province ?? "").trim().slice(0, 2).toUpperCase(),
   }

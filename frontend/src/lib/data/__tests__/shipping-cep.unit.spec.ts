@@ -66,6 +66,15 @@ describe("buscarCep — o caminho feliz", () => {
     })
   })
 
+  it("não chama o fetch como método — em método ele leva `this`, e o navegador recusa", async () => {
+    const fetchImpl = dubleFetch({ viacep: () => resposta(PAULISTA) })
+
+    await buscarCep("01310100", { fetchImpl })
+
+    // `config.fetchImpl(url)` gravaria o config aqui: `Illegal invocation`.
+    expect((fetchImpl as any).mock.contexts[0]).toBeUndefined()
+  })
+
   it("aceita o CEP com máscara, com espaço, ou só os números", async () => {
     for (const cep of ["01310-100", "01310 100", "01310100"]) {
       const fetchImpl = dubleFetch({ viacep: () => resposta(PAULISTA) })

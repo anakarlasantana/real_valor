@@ -19,6 +19,7 @@ import {
   destinatarioDoPedido,
   pago,
   produtosDoPedido,
+  remetenteDoLocal,
   separarRua,
   servicoDaOpcao,
 } from "../pedido"
@@ -408,6 +409,103 @@ describe("leitura do pedido", () => {
     expect(d.numero).toBe("10")
     expect(d.estado).toBe("RJ")
     expect(d.documento).toBe("12345678901")
+  })
+
+  /** O bairro saía do `province` (a UF); os dois vêm do metadata do endereço (RV-041). */
+  it("lê número e bairro do metadata do endereço, não da UF", () => {
+    const d = destinatarioDoPedido(
+      {
+        shipping_address: {
+          first_name: "Maria",
+          address_1: "Avenida Paulista",
+          city: "São Paulo",
+          province: "SP",
+          postal_code: "01310-100",
+          metadata: { numero: "1578", bairro: "Bela Vista" },
+        },
+      },
+      {}
+    )
+
+    expect(d.numero).toBe("1578")
+    expect(d.bairro).toBe("Bela Vista")
+    expect(d.estado).toBe("SP")
+  })
+
+  it("sem o metadata, o bairro fica vazio em vez de virar a UF", () => {
+    const d = destinatarioDoPedido(
+      {
+        shipping_address: {
+          address_1: "Avenida Paulista",
+          city: "São Paulo",
+          province: "SP",
+          postal_code: "01310-100",
+        },
+      },
+      {}
+    )
+
+    // Vazio barra a etiqueta com a mensagem do que falta; "SP" no bairro printava errado.
+    expect(d.bairro).toBe("")
+  })
+
+  it("o complemento digitado não vira número", () => {
+    const d = destinatarioDoPedido(
+      {
+        shipping_address: {
+          address_1: "Rua A",
+          address_2: "Apto 42",
+          city: "Campinas",
+          province: "SP",
+          postal_code: "13010-000",
+        },
+      },
+      {}
+    )
+
+    expect(d.numero).toBe("")
+    expect(d.complemento).toBe("Apto 42")
+  })
+
+  it("pedido antigo, com o número no address_2, continua saindo com número", () => {
+    const d = destinatarioDoPedido(
+      {
+        shipping_address: {
+          address_1: "Rua A",
+          address_2: "123",
+          city: "Campinas",
+          province: "SP",
+          postal_code: "13010-000",
+        },
+      },
+      {}
+    )
+
+    expect(d.numero).toBe("123")
+    expect(d.complemento).toBe("")
+  })
+
+  it("o remetente prefere o bairro do metadata e só cai na UF quando ele não existe", () => {
+    const comBairro = remetenteDoLocal({
+      address: {
+        address_1: "Rua B",
+        city: "Campinas",
+        province: "SP",
+        postal_code: "13010-000",
+        metadata: { bairro: "Centro" },
+      },
+    })
+
+    expect(comBairro.bairro).toBe("Centro")
+
+    // O local de estoque é configuração da operação: sem o dado, a UF é o que
+    // existe — e é o que já saía. Diferente do destinatário, aqui não há
+    // formulário para corrigir, e bairro vazio travaria toda etiqueta.
+    const semBairro = remetenteDoLocal({
+      address: { address_1: "Rua B", city: "Campinas", province: "SP" },
+    })
+
+    expect(semBairro.bairro).toBe("SP")
   })
 
   it("lê o serviço que o provider gravou na opção", () => {

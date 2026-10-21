@@ -25,7 +25,7 @@ import { lerDocumento } from "@rv/contrato"
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, shipping_address.metadata, billing_address.metadata"
 
   if (!id) {
     return null
@@ -315,6 +315,31 @@ export async function setDocumentoDoCarrinho(
   return updateCart({ metadata } as HttpTypes.StoreUpdateCart)
 }
 
+/**
+ * `numero` e `bairro` não existem no `StoreCartAddress`: viajam no **metadata do
+ * endereço**, de onde a etiqueta os lê (RV-041). O metadata anterior é preservado,
+ * e campo vazio é *removido* — `""` na etiqueta é pior que ausente.
+ */
+function metadataDoEndereco(
+  anterior: unknown,
+  numero: FormDataEntryValue | null,
+  bairro: FormDataEntryValue | null
+): Record<string, unknown> {
+  const metadata = { ...((anterior || {}) as Record<string, unknown>) }
+
+  for (const [chave, valor] of [
+    ["numero", numero],
+    ["bairro", bairro],
+  ] as const) {
+    const texto = String(valor ?? "").trim()
+
+    if (texto) metadata[chave] = texto
+    else delete metadata[chave]
+  }
+
+  return metadata
+}
+
 // TODO: Pass a POJO instead of a form entity here
 export async function setAddresses(currentState: unknown, formData: FormData) {
   try {
@@ -325,6 +350,9 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
     if (!cartId) {
       throw new Error("No existing cart found when setting addresses")
     }
+
+    // Uma leitura só: o metadata do carrinho (CPF) e o dos endereços.
+    const cartAtual = await retrieveCart(cartId)
 
     const data = {
       shipping_address: {
@@ -341,6 +369,11 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
         country_code: formData.get("shipping_address.country_code"),
         province: formData.get("shipping_address.province"),
         phone: formData.get("shipping_address.phone"),
+        metadata: metadataDoEndereco(
+          cartAtual?.shipping_address?.metadata,
+          formData.get("shipping_address.numero"),
+          formData.get("shipping_address.bairro")
+        ),
       },
       email: formData.get("email"),
     } as any
@@ -360,6 +393,11 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
         country_code: formData.get("billing_address.country_code"),
         province: formData.get("billing_address.province"),
         phone: formData.get("billing_address.phone"),
+        metadata: metadataDoEndereco(
+          cartAtual?.billing_address?.metadata,
+          formData.get("billing_address.numero"),
+          formData.get("billing_address.bairro")
+        ),
       }
 
     const documentoNoFormulario = formData.get("cpf")
@@ -370,8 +408,6 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
       if (!lido.valido) {
         throw new Error(lido.mensagem)
       }
-
-      const cartAtual = await retrieveCart(cartId)
 
       data.metadata = {
         ...((cartAtual?.metadata || {}) as Record<string, unknown>),

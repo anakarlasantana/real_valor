@@ -28,6 +28,8 @@ const CAMPOS = [
   "shipping_address.province",
   "shipping_address.postal_code",
   "shipping_address.phone",
+  // Número e bairro não são campos do endereço no Medusa: vêm no metadata dele.
+  "shipping_address.metadata",
   "billing_address.first_name",
   "billing_address.last_name",
   "billing_address.address_1",
@@ -36,6 +38,7 @@ const CAMPOS = [
   "billing_address.province",
   "billing_address.postal_code",
   "billing_address.phone",
+  "billing_address.metadata",
   "items.title",
   "items.product_title",
   "items.quantity",

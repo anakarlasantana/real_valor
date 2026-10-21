@@ -60,6 +60,12 @@ const Addresses = ({
 
   const [message, formAction] = useActionState(setAddresses, null)
 
+  /** Número e bairro vivem no metadata do endereço — o Medusa não tem os campos. */
+  const metadataDaEntrega = (cart?.shipping_address?.metadata ??
+    {}) as Record<string, unknown>
+  const metadataDaCobranca = (cart?.billing_address?.metadata ??
+    {}) as Record<string, unknown>
+
   return (
     <fieldset className="rv-fieldset">
       <legend>
@@ -113,12 +119,16 @@ const Addresses = ({
                   {cart.shipping_address.last_name}
                 </p>
                 <p>
-                  {cart.shipping_address.address_1}{" "}
-                  {cart.shipping_address.address_2}
+                  {cart.shipping_address.address_1}
+                  {metadataDaEntrega.numero ? `, ${metadataDaEntrega.numero}` : ""}
+                  {cart.shipping_address.address_2
+                    ? ` — ${cart.shipping_address.address_2}`
+                    : ""}
                 </p>
                 <p>
+                  {metadataDaEntrega.bairro ? `${metadataDaEntrega.bairro}, ` : ""}
                   {cart.shipping_address.postal_code},{" "}
-                  {cart.shipping_address.city}
+                  {cart.shipping_address.city} — {cart.shipping_address.province}
                 </p>
                 <p>{cart.shipping_address.country_code?.toUpperCase()}</p>
               </div>
@@ -140,10 +150,18 @@ const Addresses = ({
                       {cart.billing_address?.last_name}
                     </p>
                     <p>
-                      {cart.billing_address?.address_1}{" "}
-                      {cart.billing_address?.address_2}
+                      {cart.billing_address?.address_1}
+                      {metadataDaCobranca.numero
+                        ? `, ${metadataDaCobranca.numero}`
+                        : ""}
+                      {cart.billing_address?.address_2
+                        ? ` — ${cart.billing_address?.address_2}`
+                        : ""}
                     </p>
                     <p>
+                      {metadataDaCobranca.bairro
+                        ? `${metadataDaCobranca.bairro}, `
+                        : ""}
                       {cart.billing_address?.postal_code},{" "}
                       {cart.billing_address?.city}
                     </p>

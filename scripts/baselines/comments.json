@@ -5,19 +5,19 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 38834,
-      "comments": 8855
+      "lines": 39283,
+      "comments": 8875
     },
     "admin/src": {
       "lines": 9885,
       "comments": 1877
     },
     "backend/src": {
-      "lines": 23744,
-      "comments": 4633
+      "lines": 23886,
+      "comments": 4653
     },
     "packages/contrato/src": {
-      "lines": 2807,
+      "lines": 2822,
       "comments": 574
     },
     "scripts": {

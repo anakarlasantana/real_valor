@@ -15,15 +15,21 @@ export type {
 export const TIMEOUT_CEP_MS = 2500
 
 export type OpcoesBusca = {
-  /** Para o teste. Em produção, o `fetch` do navegador. */
   fetchImpl?: typeof fetch
   timeoutMs?: number
   signal?: AbortSignal
 }
 
+/**
+ * O que um 404 significa **neste** provedor: "este CEP não existe" no ViaCEP e na
+ * BrasilAPI, "esta rota não existe" no nosso proxy — deploy antigo, não um CEP.
+ */
+type Status404 = "inexistente" | "fora"
+
 type Provedor = readonly [
   url: string,
   ler: (corpo: unknown) => ResultadoCep | "fora",
+  status404: Status404,
 ]
 
 /** Proxy do servidor: mesma origem, sem CORS. */
@@ -32,7 +38,6 @@ const PROXY_CEP = "/api/cep"
 const VIACEP = "https://viacep.com.br/ws"
 const BRASILAPI = "https://brasilapi.com.br/api/cep/v2"
 
-/** `null`/`""` viram `""`: bairro vazio de alguns CEPs não é valor. */
 function texto(valor: unknown): string {
   return typeof valor === "string" ? valor.trim() : ""
 }
@@ -40,6 +45,11 @@ function texto(valor: unknown): string {
 /** No navegador usamos o proxy (mesma origem, sem CORS); no servidor, fetch direto. */
 function ehNavegador(): boolean {
   return typeof window !== "undefined"
+}
+
+/** Prazo estourado ou quem chamou desistiu: esperado, não é defeito. */
+function ehAbort(erro: unknown): boolean {
+  return (erro as { name?: string } | null)?.name === "AbortError"
 }
 
 /** O proxy devolve o `ResultadoCep` pronto; aqui só conferimos a forma. */
@@ -56,7 +66,6 @@ function doProxy(corpo: unknown): ResultadoCep | "fora" {
 
   const { logradouro, bairro, cidade, estado } = dados.endereco
 
-  // Cidade e UF são o que o campo mostra: sem elas, não é endereço.
   if (typeof cidade !== "string" || typeof estado !== "string") return "fora"
 
   return {
@@ -116,13 +125,13 @@ function daBrasilApi(corpo: unknown): ResultadoCep | "fora" {
 }
 
 /**
- * Uma consulta, com prazo. `"fora"` = rede, tempo ou formato estranho: os três
- * valem "tenta o próximo". O abort fecha a conexão quando o prazo estoura.
+ * Uma consulta, com prazo. `"fora"` = rede, tempo ou formato estranho.
  */
 async function consultar(
   url: string,
   ler: (corpo: unknown) => ResultadoCep | "fora",
-  config: { fetchImpl: typeof fetch; timeoutMs: number; signal?: AbortSignal }
+  config: { fetchImpl: typeof fetch; timeoutMs: number; signal?: AbortSignal },
+  status404: Status404
 ): Promise<ResultadoCep | "fora"> {
   const controle = new AbortController()
   const encerrar = () => controle.abort()
@@ -130,20 +139,30 @@ async function consultar(
   config.signal?.addEventListener("abort", encerrar, { once: true })
 
   try {
-    const resposta = await config.fetchImpl(url, {
+    // **Solto, não como método**: `config.fetchImpl(url)` passa `config` como
+    // `this`, e o `fetch` do navegador recusa com `Illegal invocation` (RV-041).
+    const buscar = config.fetchImpl
+    const resposta = await buscar(url, {
       headers: { Accept: "application/json" },
       signal: controle.signal,
     })
 
-    // 404 é resposta do provedor, não falha: o CEP não existe.
+    // 404 é resposta do provedor, não falha: o CEP não existe (ou falta a rota).
     if (resposta.status === 404) {
-      return { encontrado: false, motivo: "cep-inexistente" }
+      return status404 === "inexistente"
+        ? { encontrado: false, motivo: "cep-inexistente" }
+        : "fora"
     }
 
     if (!resposta.ok) return "fora"
 
     return ler(await resposta.json())
-  } catch {
+  } catch (erro) {
+    // Prazo e desistência são esperados; o resto (o `Illegal invocation`) sumia sem log.
+    if (!ehAbort(erro) && process.env.NODE_ENV !== "production") {
+      console.warn("[cep] falha ao consultar", url, erro)
+    }
+
     return "fora"
   } finally {
     clearTimeout(prazo)
@@ -151,9 +170,7 @@ async function consultar(
   }
 }
 
-/**
- * Busca o endereço de um CEP, em cascata, sem nunca lançar.
- */
+/** Busca o endereço de um CEP, em cascata, sem nunca lançar. */
 export async function buscarCep(
   cep: string | null | undefined,
   opcoes: OpcoesBusca = {}
@@ -170,20 +187,21 @@ export async function buscarCep(
     signal: opcoes.signal,
   }
 
-  // No navegador, o proxy da mesma origem evita o CORS do ViaCEP; no servidor, fetch direto.
+  // No navegador, o proxy da mesma origem evita o CORS do ViaCEP.
   const urls: readonly Provedor[] = ehNavegador()
-    ? [[`${PROXY_CEP}/${digitos}`, doProxy]]
+    ? [[`${PROXY_CEP}/${digitos}`, doProxy, "fora"]]
     : [
-        [`${VIACEP}/${digitos}/json/`, doViaCep],
-        [`${BRASILAPI}/${digitos}`, daBrasilApi],
+        [`${VIACEP}/${digitos}/json/`, doViaCep, "inexistente"],
+        [`${BRASILAPI}/${digitos}`, daBrasilApi, "inexistente"],
       ]
 
-  for (const [url, ler] of urls) {
+  for (const [url, ler, status404] of urls) {
     // Quem chamou desistiu (a cliente saiu do checkout): nem começa o próximo.
     if (config.signal?.aborted) break
 
-    const resultado = await consultar(url, ler, config)
+    const resultado = await consultar(url, ler, config, status404)
 
+    // "Não existe" é resposta: não vale gastar mais 2,5s no segundo provedor (RV-038).
     if (resultado !== "fora") return resultado
   }
 

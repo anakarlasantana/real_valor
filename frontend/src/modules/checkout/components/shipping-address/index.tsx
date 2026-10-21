@@ -1,12 +1,7 @@
 import { HttpTypes } from "@medusajs/types"
-import {
-  CEP_DIGITOS,
-  formatarCep,
-  formatarDocumento,
-  lerDocumento,
-} from "@rv/contrato"
-import { enderecoDoCep } from "@lib/checkout/endereco-pelo-cep"
+import { formatarDocumento, lerDocumento } from "@rv/contrato"
 import { mascararCampoDeEndereco } from "@lib/checkout/mascaras-de-endereco"
+import { useCepAutofill } from "@lib/checkout/use-cep-autofill"
 import { buscarCep } from "@lib/data/shipping-cep"
 import { mapKeys } from "lodash"
 import React, { useEffect, useMemo, useRef, useState } from "react"
@@ -14,14 +9,9 @@ import AddressSelect from "../address-select"
 import CountrySelect from "../country-select"
 
 /**
- * Os campos do passo 1 — os dados da cliente e o endereço de entrega.
- *
- * Marcação nossa no `.rv-form-grid` (rótulo acima, 48px, halo rosa), não os
- * `Input` do starter: o `placeholder` virou exemplo de verdade, o complemento
- * entrou (`address_2`, que o form antigo gravava vazio) e o CPF é obrigatório —
- * o SuperFrete não emite etiqueta sem ele, e ninguém deve descobrir isso depois
- * de pagar. (O tamanho disto foi metade do motivo de `renderToStaticMarkup` ter
- * escondido um handler ausente; ver RV-040.)
+ * Os campos do passo 1: cliente e endereço, em marcação nossa (o CPF é obrigatório
+ * — o SuperFrete não emite etiqueta sem ele). Número e bairro (RV-041) vivem em
+ * `shipping_address.metadata`; o bairro saiu do `province`, que é a UF.
  */
 const ShippingAddress = ({
   customer,
@@ -37,11 +27,17 @@ const ShippingAddress = ({
   const documentoDoCarrinho = (cart?.metadata as Record<string, unknown> | null)
     ?.cpf
 
+  /** Número e bairro não são campos do Medusa: eles moram no metadata do endereço. */
+  const metadataDoEndereco = (cart?.shipping_address?.metadata ??
+    {}) as Record<string, unknown>
+
   const [formData, setFormData] = useState<Record<string, any>>({
     "shipping_address.first_name": cart?.shipping_address?.first_name || "",
     "shipping_address.last_name": cart?.shipping_address?.last_name || "",
     "shipping_address.address_1": cart?.shipping_address?.address_1 || "",
+    "shipping_address.numero": String(metadataDoEndereco.numero ?? ""),
     "shipping_address.address_2": cart?.shipping_address?.address_2 || "",
+    "shipping_address.bairro": String(metadataDoEndereco.bairro ?? ""),
     "shipping_address.company": cart?.shipping_address?.company || "",
     "shipping_address.postal_code": cart?.shipping_address?.postal_code || "",
     "shipping_address.city": cart?.shipping_address?.city || "",
@@ -56,121 +52,31 @@ const ShippingAddress = ({
   const erroDoDocumento =
     formData.cpf && !documentoLido.valido ? documentoLido.mensagem : null
 
-  /**
-   * O CEP preenche rua, cidade e estado no `onBlur`/Enter — nunca a cada tecla.
-   * `buscandoCep` é o único estado que re-renderiza o componente, e o efeito do
-   * carrinho rodava a cada render: ligar o aviso apagava o CEP.
-   */
-  const [buscandoCep, setBuscandoCep] = useState(false)
-  /** Por que a busca não trouxe endereço: a única evidência de que ela rodou. RV-040. */
-  const [erroCep, setErroCep] = useState<string | null>(null)
   const enderecoRef = useRef<HTMLInputElement>(null)
-  const cepCarregadoRef = useRef("")
+  const numeroRef = useRef<HTMLInputElement>(null)
   const enderecoDoCarrinhoRef = useRef<any>(cart)
+  /** Algo foi digitado desde a última carga do carrinho? É o que a carga não pisa. */
+  const digitouRef = useRef(false)
+
+  /** O CEP preenche rua, bairro, cidade e estado — nunca a cada tecla. Ver RV-039/RV-041. */
+  const {
+    buscandoCep,
+    erroCep,
+    registrarDigitacao,
+    esquecerDigitacao,
+    aoMudarCep,
+    aoSairCep,
+    aoTeclarCep,
+  } = useCepAutofill("shipping_address", setFormData, {
+    buscarCep,
+    // O CEP traz a rua inteira e não traz o número: o cursor vai para onde falta.
+    aoPreencher: () => (numeroRef.current ?? enderecoRef.current)?.focus(),
+  })
 
   /** O carrinho já vinha com endereço: o carregamento é só o valor inicial do formulário. */
   const temEnderecoSalvo = Boolean(
     cart?.shipping_address?.address_1 || cart?.shipping_address?.postal_code
   )
-
-  /** Só o que a cliente digitou, para a busca não pisar nisso. */
-  const digitadoRef = useRef<Record<string, string>>({})
-  /**
-   * Quantas buscas de CEP vieram. `0` = nada veio de CEP desde que a cliente
-   * mexeu em cidade/UF (ou desde a carga): o que está no campo é dela.
-   */
-  const buscasRef = useRef(0)
-
-  /** A busca em voo, para não gravar a resposta de um CEP quando ela é de outro. */
-  const requisicaoRef = useRef(0)
-
-  /** A cliente digitou a cidade/UF desde a carga? É o que o CEP não sobrescreve. */
-  const campoDigitado = (campo: "address_1" | "city" | "province") =>
-    campo === "address_1"
-      ? Boolean(digitadoRef.current.address_1)
-      : buscasRef.current === 0
-
-  const registrarDigitacao = (nome: string, valor: string) => {
-    if (!nome.startsWith("shipping_address.")) return
-
-    const campo = nome.replace("shipping_address.", "")
-
-    digitadoRef.current[campo] = valor
-
-    // Mexeu na cidade/UF: essas duas passam a ser dela, não do CEP.
-    if (campo === "city" || campo === "province") buscasRef.current = 0
-  }
-
-  /** A busca falhou de vez: a tela diz isso, em vez de ficar muda. */
-  const avisar = () =>
-    setErroCep(
-      "Não foi possível buscar o CEP agora. Preencha o endereço à mão."
-    )
-
-  const preencherPeloCep = async (cepDigitado: string) => {
-    const cep = formatarCep(cepDigitado).replace(/\D/g, "")
-
-    // CEP incompleto, ou o mesmo que já está na tela: não refaz o pedido.
-    if (cep.length !== CEP_DIGITOS || cepCarregadoRef.current === cep) {
-      return
-    }
-
-    cepCarregadoRef.current = cep
-    const pedido = ++requisicaoRef.current
-    setErroCep(null)
-    setBuscandoCep(true)
-
-    try {
-      const resultado = await buscarCep(cep)
-
-      // A cliente já pediu outro CEP: esta resposta chegou tarde.
-      if (pedido !== requisicaoRef.current) return
-
-      if (!resultado.encontrado) {
-        // Deixa tentar de novo: erro de rede não é "este CEP não tem endereço".
-        cepCarregadoRef.current = ""
-
-        setErroCep(
-          resultado.motivo === "cep-inexistente"
-            ? "CEP não encontrado. Confira os números."
-            : "Não foi possível buscar o CEP agora. Preencha o endereço à mão."
-        )
-        return
-      }
-
-      const { endereco } = resultado
-      setFormData((prev: Record<string, any>) => {
-        const preenchido = enderecoDoCep(
-          {
-            address_1: prev["shipping_address.address_1"] || "",
-            city: prev["shipping_address.city"] || "",
-            province: prev["shipping_address.province"] || "",
-          },
-          endereco,
-          {
-            address_1: campoDigitado("address_1"),
-            city: campoDigitado("city"),
-            province: campoDigitado("province"),
-          }
-        )
-
-        return {
-          ...prev,
-          "shipping_address.address_1": preenchido.address_1,
-          "shipping_address.city": preenchido.city,
-          "shipping_address.province": preenchido.province,
-        }
-      })
-
-      // A partir daqui, cidade e UF no campo são do CEP, não da cliente.
-      buscasRef.current += 1
-
-      // A cliente volta o cursor para o endereço, onde falta o número.
-      enderecoRef.current?.focus()
-    } finally {
-      setBuscandoCep(false)
-    }
-  }
 
   const countriesInRegion = useMemo(
     () => cart?.region?.countries?.map((c) => c.iso_2),
@@ -190,13 +96,18 @@ const ShippingAddress = ({
     address?: HttpTypes.StoreCartAddress,
     email?: string
   ) => {
+    /** Número e bairro vêm no metadata do endereço (o Medusa não tem os campos). */
+    const metadata = (address?.metadata ?? {}) as Record<string, unknown>
+
     address &&
       setFormData((prevState: Record<string, any>) => ({
         ...prevState,
         "shipping_address.first_name": address?.first_name || "",
         "shipping_address.last_name": address?.last_name || "",
         "shipping_address.address_1": address?.address_1 || "",
+        "shipping_address.numero": String(metadata.numero ?? ""),
         "shipping_address.address_2": address?.address_2 || "",
+        "shipping_address.bairro": String(metadata.bairro ?? ""),
         "shipping_address.company": address?.company || "",
         "shipping_address.postal_code": address?.postal_code || "",
         "shipping_address.city": address?.city || "",
@@ -219,17 +130,14 @@ const ShippingAddress = ({
 
     enderecoDoCarrinhoRef.current = cart
 
-    const digitou =
-      digitadoRef.current.address_1 ||
-      digitadoRef.current.city ||
-      digitadoRef.current.postal_code
+    const digitou = digitouRef.current
 
     // O carrinho mudou, ou o endereço chegou depois do primeiro render: o que veio
     // dele pode entrar. Fora disso, o formulário é da cliente.
     if (!trocou && (temEnderecoSalvo || digitou)) return
 
-    digitadoRef.current = {}
-    buscasRef.current = 0
+    esquecerDigitacao()
+    digitouRef.current = false
 
     const temEndereco =
       cart?.shipping_address?.address_1 || cart?.shipping_address?.postal_code
@@ -253,26 +161,15 @@ const ShippingAddress = ({
     const valor = mascarado ?? e.target.value
 
     registrarDigitacao(e.target.name, valor)
+    digitouRef.current = true
 
     // Funcional, não `{ ...formData }`: o estado deste render perde tecla rápida.
     setFormData((prev) => ({ ...prev, [e.target.name]: valor }))
 
-    // Também do `onChange`: autofill e Enter não disparam `blur`; o `cepCarregadoRef`
-    // impede repetir a busca a cada tecla.
+    // Também do `onChange`: autofill e Enter não disparam `blur`; o hook não
+    // repete a busca do mesmo CEP.
     if (e.target.name === "shipping_address.postal_code") {
-      const digitos = formatarCep(valor).replace(/\D/g, "")
-
-      if (digitos.length === CEP_DIGITOS) {
-        void preencherPeloCep(valor).catch(avisar)
-      }
-    }
-  }
-
-  /** Enter no CEP dispara a busca, como o botão que a loja não tem. */
-  const handleCepKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      void preencherPeloCep(e.currentTarget.value)
+      aoMudarCep(valor)
     }
   }
 
@@ -386,8 +283,8 @@ const ShippingAddress = ({
             placeholder="00000-000"
             value={formData["shipping_address.postal_code"]}
             onChange={handleChange}
-            onBlur={(e) => void preencherPeloCep(e.target.value).catch(avisar)}
-            onKeyDown={handleCepKeyDown}
+            onBlur={(e) => aoSairCep(e.target.value)}
+            onKeyDown={aoTeclarCep}
             required
             aria-busy={buscandoCep}
             aria-describedby={erroCep ? "shipping-cep-erro" : undefined}
@@ -428,6 +325,21 @@ const ShippingAddress = ({
           />
         </label>
         <label className="rv-form-field">
+          Número
+          <input
+            ref={numeroRef}
+            name="shipping_address.numero"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="123"
+            maxLength={10}
+            value={formData["shipping_address.numero"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-address-number-input"
+          />
+        </label>
+        <label className="rv-form-field">
           Complemento
           <input
             name="shipping_address.address_2"
@@ -436,6 +348,18 @@ const ShippingAddress = ({
             value={formData["shipping_address.address_2"]}
             onChange={handleChange}
             data-testid="shipping-address-2-input"
+          />
+        </label>
+        <label className="rv-form-field">
+          Bairro
+          <input
+            name="shipping_address.bairro"
+            autoComplete="address-level3"
+            placeholder="Bela Vista"
+            value={formData["shipping_address.bairro"]}
+            onChange={handleChange}
+            required
+            data-testid="shipping-neighborhood-input"
           />
         </label>
         <label className="rv-form-field">

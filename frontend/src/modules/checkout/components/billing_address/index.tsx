@@ -1,29 +1,28 @@
 import { HttpTypes } from "@medusajs/types"
 import { mascararCampoDeEndereco } from "@lib/checkout/mascaras-de-endereco"
+import { useCepAutofill } from "@lib/checkout/use-cep-autofill"
+import { buscarCep } from "@lib/data/shipping-cep"
 import React, { useState } from "react"
 import CountrySelect from "../country-select"
 
 /**
- * O endereço de cobrança — o bloco que abre no passo 1 quando a cliente desmarca
- * "endereço de cobrança igual ao de entrega".
- *
- * Ele é o mesmo `.rv-form-grid` dos campos de entrega, e de propósito: os dois são
- * o mesmo tipo de dado (um endereço), pedido duas vezes, e a diferença entre eles é
- * só o título acima. Os `Input` do design system saíram daqui junto com o rótulo
- * flutuante; o que ficou é marcação nossa, com os mesmos `name` e `data-testid` (é
- * por eles que o `setAddresses` monta o payload e que os testes de ponta a ponta
- * acham cada campo).
- *
- * Aqui **não** entrou o número/complemento que a entrega ganhou? Entrou: o campo
- * `address_2` está abaixo do endereço. O que não entrou é o CPF pelo mesmo motivo
- * do outro arquivo — o `StoreCartAddress` do Medusa não tem esse campo.
+ * O endereço de cobrança — abre no passo 1 quando a cliente desmarca "igual ao
+ * de entrega". Mesma marcação da entrega: os `name`/`data-testid` são o contrato
+ * com o `setAddresses` e com os testes. A busca de CEP daqui não existia
+ * (RV-038); número e bairro vivem no `metadata` do endereço (RV-041).
  */
 const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
+  /** Número e bairro não são campos do Medusa: eles moram no metadata do endereço. */
+  const metadataDoEndereco = (cart?.billing_address?.metadata ??
+    {}) as Record<string, unknown>
+
   const [formData, setFormData] = useState<any>({
     "billing_address.first_name": cart?.billing_address?.first_name || "",
     "billing_address.last_name": cart?.billing_address?.last_name || "",
     "billing_address.address_1": cart?.billing_address?.address_1 || "",
+    "billing_address.numero": String(metadataDoEndereco.numero ?? ""),
     "billing_address.address_2": cart?.billing_address?.address_2 || "",
+    "billing_address.bairro": String(metadataDoEndereco.bairro ?? ""),
     "billing_address.company": cart?.billing_address?.company || "",
     "billing_address.postal_code": cart?.billing_address?.postal_code || "",
     "billing_address.city": cart?.billing_address?.city || "",
@@ -32,17 +31,25 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
     "billing_address.phone": cart?.billing_address?.phone || "",
   })
 
+  const { buscandoCep, erroCep, registrarDigitacao, aoMudarCep, aoSairCep, aoTeclarCep } =
+    useCepAutofill("billing_address", setFormData, { buscarCep })
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLInputElement | HTMLSelectElement
     >
   ) => {
     const mascarado = mascararCampoDeEndereco(e.target.name, e.target.value)
+    const valor = mascarado ?? e.target.value
 
-    setFormData({
-      ...formData,
-      [e.target.name]: mascarado ?? e.target.value,
-    })
+    registrarDigitacao(e.target.name, valor)
+
+    // Funcional, não `{ ...formData }`: o estado deste render perde tecla rápida.
+    setFormData((prev: Record<string, any>) => ({ ...prev, [e.target.name]: valor }))
+
+    if (e.target.name === "billing_address.postal_code") {
+      aoMudarCep(valor)
+    }
   }
 
   return (
@@ -84,6 +91,20 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
         />
       </label>
       <label className="rv-form-field">
+        Número
+        <input
+          name="billing_address.numero"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="123"
+          maxLength={10}
+          value={formData["billing_address.numero"]}
+          onChange={handleChange}
+          required
+          data-testid="billing-address-number-input"
+        />
+      </label>
+      <label className="rv-form-field">
         Complemento
         <input
           name="billing_address.address_2"
@@ -92,6 +113,18 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           value={formData["billing_address.address_2"]}
           onChange={handleChange}
           data-testid="billing-address-2-input"
+        />
+      </label>
+      <label className="rv-form-field">
+        Bairro
+        <input
+          name="billing_address.bairro"
+          autoComplete="address-level3"
+          placeholder="Bela Vista"
+          value={formData["billing_address.bairro"]}
+          onChange={handleChange}
+          required
+          data-testid="billing-neighborhood-input"
         />
       </label>
       <label className="rv-form-field">
@@ -115,9 +148,33 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           placeholder="00000-000"
           value={formData["billing_address.postal_code"]}
           onChange={handleChange}
+          onBlur={(e) => aoSairCep(e.target.value)}
+          onKeyDown={aoTeclarCep}
           required
+          aria-busy={buscandoCep}
+          aria-describedby={erroCep ? "billing-cep-erro" : undefined}
           data-testid="billing-postal-input"
         />
+        {buscandoCep && (
+          <span
+            className="rv-form-hint"
+            role="status"
+            aria-live="polite"
+            data-testid="billing-cep-buscando"
+          >
+            Buscando endereço…
+          </span>
+        )}
+        {erroCep && (
+          <span
+            id="billing-cep-erro"
+            className="rv-form-hint"
+            role="alert"
+            data-testid="billing-cep-erro"
+          >
+            {erroCep}
+          </span>
+        )}
       </label>
       <label className="rv-form-field">
         Cidade

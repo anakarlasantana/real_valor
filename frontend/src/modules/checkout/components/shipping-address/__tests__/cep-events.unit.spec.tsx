@@ -56,6 +56,7 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   vi.clearAllMocks()
+  vi.restoreAllMocks()
 })
 
 describe("CEP no endereço de entrega", () => {
@@ -75,9 +76,14 @@ describe("CEP no endereço de entrega", () => {
 
     // No navegador a busca passa pelo proxy da mesma origem (evita CORS do ViaCEP).
     expect(fetchMock.mock.calls[0][0]).toBe("/api/cep/01310100")
+
+    // Chamado como método (`config.fetchImpl(url)`), o `fetch` do navegador
+    // recebe `this` = config e recusa com `Illegal invocation` — o defeito que
+    // deixava o campo mudo. RV-041.
+    expect(fetchMock.mock.contexts[0]).toBeUndefined()
   })
 
-  it("preenche rua, cidade e UF com o que o provedor devolveu", async () => {
+  it("preenche rua, bairro, cidade e UF com o que o provedor devolveu", async () => {
     const user = userEvent.setup()
 
     renderizar()
@@ -94,6 +100,9 @@ describe("CEP no endereço de entrega", () => {
     )
 
     expect(
+      (screen.getByTestId("shipping-neighborhood-input") as HTMLInputElement).value
+    ).toBe("Bela Vista")
+    expect(
       (screen.getByTestId("shipping-city-input") as HTMLInputElement).value
     ).toBe("São Paulo")
     expect(
@@ -102,6 +111,24 @@ describe("CEP no endereço de entrega", () => {
 
     // `onChange` no 8º dígito + `blur` não podem virar duas requisições.
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("o número da casa não vem do CEP: o cursor vai para o campo dele", async () => {
+    const user = userEvent.setup()
+
+    renderizar()
+
+    await user.type(screen.getByTestId("shipping-postal-code-input"), "01310100")
+
+    await waitFor(() =>
+      expect(screen.getByTestId("shipping-address-number-input")).toHaveFocus()
+    )
+
+    // O CEP não inventa número — e sem número não há etiqueta.
+    expect(
+      (screen.getByTestId("shipping-address-number-input") as HTMLInputElement)
+        .value
+    ).toBe("")
   })
 
   it("avisa na tela quando o CEP não existe", async () => {
@@ -129,6 +156,10 @@ describe("CEP no endereço de entrega", () => {
   })
 
   it("avisa na tela quando nenhum provedor respondeu", async () => {
+    // O defeito do `Illegal invocation` sumia justamente por não deixar rastro:
+    // em dev, cada falha de provedor agora escreve uma linha no console.
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {})
+
     fetchMock.mockImplementation(async () => {
       throw new TypeError("Failed to fetch")
     })
@@ -144,6 +175,12 @@ describe("CEP no endereço de entrega", () => {
 
     expect(await screen.findByTestId("shipping-cep-erro")).toHaveTextContent(
       "Não foi possível buscar o CEP"
+    )
+
+    expect(aviso).toHaveBeenCalledWith(
+      "[cep] falha ao consultar",
+      "/api/cep/01310100",
+      expect.any(TypeError)
     )
   })
 })
