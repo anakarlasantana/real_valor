@@ -172,7 +172,7 @@ RESEND_FROM="Real Valor <nao-responda@realvalor.com.br>"
 STOREFRONT_URL=https://realvalor.com.br
 # URL ABSOLUTA da logo: o Gmail baixa a imagem da internet.
 EMAIL_LOGO_URL=https://realvalor.com.br/brand/logo.png
-# Vazio = atendimento@realvalor.com.br (o mesmo do /store/checkout/info).
+# Vazio = atendimento@realvalor.com.br (o padrão de `pedido.ts`).
 EMAIL_ATENDIMENTO=
 ```
 

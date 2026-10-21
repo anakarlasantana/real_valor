@@ -28,7 +28,7 @@ export type PedidoParaEmail = {
   shipping_methods?: Array<{ name?: string | null }> | null;
 };
 
-/** Atendimento do botão e do rodapé; sem `EMAIL_ATENDIMENTO`, o do checkout/info. */
+/** Atendimento do botão e do rodapé; `EMAIL_ATENDIMENTO` manda. */
 const ATENDIMENTO_PADRAO = "atendimento@realvalor.com.br";
 
 export function emailDeAtendimento(): string {
