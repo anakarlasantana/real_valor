@@ -1,7 +1,7 @@
 # 19 — Débito Técnico da Real Valor
 
 **Status:** Revisado — débitos encerrados separados do backlog
-**Data:** 19/10/2026 (revisão: 21/10/2026)
+**Data:** 19/10/2026 (revisões: 21/10/2026 — RV-030, RV-035, RV-036 e RV-037)
 **Autor:** Engenharia
 **Base:** commit `60634d07d6` (develop), com a revisão de 21/10
 
@@ -11,6 +11,17 @@
 > RV-022 e do diagnóstico do RV-030; o RV-007 ficou reduzido ao JSON-LD; e os
 > caminhos de RV-010, RV-011/016 e RV-021 estavam apontando para arquivos que
 > não existem e foram corrigidos. Ver §6.0 e §7.
+>
+> **Segunda revisão de 21/10/2026 (RV-030, "Vestido Rosiane").** O RV-030 foi
+> diagnosticado como **dado** e, na prática, eram três defeitos de naturezas
+> diferentes: dois de **código**, fechados nesta rodada (escolha inicial da
+> variante e o texto de entrega fixo), e um de **dado** (o `required_quantity` do
+> link), cujo *mecanismo* virou débito próprio — **RV-035** — junto com a falta de
+> SKU casável nos inventory items, **RV-036**, e o nível de estoque duplicado no
+> mesmo item e local, **RV-037**. A separação importa: "corrigi a peça" e
+> "corrigi o caminho que estraga peças" são coisas diferentes, e só a segunda
+> apaga o débito. Os três abertos foram **medidos no banco** desta base, não
+> deduzidos: ver §15.11.2 do doc 15.
 
 ---
 
@@ -205,6 +216,44 @@ débito.
 > `inventory_quantity` é lido como zero. O reparo está em
 > `backend/src/scripts/reparar-estoque.ts`, e o critério de aceite passa a ser
 > "o script não encontra mais variant sem vínculo" — ver §6.0.
+>
+> **RV-030, segunda rodada (21/10/2026, "Vestido Rosiane").** O sintoma que chegou
+> aqui foi "a página abre em Esgotado com estoque". Eram **três defeitos de
+> naturezas diferentes** — e é essa diferença que decide o que ainda é débito:
+> dois eram de código (e estão fechados), um era de dado (e o *mecanismo* que o
+> criou continua aberto).
+>
+> | # | Defeito | Natureza | Estado |
+> |---|---|---|---|
+> | 1 | `product-actions` abria sem variante escolhida → botão "Esgotado" em peça pronta | Código | **Resolvido** |
+> | 2 | `required_quantity: 2` no link → Store API reportava metade do estoque | Dado (mecanismo aberto → RV-035) | **Corrigido no dado** |
+> | 3 | "Entrega e trocas" era copy fixa do componente, igual para toda peça | Código | **Resolvido** |
+>
+> **1. O botão, não o estoque** *(resolvido).* O estado nascia `options = {}` e só
+> pré-selecionava com **uma** variante: toda peça de várias cores abria sem
+> escolha, `isValidVariant` ficava `false` e o ramo "Esgotado" vencia — enquanto o
+> chip, que fala do **produto**, dizia "Pronta entrega". O ramo "Selecione o
+> tamanho" era código morto (`!options` é sempre falso com objeto). Agora a escolha
+> inicial é função pura, `escolhaInicial`, com precedência `v_id` da URL → primeira
+> variante comprável → primeira, resolvida no `useState` (sem um quadro de
+> "Esgotado" no primeiro render).
+> **Evidência:** `frontend/src/lib/catalog/product-availability.ts` e
+> `__tests__/product-availability.unit.spec.ts`, com a narrativa em §15.11 do doc 15.
+>
+> **2. O estoque dividido** *(corrigido no dado; o mecanismo é o RV-035).* O link
+> `pvitem_01M5FX6H8F37BQ5AT026YX41KN` tinha `required_quantity: 2` e o Store API
+> reporta `estoque ÷ required_quantity`: 50 unidades apareciam como 25. **Não é
+> débito de código** — 25 era a resposta correta para o dado que existia. O débito é
+> o **caminho que produziu esse dado**, e ele é invisível: `required_quantity` não
+> aparece no painel, não tem rota Admin e não tem script que o leia. Corrigir a
+> Rosiane não impede a próxima.
+>
+> **3. Entrega e trocas fixas** *(resolvido).* O acordeão era copy do componente,
+> idêntica para toda peça, com `/trocas-e-devolucoes` editável ao lado. Virou
+> `metadata.shipping_returns`, editável no widget "Informações da peça", com a regra
+> das outras chaves: **ausente não desenha seção**.
+> **Evidência:** `frontend/src/lib/catalog/product-sections.ts`,
+> `admin/src/admin/lib/enriquecimento-form.ts`, contrato em §12.4 do doc 12.
 
 ### 6.2 Média prioridade
 
@@ -217,6 +266,9 @@ débito.
 | RV-021 | Logo vetorial | Substituir wordmark em texto por logo oficial SVG | `frontend/src/modules/layout/templates/nav/index.tsx` | Logo SVG com `alt` e favicon atualizado |
 | RV-022 | Ordenação dos relacionados | Mesma categoria primeiro | `modules/products/components/related-products/` | Relacionados ordenados por complementaridade |
 | RV-012 | Newsletter | Tipo de seção no contrato + consentimento LGPD | `packages/contrato/src/contract.ts`, `admin/src/admin/routes/content/`, `frontend/src/modules/layout/components/footer-column/` | Seção newsletter no contrato e no rodapé |
+| RV-035 | `required_quantity` invisível e sem auditoria | O estoque que a loja anuncia é `nível ÷ required_quantity`, e o `required_quantity` só existe no **link** (`product_variant_inventory_item`): não aparece no painel, não tem rota Admin e nenhum script o imprime. Um link com 2 anuncia metade; ninguém descobre até um cliente reclamar. Falta: (a) script `backend/src/scripts/auditar-estoque.ts` no molde do `reparar-estoque.ts` — `--listar` imprimindo por link `variant`, SKU, `estoque`, `required_quantity` e **vendáveis** (`estoque ÷ required_quantity`), filtrável por `--variant` e por `--sku-item`, com `--aplicar` só onde `required_quantity <> 1`; (b) decidir se o valor entra no widget "Informações da peça" ou fica como manutenção só por script | `backend/src/scripts/auditar-estoque.ts` (novo), `backend/src/scripts/reparar-estoque.ts` (molde), `admin/src/admin/widgets/product-enrichment.tsx` | `--listar` responde em segundos "por que esta peça anuncia 25 com 50 no estoque", e nenhum link tem `required_quantity <> 1` sem justificativa |
+| RV-036 | SKU do inventory item não acompanha o do variant | O item só é alcançável por `id` (ULID), que muda se o vínculo for refeito — e "procurar por SKU" é como o lojista pensa. Medido em 21/10/2026 na Rosiane: item `111`, variants `5555` e sem SKU; e um item órfão `testeteste`, sem SKU e sem vínculo. O campo é **do link**, então item compartilhado não duplica `required_quantity` — mas quem lê o painel não consegue casar nada | `backend/src/scripts/seed/vinculo.ts`, items criados por SQL fora do workflow | Todo inventory item tem SKU derivado do variant (`<handle>-<cor>-<tamanho>`), e uma conferência acusa item sem SKU ou sem vínculo |
+| RV-037 | Nível de estoque duplicado no mesmo item e local | `inventory_level` aceita dois registros para o mesmo `(inventory_item_id, location_id)` e a Store API escolhe um deles. Medido: o item `111` (Rosiane) tem um nível com `1` e outro com `50`, e a loja anuncia 50 — sem a soma e sem regra explícita. `createInventoryLevelsWorkflow` não acusa o duplicado, e nenhum script hoje lista níveis repetidos | `backend/src/scripts/auditar-estoque.ts` (novo, `--limpar-niveis-duplicados`), `backend/src/scripts/reparar-estoque.ts` | Um único nível por `(item, local)` em toda a base, com a regra de desempate documentada e aplicada por script |
 
 ---
 
@@ -252,6 +304,11 @@ débito.
 | Comentários cortados para baseline | Múltiplos arquivos | Histórico de decisões perdido no código | Os cortes estão documentados nos commits da F10 |
 | Seed de frete pode duplicar opções | `backend/src/scripts/seed.ts` | Corrigido parcialmente (guarda por nome+perfil) | Monitorar após múltiplos `make seed` |
 | ~~Produtos adicionados no admin aparecem esgotados~~ | ~~`product-availability.ts`~~ | **Resolvido (RV-030), com uma condição.** A lógica estava certa; o defeito é de dado — o painel do Medusa não cria o inventory item do variant, e `inventory_quantity` ausente é lido como zero | `backend/src/scripts/reparar-estoque.ts` (relata e, com `--aplicar`, vincula e grava o nível). Enquanto o painel não fizer isso sozinho, é script de manutenção |
+| ~~Página abre em "Esgotado" com estoque em peça de várias cores~~ | ~~`product-actions/index.tsx`~~ | **Resolvido (RV-030, rodada 2).** O botão olhava a variante escolhida e o estado nascia sem escolha; o chip olhava o produto. Não era estoque: era o componente | `escolhaInicial` em `lib/catalog/product-availability.ts`, resolvida no `useState` |
+| `required_quantity` não aparece em lugar nenhum | `product_variant_inventory_item` (link) | A loja anuncia `nível ÷ required_quantity` e o divisor é invisível: sem rota Admin, sem campo no painel, sem script que o imprima. Um link com 2 anuncia metade do estoque, calado | **Débito aberto — RV-035** (script `auditar-estoque.ts` com `--listar`) |
+| Inventory item sem SKU casável com o variant | base de dev (Rosiane `111` vs variants `5555`/vazio; órfão `testeteste`) | "Procurar por SKU" não acha nada; toda auditoria fica presa ao `id` do link | **Débito aberto — RV-036** (SKU derivado do variant) |
+| Nível de estoque duplicado no mesmo item e local | item `111` (Rosiane): um nível com `1`, outro com `50` | A loja anuncia 50 sem somar e sem regra: o número depende de qual registro a Store API lê | **Débito aberto — RV-037** (`--limpar-niveis-duplicados`) |
+| Um variant ainda sem vínculo | `teste-de-frete` / `TESTE-FRETE-1` | Peça de teste, mas o critério de aceite do RV-030 ("nenhum variant sem vínculo") não está cumprido — `reparar-estoque.ts` ainda acusa 1 | Rodar `reparar-estoque.ts --aplicar` ou remover a peça de teste antes do primeiro produto real |
 
 ### 8.2 Riscos de produção (doc 09 §9.11.5)
 
@@ -296,17 +353,23 @@ débito.
 
 ### Sprint 3 — Qualidade e UX (2-3 semanas)
 
-14. RV-009 Guia de medidas
-15. RV-010 Calculadora de frete na PDP
-16. RV-019 Acessibilidade
-17. RV-020 Exceções de carrinho
-18. RV-027 Auditoria de acessibilidade por teclado
+14. RV-035 Auditoria de estoque (`required_quantity` ÷ anúncio) — antes do primeiro
+    lançamento com estoque real: é o débito que, não pago, faz a loja **anunciar
+    menos** do que tem
+15. RV-036 SKU nos inventory items — pré-requisito da auditoria item a item do RV-035
+16. RV-037 Níveis de estoque duplicados por `(item, local)` — hoje a base tem um, e o anúncio
+    depende de qual registro a Store API lê
+17. RV-009 Guia de medidas
+18. RV-010 Calculadora de frete na PDP
+19. RV-019 Acessibilidade
+20. RV-020 Exceções de carrinho
+21. RV-027 Auditoria de acessibilidade por teclado
 
 ### Sprint 4 — Infraestrutura (pós-inauguração)
 
-19. RV-023 S3 + CDN
-20. RV-026 Analytics
-21. RV-028 Teste E2E
+22. RV-023 S3 + CDN
+23. RV-026 Analytics
+24. RV-028 Teste E2E
 
 ---
 

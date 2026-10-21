@@ -335,6 +335,9 @@ no `make test`, e não no `make check`.
 | `src/types` sem dono de camada | 2 arquivos · 52 linhas | ✅ F4 — os tipos foram para `lib/{catalog,ui,checkout}/types.ts` |
 | `brand.css` | 5.248 linhas, 2.039 de comentário | ✅ F6 + F10 — virou dezoito parciais + manifesto, sem perder um byte (F6); a narrativa da régua foi cortada na F10 (os quatro piores: 207/197/158/158 → 70/60/54/55 linhas de comentário) |
 | O `yarn build` de produção | achado na F6, mas **anterior** a ela: o `next/headers` alcançava um bundle de cliente pelo `lib/config` (RV-050) | ✅ 13/10/2026 — `"use server"` no `lib/data/tracking.ts`: o `next build` compila e fecha, com a cadeia (`lib/config.ts`, `locale-cookie.ts`, o componente) intacta |
+| `required_quantity` invisível no link (`estoque ÷ required_quantity` é o que a loja anuncia) | medido em 21/10/2026 na Rosiane: 50 unidades anunciadas como 25 (§15.11) | ❌ **RV-035**, doc 19 — script `auditar-estoque.ts` com `--listar`; sem ele, o próximo link errado passa calado |
+| Inventory item sem SKU casável com o variant | medido na mesma data: item da Rosiane é `111`, e os variants são `5555` e vazio (§15.11.2) | ❌ **RV-036**, doc 19 — SKU derivado do variant, e conferência que acusa item sem SKU |
+| Nível de estoque duplicado por `(item, local)` | medido na mesma data: o item `111` tem um nível com `1` e outro com `50` no mesmo local | ❌ **RV-037**, doc 19 — `--limpar-niveis-duplicados`; hoje o anúncio depende de qual registro a Store API lê |
 
 Fora deste lote (não é F0–F10, e não entra no meio de uma fase) **não sobra nenhum** item — o
 último saiu em 13/10/2026, e era defeito:
@@ -490,3 +493,95 @@ container roda as migrations na subida.
 O roteiro para provar tudo isso com a loja rodando — os três estados da entrega, a sessão
 manual antiga, os três e-mails, as falhas esperadas e o que ainda depende de configuração
 externa — está em [`17-roteiro-validacao-checkout-e-email.md`](17-roteiro-validacao-checkout-e-email.md).
+
+## 15.11 O catálogo que mente (RV-030)
+
+Três defeitos da mesma família, medidos em 21/10/2026 na "Vestido Rosiane": a página dizia
+"Esgotado" numa peça pronta, e a seção de entrega prometia um prazo que ninguém cadastrou.
+
+**A escolha inicial da variante.** `product-actions` nascia com `options = {}` e só
+pré-selecionava quando havia **uma** variante. Em peça de várias cores, `selectedVariant`
+ficava `undefined`, `isValidVariant` `false` e o botão caía no ramo "Esgotado" — enquanto o
+chip, que fala do **produto**, dizia "Pronta entrega". O ramo `!selectedVariant && !options`
+nunca disparava: objeto é sempre truthy, então "Selecione o tamanho" era código morto. A
+regra agora é função pura (`escolhaInicial`, em `lib/catalog/product-availability.ts`),
+resolvida no `useState` e não num efeito — o primeiro render já sai com a cor certa, sem um
+quadro de "Esgotado". Precedência: `v_id` da URL (o link compartilhado é afirmação de quem
+mandou), depois a primeira variante comprável, depois a primeira. O mapa `option_id → valor`
+virou `opcoesDaVariante`, para pré-seleção e seletor produzirem a mesma forma.
+
+**O texto de entrega.** Era um bloco fixo em `product-tabs` (três ícones, três promessas,
+iguais para toda peça) enquanto `/trocas-e-devolucoes` já existia como superfície editável.
+Virou a quarta chave do enriquecimento, `metadata.shipping_returns`, com a regra das outras:
+ausente não desenha seção. O widget "Informações da peça" e `secoesDaPeca` leem a mesma
+string, e o painel só grava o que mudou (campo em branco **tira** a chave).
+
+**A disponibilidade silenciosa.** O Store API reporta `estoque ÷ required_quantity`, e
+`required_quantity` não aparece no painel: um link com `required_quantity: 2` numa peça com 5
+unidades anuncia 2. É o que explica estoque "sumindo" sem ninguém ter vendido. O valor mora
+no **link** (`product_variant_inventory_item`), não no inventory item — duas peças que dividam
+um item têm cada uma o seu divisor. O caso medido foi corrigido (50 unidades voltaram a ser
+50), e o caminho que o produziu virou o **RV-035** no doc 19: enquanto não houver script que
+imprima `estoque`, divisor e vendáveis lado a lado, o próximo link errado também vai passar em
+silêncio.
+
+### 15.11.1 O que foi medido depois da correção (21/10/2026)
+
+A correção só vale o que a medição vale, então ela está registrada com o comando e o
+número:
+
+| Verificação | Comando | Antes | Depois |
+| :--- | :--- | :--- | :--- |
+| Estoque anunciado na Store API | `curl` em `/store/products?handle=vestido-social-curto` com `region_id` e publishable key, `fields=…,+variants.inventory_quantity` | 25 | **50** nos dois variants (SKU `5555` e o sem SKU) |
+| Botão da página | `curl` em `/br/products/vestido-social-curto` | `Esgotado` (relato do defeito) | **`Comprar`** — 4 ocorrências, 0 de "Esgotado" |
+| Bloco fixo de entrega | idem, procura por "retirada na loja" | presente (relato do defeito) | **0 ocorrências** |
+| Cache do storefront | `make revalidate TAG=products` | — | rodado depois da escrita no banco |
+| Suítes | `vitest` (storefront), `jest` (painel) | — | 512 / 190 verdes |
+| Tipos | `tsc` nos três pacotes | — | limpos |
+| Bundle do painel | `make build-admin` | — | `Frontend build completed successfully` |
+
+Duas armadilhas ficaram registradas porque vão reaparecer. A primeira:
+**`required_quantity` não tem rota Admin** — a correção foi um `UPDATE` direto na tabela com o
+Medusa rodando, e o inventário já tinha o cache quente, então o valor só apareceu no Store API
+depois que o evento de `inventory-items/location-levels` foi emitido (a rota responde 400 para
+vínculo existente, e **ainda assim** emite o evento que invalida o cache — o 400 não é falha).
+A segunda: o painel roda em bundle de produção, sem HMR, então a página só reflete dado novo
+depois do `make revalidate`.
+
+**O teste que guarda isso** não é o de render: é `escolhaInicial — a página não abre em
+"Esgotado"`, em `product-availability.unit.spec.ts`, com os quatro casos (v_id da URL,
+primeira comprável, tudo esgotado e sem variante). Foi ele que pegou uma regressão
+introduzida na própria limpeza desta rodada — a versão "enxuta" com
+`lista.find(v => v.id === variantId || variantIsAvailable(v))` perdia o fallback "primeira"
+quando **tudo** estava esgotado, e a página voltava a esconder a peça em vez de dizer a
+verdade. É o motivo de a regra morar numa função pura: o refactor de formatação foi seguro
+porque o teste não dependia de nada visual.
+
+### 15.11.2 O que a medição de 21/10 mostrou de errado no *banco*, não na página
+
+A página está certa agora, mas a auditoria do estoque que ela lê expôs quatro coisas. Elas
+não são do RV-030 (não são código de storefront) e ficam aqui porque foram medidas nesta
+rodada e alguém vai precisar delas:
+
+1. **Nível duplicado no mesmo item e local.** O inventory item `111` (Rosiane) tem **dois**
+   registros em `inventory_level` para o mesmo `location_id`: `ilev_01M4Y24BV72XMF89NJPBVXACXT`
+   com `stocked_quantity = 1` e `ilev_01M5FWVR0SBTYS2ZVX8V8NHFHJ` com `50`. Os dois existem, e
+   a Store API devolve 50 nos dois variants — no caso medido ela reportou o valor de um dos
+   níveis, e **não** a soma (que seria 51); com um caso só, não dá para afirmar qual regra ela
+   aplica, e é justamente por isso que o banco não deveria ter dois. É o **RV-037**, e o
+   `--limpar-niveis-duplicados` do `auditar-estoque.ts` é onde ele se resolve.
+2. **Inventory item órfão.** `iitem_01M4Y2DNJ2YC9ZFSRETAZB1JQG` tem título `testeteste`,
+   **sem SKU** e **zero vínculos** — sobra da criação por SQL. Consome uma linha em todo
+   relatório de estoque e não pertence a peça nenhuma.
+3. **Um variant sem vínculo.** `TESTE-FRETE-1` (produto `teste-de-frete`, variant "Único")
+   está fora da tabela de vínculo. É peça de teste, mas o critério de aceite do RV-030 — "o
+   script não encontra mais variant sem vínculo" — **não** está cumprido: hoje o
+   `reparar-estoque.ts` ainda encontra 1. Enquanto for peça de teste, é ruído; se um dia for
+   peça real, é a página em "Esgotado" de novo.
+4. **SKU do inventory item não acompanha o do variant.** O item da Rosiane se chama `111`
+   (o mesmo `ean`/código avulso que virou `required_quantity: 2`), e os variants são `5555`
+   e vazio. Nenhuma das três chaves casa, então "procurar por SKU" — que é como o lojista
+   pensa — não acha nada. É o RV-036.
+
+Nenhum desses quatro foi tocado nesta rodada: mexer em `inventory_level` sem o script de
+auditoria é trocar um número cego por outro.

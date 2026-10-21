@@ -75,7 +75,7 @@ código novo.
 5. **Uploads de conteúdo** — imagem (até 8 MiB) e documento PDF (até 25 MiB).
 6. **Índice de páginas** — o estado "no ar / fora do ar / sem blocos".
 7. **Painel de envio (RV-043)** — o registro de rastreio, outra ponta de `GET /store/orders/track`.
-8. **Widget de enriquecimento da peça** — cuidados, contraindicações, guia de medidas e o hex da cor
+8. **Widget de enriquecimento da peça** — cuidados, Contra Indicações, guia de medidas e o hex da cor
    de cada variante.
 
 **Fora do escopo (explicitamente não coberto):**
@@ -153,7 +153,7 @@ contrato, ele sai das páginas sozinho.
 | B9 | **Pode aplicar aparência por seção** (fonte/cor de títulos, textos, detalhes e fundo) e **devolver um trilho ao padrão** com um clique, sem desfazer os outros trilhos | `content/components/SectionRow.tsx:79-88`; `contract.ts:542` |
 | B10 | **Pode montar as estações sazonais** declarando uma janela `MM-DD` (sem ano). Cor ou fonte em branco é **herdada** do tema padrão | `contract.ts:1627,1637` |
 | B11 | **Pode cadastrar o rastreio** de um envio (fila dos pedidos pagos, mais antigo primeiro) — e é isso que a cliente vê em `/rastreio` | `routes/shipping/page.tsx:1-20`; `backend/src/api/admin/shipping/route.ts:2-18` |
-| B12 | **Pode enriquecer a peça** com cuidados, contraindicações, guia de medidas e o **hex** de cada variante — dado que o Medusa não tem campo para guardar | `widgets/product-enrichment.tsx:2-35` |
+| B12 | **Pode enriquecer a peça** com cuidados, Contra Indicações, guia de medidas e o **hex** de cada variante — dado que o Medusa não tem campo para guardar | `widgets/product-enrichment.tsx:2-35` |
 | B13 | **Pode ver o estado de cada página** ("Publicada", "Despublicada", "Sem blocos") com a contagem de blocos, e ir da linha para os blocos dela | `content/components/pages-view.tsx:93`; `contract.ts:1539-1559` |
 
 ### 2.2 O que o lojista **não pode** (e por quê)
@@ -247,7 +247,7 @@ cada chave vai — coluna, conteúdo ou referência — por uma lista fechada (`
 | **RF-ADM-26** | Sugerir destinos de link | O campo `href` é texto com `datalist` alimentado por `schema.destinations` (rotas fixas da loja **+** as páginas declaradas, derivadas de `PAGE_SURFACES`); a lista **sugere**, não tranca | `content/components/href-input.tsx:22-71`; `contract.ts:1470-1488` | RV-014 |
 | **RF-ADM-27** | Selecionar chips de categoria por **referência** | O campo `filters` é `list:category`: o catálogo vem do **banco** (não de uma lista do contrato), a tela mostra o nome atual da categoria e o corpo manda **ids**; nome e `handle` são lidos ao vivo na hora de desenhar | `api/admin/content/route.ts:61-78`; `content/lib/form-draft.ts:97` (`wireValue`); `modules/content/filters.ts` | RV-014 |
 | **RF-ADM-28** | Painel de envio (rastreio) | `GET /admin/shipping` lista pedidos pagos ainda não despachados (e os já despachados), **mais antigo primeiro**, com `metadata` cru; a gravação é por pedido (`/admin/shipping/[id]`) e a validação mora no **backend**, não na tela | `api/admin/shipping/route.ts:2-30`; `routes/shipping/page.tsx:18-27` | **RV-043** |
-| **RF-ADM-29** | Enriquecer a peça | Um widget em `product.details.after` grava cuidados, contraindicações, guia de medidas e o hex de cada variante; a regra de gravação (**mescla, nunca substitui**; em branco apaga a chave) é função pura e testada | `widgets/product-enrichment.tsx:2-35`; a regra pura em `admin/src/admin/lib/enriquecimento-form.ts` | RV-009 |
+| **RF-ADM-29** | Enriquecer a peça | Um widget em `product.details.after` grava cuidados, Contra Indicações, guia de medidas e o hex de cada variante; a regra de gravação (**mescla, nunca substitui**; em branco apaga a chave) é função pura e testada | `widgets/product-enrichment.tsx:2-35`; a regra pura em `admin/src/admin/lib/enriquecimento-form.ts` | RV-009 |
 | **RF-ADM-30** | Avisar o storefront depois de gravar | Toda porta que grava chama `notifyStorefront` **sem `await`**: `POST`, `PATCH`, `DELETE`, `/order` e `/restore`. Só `/order` deixa de avisar quando nada mudou de posição | `modules/content/revalidate.ts:38-39`; `route.ts:269, 269, 269`; `order/route.ts:49`; `restore/route.ts:27-29` | RV-014 / RV-007 |
 
 ### 3.2 Requisitos Não Funcionais (`RN-ADM-*`)
@@ -466,7 +466,7 @@ a alteração de um estado para o seguinte — nada mais:
 | `UC-ADM-04` | **Montar uma página institucional** | Lojista | Escolher a aba da página → criar/editar blocos (só os 8 tipos de página) → publicar por bloco; enquanto nenhum bloco estiver publicado, o endereço responde **404** e a aba **Páginas** diz "Despublicada" (`pages-view.tsx`; `[slug]/page.tsx:85-104`) |
 | `UC-ADM-05` | **Publicar uma estação sazonal** | Lojista | Aba **Tema** → criar a estação (tipo `theme`), dar um nome (`label`), declarar a janela `MM-DD` e sobrescrever só as cores/fontes que mudam; a loja escolhe sozinha pelo dia, e a **janela mais estreita vence**. O interruptor "Estação no ar" tira a estação sem apagar a paleta (`contract.ts:1300-1301, 1360, 1628`; `themes.ts:2-60`) |
 | `UC-ADM-06` | **Registrar o envio de um pedido** | Lojista | `/painel/shipping` lista os pedidos pagos ainda não despachados (**mais antigo primeiro**); o lojista grava o rastreio, e a validação mora no backend; é a outra ponta de `GET /store/orders/track` (`api/admin/shipping/route.ts:2-30`; `routes/shipping/page.tsx`) — **RV-043** |
-| `UC-ADM-07` | **Enriquecer o cadastro de uma peça** | Lojista | No meio do cadastro do produto, o widget `product.details.after` grava cuidados, contraindicações, guia de medidas e o hex de cada variante — mesclando nas chaves existentes, nunca substituindo o `metadata` (`widgets/product-enrichment.tsx:2-35, 313-318`) — **RV-009** |
+| `UC-ADM-07` | **Enriquecer o cadastro de uma peça** | Lojista | No meio do cadastro do produto, o widget `product.details.after` grava cuidados, Contra Indicações, guia de medidas e o hex de cada variante — mesclando nas chaves existentes, nunca substituindo o `metadata` (`widgets/product-enrichment.tsx:2-35, 313-318`) — **RV-009** |
 
 ---
 

@@ -5,12 +5,12 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37562,
-      "comments": 8787
+      "lines": 37712,
+      "comments": 8774
     },
     "admin/src": {
-      "lines": 9839,
-      "comments": 1880
+      "lines": 9885,
+      "comments": 1877
     },
     "backend/src": {
       "lines": 23678,
@@ -148,12 +148,12 @@
     },
     "frontend/src/lib/catalog/__tests__/product-availability.unit.spec.ts": {
       "comments": 41,
-      "lines": 301,
+      "lines": 395,
       "header": 21
     },
     "frontend/src/lib/catalog/__tests__/product-enrichment.unit.spec.ts": {
       "comments": 76,
-      "lines": 525,
+      "lines": 543,
       "header": 23
     },
     "frontend/src/lib/catalog/__tests__/product-rating.unit.spec.ts": {
@@ -163,7 +163,7 @@
     },
     "frontend/src/lib/catalog/__tests__/product-sections.unit.spec.ts": {
       "comments": 17,
-      "lines": 147,
+      "lines": 180,
       "header": 13
     },
     "frontend/src/lib/catalog/catalog-filters.ts": {
@@ -193,12 +193,12 @@
     },
     "frontend/src/lib/catalog/product-availability.ts": {
       "comments": 95,
-      "lines": 227,
-      "header": 7
+      "lines": 264,
+      "header": 6
     },
     "frontend/src/lib/catalog/product-enrichment.ts": {
       "comments": 128,
-      "lines": 300,
+      "lines": 303,
       "header": 23
     },
     "frontend/src/lib/catalog/product-rating.ts": {
@@ -207,8 +207,8 @@
       "header": 21
     },
     "frontend/src/lib/catalog/product-sections.ts": {
-      "comments": 49,
-      "lines": 176,
+      "comments": 47,
+      "lines": 182,
       "header": 23
     },
     "frontend/src/lib/catalog/sort-products.ts": {
@@ -767,8 +767,8 @@
       "header": 5
     },
     "frontend/src/modules/products/components/product-actions/index.tsx": {
-      "comments": 37,
-      "lines": 216,
+      "comments": 31,
+      "lines": 239,
       "header": 5
     },
     "frontend/src/modules/products/components/product-actions/option-select.tsx": {
@@ -812,8 +812,8 @@
       "header": 5
     },
     "frontend/src/modules/products/components/product-tabs/index.tsx": {
-      "comments": 30,
-      "lines": 175,
+      "comments": 25,
+      "lines": 110,
       "header": 5
     },
     "frontend/src/modules/products/components/shipping-quote/__tests__/index.unit.spec.tsx": {
@@ -1038,7 +1038,7 @@
     },
     "admin/src/admin/lib/__tests__/enriquecimento-form.unit.spec.ts": {
       "comments": 33,
-      "lines": 238,
+      "lines": 274,
       "header": 14
     },
     "admin/src/admin/lib/api-url.ts": {
@@ -1047,9 +1047,9 @@
       "header": 15
     },
     "admin/src/admin/lib/enriquecimento-form.ts": {
-      "comments": 117,
-      "lines": 277,
-      "header": 53
+      "comments": 114,
+      "lines": 280,
+      "header": 50
     },
     "admin/src/admin/routes/content/__tests__/panel-wiring.unit.spec.ts": {
       "comments": 130,
@@ -1213,7 +1213,7 @@
     },
     "admin/src/admin/widgets/product-enrichment.tsx": {
       "comments": 57,
-      "lines": 322,
+      "lines": 329,
       "header": 37
     },
     "backend/src/api/admin/content/lib/gravacao.ts": {

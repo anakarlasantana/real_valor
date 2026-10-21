@@ -16,7 +16,7 @@ vender, e **mover todo o conteúdo de produto para o cadastro do lojista**:
 
 1. **Card** (vitrine, trilho de lançamentos, catálogo, relacionados): cores disponíveis,
    preço com desconto (**De/Por** + `-x%`) e nota em estrelas.
-2. **Página de produto**: descrição, composição do tecido, cuidados, contraindicações e
+2. **Página de produto**: descrição, composição do tecido, cuidados, Contra Indicações e
    guia de medidas — alimentados pelo admin.
 3. **Avaliações**: o cliente avalia a peça; a média e as estrelas alimentam o card e a
    página; o CRM modera.
@@ -87,7 +87,7 @@ avaliação da loja, cupom por indicação (ver `09-backlog-implementacao.md`).
 | Lista de cores | **Opção nativa "Cor"** (`product.options` / `variants[].options`) | É dado de framework: o lojista já cria a opção ao cadastrar as variantes |
 | A cor em hex (a bolinha) | `variant.metadata.hex` | O Medusa não tem campo de cor; a hex é por variante (cor × tamanho) |
 | Composição, país de origem, peso, dimensões | **Campos nativos** (`material`, `origin_country`, `weight`, `length/height/width`) | Existem e o admin já os edita; duplicar em metadata cria duas verdades |
-| Cuidados, contraindicações, guia de medidas | `product.metadata.{care, contraindications, size_guide}` | O Medusa não tem campo para isso; texto livre, sem migração |
+| Cuidados, Contra Indicações, guia de medidas, entrega e trocas | `product.metadata.{care, contraindications, size_guide, shipping_returns}` | O Medusa não tem campo para isso; texto livre, sem migração |
 | Descrição | `product.description` (nativo) | Idem |
 | Avaliações | **Módulo novo `review`** (tabela própria + rotas próprias) | Agregação e moderação não são metadata de produto |
 | Curadoria da seção | Campo `list:products` que **já existe** no contrato, com a lista em ordem | Não criar terceira superfície de exposição |
@@ -103,7 +103,11 @@ avaliação da loja, cupom por indicação (ver `09-backlog-implementacao.md`).
 {
   "care": "Lavar à mão, não usar secadora, passar em temperatura baixa.",
   "contraindications": "Não indicado para pele com sensibilidade a fibra sintética.",
-  "size_guide": "https://…/guia-de-medidas-alfaiataria.pdf"
+  "size_guide": "https://…/guia-de-medidas-alfaiataria.pdf",
+  // Opcional, desde o RV-030. Era copy fixa no acordeão "Entrega e trocas";
+  // agora é da peça. **Sem a chave, a seção não existe** — a política geral
+  // continua em `/trocas-e-devolucoes`, editável, e não é repetida aqui.
+  "shipping_returns": "Enviamos em até 2 dias úteis. Troca por outro tamanho em até 7 dias, sem custo."
 }
 ```
 
@@ -125,6 +129,14 @@ Regras:
    continua aparecendo — pela inicial do nome.
 4. Todo texto é pt-BR e é escrito pelo lojista. Nenhum valor padrão é inventado no
    componente.
+5. **`shipping_returns` é opcional e não substitui a política.** É o recado *da peça*
+   (prazo de envio, troca por tamanho daquela modelagem). A política geral —
+   arrependimento, defeito, estorno — continua em `/trocas-e-devolucoes`, que é
+   página de conteúdo e tem uma fonte só. Escrever a política inteira aqui faria a
+   peça discordar da página quando uma das duas for editada.
+6. **Campo em branco no widget tira a chave** — não grava `""`. A diferença importa:
+   `""` produziria uma seção vazia com título, `ausente` não produz seção nenhuma
+   (`secoesDaPeca` só a inclui quando o valor é não-vazio).
 
 ---
 
@@ -179,7 +191,7 @@ admin cria categoria, produto, preço e estoque sem erro. **Teste:** rodar `make
 
 ### T2 — Widget "Informações da peça" no admin
 
-**Objetivo:** o lojista preenche cor, cuidados, contraindicações e guia de medidas onde ele
+**Objetivo:** o lojista preenche cor, cuidados, Contra Indicações e guia de medidas onde ele
 já cadastra o produto.
 
 - Novo diretório `admin/src/admin/widgets/`, com:
@@ -286,14 +298,14 @@ arquivo próprio e sem SDK, como o `supported-sections.ts`.
   diretivo e reprova export que não seja função async — é o defeito que o `next build` achou
   depois de 119s, e o teste o encontra aqui em 149ms.
 
-### T4 — Página de produto: descrição, tecido, cuidados, contraindicações
+### T4 — Página de produto: descrição, tecido, cuidados, Contra Indicações
 
 - `frontend/src/modules/products/components/product-tabs/index.tsx`: as abas atuais leem
   `product.material`, `origin_country`, `type`, `weight` e dimensões, escrevem `"-"` quando
   vazio e são rotuladas em inglês ("Product Information", "Shipping & Returns") com conteúdo
   em pt-BR. Reorganizar em: **Descrição · Composição e tecido · Cuidados · Guia de medidas ·
-  Contraindicações**, tudo em pt-BR.
-- Contraindicações é **aviso**, não parágrafo comum: tratamento visual distinto e sempre
+  Contra Indicações**, tudo em pt-BR.
+- Contra Indicações é **aviso**, não parágrafo comum: tratamento visual distinto e sempre
   visível quando existir.
 - Descrição longa: `product.description` (nativo), sem metadata.
 
@@ -506,7 +518,7 @@ se só o conteúdo mudou.
 - [ ] Uma peça cadastrada **inteiramente pelo admin** (produto, variante, cor, preço, Price
       List promocional, metadata) aparece na vitrine com cores, De/Por e `-x%`.
 - [ ] A página da mesma peça mostra descrição, tecido, cuidados, guia de medidas e
-      contraindicações.
+      Contra Indicações.
 - [ ] Avaliação do cliente passa por moderação no CRM e move a nota do card e da página.
 - [ ] Curadoria pelo painel muda a ordem na vitrine; trilho vazio tem estado próprio.
 - [ ] `make check`, `make types`, `make test` e `make build-admin` verdes.
@@ -528,6 +540,6 @@ se só o conteúdo mudou.
 3. **Peça curada que foi despublicada:** sai da vitrine (recomendado) ou bloqueia a publicação
    da seção?
 4. **Preço zero:** renderiza ou é ausência?
-5. **Cuidados e contraindicações:** texto livre por peça, ou lista de opções padronizadas
+5. **Cuidados e Contra Indicações:** texto livre por peça, ou lista de opções padronizadas
    (permite filtro e reprocessamento depois)?
 
