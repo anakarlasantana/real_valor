@@ -1,9 +1,8 @@
 /**
  * O estado de uma peça na loja: pronta entrega, sob demanda, últimas ou esgotado.
  *
- * A decisão mora aqui, e não no componente, por duas razões: o card e a página
- * do produto precisam concordar, e a precedência (estoque antes do rótulo) é
- * regra — e regra se testa sem renderizar.
+ * A decisão mora aqui porque o card e a página do produto precisam concordar, e a
+ * precedência (estoque antes do rótulo) é regra — e regra se testa sem renderizar.
  */
 
 /** Os quatro estados possíveis — e nenhum a mais. */
@@ -127,6 +126,51 @@ export function variantIsAvailable(variant?: VariantLike | null): boolean {
   }
 
   return (variant.inventory_quantity ?? 0) > 0
+}
+
+export function opcoesDaVariante(
+  variantOptions:
+    | { option_id?: string | null; value?: string | null }[]
+    | null
+    | undefined
+): Record<string, string> {
+  const mapa: Record<string, string> = {}
+
+  for (const opcao of variantOptions ?? []) {
+    if (opcao?.option_id) {
+      mapa[opcao.option_id] = opcao.value ?? ""
+    }
+  }
+
+  return mapa
+}
+
+export type VarianteEscolhivel = VariantLike & {
+  id?: string | null
+  options?: { option_id?: string | null; value?: string | null }[] | null
+}
+
+export type EscolhaInicial = {
+  options: Record<string, string>
+  variant: VarianteEscolhivel
+}
+/** `v_id` da URL, senão a primeira comprável, senão a primeira (RV-030). */
+export function escolhaInicial(
+  variants: (VarianteEscolhivel | null)[] | null | undefined,
+  variantId?: string | null
+): EscolhaInicial | null {
+  const lista = (variants ?? []).filter(
+    (variante): variante is VarianteEscolhivel => Boolean(variante)
+  )
+
+  const escolhida =
+    lista.find((v) => v.id === variantId) ??
+    lista.find(variantIsAvailable) ??
+    lista[0]
+
+  return escolhida
+    ? { options: opcoesDaVariante(escolhida.options), variant: escolhida }
+    : null
 }
 
 /**

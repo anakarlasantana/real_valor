@@ -22,8 +22,10 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  escolhaInicial,
   LAST_UNITS_THRESHOLD,
   normalizeStatusLabel,
+  opcoesDaVariante,
   productStatus,
   PRODUCT_STATUS_LABELS,
   statusFromLabel,
@@ -296,5 +298,97 @@ describe("rótulos", () => {
     expect(statusFromLabel(42)).toBeUndefined()
     expect(statusFromLabel(null)).toBeUndefined()
     expect(statusFromLabel("")).toBeUndefined()
+  })
+})
+
+describe("escolhaInicial — a página não abre em 'Esgotado'", () => {
+  const cor = (id: string, cor: string, tamanho: string, quantidade: number) => ({
+    id,
+    manage_inventory: true,
+    allow_backorder: false,
+    inventory_quantity: quantidade,
+    options: [
+      { option_id: "opt-cor", value: cor },
+      { option_id: "opt-tam", value: tamanho },
+    ],
+  })
+
+  const azulP = cor("var_azul_p", "Azul Marinho", "P", 0)
+  const azulM = cor("var_azul_m", "Azul Marinho", "M", 5)
+  const pretoP = cor("var_preto_p", "Preto", "P", 3)
+
+  it("peça de várias cores abre numa variante comprável", () => {
+    const escolha = escolhaInicial([azulP, azulM, pretoP])
+
+    expect(escolha?.variant.id).toBe("var_azul_m")
+    expect(escolha?.options).toEqual({
+      "opt-cor": "Azul Marinho",
+      "opt-tam": "M",
+    })
+  })
+
+  it("a escolha casa com a variante pelo mesmo mapa que o seletor usa", () => {
+    const escolha = escolhaInicial([azulP, azulM, pretoP])
+
+    expect(escolha?.options).toEqual(opcoesDaVariante(escolha?.variant.options))
+  })
+
+  it("`v_id` da URL manda, mesmo quando a variante está esgotada", () => {
+    expect(escolhaInicial([azulP, azulM, pretoP], "var_azul_p")?.variant.id).toBe(
+      "var_azul_p"
+    )
+  })
+
+  it("`v_id` que não é desta peça é ignorado", () => {
+    expect(escolhaInicial([azulP, azulM], "var_que_nao_existe")?.variant.id).toBe(
+      "var_azul_m"
+    )
+    expect(escolhaInicial([azulP, azulM], "")?.variant.id).toBe("var_azul_m")
+  })
+
+  it("tudo esgotado: abre na primeira, para dizer a verdade", () => {
+    const esgotada = cor("var_esgotada", "Preto", "P", 0)
+
+    const escolha = escolhaInicial([esgotada, cor("var_x", "Preto", "M", 0)])
+
+    expect(escolha?.variant.id).toBe("var_esgotada")
+    expect(variantIsAvailable(escolha?.variant)).toBe(false)
+  })
+
+  it("peça sem variante não tem escolha", () => {
+    expect(escolhaInicial([])).toBeNull()
+    expect(escolhaInicial(undefined)).toBeNull()
+    expect(escolhaInicial(null)).toBeNull()
+  })
+
+  it("variante nula na lista não derruba a escolha", () => {
+    expect(escolhaInicial([null, azulM])?.variant.id).toBe("var_azul_m")
+  })
+
+  it("esgotada + pronta: abre na pronta e o botão fica comprável", () => {
+    const escolha = escolhaInicial([
+      cor("var_esgotada", "Preto", "P", 0),
+      cor("var_pronta", "Preto", "M", 3),
+    ])
+
+    expect(escolha?.variant.id).toBe("var_pronta")
+    expect(variantIsAvailable(escolha?.variant)).toBe(true)
+  })
+})
+
+describe("opcoesDaVariante", () => {
+  it("ignora opção sem `option_id` em vez de criar chave `undefined`", () => {
+    expect(
+      opcoesDaVariante([
+        { option_id: "opt-cor", value: "Rosa" },
+        { option_id: null, value: "P" },
+        { value: "solto" },
+      ])
+    ).toEqual({ "opt-cor": "Rosa" })
+  })
+
+  it("variante sem opções é `{}`", () => {
+    expect(opcoesDaVariante(undefined)).toEqual({})
+    expect(opcoesDaVariante(null)).toEqual({})
   })
 })

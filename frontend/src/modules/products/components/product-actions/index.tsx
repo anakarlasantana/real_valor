@@ -2,7 +2,12 @@
 
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
-import { variantIsAvailable } from "@lib/catalog/product-availability"
+import {
+  escolhaInicial,
+  opcoesDaVariante,
+  variantIsAvailable,
+  type VarianteEscolhivel,
+} from "@lib/catalog/product-availability"
 import { coresDoProduto } from "@lib/catalog/product-enrichment"
 import { HttpTypes } from "@medusajs/types"
 import OptionSelect from "@modules/products/components/product-actions/option-select"
@@ -21,15 +26,6 @@ type ProductActionsProps = {
   disabled?: boolean
 }
 
-const optionsAsKeymap = (
-  variantOptions: HttpTypes.StoreProductVariant["options"]
-) => {
-  return variantOptions?.reduce((acc: Record<string, string>, varopt: any) => {
-    acc[varopt.option_id] = varopt.value
-    return acc
-  }, {})
-}
-
 export default function ProductActions({
   product,
   disabled,
@@ -38,17 +34,43 @@ export default function ProductActions({
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [options, setOptions] = useState<Record<string, string | undefined>>({})
+  /** O estado nasce da escolha inicial, não de `{}` (RV-030). */
+  const inicial = useMemo(
+    () =>
+      escolhaInicial(
+        product.variants as VarianteEscolhivel[] | null | undefined,
+        searchParams.get("v_id")
+      ),
+    // Só a montagem interessa: depois quem manda é o clique da cliente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [product.variants]
+  )
+
+  const [options, setOptions] = useState<Record<string, string | undefined>>(
+    inicial?.options ?? {}
+  )
   const [isAdding, setIsAdding] = useState(false)
   const countryCode = useParams().countryCode as string
 
-  // If there is only 1 variant, preselect the options
+  // `?v_id=` que chega depois da montagem (o Next reaproveita o componente).
+  const vIdDaUrl = searchParams.get("v_id")
+
   useEffect(() => {
-    if (product.variants?.length === 1) {
-      const variantOptions = optionsAsKeymap(product.variants[0].options)
-      setOptions(variantOptions ?? {})
+    if (!vIdDaUrl) {
+      return
     }
-  }, [product.variants])
+
+    const daUrl = (product.variants ?? []).find((v) => v.id === vIdDaUrl)
+
+    if (!daUrl) {
+      return
+    }
+
+    setOptions((atual) => {
+      const novo = opcoesDaVariante(daUrl.options)
+      return isEqual(atual, novo) ? atual : novo
+    })
+  }, [vIdDaUrl, product.variants])
 
   const selectedVariant = useMemo(() => {
     if (!product.variants || product.variants.length === 0) {
@@ -56,7 +78,7 @@ export default function ProductActions({
     }
 
     return product.variants.find((v) => {
-      const variantOptions = optionsAsKeymap(v.options)
+      const variantOptions = opcoesDaVariante(v.options)
       return isEqual(variantOptions, options)
     })
   }, [product.variants, options])
@@ -72,7 +94,7 @@ export default function ProductActions({
   //check if the selected options produce a valid variant
   const isValidVariant = useMemo(() => {
     return product.variants?.some((v) => {
-      const variantOptions = optionsAsKeymap(v.options)
+      const variantOptions = opcoesDaVariante(v.options)
       return isEqual(variantOptions, options)
     })
   }, [product.variants, options])
@@ -115,6 +137,18 @@ export default function ProductActions({
   // é o `OptionSelect`, com a mesma `ehTituloDeCor` que o card usa.
   const cores = coresDoProduto(product)
 
+  const textoDoBotao = (): string => {
+    if (isAdding) {
+      return "Adicionando…"
+    }
+
+    if (!isValidVariant) {
+      return "Selecione o tamanho"
+    }
+
+    return inStock && selectedVariant ? "Comprar" : "Esgotado"
+  }
+
   // add the selected variant to the cart
   const handleAddToCart = async () => {
     if (!selectedVariant?.id) return null
@@ -145,7 +179,7 @@ export default function ProductActions({
       </div>
 
       {/* Os seletores só aparecem quando há escolha a fazer: peça de variante
-          única já vem resolvida (o `useEffect` acima), e uma fileira de um botão
+          única já vem resolvida pela `escolhaInicial`, e uma fileira de um botão
           só é ruído entre o preço e o botão de comprar. */}
       {(product.variants?.length ?? 0) > 1 && (
         <div className="flex flex-col">
@@ -164,6 +198,12 @@ export default function ProductActions({
         </div>
       )}
 
+      {isValidVariant && selectedVariant && !inStock && (
+        <p className="mb-2 text-sm text-rv-rose" data-testid="aviso-esgotado">
+          Esta combinação está esgotada — escolha outra cor ou tamanho.
+        </p>
+      )}
+
       <button
         type="button"
         onClick={handleAddToCart}
@@ -173,29 +213,13 @@ export default function ProductActions({
         className="rv-btn rv-btn-primary rv-add-button"
         data-testid="add-product-button"
       >
-        {isAdding
-          ? "Adicionando…"
-          : !selectedVariant && !options
-            ? "Selecione o tamanho"
-            : !inStock || !isValidVariant
-              ? "Esgotado"
-              : "Comprar"}
+        {textoDoBotao()}
       </button>
 
       {/*
-        O frete e o prazo, **abaixo do botão** — a última pergunta de quem decide
-        ("chega até mim?"), e a que não precisa de resposta para a compra
-        acontecer.
-
-        A referência desenha aqui um campo de CEP que responde "3 a 5 dias úteis,
-        grátis" para qualquer CEP digitado: não é cálculo, é promessa por escrito,
-        e é por isso que este bloco nunca foi portado. Ele agora está montado com o
-        contrato invertido — só aparece com **opção de entrega real** calculada
-        para o CEP (ver `shipping-quote`), e sem ela devolve `null`. O dado vem das
-        opções de frete da região, e o adapter que as calcula para o CEP é o
-        próximo lote; hoje o bloco nasce desligado, e o que a página diz sobre
-        entrega continua sendo o acordeão "Entrega e trocas", em pt-BR e sem pedir
-        dado nenhum à cliente.
+        O frete abaixo do botão ("chega até mim?"). O contrato é o invertido: só
+        aparece com opção de entrega real calculada para o CEP (`shipping-quote`),
+        e sem ela devolve `null` — a promessa fixa da referência não foi portada.
       */}
       <ShippingQuote />
 
