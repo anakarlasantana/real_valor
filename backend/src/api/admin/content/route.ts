@@ -34,17 +34,9 @@ import { recusar } from "./lib/resposta"
 /**
  * GET /admin/content — todas as seções, inclusive desabilitadas.
  *
- * Diferente da rota pública, aqui não se filtra `enabled`, porque o
- * admin precisa listar (e reabilitar) o que está oculto.
- *
- * A curadoria vem junto, e vem **sempre que existe**: o painel edita a lista, e
- * `productIds` ausente é "esta seção não tem curadoria" (o tipo que lista o
- * catálogo sozinho).
- *
- * Os chips também, e pelo mesmo motivo — com uma diferença: lá o `filters` **é**
- * campo do formulário (o seletor de categorias), então o que a tela devolve no
- * "Salvar" é a mesma lista de ids, e o catálogo que a alimenta viaja em
- * `categories`.
+ * Não se filtra `enabled` (o admin precisa listar o que está oculto). A
+ * curadoria e os chips vêm sempre que existem; o `filters` dos chips é campo do
+ * formulário, e o catálogo que o alimenta viaja em `categories`.
  */
 export async function GET(
   req: MedusaRequest,
@@ -70,50 +62,27 @@ export async function GET(
     ),
     /**
      * O catálogo de categorias, para o seletor de chips — o que a seção **pode**
-     * escolher.
-     *
-     * Vem do catálogo, e não de um `options` no contrato: a lista de categorias
-     * é dado do banco (o lojista cria e apaga no painel do Medusa), e uma lista
-     * fechada no contrato ofereceria categorias que não existem — que é
-     * exatamente o defeito que a fase conserta (o chip "Blazers", que não tinha
-     * categoria por trás e devolvia zero peças em silêncio).
+     * escolher. Vem do banco, e não de um `options` fixo no contrato: o lojista
+     * cria e apaga categorias, e uma lista fechada ofereceria chips sem
+     * categoria por trás (que devolviam zero peças em silêncio).
      */
     categories: await readCategoryCatalog(query),
     /**
      * A faixa da numeração da superfície (`{ first, step, reserved }`), como
-     * **dado**.
-     *
-     * O painel mostra o numeral das seções enquanto a ordem está pendente — a
-     * lista já mexida na tela, ainda não publicada — e esse numeral é o que a
-     * regra (`orderFaixa`, em `modules/content/order.ts`) vai gravar. Vem como
-     * dado, e não por import, porque o painel é código de **navegador**:
-     * importar a regra do backend levaria código de servidor para o bundle,
-     * que é o que a R6.5 desfaz (guardado por
-     * `scripts/check-boundaries.mjs`). `reserved` são as casas ancoradas
-     * (`FIXED_SECTION_POSITIONS`): a previsão da tela precisa pulá-las, como a
-     * gravação pula — na home, a casa 10 é do rodapé e a sexta seção nasce em 11.
+     * **dado**: o painel precisa dela como navegador, e importar a regra do
+     * backend levaria código de servidor para o bundle (R6.5).
      */
     order: orderFaixa(surface),
     /**
-     * Metadados que o widget usa para montar o formulário — lidos do
-     * **registro no Postgres** (`service.getContract()`), que é o mesmo lugar de
-     * onde o `seed-schema` tira a linha. A montagem a partir do contrato
-     * (`buildSchema()`, em `modules/content/schema.ts`) é o bootstrap: só entra
-     * quando o registro não existe, e o `schemaSource` abaixo diz qual dos
-     * dois foi servido.
+     * O formulário lido do **registro no Postgres** (`getContract()`), o mesmo
+     * lugar de onde o `seed-schema` tira a linha; `buildSchema()` é o bootstrap.
      */
     schema: stored.schema,
-    /**
-     * A versão do schema com que estes dados foram escritos — a loja recebe
-     * isto no payload da Store API para saber com qual formulário foram
-     * gravados.
-     */
+    /** A versão do schema com que estes dados foram escritos. */
     schemaVersion: stored.version,
     /**
-     * De onde veio o schema: `"db"` é o registro no Postgres (o caso normal
-     * depois do `make seed`), `"contract"` é o bootstrap do contrato, para um
-     * banco que ainda não foi semeado. Não é depuração: é o que torna visível
-     * que o registro ainda não foi gravado.
+     * `"db"` é o registro no Postgres (o caso normal), `"contract"` é o
+     * bootstrap — é o que torna visível que o registro ainda não foi gravado.
      */
     schemaSource: stored.source,
   })
