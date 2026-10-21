@@ -22,7 +22,7 @@ import {
  *
  *   - **`opcoes` é o dado**, e é ele que liga a caixa (uma linha por modalidade,
  *     escrita por `descreverOpcao`, com teste);
- *   - **`cep` é contexto**, e só entra na frase quando ele é um CEP de verdade
+ *   - **`cep` é contexto**, e só entra na frase quando é um CEP de verdade
  *     (`formatarCep` devolve `null` para meio CEP) — a caixa também descreve uma
  *     entrega já calculada, sem o número à vista.
  *

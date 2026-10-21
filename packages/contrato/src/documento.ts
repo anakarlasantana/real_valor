@@ -21,11 +21,15 @@ export function apenasDigitos(valor: unknown): string {
     : ""
 }
 
-/** Módulo 11 de CPF/CNPJ. */
-function digitoVerificador(digitos: string): number {
+/**
+ * Módulo 11 de CPF/CNPJ. O `pesoInicial` vem de fora: o 1º e o 2º dígito usam
+ * pesos diferentes (CPF: 10 e 11; CNPJ: 5 e 6), e a fórmula antiga (`tamanho - 7`)
+ * acertava só o primeiro — por isso CPF válido era recusado no checkout.
+ */
+function digitoVerificador(digitos: string, pesoInicial: number): number {
   const tamanho = digitos.length
   let soma = 0
-  let peso = tamanho - 7
+  let peso = pesoInicial
 
   for (let i = 0; i < tamanho; i++) {
     soma += Number(digitos[i]) * peso
@@ -41,17 +45,19 @@ function digitoVerificador(digitos: string): number {
   return resto < 2 ? 0 : 11 - resto
 }
 
-/** Os dois: ver só o último aceita demais. */
+/** Os dois dígitos: ver só o último aceita demais. O segundo é `corpo + primeiro`. */
 function verificadorConfere(digitos: string): boolean {
   const corpo = digitos.slice(0, -2)
-  const primeiro = digitoVerificador(corpo)
+  const pesoInicial = digitos.length === 11 ? 10 : 5
+  const primeiro = digitoVerificador(corpo, pesoInicial)
 
   if (Number(digitos[digitos.length - 2]) !== primeiro) {
     return false
   }
 
   return (
-    Number(digitos[digitos.length - 1]) === digitoVerificador(corpo + primeiro)
+    Number(digitos[digitos.length - 1]) ===
+    digitoVerificador(corpo + primeiro, pesoInicial + 1)
   )
 }
 
@@ -125,5 +131,46 @@ export function documentoDoDestinatario(
   return lido.valido
     ? { type: lido.documento.tipo, number: lido.documento.numero }
     : null
+}
+
+/** O CEP como se escreve: progressivo ("0131" fica "0131"; "01310-1" já tem traço). */
+export function formatarCep(valor: unknown): string {
+  const digitos = apenasDigitos(valor).slice(0, 8)
+
+  return digitos.length > 5
+    ? `${digitos.slice(0, 5)}-${digitos.slice(5)}`
+    : digitos
+}
+
+/** `CEP_DIGITOS` do CEP brasileiro, sem contar o traço. */
+export const CEP_DIGITOS = 8
+
+/** O CEP completo, ou `null` enquanto ele não tiver os oito números. */
+export function formatarCepCompleto(valor: unknown): string | null {
+  return apenasDigitos(valor).length === CEP_DIGITOS
+    ? formatarCep(valor)
+    : null
+}
+
+/**
+ * O telefone com DDD, progressivo: o nono dígito só entra quando existe, e com
+ * menos de três números o campo só mostra os dígitos.
+ */
+export function formatarTelefone(valor: unknown): string {
+  const digitos = apenasDigitos(valor).slice(0, 11)
+
+  if (digitos.length <= 2) {
+    return digitos
+  }
+
+  if (digitos.length <= 6) {
+    return `(${digitos.slice(0, 2)}) ${digitos.slice(2)}`
+  }
+
+  if (digitos.length <= 10) {
+    return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 6)}-${digitos.slice(6)}`
+  }
+
+  return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`
 }
 

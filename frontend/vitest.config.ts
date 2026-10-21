@@ -6,9 +6,9 @@ import { defineConfig } from "vitest/config"
  * conteúdo), e o vitest não lê `tsconfig` para resolver caminho — sem repetir
  * aqui, o teste não acha o módulo e falha no import.
  *
- * Só isso: nenhuma configuração de ambiente especial, porque o que se testa
- * aqui é função pura (a tolerância da loja ao tipo desconhecido), e puxar o SDK
- * da Medusa para o teste seria peso sem retorno.
+ * O ambiente padrão é `node`; quem precisa de DOM pede por arquivo, com
+ * `// @vitest-environment jsdom` na primeira linha. Sem isso, o jsdom ligaria
+ * nos 40 arquivos de função pura. Ver RV-040.
  */
 export default defineConfig({
   /**

@@ -4,4 +4,5 @@ export * from "./defaults.ts"
 export * from "./payment.ts"
 export * from "./crop.ts"
 export * from "./documento.ts"
+export * from "./cep.ts"
 

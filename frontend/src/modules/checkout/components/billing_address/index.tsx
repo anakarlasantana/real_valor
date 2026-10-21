@@ -1,4 +1,5 @@
 import { HttpTypes } from "@medusajs/types"
+import { mascararCampoDeEndereco } from "@lib/checkout/mascaras-de-endereco"
 import React, { useState } from "react"
 import CountrySelect from "../country-select"
 
@@ -36,9 +37,11 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
       HTMLInputElement | HTMLInputElement | HTMLSelectElement
     >
   ) => {
+    const mascarado = mascararCampoDeEndereco(e.target.name, e.target.value)
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: mascarado ?? e.target.value,
     })
   }
 
@@ -107,6 +110,8 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
         <input
           name="billing_address.postal_code"
           autoComplete="postal-code"
+          inputMode="numeric"
+          maxLength={9}
           placeholder="00000-000"
           value={formData["billing_address.postal_code"]}
           onChange={handleChange}
@@ -153,6 +158,8 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
         <input
           name="billing_address.phone"
           autoComplete="tel"
+          inputMode="tel"
+          maxLength={15}
           placeholder="(00) 00000-0000"
           value={formData["billing_address.phone"]}
           onChange={handleChange}

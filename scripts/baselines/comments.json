@@ -5,20 +5,20 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 37712,
-      "comments": 8774
+      "lines": 38834,
+      "comments": 8855
     },
     "admin/src": {
       "lines": 9885,
       "comments": 1877
     },
     "backend/src": {
-      "lines": 23678,
-      "comments": 4627
+      "lines": 23744,
+      "comments": 4633
     },
     "packages/contrato/src": {
-      "lines": 2760,
-      "comments": 563
+      "lines": 2807,
+      "comments": 574
     },
     "scripts": {
       "lines": 1539,
@@ -193,7 +193,7 @@
     },
     "frontend/src/lib/catalog/product-availability.ts": {
       "comments": 95,
-      "lines": 264,
+      "lines": 271,
       "header": 6
     },
     "frontend/src/lib/catalog/product-enrichment.ts": {
@@ -768,7 +768,7 @@
     },
     "frontend/src/modules/products/components/product-actions/index.tsx": {
       "comments": 31,
-      "lines": 239,
+      "lines": 240,
       "header": 5
     },
     "frontend/src/modules/products/components/product-actions/option-select.tsx": {
