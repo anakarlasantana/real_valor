@@ -1,7 +1,7 @@
 # 19 — Débito Técnico da Real Valor
 
 **Status:** Revisado — débitos encerrados separados do backlog
-**Data:** 19/10/2026 (revisões: 21/10/2026 — RV-030, RV-035, RV-036 e RV-037)
+**Data:** 19/10/2026 (revisões: 21/10/2026 — RV-030, RV-035, RV-036, RV-037 e o checkout, RV-051 a RV-058)
 **Autor:** Engenharia
 **Base:** commit `60634d07d6` (develop), com a revisão de 21/10
 
@@ -22,6 +22,29 @@
 > "corrigi o caminho que estraga peças" são coisas diferentes, e só a segunda
 > apaga o débito. Os três abertos foram **medidos no banco** desta base, não
 > deduzidos: ver §15.11.2 do doc 15.
+>
+> **Terceira revisão de 21/10/2026 (o checkout, passo a passo).** O checkout foi
+> percorrido como cliente — carrinho → entrega → pagamento — e o que apareceu está
+> em §6.3 e §6.4. Dois defeitos **fecharam** na rodada: o frete cobrado **100×**
+> (centavos gravados como reais, **RV-056**) e o **prazo de entrega que nunca
+> chegava** (`GET /store/shipping/quote` respondia 400, **RV-057**). Cinco
+> ficaram abertos, e todos os cinco se veem **antes** de pagar: o passo 2 sem
+> estado de carregamento (**RV-051**), o cache da cotação que confunde 1 com 3
+> caixas (**RV-052**), a conta de volumes que faz toda peça pesar 1 kg
+> (**RV-053**), as variantes sem peso (**RV-054**) e a etiqueta que declara uma
+> caixa quando a cotação cobrou três (**RV-055**). A numeração continua de
+> RV-041: RV-042 a RV-050 são de outros blocos do doc 09 e **não** foram
+> reaproveitados, pela mesma razão registrada em §6.0.
+>
+> **Quarta revisão de 21/10/2026 (a conta do frete, medida).** A pergunta era
+> simples — "por que o frete não zera quando ponho o CEP da loja no checkout?" — e
+> a resposta não estava escrita em lugar nenhum do projeto: o preço não é
+> distância, é **faixa de CEP** sobre o contrato da conta SuperFrete, aplicada a
+> **uma** caixa de 1 kg. A conta está aberta em **§6.3.1**, com as cotações reais
+> medidas nesta base. No caminho apareceu um defeito de diagnóstico: CEP inválido
+> devolve a mensagem de **token** (**RV-058**), que manda procurar credencial onde
+> o problema é o endereço. O RV-052 e o RV-053 ganharam o que faltava para o
+> aceite: a segunda consulta dentro do TTL e a peça que não cabe em nenhuma caixa.
 
 ---
 
@@ -37,6 +60,8 @@ A stack da Real Valor está **funcionalmente completa no código**, mas **não e
 | `INTERNAL_API_SECRET` ausente | A página de confirmação mostra "aguardando" eternamente | Alto |
 
 Além disso, existem débitos de produto (filtros, busca, SEO, acessibilidade, exceções de carrinho) que não bloqueiam a venda, mas prejudicam a experiência do comprador e devem entrar no backlog pós-inauguração.
+
+**O checkout é outro caso.** A compra **fecha** — carrinho, endereço com CEP, frete, pagamento e confirmação —, mas o caminho até o botão de pagar ainda tem seis arestas (§6.3), e duas delas o cliente **vê** como defeito na tela: o preço do frete aparece como `"…"` e o resumo anuncia "Grátis" antes de existir frete escolhido. Nenhuma impede a venda; todas fazem o cliente duvidar do valor. As duas que **cobravam errado** (100× no frete e prazo ausente) foram fechadas em §6.4.
 
 ## 2. Arquitetura atual
 
@@ -88,7 +113,7 @@ Navegador (Next 15) ──► Storefront (Next.js 15, :8000) ──► Backend (
 
 1. Cliente adiciona item ao carrinho (`frontend/src/modules/cart`)
 2. Acessa `/br/checkout` → `retrieveCart()` + `retrieveCustomer()`
-3. Escolhe endereço e método de envio (`shipping/index.tsx`)
+3. Escolhe endereço e método de envio (`shipping/index.tsx`). O preço vem do provedor em **centavos** e é gravado em **reais** por `fulfillment/dinheiro.ts` (RV-056); o prazo sai da **mesma** cotação, por `GET /store/shipping/quote` (RV-057). O que ainda falta neste passo — o estado de carregamento, o cache e a conta de volumes — está em §6.3
 4. Escolhe pagamento: Pix ou cartão parcelado (`payment-wrapper/index.tsx`)
 5. Clica em "Pagar" → `initiatePaymentSession(pp_mercadopago_pix/cartao)`
 6. Backend cria preferência no Mercado Pago (`service.ts: initiatePayment`)
@@ -112,6 +137,11 @@ Navegador (Next 15) ──► Storefront (Next.js 15, :8000) ──► Backend (
 6. Subscriber `order-canceled` / `avisar` dispara e-mail `pedido-enviado` ou `pedido-cancelado`
 
 **Arquivos críticos:** `backend/src/modules/fulfillment/superfrete/{service,servicos,etiqueta,pedido,webhook}.ts`, `backend/src/modules/shipping/tracking.ts`, `backend/src/subscribers/{order-canceled,order-confirmation,superfrete-webhook}.ts`
+
+**Origem da cotação:** o CEP de saída não vem da loja nem do `.env` — vem do
+`address.postal_code` do primeiro `stock_location` (`api/store/shipping/quote/route.ts:42-47`),
+semeado como `01310-100`. O corpo exato enviado ao SuperFrete, o que entra e o que
+**não** entra na conta estão em §6.3.1.
 
 ### 3.3 Fluxo de e-mail transacional
 
@@ -275,6 +305,313 @@ débito.
 | RV-041 | O CEP ainda não buscava, e a etiqueta saía com a UF no bairro (resolvido) | O RV-040 provou que a busca existia e era acionada — mas ela nunca **chegou** ao provedor. `shipping-cep.ts` chamava `config.fetchImpl(url)`: o `fetch` como **método**, com `this` = config. O `fetch` do navegador exige `this` = `window` e recusa com `TypeError: Illegal invocation`, que o `catch` da consulta engolia. Por que a suíte não via: o `vi.fn()` dos testes aceita qualquer `this`, e o ambiente `node` não tem `window` — então o ramo do proxy (`ehNavegador()`) nunca era executado. No mesmo lugar, a etiqueta lia o `bairro` do `province` (a UF) e o número do `address_2` (o complemento): toda etiqueta saía com "SP" no bairro e "Apto 42" no número. Agora o fetch é extraído para uma variável e chamado solto; o `catch` distingue `AbortError` (prazo/desistência, esperado) de defeito, que passa a logar em dev; 404 do proxy quer dizer "esta rota não existe" (deploy antigo), não "este CEP não existe"; a busca virou o hook `use-cep-autofill`, usado pela entrega **e** pela cobrança (que não tinha busca); e **Número** e **Bairro** viraram campos próprios do passo 1, gravados em `metadata` do endereço — o `StoreCartAddress` não tem nenhum dos dois —, lidos pela etiqueta (número que não parece número não vira número) e mostrados no resumo. O remetente mantém a UF como último recurso: o local de estoque é configuração da operação, não tem formulário, e bairro vazio travaria toda etiqueta — a correção ali é de dado (`metadata.bairro` do local) | `frontend/src/lib/data/shipping-cep.ts`, `frontend/src/lib/checkout/use-cep-autofill.ts` (novo), `frontend/src/lib/checkout/endereco-pelo-cep.ts`, `frontend/src/lib/data/cart.ts`, `frontend/src/modules/checkout/components/shipping-address/index.tsx`, `frontend/src/modules/checkout/components/billing_address/index.tsx`, `frontend/src/modules/checkout/components/addresses/index.tsx`, `backend/src/modules/fulfillment/superfrete/pedido.ts`, `backend/src/api/admin/shipping/[id]/etiqueta/route.ts`, `frontend/src/lib/data/__tests__/shipping-cep-proxy.unit.spec.ts` (novo), `frontend/src/modules/checkout/components/shipping-address/__tests__/cep-events.unit.spec.tsx` | Digitar `01310100` no checkout: **uma** requisição a `/api/cep/01310100` (status 200), Avenida Paulista / Bela Vista / São Paulo / SP nos campos e o foco no **Número**; enviar o passo 1 grava `metadata: { numero, bairro }` no endereço do carrinho; a etiqueta sai com "Bela Vista" no bairro (nunca a UF) e "1578" no número (nunca o complemento) |
 
 
+### 6.3 Checkout — o que falta para a compra fechar
+
+Achados de 21/10/2026, percorrendo o checkout como cliente com o backend de pé
+(`/checkout?step=delivery` e `?step=payment`). Todos são de **código ou de dado
+nosso** — nenhum depende de credencial —, e todos acontecem **antes** do
+pagamento. Ordem da tabela = ordem em que o cliente tropeça.
+
+> **Rastreabilidade do plano.** O trabalho do checkout foi dividido em P0–P4 e
+> F5–F7; os identificadores abaixo são o registro permanente deles — **P0 →
+> RV-056**, **P1 → RV-057** (os dois fechados, §6.4), **P2 → RV-051**, **P3 →
+> RV-052**, **P4 → RV-053** (volumes) e **RV-054** (peso das variantes), **F5–F7 →
+> RV-055** (etiqueta × cotação). O **RV-058** nasceu depois, da investigação da
+> conta do frete (§6.3.1), e não tem rótulo P/F. O rótulo P/F serve para a
+> conversa; o RV-0xx é o que se cita em commit, PR e doc.
+
+| ID | Título | O que a cliente vê | Arquivos alvo | Aceite |
+|----|--------|--------------------|---------------|--------|
+| RV-051 | Passo de entrega sem estado de carregamento | Preço do frete como `"…"` (e, se a cotação falha, `"…"` para sempre); linha escolhível antes de ter preço; resumo anunciando **"Grátis"** | `modules/checkout/components/shipping/index.tsx`, `modules/common/components/cart-totals/index.tsx`, `app/[countryCode]/(checkout)/checkout/loading.tsx` (novo), `styles/brand/11-checkout.css` | Em 3G simulado: esqueleto no lugar do preço, rádio e "Continuar" inertes durante o cálculo, "a calcular" no resumo, e falha da rota termina em mensagem |
+| RV-052 | Cache da cotação não distingue 1 de 3 caixas | Pedido de 3 peças cotado pelo preço de 1 quando a segunda consulta cai no cache; limite de peso conferido contra uma caixa só | `backend/src/modules/fulfillment/superfrete/servico.ts` (`chaveDaCotacao`, `guardar`, `daMemoria`, `chave` × `chaveUtil`) | 1× e 3× do mesmo produto devolvem totais diferentes, ambos iguais ao unitário × volumes |
+| RV-053 | Volumes calculados: 1 caixa por peça e 1 kg de mínimo | Peça de 100 g paga 1 kg; três peças iguais pagam três caixas | `backend/src/modules/fulfillment/pacotes/{pacotes,volumes}.ts` | Peça leve cotada abaixo de 1 kg; peças iguais consolidadas na mesma caixa |
+| RV-054 | Variantes sem peso e sem dimensões | Toda peça cai na caixa padrão (400 g, 10×20×30) — logo, no mínimo de 1 kg | `backend/src/scripts/` (novo `reparar-pesos.ts` no molde do `reparar-estoque.ts`), `product_variant` | Nenhuma variante ativa sem peso e medidas |
+| RV-055 | Etiqueta e cotação contam caixas de formas diferentes | Frete cobrado por 3 caixas, etiqueta despachada como 1 caixa padrão — a diferença volta como cobrança na coleta | `backend/src/modules/fulfillment/superfrete/etiqueta.ts` (`caixaDoEnvio`, `corpoDoCarrinho`), `pacotes/volumes.ts` | Para o mesmo pedido, peso e medidas da etiqueta = os da cotação |
+| RV-058 | CEP recusado responde com a mensagem de token | Nenhuma opção de entrega e, no lugar do motivo, a dica de gerar credencial | `backend/src/modules/fulfillment/superfrete/cliente.ts` (`FRASE_DA_CREDENCIAL`), `backend/src/utils/erro-de-plataforma.ts` (`mensagemDe`, `lerDetalhe`), `backend/src/api/store/shipping/quote/route.ts` | CEP inválido → mensagem de endereço com o CEP testado; token ausente → mensagem de token; nenhum mostra a do outro |
+
+**RV-051 · O passo 2 não tem estado de carregamento — e mente enquanto carrega.**
+
+*O que a cliente vê.* Ela escolhe o endereço, o passo 2 abre e os três preços
+aparecem como `"…"`. Os rádios estão **habilitados**, então ela toca no PAC antes
+de o preço chegar e a escolha grava `cart_shipping_method` com o valor que existir
+naquele instante. Se a rota de cotação falhar (token vazio, 422, timeout), o `"…"`
+**não sai da tela**: nada marca o fim da tentativa. E o resumo, na coluna da
+direita, já anuncia **"Grátis"**, porque não há frete escolhido.
+
+*Por que.* `shipping/index.tsx:96` nasce com `isLoadingPrices = true` e só volta a
+`false` dentro do `if (promises.length)` de `:129-160` — quando **não há** método
+`calculated` para consultar, ninguém desliga o sinal. O `cotarFrete` de `:132` não
+tem `finally`. O rádio é desabilitado por `!isLoadingPrices && preço ausente`
+(`:285-288`), o que o deixa **livre** justamente durante o cálculo; o `"…"` está em
+`:328-329`; e o "Continuar" de `:400` só olha `isLoading` e
+`shipping_methods[0]`. Do outro lado, `cart-totals/index.tsx:44` faz
+`const freteGratis = !shipping_subtotal` e escreve "Grátis" em `:62`: frete
+**não calculado** e frete **grátis** viraram a mesma coisa — e é essa linha que
+explica o "R$ 0,00" que o cliente lê antes de pagar R$ 21,15.
+
+*O que falta.* (a) `loading.tsx` no passo, com esqueleto de página; (b) esqueleto
+de **três linhas** de frete, na altura do preço, para o passo não pular quando o
+número chega; (c) `aria-busy` no `fieldset` das opções, rádio e "Continuar"
+desabilitados enquanto `isLoadingPrices`; (d) o `cotarFrete` terminando em
+`finally`, com o erro virando mensagem em `role="alert"` em vez de `"…"` eterno;
+(e) no `CartTotals`, três estados — **sem método** ("a calcular", sem
+`data-value`), **zero** ("Grátis") e **valor**; (f) o mesmo tratamento no
+pagamento, enquanto os métodos e as parcelas do provedor não chegam; (g) a classe
+`.rv-skeleton` em `styles/brand/11-checkout.css`, respeitando
+`prefers-reduced-motion`.
+
+*Aceite.* Com a rede em 3G e a API de cotação lenta, o passo 2 não mostra `"-"`
+nem `"…"` solto: mostra esqueleto, e nenhum rádio aceita escolha antes do preço.
+Com a rota devolvendo 422, o passo mostra a mensagem da rota e o botão de tentar de
+novo. O resumo nunca escreve "Grátis" antes de existir frete escolhido.
+
+**RV-052 · O cache da cotação guarda duas coisas diferentes na mesma chave.**
+
+*O que a cliente vê.* Uma peça cotada em R$ 21,15; três peças iguais, na consulta
+seguinte, também em R$ 21,15 — sendo que a API cobra por caixa. O inverso também
+acontece: quem chega depois de um pedido de três paga três.
+
+*Por que.* `chaveDaCotacao` (`servico.ts:127-152`) recebe **um** volume —
+`calculo.volumes[0]`, escolhido em `:266` — e monta a chave com peso e medidas
+desse volume. O **número de volumes** e o **peso total do pedido** não entram na
+chave: 1× e 3× a mesma caixa são a mesma pergunta para o cache. Pior, o valor
+guardado não tem um formato só: `guardar` (`:180-186`) grava a resposta **crua**
+(unitária) na L1 e no Redis; o caminho do Redis (`:300-307`) multiplica, regrava a
+L1 com o **total** sob a mesma chave e devolve o total; e `daMemoria`
+(`:154-170`) devolve o que estiver lá **sem multiplicar**. A mesma chave passa a
+guardar unitário ou total, dependendo de qual ramo escreveu por último — e um
+pedido de 3 caixas que chega pela L1 paga 1. Há ainda duas chaves em jogo: lê-se
+`chave` (`:291`, `:301`) e grava-se `chaveUtil` (`:346-352` → `:365`) quando algum
+serviço é recusado por peso, então esse caso **nunca** acerta no cache; e o
+`emAndamento` (`:355`) usa a chave larga. Por fim, o limite de peso
+(`servicosQueAceitam`, `:331-335`) olha o `volume.peso_gramas` da primeira caixa,
+não o peso do pedido: 3 caixas de 1 kg passam como 1 kg.
+
+*O que falta.* Uma chave só, calculada sobre o **conjunto** de volumes (contagem +
+peso total + assinatura ordenada das caixas) e sobre os serviços que de fato vão à
+API, usada por L1, Redis, em-voo e gravação; **um** formato de cache — unitário, e
+o total calculado na saída, ou o contrário — decidido em comentário; o
+`calculo.pesoGramas` validado (finito, maior que zero) antes de cotar; teste de
+regressão 1× × 3× com a L1 quente **e** com o Redis quente.
+
+*Aceite.* Com a L1 quente, 1 e 3 unidades do mesmo produto devolvem totais
+diferentes, e o de 3 é 3× o unitário; a **segunda** consulta dentro do TTL devolve
+o **mesmo total** da primeira (hoje devolve o unitário, porque `guardar`
+(`:180-186`) grava a resposta crua); um serviço recusado por peso não envenena a
+chave dos aceitos; nenhuma cotação volta com preço `0` ou `NaN`.
+
+**RV-053 · Volumes: uma caixa por peça, e todo peso cúbico vira quilo inteiro.**
+
+*O que a cliente vê.* Uma peça de 100 g paga 1 kg de frete — e três peças iguais
+pagam três caixas de 1 kg, mesmo cabendo numa.
+
+*Por que.* `pacotes.ts:34-41` calcula `pesoCubico` como
+`Math.ceil(cm³ / 6000) * 1000`: qualquer caixa abaixo de 12.000 cm³ vira **1 kg**,
+e a padrão (10×20×30 = 6.000 cm³) cai exatamente no mínimo. `volumes.ts:42-72`
+empurra **um volume por unidade** (`for i < quantidade`), cada um com o taxável da
+caixa, e não consolida peças iguais na mesma caixa. E `volumes.ts:54-58` escolhe a
+caixa por `pacote.peso_gramas >= pesoDaVariante`: o `peso_gramas` do `Pacote` é o
+**peso da caixa**, usado como **capacidade** — duas semânticas no mesmo campo, que
+é a decisão de dados ainda aberta (coluna `capacidade_gramas` + migração, ou
+reinterpretar `peso_gramas` e semear os valores). Como todas as variantes estão sem
+peso (**RV-054**), `porPeso` nunca acha nada e tudo cai na caixa padrão.
+
+Há um segundo efeito, na direção oposta: como o seletor compara o peso da variante
+com o peso **vazio** da caixa, a peça que **não cabe em nenhuma** delas — acima de
+1.400 g, o maior `peso_gramas` do catálogo — também volta para a padrão e é cotada
+como 1 kg. A subcobrança é silenciosa e cai justamente na peça mais cara de
+enviar: a loja paga a diferença quando a transportadora pesar na coleta.
+
+*O que falta.* `pesoCubico` como `Math.max(300, cm³ / 6000)` em gramas (sem o
+arredondamento para quilo inteiro); consolidar volumes **por tipo de caixa**
+(quantidade de peças que cabem, não peças); resolver a decisão `capacidade_gramas`
+antes de mexer no seletor de caixa; decidir o que fazer com a peça que excede a
+maior caixa — compor caixa, recusar a cotação ou cobrar excedente — em vez de cair
+na padrão e cobrar 1 kg; teste com 1 peça leve, 3 peças iguais e peça que não cabe
+em nenhuma caixa.
+
+*Aceite.* 1 peça de 100 g cotada abaixo de 1 kg; 3 peças iguais viram 1 volume, não
+3; nenhuma caixa com peso cúbico acima do volume real; peça de 1,5 kg **não** é
+cotada como a caixa padrão de 1 kg.
+
+**RV-054 · As variantes não têm peso nem dimensões: toda peça pesa o mesmo.**
+
+*O que a cliente vê.* Nada — e é o problema. A etiqueta e a cotação dizem 400 g e
+10×20×30 para um vestido e para um par de brincos.
+
+*Por que.* Toda variante da base está com `weight`, `height`, `width` e `length`
+nulos. A rota de cotação manda `peso_gramas: item.variant.weight ?? null`
+(`backend/src/api/store/shipping/quote/route.ts:61`) e `calcularVolumes` só usa esse
+peso para escolher a caixa (`volumes.ts:54`); sem ele, cai na padrão — 400 g de
+peso declarado e 6.000 cm³ de cubagem, que o `pesoCubico` transforma em 1 kg.
+
+*O que falta.* Um script de manutenção no molde do `reparar-estoque.ts`
+(`reparar-pesos.ts`): relata por padrão, `--aplicar` grava, e lista **toda**
+variante ativa sem peso ou sem as três medidas. A fonte do dado é planilha do
+fornecedor — decisão de operação, não de código —, e o fallback precisa estar
+declarado: enquanto a variante não tiver peso, qual caixa a loja usa e com que
+peso ela declara isso na nota.
+
+*Aceite.* `reparar-pesos.ts --listar` não acusa nenhuma variante ativa sem peso e
+medidas; um pedido de peça leve volta com peso abaixo de 1 kg na cotação e na
+etiqueta.
+
+**RV-055 · A cotação cobra por volume; a etiqueta despacha uma caixa só.**
+
+*O que a cliente vê.* O frete certo na tela e a etiqueta errada no pacote. Se a
+transportadora pesar na coleta, a diferença volta como cobrança complementar — e
+quem paga a conta é a loja.
+
+*Por que.* São duas contas diferentes para o mesmo pedido:
+
+- **Cotação:** `calcularVolumes(itens, pacotes)` monta um volume por unidade, e
+  `servico.ts:265-272` multiplica o preço por `calculo.volumes.length`.
+- **Etiqueta:** `corpoDoCarrinho` (`etiqueta.ts:107-152`) declara **um**
+  `volumes: {}`, com a caixa devolvida por `caixaDoEnvio(caixas)`
+  (`etiqueta.ts:91-98`) — que é a caixa **padrão**, escolhida sem olhar os itens do
+  pedido. `servico.ts:483` usa a mesma função, mas só para montar o exemplo da tela
+  de teste do admin.
+
+Ou seja: pedido de três peças é **cobrado** como três caixas e **despachado** como
+uma caixa padrão, com peso que não é o que a cotação usou.
+
+*O que falta.* Uma função de volumes só, usada pela cotação, pela etiqueta e pela
+tela de teste; o `volumes` da etiqueta vindo de `calcularVolumes(itens, pacotes)`
+quando a API aceitar lista — e, se ela exigir um volume único (é o caso do corpo
+atual), consolidar antes e declarar o peso e as medidas **consolidados**, não os da
+caixa padrão.
+
+*Aceite.* Para o mesmo pedido, peso e medidas declarados na etiqueta são os mesmos
+que a cotação usou; teste que compara os dois caminhos e falha se divergirem.
+
+**RV-058 · CEP inválido ou fora de área vira mensagem de token do SuperFrete.**
+
+*O que a cliente vê.* O passo 2 sem nenhuma opção de entrega e, no lugar do
+motivo, uma frase sobre gerar token em "Integrações → Integrar em
+Desenvolvedores" — conserto de credencial para um problema de endereço.
+
+*Por que.* `chamarSuperFrete` passa `dica: FRASE_DA_CREDENCIAL` para **todo**
+status que não seja 2xx (`cliente.ts:104-114`). O `ErroDePlataforma` até classifica
+certo — `codigoDoStatus` separa `DADOS` (400/422) de `CREDENCIAL` (401/403)
+(`utils/erro-de-plataforma.ts:20-29`) —, mas a `dica` é a mesma nos dois casos, e
+`mensagemDe` (`:228-240`) a cola no fim da frase. Pior: o detalhe que sobra é o
+genérico do SuperFrete, `"Ocorreu um ou mais erros."`, porque `lerDetalhe`
+(`:103-121`) procura `message` antes de `errors` — a razão por serviço fica na
+lista que `lerCotacoes` descarta (`catalogo.ts:182-201`: `has_error → []`). Medido
+em 21/10/2026 com o token **válido**: `01310-101` (dígito verificador inválido) e
+`69000-000` (faixa inexistente) devolveram a mensagem de token; `69020-030` cotou
+normalmente. Nesta base o `SUPERFRETE_TOKEN` está no `.env` da raiz e não no
+`backend/.env`, o que torna a mensagem ainda mais plausível para quem depura.
+
+*O que falta.* A `dica` escolhida pelo `codigo`, não pelo `fetch`: (a) `DADOS` →
+mensagem de endereço, com o CEP testado e o que a API disse de cada serviço;
+(b) `CREDENCIAL` → a frase de token de hoje; (c) `PLATAFORMA`/`TEMPO` → tentar de
+novo. E `lerDetalhe` precisa preferir `errors[]`/`error` por serviço quando o
+`message` for o genérico — hoje a informação chega e é jogada fora. O passo 2 já
+sabe exibir a mensagem da rota (é o item (d) do RV-051); falta a mensagem certa.
+
+*Aceite.* CEP recusado mostra "não entregamos nesse CEP" com o CEP digitado; token
+ausente continua mostrando a frase de token; nenhum dos dois mostra a mensagem do
+outro — teste nos dois sentidos.
+
+#### 6.3.1 A conta do frete, medida — e por que o CEP da loja não zera
+
+Cinco coisas entram no `POST /api/v0/calculator` (`catalogo.ts:102-127`), e
+**nenhuma** delas é o produto:
+
+| Entrada | De onde vem | Valor nesta base |
+|---|---|---|
+| `from.postal_code` | centro de distribuição, não a loja: `stock_location` semeado em `scripts/seed/estoque.ts:53-58`, lido em `api/store/shipping/quote/route.ts:42-47` | `01310100` |
+| `to.postal_code` | CEP digitado no checkout | livre |
+| `services` | `data.servico` das opções ativas (`catalogo.ts:5-12`): PAC `1`, SEDEX `2`, MINI `17` | `"1,2"` |
+| `package` | `volumes[0]` → caixa **padrão** do admin (`servico.ts:265`) | `20×30×10`, `1` kg |
+| `insurance_value` | fixo (`catalogo.ts:120-121`) | `0` |
+
+O que **não** entra na conta: peso e medidas do produto (**RV-054** — sem o dado, o
+volume cai na caixa padrão e o `pesoCubico` a transforma em 1 kg, **RV-053**), o
+valor do pedido (`insurance_value: 0`), a distância em km e a quantidade — que só
+multiplica o unitário no fim (`servico.ts:265-272`, **RV-052**/**RV-055**).
+
+Com um carrinho real da base, mudando **só** o destino:
+
+| Destino | PAC | SEDEX | Prazo PAC/SEDEX |
+|---|---|---|---|
+| `01310-100` — o **próprio** CEP da loja | R$ 21,15 | R$ 13,73 | 2 / 1 |
+| `04538-133` — outro bairro de São Paulo | R$ 21,15 | R$ 13,73 | 2 / 1 |
+| `20031-000`, `30130-010`, `80020-310`, `90010-150` | R$ 25,19 | R$ 35,96 | 2 / 1 |
+| `69020-030` — Manaus | R$ 37,78 | R$ 75,53 | 7 / 3 |
+
+`"volumes": 1` e `"peso_gramas": 1000` em todas — e o PAC de R$ 21,15 é o mesmo
+número que o RV-056 usou para achar o frete 100×, o que confirma que a reprodução
+está no mesmo contrato.
+
+Duas leituras que a tabela autoriza:
+
+1. **"Pus o CEP da loja e não zerou" não é defeito.** A tarifa é por **faixa de
+   CEP**, não por distância: dentro de São Paulo, qualquer destino custa o mesmo.
+   Frete zero só existe por promoção, opção `flat` de R$ 0 ou retirada — não por
+   origem igual ao destino.
+2. **SEDEX mais barato que PAC dentro de SP** (R$ 13,73 × R$ 21,15) é o **contrato
+   da conta**, não a nossa conta: fora de SP a ordem se inverte (R$ 35,96 ×
+   R$ 25,19). Se não for intencional, ajusta-se no SuperFrete, não no código.
+
+`/admin/shipping/testar` reproduz isso sem passar pelo checkout, e é a única tela
+que mostra o corpo enviado (`requisicao`), a latência e o `origem` (rede × cache) —
+mas ela cota **só a caixa padrão** (`servico.ts:483`), então não serve para
+conferir volume por item.
+
+
+
+### 6.4 Fechados nesta rodada — e o que ficou pendente neles
+
+**RV-056 · O frete cobrado 100× (centavos entregues como reais).**
+
+*Sintoma.* A cotação real do PAC era R$ 21,15 e o checkout gravava `2115`. O
+`calculated_amount` é **decimal** no Medusa (`21.15`), e os provedores calculam em
+**centavos**: toda opção de entrega saía 100× mais cara.
+
+*Conserto.* `backend/src/modules/fulfillment/dinheiro.ts` passou a ser a **única**
+fronteira — `emReais(centavos)` na saída do provedor, `emCentavos(reais)` na
+entrada. `superfrete/service.ts:103` e `tabela/service.ts:105` devolvem
+`calculated_amount: emReais(...)`; `superfrete/pedido.ts:135` declara
+`valorCentavos: emCentavos(unit_price)` (a etiqueta anunciava R$ 249,90 como
+R$ 2,50); e `frontend/src/lib/data/fulfillment.ts:112` divide por 100 o que a rota
+de teste devolve.
+
+*Evidência.* `fulfillment/__tests__/dinheiro.unit.spec.ts`,
+`tabela/__tests__/service.unit.spec.ts`,
+`superfrete/__tests__/service.unit.spec.ts` e
+`superfrete/__tests__/etiqueta.unit.spec.ts`. Na base real: PAC gravado `21.15` e
+SEDEX `64.73`.
+
+*Pendente.* Linha de `cart_shipping_method` gravada **antes** do conserto mantém o
+valor velho até a cliente reescolher o frete — um carrinho com `2115` continua
+errado. Não há migração de dados: a orientação é reescolher a entrega (ou limpar
+carrinhos abertos) antes de divulgar a loja.
+
+**RV-057 · O prazo nunca chegava ao checkout.**
+
+*Sintoma.* A linha do frete mostrava nome e preço, nunca "até 2 dias úteis" — com o
+componente já pronto para desenhar (`prazoDe`) e o dado já vindo do provedor.
+
+*Causa.* `GET /store/shipping/quote` carregava o carrinho **sem** a relação
+`shipping_address`; sem ela o CEP de destino chegava vazio, a rota respondia 400 e
+`frontend/src/lib/checkout/shipping-quote.ts` devolvia `null` — mapa de prazos
+vazio, linha sem prazo. O defeito era da rota, não do componente.
+
+*Conserto.* `backend/src/api/store/shipping/quote/route.ts:35` passou a carregar
+`relations: ["items", "items.variant", "shipping_address"]`. A rota responde 200 e
+as cotações trazem `prazo` (PAC 2, SEDEX 1 na base de teste), que o componente
+escreve como "até 2 dias úteis".
+
+*Evidência.* E2E manual: `GET /store/shipping/quote?cart_id=…` → 200 com `prazo`
+por serviço; `?step=delivery` com a linha completa.
+
+*Nota de base.* As duas correções estão **no working tree** desta base (sobre
+`836c4ade00`) — `make check`, `make types` e as suítes do `fulfillment` verdes —,
+ainda sem commit. É por isso que §6.3 continua sendo o que falta, e não o que
+faltava.
+
 ---
 
 ## 7. Débitos de infraestrutura e qualidade
@@ -316,9 +653,13 @@ débito.
 | CEP não preenche o endereço no checkout | `modules/checkout/components/shipping-address/index.tsx` | A cliente redigita rua, cidade e estado que o ViaCEP responde de graça, e digita telefone e CEP sem máscara | **Resolvido — RV-038/RV-040** (busca no CEP em `lib/data/shipping-cep.ts` + máscara compartilhada); a cobrança e o bairro fecharam no RV-041 |
 | Bairro da etiqueta saía da UF, e o número saía do complemento | `backend/src/modules/fulfillment/superfrete/pedido.ts` (`destinatarioDoPedido`) | Toda etiqueta impressa com "SP" onde vai o bairro e "Apto 42" onde vai o número — erro que a transportadora não barra e ninguém vê | **Resolvido — RV-041** (campos Número e Bairro no passo 1, gravados em `metadata` do endereço e lidos pela etiqueta) |
 | CEP não buscava no navegador, e o teste não via | `lib/data/shipping-cep.ts` | `config.fetchImpl(url)` chamava o `fetch` como método: `this` = config, e o navegador recusa com `Illegal invocation`. O `vi.fn()` aceita qualquer `this` e o ambiente `node` não entra no ramo do proxy | **Resolvido — RV-041** (fetch solto, `AbortError` separado de defeito, teste em jsdom com marca de `window`) |
-
 | CEP apagado ao buscar o endereço | `modules/checkout/components/shipping-address/index.tsx` | O aviso de busca re-renderizava o formulário e o endereço vazio do carrinho voltava por cima do que a cliente tinha digitado | **Resolvido — RV-039** (`lib/checkout/endereco-pelo-cep.ts` + efeito só na troca de carrinho) |
 | Um variant ainda sem vínculo | `teste-de-frete` / `TESTE-FRETE-1` | Peça de teste, mas o critério de aceite do RV-030 ("nenhum variant sem vínculo") não está cumprido — `reparar-estoque.ts` ainda acusa 1 | Rodar `reparar-estoque.ts --aplicar` ou remover a peça de teste antes do primeiro produto real |
+| Preço do frete como `"…"` e linha escolhível durante o cálculo | `modules/checkout/components/shipping/index.tsx:96`, `:129-160`, `:285-288`, `:328` | A cliente escolhe entrega sem preço e a escolha grava `cart_shipping_method` com o valor do instante; se a cotação falha, o `"…"` não sai da tela | **Débito aberto — RV-051** (esqueleto, rádio e "Continuar" inertes, `finally` no `cotarFrete`) |
+| Resumo anuncia "Grátis" antes de existir frete | `modules/common/components/cart-totals/index.tsx:44`, `:62` | `!shipping_subtotal` trata "não calculado" e "grátis" como a mesma coisa: o cliente lê R$ 0,00 e paga R$ 21,15 | **Débito aberto — RV-051** (três estados: a calcular / grátis / valor) |
+| Cache da cotação não separa 1 de 3 caixas | `superfrete/servico.ts:127-152` (chave sobre `volumes[0]`), `:180-186`, `:300-307`, `:346-365` | A chave ignora contagem e peso total, e a L1 guarda ora unitário, ora total: pedido de 3 cai no preço de 1; com serviço recusado por peso, lê-se `chave` e grava-se `chaveUtil` | **Débito aberto — RV-052** (chave do conjunto de volumes, um só formato, teste 1× × 3×) |
+| Toda peça pesa 1 kg | `pacotes/pacotes.ts:34-41` (`ceil(cm³/6000)*1000`), `pacotes/volumes.ts:42-72` | Peça de 100 g paga 1 kg; três peças iguais pagam três caixas | **Débito aberto — RV-053/RV-054** (cubagem em gramas, consolidação, peso por variante) |
+| Etiqueta declara 1 caixa padrão e a cotação cobrou por volume | `superfrete/etiqueta.ts:91-98` e `:143-148` × `pacotes/volumes.ts` | A transportadora cobra a diferença na coleta | **Débito aberto — RV-055** (uma função de volumes para cotação, etiqueta e tela de teste) |
 
 ### 8.2 Riscos de produção (doc 09 §9.11.5)
 
@@ -361,6 +702,24 @@ débito.
 12. RV-011/016 Badge e tamanhos no card
 13. RV-022 Ordenação dos relacionados
 
+### Sprint 2b — O checkout fecha (antes do Sprint 3)
+
+Estes seis não são polimento: são o que a cliente vê **antes** de pagar, e dois
+deles cobram valor errado (RV-052 para menos, RV-055 para a loja). Ordem por
+relação custo × dano:
+
+- **RV-051** Esqueleto e estados do passo 2, e o "a calcular" no resumo — o mais
+  visível, o mais barato, e o único que aparece para **toda** compra
+- **RV-052** Chave única do cache (contagem + peso total), um só formato de valor,
+  teste 1× × 3× — enquanto aberto, o frete de um pedido pode ser o de outro
+- **RV-054** Peso e medidas nas variantes (`reparar-pesos.ts --listar`) —
+  pré-requisito do RV-053: sem dado, a conta certa continua sem entrada
+- **RV-053** Cubagem em gramas (sem quilo inteiro) e consolidação por caixa
+- **RV-055** Etiqueta e cotação com a mesma conta de volumes
+- **RV-058** Mensagem certa no CEP recusado — entra junto do RV-051: é a **mesma
+  tela** e o **mesmo estado de erro**, e hoje manda o cliente (e o suporte) olhar
+  o token quando o problema é o endereço
+
 ### Sprint 3 — Qualidade e UX (2-3 semanas)
 
 14. RV-035 Auditoria de estoque (`required_quantity` ÷ anúncio) — antes do primeiro
@@ -395,6 +754,9 @@ Cada item acima só está concluído quando:
 - Testes unitários passando (`make test`)
 - `next build` limpo (quando houver mudança no storefront)
 - Documentação atualizada (se houver mudança de comportamento)
+- Checkout percorrido nos três passos com rede lenta (`?step=delivery` e
+  `?step=payment`): sem `"…"` eterno, sem "Grátis" antes do frete e sem escolha de
+  entrega antes do preço calculado
 
 ---
 

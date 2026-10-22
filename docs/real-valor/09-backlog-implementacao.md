@@ -5,6 +5,18 @@ impactados · critérios de aceite · complexidade · pré-requisitos.
 
 **Prioridade:** CRÍTICA · ALTA · MÉDIA · BAIXA · **Complexidade:** baixa · média · alta
 
+> **Débitos abertos do checkout (21/10/2026) — fonte única: doc 19 §6.3.** O
+> checkout foi percorrido passo a passo e rendeu cinco débitos que **não** estão
+> neste arquivo para não virarem duas listas: **RV-051** (estado de carregamento do
+> passo 2 e o "Grátis" do resumo), **RV-052** (chave do cache da cotação, que não
+> distingue 1 de 3 caixas), **RV-053** (volumes: 1 caixa por peça e 1 kg de
+> mínimo), **RV-054** (variantes sem peso e medidas) e **RV-055** (etiqueta declara
+> uma caixa, cotação cobrou três). As duas correções da mesma rodada — frete
+> cobrado 100× e prazo que não chegava — estão em doc 19 §6.4 (RV-056 e RV-057),
+> com o que ficou pendente nelas. A investigação da conta do frete (21/10/2026,
+> doc 19 §6.3.1) rendeu mais um: **RV-058** — CEP inválido respondendo com a
+> mensagem de token do SuperFrete.
+
 ---
 
 ## Fase 0 — Fundação modular
