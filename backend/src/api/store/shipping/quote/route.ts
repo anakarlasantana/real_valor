@@ -1,5 +1,3 @@
-/** Preço **e prazo**: o `calculatePrice` do Medusa devolve só centavos. */
-
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
@@ -33,7 +31,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   try {
     cart = await cartModuleService.retrieveCart(cartId, {
-      relations: ["items", "items.variant"],
+      // `shipping_address`: é dele que sai o CEP de destino (sem a relação, 400).
+      relations: ["items", "items.variant", "shipping_address"],
     })
   } catch {
     res.status(404).json({ message: "Carrinho não encontrado." })

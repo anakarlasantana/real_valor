@@ -149,8 +149,10 @@ Os métodos que o Medusa chama:
 }
 ```
 
-**Em centavos.** `calculated_amount` é em centavos. Um erro de unidade aqui é um frete 100× errado, e é
-a classe de erro mais difícil de enxergar numa tela.
+**Em reais.** `calculated_amount` é **decimal na moeda** (R$ 16,90 = `16.9`): o Medusa v2 não trabalha em
+centavos — `price.amount = 249.9` no banco é R$ 249,90. A tabela calcula em centavos e o provider
+converte uma vez, com `emReais`. Trocar as unidades é um frete 100× errado, a classe de erro mais
+difícil de enxergar numa tela (foi o PAC de R$ 3.150,00 no checkout).
 
 Depois: **somar** a transportadora à lista `providers` do item FULFILLMENT em `medusa-config.ts`
 (sem mexer no `manual`, e sem tirar a tabela se as duas convivem), criar a shipping option no Admin

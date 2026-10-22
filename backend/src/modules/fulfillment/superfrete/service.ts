@@ -9,6 +9,7 @@ import type {
 
 import { caixaValida, padraoUnico, pesoTaxavel, type Pacote } from "../pacotes/pacotes"
 import { calcularVolumes } from "../pacotes/volumes"
+import { emReais } from "../dinheiro"
 import { cotarPedido, registrarCache, type ConfigSuperFrete } from "./servico"
 import { SERVICOS, ROTULOS, ehServico, type Servico } from "./catalogo"
 import { ambienteDaConfig, chamarSuperFrete } from "./cliente"
@@ -44,7 +45,11 @@ export class SuperFreteFulfillmentService extends AbstractFulfillmentProviderSer
     return true
   }
 
-  /** Em centavos. `throw` e nunca `0`: zero é frete grátis em toda falha. */
+  /**
+   * O preço **em reais**: a API cota em centavos e o Medusa v2 guarda decimal
+   * (R$ 31,50 = `31.5`). `emReais` converte uma vez, aqui — sem isso o checkout
+   * mostra R$ 3.150,00. `throw` e nunca `0`: zero é frete grátis em toda falha.
+   */
   async calculatePrice(
     optionData: Record<string, unknown>,
     _data: Record<string, unknown>,
@@ -95,7 +100,7 @@ export class SuperFreteFulfillmentService extends AbstractFulfillmentProviderSer
     }
 
     return {
-      calculated_amount: escolhida.preco,
+      calculated_amount: emReais(escolhida.preco),
       is_calculated_price_tax_inclusive: false,
     }
   }

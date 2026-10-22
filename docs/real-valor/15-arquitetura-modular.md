@@ -217,7 +217,8 @@ testadas em `etiqueta.unit.spec.ts` com o cliente HTTP injetado.
 | `/checkout` falha depois do `/cart` ter criado | O erro devolve o `id` — recriar cobraria duas etiquetas |
 | `/tag/print` devolve **link assinado**, não PDF | A rota devolve `{ url }`; quem baixa é o navegador |
 
-Outros: `unit_price` do Medusa **já vem em centavos** (multiplicar por 100 erra 100×);
+Outros: `unit_price` do Medusa vem em **decimal** (R$ 249,90 = `249.9`) — lido como centavo, o valor
+declarado na etiqueta cai 100×, e a conversão para centavos é `emCentavos`;
 `service` é o código (`"1"`, não `"PAC"`); `name` exige duas palavras (`nomeCompleto`);
 o volume é o da caixa padrão — o mesmo da cotação, senão o pago diverge do cobrado; o
 cancelamento estorna para a **carteira SuperFrete**, não para o cartão da cliente; o

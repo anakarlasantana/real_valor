@@ -5,7 +5,7 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 39283,
+      "lines": 39288,
       "comments": 8875
     },
     "admin/src": {
@@ -13,8 +13,8 @@
       "comments": 1877
     },
     "backend/src": {
-      "lines": 23886,
-      "comments": 4653
+      "lines": 24085,
+      "comments": 4680
     },
     "packages/contrato/src": {
       "lines": 2822,
@@ -1482,8 +1482,8 @@
       "header": 5
     },
     "backend/src/modules/fulfillment/tabela/service.ts": {
-      "comments": 69,
-      "lines": 164,
+      "comments": 64,
+      "lines": 160,
       "header": 5
     },
     "backend/src/modules/fulfillment/tabela/tabela.ts": {

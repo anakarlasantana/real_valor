@@ -607,10 +607,9 @@ escreve como "até 2 dias úteis".
 *Evidência.* E2E manual: `GET /store/shipping/quote?cart_id=…` → 200 com `prazo`
 por serviço; `?step=delivery` com a linha completa.
 
-*Nota de base.* As duas correções estão **no working tree** desta base (sobre
-`836c4ade00`) — `make check`, `make types` e as suítes do `fulfillment` verdes —,
-ainda sem commit. É por isso que §6.3 continua sendo o que falta, e não o que
-faltava.
+*Nota de base.* As duas correções entraram sobre `836c4ade00` — `make check`,
+`make types` e as suítes do `fulfillment` verdes. É por isso que §6.3 continua
+sendo o que falta, e não o que faltava.
 
 ---
 

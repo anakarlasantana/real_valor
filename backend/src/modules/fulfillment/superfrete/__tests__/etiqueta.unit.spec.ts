@@ -521,9 +521,10 @@ describe("leitura do pedido", () => {
   })
 
   it("descarta item sem quantidade e converte o preço para centavos", () => {
+    // `unit_price` é decimal no Medusa v2 (249.9 = R$ 249,90), não centavos.
     const produtos = produtosDoPedido([
-      { product_title: "Kit", quantity: 1, unit_price: 12990 },
-      { product_title: "Vazio", quantity: 0, unit_price: 1000 },
+      { product_title: "Kit", quantity: 1, unit_price: 129.9 },
+      { product_title: "Vazio", quantity: 0, unit_price: 10 },
     ])
 
     expect(produtos).toEqual([{ nome: "Kit", quantidade: 1, valorCentavos: 12990 }])

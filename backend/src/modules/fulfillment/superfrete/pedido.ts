@@ -1,6 +1,7 @@
 // Traduz o pedido do Medusa para a etiqueta (`superfrete/pedido`).
 import type { Remetente, Destinatario, PedidoParaEtiqueta } from "./etiqueta"
 import { SERVICOS, ehServico, type Servico } from "./catalogo"
+import { emCentavos } from "../dinheiro"
 
 export function servicoDaOpcao(dados: unknown): Servico | null {
   const servico = String((dados as any)?.servico ?? "").trim().toUpperCase()
@@ -131,7 +132,7 @@ export function produtosDoPedido(items: unknown): PedidoParaEtiqueta["produtos"]
       {
         nome: String(item?.product_title ?? item?.title ?? "Item"),
         quantidade,
-        valorCentavos: Math.round(unitario),
+        valorCentavos: emCentavos(unitario),
       },
     ]
   })

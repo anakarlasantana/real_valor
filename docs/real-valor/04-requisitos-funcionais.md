@@ -674,7 +674,8 @@ Registrado em `medusa-config.ts`. **17 testes** sobre a regra.
 }
 ```
 
-`calculated_amount` é **em centavos**.
+`calculated_amount` é **decimal na moeda** (R$ 16,90 = `16.9`) — o Medusa v2 não usa centavos. A
+conversão do que o provider calcula (centavos) fica no provider, com `emReais`.
 
 ### Regras de negócio
 1. O preço do frete é **sempre calculado no backend**. O front nunca calcula frete.
@@ -700,7 +701,7 @@ destino, em vez de ser fixo.
 2. Criada a opção com `price_type: "calculated"`, o preço no checkout muda com o **peso** e o **CEP**.
 3. CEP inválido não mostra preço 0 — a opção sai da lista.
 4. Peso acima de 20kg não calcula.
-5. Nenhum valor em reais onde se espera centavos (teste).
+5. Nenhum valor em centavos onde se espera reais: `calculated_amount` sai em decimal (teste).
 6. A tabela não tem buraco: todo par (região, faixa) tem número (teste).
 7. Trocar de transportadora **não altera** carrinho, checkout, painel de envio nem `/rastreio`.
 

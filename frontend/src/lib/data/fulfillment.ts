@@ -91,7 +91,7 @@ export type CotacaoDeFrete = {
   prazo: number
 }
 
-/** Preço **e prazo**: o `calculatePriceForShippingOption` devolve só o valor. */
+/** Preço e prazo. A rota responde em centavos; `preco` sai em reais. */
 export const cotarFrete = async (
   cartId: string
 ): Promise<CotacaoDeFrete[] | null> => {
@@ -106,6 +106,11 @@ export const cotarFrete = async (
       headers,
       cache: "no-store",
     })
-    .then(({ cotacoes }) => cotacoes ?? [])
+    .then(({ cotacoes }) =>
+      (cotacoes ?? []).map((cotacao) => ({
+        ...cotacao,
+        preco: cotacao.preco / 100,
+      }))
+    )
     .catch(() => null)
 }

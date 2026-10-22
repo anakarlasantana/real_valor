@@ -18,8 +18,8 @@
  * saída de volta. Separar as duas coisas é o que faz a regra poder ser testada
  * e conferida contra a transportadora escolhida quando ela vier.
  *
- * **Em centavos.** O Medusa trabalha em centavos, e um erro de unidade aqui é
- * um frete 100× errado — a classe de erro mais difícil de enxergar numa tela.
+ * **Em centavos — a tabela, não o Medusa.** Quem guarda é decimal, e o provider
+ * converte (`emReais`): trocar as unidades é frete 100× errado na tela.
  */
 
 /** As regiões de destino que a tabela cobre. */

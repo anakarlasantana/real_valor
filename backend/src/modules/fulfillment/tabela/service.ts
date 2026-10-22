@@ -8,6 +8,7 @@ import type {
 } from "@medusajs/types"
 
 import { REGIOES, calcularFrete, type Regiao } from "./tabela"
+import { emReais } from "../dinheiro"
 
 /**
  * O provider de frete "tabela".
@@ -67,17 +68,12 @@ export class TabelaFulfillmentService extends AbstractFulfillmentProviderService
   }
 
   /**
-   * O preço, em centavos.
+   * O preço **em reais** (o Medusa v2 guarda decimal): a tabela calcula em
+   * centavos, `emReais` converte uma vez, aqui. Entregar centavos grava 100× no
+   * carrinho — foi o PAC de R$ 3.150,00.
    *
-   * O que entra:
-   *  - `context.shipping_address` — de onde vem o **CEP** (o Medusa não
-   *    entrega a região, e o CEP é o que decide o destino);
-   *  - `context.items[].variant.weight` — em **gramas**, e por item: a
-   *    quantidade multiplica.
-   *
-   * O que sai: `calculated_amount` e se o preço já tem imposto. A loja mostra
-   * o valor final, então o preço sai **sem** imposto — o Medusa soma o que
-   * falta.
+   * Entram o CEP de destino (`shipping_address`, a região sai dele) e o peso de
+   * cada item × quantidade, em gramas.
    */
   async calculatePrice(
     _optionData: Record<string, unknown>,
@@ -102,11 +98,11 @@ export class TabelaFulfillmentService extends AbstractFulfillmentProviderService
     }
 
     this.logger_.info(
-      `[tabela] ${cep} · ${resultado.pesoGramas}g · ${resultado.regiao} · ${resultado.faixa} = ${resultado.preco}`
+      `[tabela] ${cep} · ${resultado.pesoGramas}g · ${resultado.regiao} · ${resultado.faixa} = ${resultado.preco} centavos`
     )
 
     return {
-      calculated_amount: resultado.preco,
+      calculated_amount: emReais(resultado.preco),
       is_calculated_price_tax_inclusive: false,
     }
   }
