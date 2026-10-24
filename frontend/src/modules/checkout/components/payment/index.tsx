@@ -3,7 +3,7 @@
 import { RadioGroup } from "@headlessui/react"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Fragment, useCallback, useEffect, useState } from "react"
+import { Fragment, useCallback, useEffect, useRef, useState } from "react"
 
 import { initiatePaymentSession } from "@lib/data/cart"
 import {
@@ -59,6 +59,8 @@ const Payment = ({
     activeSession?.provider_id ?? ""
   )
 
+  const sessaoCriadaAqui = useRef<Set<string>>(new Set())
+
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -76,6 +78,7 @@ const Payment = ({
         await initiatePaymentSession(cart, {
           provider_id: method,
         })
+        sessaoCriadaAqui.current.add(method)
       } catch (err) {
         setError(mensagemDaRecusa(err))
       }
@@ -104,7 +107,7 @@ const Payment = ({
   )
 
   const handleEdit = () => {
-    router.push(pathname + "?" + createQueryString("step", "payment"), {
+    router.replace(pathname + "?" + createQueryString("step", "payment"), {
       scroll: false,
     })
   }
@@ -127,21 +130,18 @@ const Payment = ({
       const inlineInput = needsInlineInput(selectedPaymentMethod) && !activeSession
 
       const checkActiveSession =
-        activeSession?.provider_id === selectedPaymentMethod
+        activeSession?.provider_id === selectedPaymentMethod ||
+        sessaoCriadaAqui.current.has(selectedPaymentMethod)
 
       if (!checkActiveSession) {
         await initiatePaymentSession(cart, {
           provider_id: selectedPaymentMethod,
         })
+        sessaoCriadaAqui.current.add(selectedPaymentMethod)
       }
 
       if (!inlineInput) {
-        return router.push(
-          pathname + "?" + createQueryString("step", "review"),
-          {
-            scroll: false,
-          }
-        )
+        return router.replace(pathname + "?step=review", { scroll: false })
       }
     } catch (err) {
       setError(mensagemDaRecusa(err))

@@ -55,7 +55,7 @@ const Addresses = ({
   )
 
   const handleEdit = () => {
-    router.push(pathname + "?step=address")
+    router.replace(pathname + "?step=address")
   }
 
   const [message, formAction] = useActionState(setAddresses, null)

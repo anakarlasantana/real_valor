@@ -126,6 +126,11 @@ const Shipping: React.FC<ShippingProps> = ({
   const prazoDe = (nome: string) => prazos[nome] ?? null
 
   useEffect(() => {
+    if (!cart.shipping_address?.postal_code) {
+      setIsLoadingPrices(false)
+      return
+    }
+
     setIsLoadingPrices(true)
 
     // Falha aqui não quebra o passo: a linha mostra só o preço.
@@ -164,14 +169,14 @@ const Shipping: React.FC<ShippingProps> = ({
     if (_pickupMethods?.find((m) => m.id === shippingMethodId)) {
       setShowPickupOptions(PICKUP_OPTION_ON)
     }
-  }, [availableShippingMethods])
+  }, [availableShippingMethods, cart.shipping_address?.postal_code])
 
   const handleEdit = () => {
-    router.push(pathname + "?step=delivery", { scroll: false })
+    router.replace(pathname + "?step=delivery", { scroll: false })
   }
 
   const handleSubmit = () => {
-    router.push(pathname + "?step=payment", { scroll: false })
+    router.replace(pathname + "?step=payment", { scroll: false })
   }
 
   const handleSetShippingMethod = async (
