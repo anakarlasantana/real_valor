@@ -1502,8 +1502,8 @@
       "header": 28
     },
     "backend/src/modules/payment/mercadopago/__tests__/preferencia.unit.spec.ts": {
-      "comments": 30,
-      "lines": 177,
+      "comments": 26,
+      "lines": 232,
       "header": 10
     },
     "backend/src/modules/payment/mercadopago/__tests__/registro.unit.spec.ts": {

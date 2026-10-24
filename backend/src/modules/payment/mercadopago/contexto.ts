@@ -39,7 +39,7 @@ export type ContextoVerificado = {
   provider_id: string
   /** Qual meio, para o log e para o nome do provider no evento. */
   metodo: Metodo
-  /** O valor da sessão, em **centavos** — o que o provedor tem de confirmar. */
+  /** O valor da sessão, em **reais** (decimal do Medusa) — o que o provedor tem de confirmar. */
   amount: number
   /** A moeda da sessão. */
   currency_code: string

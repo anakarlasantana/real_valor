@@ -127,7 +127,7 @@ export async function decidirNotificacao(
   const centavosDoProvedor = Math.round(
     Number(pagamento?.transaction_amount) * 100
   )
-  const centavosDaSessao = Math.round(Number(contexto.amount))
+  const centavosDaSessao = Math.round(Number(contexto.amount) * 100)
 
   if (
     !Number.isFinite(centavosDoProvedor) ||

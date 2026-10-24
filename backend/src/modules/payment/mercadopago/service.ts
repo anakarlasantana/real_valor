@@ -47,7 +47,7 @@ import { instrucaoDeEstorno } from "./estorno"
 import {
   METODOS,
   construirPreferencia,
-  emReais,
+  emReaisDoMedusa,
   type Metodo,
 } from "./preferencia"
 import { idMascarado, redigirPagamento } from "./redigir"
@@ -96,9 +96,8 @@ export abstract class MercadoPagoProvider extends AbstractPaymentProvider {
 
   /**
    * Cria a preferência e devolve o endereço do checkout. O `session_id` entra no
-   * `data` devolvido, e é obrigatório: é dele que `authorizePayment` e
-   * `getPaymentStatus` leem a sessão depois. O valor sai daqui em centavos e
-   * viaja em reais (`construirPreferencia`), num lugar só.
+   * `data` devolvido, e é dele que `authorizePayment` e `getPaymentStatus` leem
+   * a sessão depois. O valor viaja em reais (`construirPreferencia`), num lugar só.
    */
   async initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentOutput> {
     const disponivel = pagamentoDisponivel()
@@ -118,9 +117,9 @@ export abstract class MercadoPagoProvider extends AbstractPaymentProvider {
       )
     }
 
-    const centavos = Math.round(Number(input.amount))
+    const valorEmReais = emReaisDoMedusa(Number(input.amount))
 
-    if (!Number.isFinite(centavos) || centavos <= 0) {
+    if (!Number.isFinite(valorEmReais) || valorEmReais <= 0) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
         "O valor do pagamento é inválido."
@@ -129,7 +128,7 @@ export abstract class MercadoPagoProvider extends AbstractPaymentProvider {
 
     const documento = construirPreferencia({
       sessionId,
-      centavos,
+      valorEmReais,
       metodo: this.metodo,
       descricao: String((input.data?.descricao as string) ?? DESCRICAO_PADRAO),
       backUrls: urlsDeRetorno(),
@@ -150,7 +149,7 @@ export abstract class MercadoPagoProvider extends AbstractPaymentProvider {
 
     this.logger_.info(
       `[mercadopago/${this.metodo}] preferência criada para a sessão ` +
-        `${idMascarado(sessionId)} · ${emReais(centavos).toFixed(2)} BRL`
+        `${idMascarado(sessionId)} · ${valorEmReais.toFixed(2)} BRL`
     )
 
     return {
@@ -163,6 +162,7 @@ export abstract class MercadoPagoProvider extends AbstractPaymentProvider {
         // O que o storefront lê para redirecionar — ver `adapter` no frontend.
         init_point: initPoint,
         preference_id: preferencia.id,
+        valor_original_centavos: valorEmReais,
         // A chave que liga a notificação de volta a este carrinho.
         session_id: sessionId,
         external_reference: sessionId,
@@ -244,13 +244,19 @@ export abstract class MercadoPagoProvider extends AbstractPaymentProvider {
    * no Mercado Pago; só o `data` é preservado, com um `warn` de divergência.
    */
   async updatePayment(input: UpdatePaymentInput): Promise<UpdatePaymentOutput> {
-    const anterior = Number((input.data?.valor_original_centavos as number) ?? NaN)
-    const agora = Math.round(Number(input.amount))
+    // `valor_original_centavos` também é em reais; ausente = sessão antiga.
+    const anterior = input.data?.valor_original_centavos as number | undefined
+    const agora = emReaisDoMedusa(Number(input.amount))
 
-    if (Number.isFinite(anterior) && anterior !== agora) {
+    if (
+      typeof anterior === "number" &&
+      Number.isFinite(anterior) &&
+      emReaisDoMedusa(anterior) !== agora
+    ) {
       this.logger_.warn(
         `[mercadopago/${this.metodo}] a sessão mudou de ` +
-          `${emReais(anterior).toFixed(2)} para ${emReais(agora).toFixed(2)} BRL — ` +
+          `${emReaisDoMedusa(anterior).toFixed(2)} para ` +
+          `${agora.toFixed(2)} BRL — ` +
           `a preferência já criada continua com o valor antigo; uma sessão nova ` +
           `deve ser criada`
       )

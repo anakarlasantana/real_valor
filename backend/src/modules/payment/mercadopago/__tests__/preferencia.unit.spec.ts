@@ -23,7 +23,8 @@ import {
 
 const BASE = {
   sessionId: "payses_01HQ8Z9K2M4N6P8R0T2V4X6Z8A",
-  centavos: 18990,
+  // Em reais — a unidade do `payment_session.amount`.
+  valorEmReais: 189.9,
   metodo: "pix" as const,
   descricao: "Real Valor — pedido",
   urlNotificacao: "https://loja.exemplo/webhooks/mercadopago/pix",
@@ -35,9 +36,7 @@ const BASE = {
 }
 
 describe("a conversão de centavos para reais", () => {
-  it("divide por cem — o erro mais caro do módulo", () => {
-    // ⚠️ O Medusa trabalha em centavos e o Mercado Pago em reais decimais. Sem
-    // esta divisão, R$ 189,90 vira R$ 18.990,00 e o checkout **funciona**.
+  it("divide por cem", () => {
     expect(emReais(18990)).toBe(189.9)
     expect(emReais(100)).toBe(1)
     expect(emReais(1)).toBe(0.01)
@@ -45,12 +44,47 @@ describe("a conversão de centavos para reais", () => {
   })
 
   it("não deixa o ponto flutuante chegar no payload", () => {
-    // `189.9 * 100` não dá exatamente 18990 em binário. A ida e a volta têm de
-    // ser estáveis, senão a comparação de valores do webhook acusa divergência
-    // num pagamento correto.
     for (const centavos of [18990, 123457, 999, 7000, 3333, 1]) {
       expect(Math.round(emReais(centavos) * 100)).toBe(centavos)
     }
+  })
+})
+
+describe("o valor cobrado é o valor da compra", () => {
+  it("R$ 141,40 vai para o payload como 141.4, não como 1.414", () => {
+    const documento = construirPreferencia({
+      ...BASE,
+      sessionId: "payses_01M5QSER87F53FMZ7BFP1ESMVG",
+      valorEmReais: 141.4,
+    })
+
+    expect(documento.items[0].unit_price).toBe(141.4)
+    expect(documento.items[0].unit_price).not.toBe(1.414)
+  })
+
+  it("valor inteiro não vira centavos: 141 → 141", () => {
+    const documento = construirPreferencia({ ...BASE, valorEmReais: 141 })
+
+    expect(documento.items[0].unit_price).toBe(141)
+  })
+
+  it("não deixa o ponto flutuante chegar no payload", () => {
+    for (const valor of [141.4, 189.9, 0.1 + 0.2, 1234.57, 999.99]) {
+      const documento = construirPreferencia({ ...BASE, valorEmReais: valor })
+      expect(Number(documento.items[0].unit_price.toFixed(2))).toBe(
+        Number(valor.toFixed(2))
+      )
+    }
+  })
+
+  it("o total da preferência é o valor da compra, sem frete somado por engano", () => {
+    const documento = construirPreferencia({ ...BASE, valorEmReais: 141.4 })
+
+    const total = documento.items.reduce(
+      (soma, item) => soma + item.unit_price * item.quantity,
+      0
+    )
+    expect(total).toBe(141.4)
   })
 })
 

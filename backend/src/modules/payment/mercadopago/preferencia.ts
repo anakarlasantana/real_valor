@@ -24,6 +24,7 @@ import {
   MERCADOPAGO_CARTAO_PROVIDER_ID,
   MERCADOPAGO_PIX_PROVIDER_ID,
 } from "@rv/contrato/payment"
+import { emReais } from "../../fulfillment/dinheiro"
 
 /** Os dois meios que a loja oferece. */
 export type Metodo = "pix" | "cartao"
@@ -90,28 +91,27 @@ export function metodoDoProviderId(providerId: unknown): Metodo | undefined {
 }
 
 /**
- * Converte centavos em reais, do jeito que o Mercado Pago espera.
- *
- * ⚠️ **O erro de unidade aqui é o mais caro do módulo.** O Medusa trabalha em
- * centavos e o Mercado Pago em reais decimais: um `unit_price: 18990` cobra
- * **R$ 18.990,00** por uma peça de R$ 189,90 — e o checkout **funciona**, o
- * que é a parte assustadora. A divisão mora nesta função para que exista
- * exatamente um lugar para conferir.
- *
- * O `Number` de saída é do próprio JSON: `189.9` e não `"189.90"`. O Mercado
- * Pago aceita string, mas o número evita uma segunda conversão de ida.
+ * Converte **centavos** em reais, para os logs. Não é para o payload.
+ * Ver `emReaisDoMedusa`.
  */
-export function emReais(centavos: number): number {
-  // Duas casas, sem o `0.1 + 0.2` do ponto flutuante chegar no payload.
-  return Math.round(Number(centavos)) / 100
+export { emReais }
+
+/**
+ * Normaliza o valor **em reais** que o Medusa manda, para o `unit_price`.
+ *
+ * ⚠️ Não dividir por cem: `payment_session.amount` já é decimal (`141.4`).
+ * Foi essa divisão que cobrou R$ 1,41 por uma compra de R$ 141,40.
+ */
+export function emReaisDoMedusa(reais: number): number {
+  return Math.round(Number(reais) * 100) / 100
 }
 
 /** O que é preciso saber para montar a preferência. */
 export type EntradaDaPreferencia = {
   /** O id da **payment session** do Medusa. Vira o `external_reference`. */
   sessionId: string
-  /** O valor, em **centavos** (a unidade do Medusa). */
-  centavos: number
+  /** O valor, em **reais** — a unidade do `payment_session.amount`. */
+  valorEmReais: number
   metodo: Metodo
   descricao: string
   /** As três URLs de volta, ou `undefined` para deixar a cliente no provedor. */
@@ -145,12 +145,27 @@ function dataDoProvedor(quando: Date): string {
  * `expires`, o que é seguro: o próprio QR do Pix tem a validade dele do lado
  * do Mercado Pago, independentemente desta preferência.
  */
+/** Um item da preferência, do jeito que o Mercado Pago recebe no JSON. */
+export type ItemDaPreferencia = {
+  id: string
+  title: string
+  quantity: number
+  currency_id: string
+  /** Em **reais** (141.4 = R$ 141,40) — nunca centavos. */
+  unit_price: number
+}
+
+/** O documento da preferência: o corpo que vai para `POST /checkout/preferences`. */
+export type Preferencia = Record<string, unknown> & {
+  items: ItemDaPreferencia[]
+}
+
 export function construirPreferencia(
   entrada: EntradaDaPreferencia
-): Record<string, unknown> {
+): Preferencia {
   const meio = METODOS[entrada.metodo]
 
-  const preferencia: Record<string, unknown> = {
+  const preferencia: Preferencia = {
     items: [
       {
         // O id do item é a própria sessão: é o que permite, numa consulta ao
@@ -159,7 +174,7 @@ export function construirPreferencia(
         title: entrada.descricao,
         quantity: 1,
         currency_id: "BRL",
-        unit_price: emReais(entrada.centavos),
+        unit_price: entrada.valorEmReais,
       },
     ],
     // O caminho de volta: é este campo que o webhook devolve, e sem ele o

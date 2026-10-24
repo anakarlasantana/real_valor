@@ -250,7 +250,7 @@ export async function receberNotificacao(
   }
 
   const centavosDoProvedor = Math.round(Number(pagamento?.transaction_amount) * 100)
-  const centavosDaSessao = Math.round(Number(sessao.amount))
+  const centavosDaSessao = Math.round(Number(sessao.amount) * 100)
 
   if (
     !Number.isFinite(centavosDoProvedor) ||

@@ -42,7 +42,6 @@ function loggerFalso(passos: string[]) {
     error: (m: string) => passos.push(`error:${m}`),
   }
 }
-
 type Cenario = {
   /** O que o provedor responde em `/v1/payments/{id}`. */
   pagamento?: Record<string, unknown>
@@ -160,7 +159,7 @@ function cenario(config: Cenario = {}) {
 const SESSAO_DO_PIX = {
   id: SESSAO,
   provider_id: "pp_mercadopago_pix",
-  amount: 18990,
+  amount: 189.9, // em reais, como o Medusa grava
   currency_code: "brl",
   data: { session_id: SESSAO, init_point: "https://mp/checkout" },
 }
@@ -184,9 +183,7 @@ afterEach(() => {
 
 describe("a assinatura recusada", () => {
   it("responde 401 sem o header — e NADA acontece antes disso", async () => {
-    // ⭐ A asserção que importa. Não basta o 401: um handler que consulta o
-    // provedor **antes** de validar gastaria uma chamada por tentativa de quem
-    // sonda, e um handler que grava antes de validar já teria perdido.
+    // ⭐ Não basta o 401: consultar ou gravar **antes** de validar já seria falha.
     const { req, res, emitidos, selagens, chamadasAoProvedor } = cenario({
       cabecalhos: { "x-signature": undefined },
       sessao: SESSAO_DO_PIX,
@@ -333,6 +330,25 @@ describe("o caminho que cria o pedido", () => {
 })
 
 describe("o que NÃO pode criar pedido", () => {
+  it("valor que BATE: um pagamento legítimo é aplicado", async () => {
+    const { req, res, emitidos, selagens, passos } = cenario({
+      pagamento: {
+        id: PAGAMENTO,
+        status: "approved",
+        transaction_amount: 189.9,
+        external_reference: SESSAO,
+      },
+      sessao: SESSAO_DO_PIX,
+    })
+
+    await receberNotificacao(req as never, res as never)
+
+    expect(res.statusCode).toBe(200)
+    expect(passos.some((p) => p.includes("VALOR DIVERGENTE"))).toBe(false)
+    expect(selagens).toHaveLength(1)
+    expect(emitidos).toHaveLength(1)
+  })
+
   it("valor divergente: nada é aplicado e o log pede conferência", async () => {
     // ⚠️ Um pedido de R$ 1.899,00 pago com R$ 1,00. A sessão manda; o provedor
     // confirmou, mas os valores não batem. Aplicar cegaria o financeiro.
