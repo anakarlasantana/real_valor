@@ -58,7 +58,7 @@ describe("o passo 3 quando o provedor recusa a sessão", () => {
 
   it("mostra a mensagem do backend e não derruba o render", async () => {
     initiatePaymentSession.mockRejectedValue(
-      new Error("account_money cannot be excluded — o Mercado Pago recusou os dados.")
+      new Error("account_money cannot be excluded. O Mercado Pago recusou os dados.")
     )
 
     await escolherPixEContinuar()
@@ -73,7 +73,7 @@ describe("o passo 3 quando o provedor recusa a sessão", () => {
     expect(
       await screen.findByTestId("payment-method-error-message")
     ).toHaveTextContent(
-      "account_money cannot be excluded — o Mercado Pago recusou os dados."
+      "account_money cannot be excluded. O Mercado Pago recusou os dados."
     )
 
     expect(screen.getByTestId("submit-payment-button")).toBeInTheDocument()

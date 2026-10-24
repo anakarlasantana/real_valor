@@ -111,24 +111,25 @@ describe("o builder da preferência", () => {
     expect(pix.installments).toBe(1)
   })
 
-  it("NÃO põe `account_money` em `excluded_payment_types` — o provedor recusa", () => {
-    for (const metodo of TODOS_OS_METODOS) {
-      const tipos = construirPreferencia({ ...BASE, metodo })
-        .payment_methods as Record<string, unknown>
-
-      const ids = (v: unknown) => (v as { id: string }[]).map((x) => x.id)
-      const tiposDoProvedor = ["credit_card", "debit_card", "prepaid_card", "ticket", "atm", "bank_transfer"]
-
-      expect(ids(tipos.excluded_payment_types)).not.toContain("account_money")
-      expect(ids(tipos.excluded_payment_types).every((id) => tiposDoProvedor.includes(id))).toBe(true)
-    }
-  })
-  it("exclui a carteira em `excluded_payment_methods` — a lista dela", () => {
+  it("NÃO põe `account_money` em lista de exclusão nenhuma", () => {
     for (const metodo of TODOS_OS_METODOS) {
       const meios = construirPreferencia({ ...BASE, metodo })
         .payment_methods as Record<string, unknown>
 
-      expect(meios.excluded_payment_methods).toEqual([{ id: "account_money" }])
+      expect(JSON.stringify(meios)).not.toContain("account_money")
+      expect(meios.excluded_payment_methods).toBeUndefined()
+    }
+  })
+
+  it("só exclui `payment_type_id` conhecidos", () => {
+    const tiposDoProvedor = ["credit_card", "debit_card", "prepaid_card", "ticket", "atm", "bank_transfer"]
+
+    for (const metodo of TODOS_OS_METODOS) {
+      const meios = construirPreferencia({ ...BASE, metodo })
+        .payment_methods as Record<string, unknown>
+      const tipos = (meios.excluded_payment_types as { id: string }[]).map((x) => x.id)
+
+      expect(tipos.every((id) => tiposDoProvedor.includes(id))).toBe(true)
     }
   })
   it("NÃO manda `binary_mode` — ele mataria o Pix", () => {
@@ -191,7 +192,6 @@ describe("o método pelo `provider_id`", () => {
       expect(METODOS[m].providerId).toBeTruthy()
       expect(METODOS[m].rotulo).toBeTruthy()
       expect(METODOS[m].excluidos.length).toBeGreaterThan(0)
-      expect(METODOS[m].carteiraExcluida).toBe(true)
     }
   })
 })

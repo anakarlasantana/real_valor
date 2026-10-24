@@ -43,18 +43,12 @@ export const METODOS: Record<
     providerId: string
     /** O rótulo que a cliente lê. */
     rotulo: string
-    // Os **tipos** a excluir para sobrar só este. ⚠️ Preferência de interface,
-    // não garantia: pagando por outro meio o dinheiro entra igual e o webhook
-    // resolve o provider pela sessão (ver `webhook.ts`).
-    //
-    // ⚠️ Só entra `payment_type_id`. `account_money` é `payment_method_id`: aqui
-    // o provedor responde 400 e derruba a preferência (22/10/2026); ele vai em
-    // `excluded_payment_methods` (`carteiraExcluida`).
+    // Os **tipos** a excluir para sobrar só este. ⚠️ Só `payment_type_id`:
+    // `account_money` é `payment_method_id` e o provedor o recusa em qualquer
+    // lista de exclusão (ver a nota em `construirPreferencia`).
     excluidos: { id: string }[]
     /** Até quantas parcelas. `1` é à vista. */
     parcelas: number
-    /** `account_money` sai em `excluded_payment_methods`, não nos tipos. */
-    carteiraExcluida: boolean
   }
 > = {
   pix: {
@@ -70,14 +64,12 @@ export const METODOS: Record<
       { id: "atm" },
     ],
     parcelas: 1,
-    carteiraExcluida: true,
   },
   cartao: {
     providerId: MERCADOPAGO_CARTAO_PROVIDER_ID,
     rotulo: "Cartão de crédito",
     excluidos: [{ id: "ticket" }, { id: "atm" }, { id: "bank_transfer" }],
     parcelas: 12,
-    carteiraExcluida: true,
   },
 }
 
@@ -176,11 +168,11 @@ export function construirPreferencia(
     statement_descriptor: "REALVALOR",
     payment_methods: {
       excluded_payment_types: meio.excluidos,
-      // A carteira do Mercado Pago (`account_money`) tem a lista dela: misturá-la
-      // com os tipos acima faz o provedor recusar a preferência inteira com 400.
-      excluded_payment_methods: meio.carteiraExcluida
-        ? [{ id: "account_money" }]
-        : [],
+      // `account_money` não entra em lista de exclusão nenhuma: o provedor
+      // responde `400 account_money cannot be excluded` (medido em 24/10/2026,
+      // com credencial de teste, nos dois meios). Ele é `payment_method_id`, e
+      // a carteira fica indisponível por si — sem exclusão, toda preferência
+      // volta 201. Excluir aqui derrubava o checkout inteiro.
       installments: meio.parcelas,
     },
     // `binary_mode` fica de fora de propósito: ele faz o provedor devolver só
