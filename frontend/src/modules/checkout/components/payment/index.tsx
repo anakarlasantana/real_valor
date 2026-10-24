@@ -15,22 +15,26 @@ import { lerDocumento } from "@rv/contrato"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PaymentContainer from "@modules/checkout/components/payment-container"
 
+// O texto de uma recusa (`""` passa pelo `??`, e o `ErrorMessage` o trata como
+// "sem erro").
+const mensagemDaRecusa = (err: unknown): string => {
+  const mensagem =
+    typeof (err as any)?.message === "string" ? (err as any).message : ""
+
+  return mensagem.trim()
+    ? mensagem
+    : "Não foi possível iniciar o pagamento agora. Tente novamente em instantes."
+}
+
 /**
  * O passo 3 do checkout — "Pagamento".
  *
- * Ele era o bloco "Payment" do starter: `Heading` do design system, um link
- * "Editar" solto e as opções numa caixa com o azul da Medusa. Agora é o terceiro
- * `<fieldset>` numerado, com as opções no cartão `.rv-payment-option` — o mesmo do
- * frete, com o formulário do cartão (quando o meio precisa dele) logo abaixo da
- * linha.
- *
- * **O que não mudou:** o `RadioGroup` do headlessui, o `initiatePaymentSession`, o
- * `resolvePayment` do registry (é o adapter que decide como o meio se completa) e
- * todos os `data-testid`.
- *
- * O `paidByGiftcard` continua com o caminho próprio: com o carrinho inteiro pago
- * por vale-presente não há meio a escolher, e o passo mostra o resumo em vez da
- * lista.
+ * Era o bloco "Payment" do starter (`Heading`, link "Editar" e o azul da Medusa);
+ * agora é o terceiro `<fieldset>` numerado, com as opções no cartão
+ * `.rv-payment-option` e o formulário do cartão logo abaixo da linha. O
+ * `RadioGroup`, o `initiatePaymentSession`, o `resolvePayment` e os `data-testid`
+ * não mudaram. O `paidByGiftcard` segue com caminho próprio: carrinho inteiro
+ * pago por vale-presente mostra o resumo, não a lista.
  */
 const Payment = ({
   cart,
@@ -39,11 +43,8 @@ const Payment = ({
   cart: any
   availablePaymentMethods: any[]
 }) => {
-  // O meio manual do Medusa não conta como sessão ativa: um carrinho que já
-  // tinha `pp_system_default` pendente (de antes do filtro) não pode terminar
-  // a compra sem cobrança. Ele some da lista em `listCartPaymentMethods`, e
-  // aqui some também do estado inicial — o resto do formulário segue como se
-  // não houvesse sessão, e a cliente escolhe um meio de verdade.
+  // O meio manual do Medusa não conta como sessão ativa: `pp_system_default`
+  // pendente (de antes do filtro) não pode terminar a compra sem cobrança.
   const activeSession = cart.payment_collection?.payment_sessions?.find(
     (paymentSession: any) =>
       paymentSession.status === "pending" &&
@@ -71,9 +72,13 @@ const Payment = ({
     // (é ela que traz o `client_secret`). Os demais não: o Checkout Pro cria a
     // preference no redirecionamento, e o manual não cria nada.
     if (resolvePayment(method).fulfillment === "inline") {
-      await initiatePaymentSession(cart, {
-        provider_id: method,
-      })
+      try {
+        await initiatePaymentSession(cart, {
+          provider_id: method,
+        })
+      } catch (err) {
+        setError(mensagemDaRecusa(err))
+      }
     }
   }
 
@@ -138,8 +143,8 @@ const Payment = ({
           }
         )
       }
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(mensagemDaRecusa(err))
     } finally {
       setIsLoading(false)
     }

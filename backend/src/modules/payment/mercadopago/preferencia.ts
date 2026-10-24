@@ -43,20 +43,18 @@ export const METODOS: Record<
     providerId: string
     /** O rótulo que a cliente lê. */
     rotulo: string
-    /**
-     * Os meios do Mercado Pago a **excluir** para sobrar só este.
-     *
-     * ⚠️ **É uma preferência de interface, não uma garantia.** O que a cliente
-     * pode escolher no site do Mercado Pago é a interface dele. Se ela pagar
-     * com um meio diferente do que escolheu aqui, **o dinheiro entra do mesmo
-     * jeito** — a cobrança é da mesma conta — e o fluxo continua correto porque
-     * o webhook resolve o provider pela sessão, não pelo meio escolhido (ver
-     * `webhook.ts`). Tratar isto como fronteira de segurança seria confundir
-     * conveniência com controle.
-     */
+    // Os **tipos** a excluir para sobrar só este. ⚠️ Preferência de interface,
+    // não garantia: pagando por outro meio o dinheiro entra igual e o webhook
+    // resolve o provider pela sessão (ver `webhook.ts`).
+    //
+    // ⚠️ Só entra `payment_type_id`. `account_money` é `payment_method_id`: aqui
+    // o provedor responde 400 e derruba a preferência (22/10/2026); ele vai em
+    // `excluded_payment_methods` (`carteiraExcluida`).
     excluidos: { id: string }[]
     /** Até quantas parcelas. `1` é à vista. */
     parcelas: number
+    /** `account_money` sai em `excluded_payment_methods`, não nos tipos. */
+    carteiraExcluida: boolean
   }
 > = {
   pix: {
@@ -70,20 +68,16 @@ export const METODOS: Record<
       { id: "prepaid_card" },
       { id: "ticket" },
       { id: "atm" },
-      { id: "account_money" },
     ],
     parcelas: 1,
+    carteiraExcluida: true,
   },
   cartao: {
     providerId: MERCADOPAGO_CARTAO_PROVIDER_ID,
     rotulo: "Cartão de crédito",
-    excluidos: [
-      { id: "ticket" },
-      { id: "atm" },
-      { id: "bank_transfer" },
-      { id: "account_money" },
-    ],
+    excluidos: [{ id: "ticket" }, { id: "atm" }, { id: "bank_transfer" }],
     parcelas: 12,
+    carteiraExcluida: true,
   },
 }
 
@@ -182,6 +176,11 @@ export function construirPreferencia(
     statement_descriptor: "REALVALOR",
     payment_methods: {
       excluded_payment_types: meio.excluidos,
+      // A carteira do Mercado Pago (`account_money`) tem a lista dela: misturá-la
+      // com os tipos acima faz o provedor recusar a preferência inteira com 400.
+      excluded_payment_methods: meio.carteiraExcluida
+        ? [{ id: "account_money" }]
+        : [],
       installments: meio.parcelas,
     },
     // `binary_mode` fica de fora de propósito: ele faz o provedor devolver só
