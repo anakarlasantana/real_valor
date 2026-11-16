@@ -426,7 +426,7 @@ describe("o par imagem ⇔ enquadramento", () => {
     // `list:image` não tem tipo de item: os itens são inline no `InstagramSection`.
     const inline = /images: \{([\s\S]*?)\}\[\]/.exec(contractSource)
 
-    expect(inline?.[1]).toMatch(/imageUrl: string[\s\S]*imageUrlCrop\??:/)
+    expect(inline?.[1]).toMatch(/imageUrl\??: string[\s\S]*imageUrlCrop\??:/)
   })
 })
 

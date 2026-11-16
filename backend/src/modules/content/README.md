@@ -131,7 +131,7 @@ o `GET /admin/content` devolve em `categories`: lista **do banco**, e não `opti
 do contrato, porque categoria nasce e morre no painel do Medusa (uma lista
 fechada ofereceria o que não existe — era exatamente o "Blazers").
 
-**As bases anteriores à R1.** `scripts/seed-content.ts` fecha a conversão
+**As bases anteriores à R1.** `scripts/seed/conteudo.ts` fecha a conversão
 (`retireTextFilters`): a chave antiga de texto é **neutralizada** (`null`) e a
 seção que ficou sem chips recebe os do padrão, por **handle**
 (`DEFAULT_FEATURED_FILTERS` — o id é criado pelo seed a cada base, então o que se
@@ -144,7 +144,7 @@ chave do link e shape nenhum de chip.
 
 **A versão do schema subiu para 5** por isso: o campo dos chips mudou de `kind`
 (`list:text` → `list:category`), o editor do CRM muda de caixa de texto para
-seletor, e o `--check` do `seed-schema` acusa um registro v4 gravado.
+seletor, e o `--check` do `seed` acusa um registro v4 gravado.
 
 ## Por que uma tabela só, com `data` em JSON
 
@@ -527,7 +527,7 @@ O próximo "Salvar ordem" normaliza a faixa inteira (na home, de 1 em 1).
 
 O formulário do CRM (tipos, rótulos, campos, opções, grupos) é uma **linha** em
 `content_contract`, não uma leitura do código. `contract.ts` é o **bootstrap**;
-`schema.ts` monta o schema a partir dele; `seed-schema` grava a linha; e é do
+`schema.ts` monta o schema a partir dele; `seed` grava a linha; e é do
 registro que a API tira tanto o formulário que o painel desenha quanto as regras
 do que pode ser gravado.
 
@@ -545,13 +545,13 @@ o payload que a loja lê (`schema`, `schemaVersion`). A tabela se chamava
 
 Três decisões que sustentam isso:
 
-- **A migration cria só a tabela.** O `insert` fica no `seed-schema`, porque uma
+- **A migration cria só a tabela.** O `insert` fica no `seed`, porque uma
   linha com o JSON do schema dentro da migration faria o histórico depender do
   código do dia em que rodou (banco novo em 2027 nasceria com o schema de 2027,
   o de 2026 com o de 2026).
 - **A versão mora no contrato** (`SCHEMA_VERSION`), carimbada na gravação. Se
   derivasse do banco, ninguém veria a divergência entre o schema que gravou os
-  dados e o do código — que é o que `seed-schema --check` acusa.
+  dados e o do código — que é o que `seed -- --check` acusa.
 - **Sem a linha, a API não quebra:** `getContract()` cai no contrato e declara
   `schemaSource: "contract"`, o que torna visível que o registro ainda não foi
   gravado. Banco novo funciona antes do primeiro `make seed`.
@@ -559,7 +559,7 @@ Três decisões que sustentam isso:
 Conferir o registro contra o contrato (é o que a CI deve chamar):
 
 ```bash
-cd backend && ./node_modules/.bin/medusa exec ./src/scripts/seed-schema.ts -- --check
+cd backend && ./node_modules/.bin/medusa exec ./src/scripts/seed/conteudo.ts -- --check
 ```
 
 Sai != 0 e diz **qual** diverge (`fields: hero`), ou avisa que a linha não
@@ -575,7 +575,7 @@ existe.
 | `PATCH /admin/content?id=` | admin | Edição parcial; só valida o que veio. Coluna × conteúdo é decidido pelo **nome da coluna** (ver `modules/content/payload.ts`). `productIds` e `filters` são as referências: a lista manda, e ausente = não mexe |
 | `DELETE /admin/content?id=` | admin | Remove — desvinculando a curadoria e os chips antes (ver `curation.ts` e `filters.ts`) |
 | `POST /admin/content/order` | admin | Publica a ordem das seções: `{ ids }` na ordem da tela (e `surface`, `home` por padrão). Renumera pelas casas livres da faixa da superfície (`bandFor`: na home, de 1 em 1, pulando as casas ancoradas; no tema, de 10 em 10) e grava **só o que muda**, numa chamada. Recusa lista incompleta, id repetido, id inexistente e seção fixa; avisa a loja uma vez |
-| `POST /admin/content/restore` | admin | Recria as seções padrão que faltam. Idempotente (só cria o que não existe) — é o mesmo que `scripts/seed-content.ts` faz |
+| `POST /admin/content/restore` | admin | Recria as seções padrão que faltam. Idempotente (só cria o que não existe) — é o mesmo que `scripts/seed/conteudo.ts` faz |
 
 `GET /store/content` devolve as seções achatadas, prontas para render, mais a
 versão do schema com que foram gravadas:
@@ -655,7 +655,7 @@ O que a página faz, além de editar os campos de uma seção:
   tema, o único que aparece é `theme` — uma estação nova.
 - **Remover** — com confirmação: não há desfazer.
 - **Restaurar padrão** — recria o que falta na superfície em edição, pela mesma
-  função que o `seed-content.ts` chama (`modules/content/restore.ts`): as seções
+  função que o `seed/conteudo.ts` chama (`modules/content/restore.ts`): as seções
   do protótipo na vitrine, as estações na aba do tema (`defaultsFor`).
 
 A aba **Tema da loja** é a mesma tela com outro conteúdo: cada linha é uma
@@ -708,20 +708,20 @@ Semear a cópia do protótipo (idempotente; o `make seed` já chama) — semeia 
 
 ```bash
 cd backend
-./node_modules/.bin/medusa exec ./src/scripts/seed-content.ts
+./node_modules/.bin/medusa exec ./src/scripts/seed/conteudo.ts
 ```
 
 Recriar do zero (o `--force` precisa do `--` antes; nesta versão do CLI as
 flags chegam em `process.argv`, não em `ExecArgs.args`):
 
 ```bash
-./node_modules/.bin/medusa exec ./src/scripts/seed-content.ts -- --force
+./node_modules/.bin/medusa exec ./src/scripts/seed/conteudo.ts -- --force
 ```
 
 Gravar o registro do schema (o `make seed` já chama):
 
 ```bash
-yarn seed-schema     # ou: medusa exec ./src/scripts/seed-schema.ts
+yarn seed     # ou: medusa exec ./src/scripts/seed/conteudo.ts
 yarn check-schema    # só confere, sai != 0 se o registro estiver velho
 ```
 

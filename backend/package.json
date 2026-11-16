@@ -15,9 +15,9 @@
   "scripts": {
     "build": "medusa build",
     "seed": "medusa exec ./src/scripts/seed.ts",
-    "seed-content": "medusa exec ./src/scripts/seed-content.ts",
-    "seed-schema": "medusa exec ./src/scripts/seed-schema.ts",
-    "check-schema": "medusa exec ./src/scripts/seed-schema.ts -- --check",
+    "seed-limpar": "medusa exec ./src/scripts/limpar-sujeira.ts",
+    "seed-limpar:aplicar": "medusa exec ./src/scripts/limpar-sujeira.ts -- --aplicar",
+    "check-schema": "medusa exec ./src/scripts/seed.ts -- --check",
     "start": "medusa start",
     "dev": "medusa develop",
     "test:integration:http": "TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",

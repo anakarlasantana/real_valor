@@ -12,7 +12,7 @@
  * flag vem na prática.
  *
  * Um lugar só porque a tentação é reescrever a mesma linha em cada script, e o
- * `--force` do `seed-content` já esteve documentado sem funcionar, justamente
+ * `--force` do `seed` já esteve documentado sem funcionar, justamente
  * por causa dessa leitura.
  */
 export function scriptFlags(args?: string[]): string[] {

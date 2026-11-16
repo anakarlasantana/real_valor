@@ -21,7 +21,7 @@ import { isSectionType, type HomeSection } from "@lib/content/home-sections"
  * Descartar (com log no servidor) é o comportamento pedido pelo plano: a loja
  * valida o que recebe e ignora o que não conhece. O erro de digitação no
  * contrato continua visível, porque o log sai no servidor — e o `--check` do
- * `seed-schema` é quem acusa schema gravado sem o storefront saber.
+ * `seed` é quem acusa schema gravado sem o storefront saber.
  */
 export function supportedSections(
   sections: unknown,

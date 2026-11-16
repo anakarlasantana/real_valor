@@ -89,7 +89,7 @@ export type HeroSection = SectionBase & {
 /** Um slide da capa: a foto e a cópia da capa ou do carrossel. A ordem dos campos é
  * a do sub-formulário no CRM (`ITEM_FIELDS["list:hero-slide"]`); o scrim é desenho. */
 export type HeroSlide = {
-  imageUrl: string
+  imageUrl?: string
   imageUrlCrop?: string
   imageAlt: string
   eyebrow: string
@@ -116,7 +116,7 @@ export type BenefitsSection = SectionBase &
 export type CollectionHighlight = {
   title: string
   subtitle: string
-  imageUrl: string
+  imageUrl?: string
   imageUrlCrop?: string
   imageAlt: string
   href: string
@@ -188,7 +188,7 @@ export type EditorialSection = SectionBase &
     body: string
     ctaLabel: string
     ctaHref: string
-    imageUrl: string
+    imageUrl?: string
       imageUrlCrop?: string
     imageAlt: string
     imagePosition: "left" | "right"
@@ -207,7 +207,7 @@ export type BannerSection = SectionBase &
     /** O realce do título: a segunda linha, em itálico (`<em>`) — como no
      * `editorial`. Vazio, o título é uma linha só. */
     titleEmphasis?: string
-    imageUrl: string
+    imageUrl?: string
       imageUrlCrop?: string
     imageAlt: string
     ctaLabel: string
@@ -286,7 +286,7 @@ export type InstagramSection = SectionBase &
     handle: string
     title: string
     images: {
-      imageUrl: string
+      imageUrl?: string
       imageUrlCrop?: string
       imageAlt: string
     }[]
@@ -951,12 +951,11 @@ export const SECTION_FIELDS: Record<SectionType, readonly FieldSpec[]> = {
     ...appearanceBackground("imagePosition"),
   ],
   banner: [
-    // A foto é o fundo inteiro: sem ela não há faixa — por isso é obrigatória.
+    // A foto é o fundo; sem ela a faixa vira o bloco de cor da régua.
     ...imageField(
       "imageUrl",
       "Imagem",
-      "A foto que ocupa a faixa inteira. Envie pelo botão, ou informe um caminho do site (ex.: /brand/story-2.jpg) ou uma URL.",
-      { required: true }
+      "A foto que ocupa a faixa inteira. Envie pelo botão, ou informe um caminho do site (ex.: /brand/story-2.jpg) ou uma URL."
     ),
     { name: "imageAlt", label: "Imagem (alt)", kind: "text" },
     { name: "eyebrow", label: "Eyebrow", kind: "text" },

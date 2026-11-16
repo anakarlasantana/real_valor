@@ -4,7 +4,7 @@
  * É o botão "Restaurar padrão" do CRM, e o que transforma um banco que veio
  * vazio numa loja montada. A regra (o que é "padrão", o que é "faltando" e o
  * que fazer com o que já existe) mora em `modules/content/restore.ts`, porque o
- * `make seed` faz a mesma coisa pela CLI — ver `scripts/seed-content.ts`.
+ * `make seed` faz a mesma coisa pela CLI — ver `scripts/seed/conteudo.ts`.
  */
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"

@@ -149,8 +149,8 @@ jobs:
       - name: gravar e conferir o registro do schema
         run: |
           cd backend
-          yarn medusa exec ./src/scripts/seed-schema.ts
-          yarn medusa exec ./src/scripts/seed-schema.ts -- --check
+          yarn medusa exec ./src/scripts/seed.ts -- --contrato
+          yarn medusa exec ./src/scripts/seed.ts -- --check
 
   build:
     name: build do storefront

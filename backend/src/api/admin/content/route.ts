@@ -75,7 +75,7 @@ export async function GET(
     order: orderFaixa(surface),
     /**
      * O formulário lido do **registro no Postgres** (`getContract()`), o mesmo
-     * lugar de onde o `seed-schema` tira a linha; `buildSchema()` é o bootstrap.
+     * lugar de onde o `seed` tira a linha; `buildSchema()` é o bootstrap.
      */
     schema: stored.schema,
     /** A versão do schema com que estes dados foram escritos. */

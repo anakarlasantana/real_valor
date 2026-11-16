@@ -220,10 +220,9 @@ real_valor/
 │       ├── modules/content/          # módulo local `content` (conteúdo editorial da marca)
 │       ├── api/store/ api/admin/     # rotas customizadas da Store API e do Admin
 │       ├── jobs/ links/ subscribers/ workflows/
-│       └── scripts/                  # `seed.ts` (admin/região/chaves), `seed-content.ts`
-│                                       #   (o conteúdo das duas superfícies: a vitrine e o
-│                                       #   tema) e `seed-schema.ts`
-│                                       #   (registro do schema no Postgres)
+│       └── scripts/                  # `seed.ts` (canal, região, frete, caixa, chave,
+│                                       #   vitrine, tema e contrato — o único comando) e
+│                                       #   `limpar-sujeira.ts` (manutenção, opt-in)
 │
 └── frontend/                         # Next.js 15 (App Router) — storefront
     ├── Dockerfile                    # deps → builder → runner (standalone, PROD) | deps → dev (DEV)
@@ -350,13 +349,13 @@ superfícies** — a vitrine e o tema —, com o seletor vindo do contrato
 
 | O que | Como |
 | :--- | :--- |
-| Copy, links, imagens e aparência das seções | os campos vêm do contrato — campo novo no `contract.ts` aparece no formulário (`make gen` + `make seed-schema`) |
+| Copy, links, imagens e aparência das seções | os campos vêm do contrato — campo novo no `contract.ts` aparece no formulário (`make gen` + `make seed`) |
 | A paleta e as fontes da loja (**aba "Tema da loja"**) | cada linha é uma estação (`default` + Black Friday, Natal e Verão), com a janela de datas em `MM-DD`, as seis cores em `#RRGGBB` (roda de cores do navegador) e os três papéis de fonte no seletor. Quem escolhe a estação é a **data** — a janela mais estreita vence (a Black Friday ganha do Natal) —, e "Estação no ar" liga/desliga a linha sem apagar a paleta. Campo em branco **herda** o `default`. É dado no banco, como o resto: uma edição aqui aparece na loja pelo mesmo aviso de cache |
 | Ordem | setas na listagem **só na vitrine**; a mudança fica na tela até "Salvar ordem", que manda a lista de ids de uma vez (o servidor renumera pelas **casas livres** da faixa — na home, 1 a 10, com o bloco ancorado em 1, 2, 3, 4 e 10; no tema, de 10 em 10 —, grava só o que mudou e avisa a loja **uma vez**). O numeral da seção aparece ao lado do rótulo — o campo "Ordem" saiu do formulário — e, com a ordem ainda não publicada, mostra o número que a seção **vai** receber. As seções marcadas como **Fixo** (a barra de anúncio, o cabeçalho, a capa, a faixa de benefícios e o rodapé) não têm seta: elas mostram a casa delas (1, 2, 3, 4 e 10) junto da etiqueta |
 | Criar seção | "Nova seção" escolhe tipo e âncora; a seção nasce com o conteúdo padrão do tipo e entra no fim. Na aba do tema o mesmo botão cria uma **estação** — os tipos oferecidos são os da superfície em edição |
 | Remover seção | lixeira na linha, com confirmação — não há desfazer |
 | Cabeçalho, rodapé e barra de anúncio | são blocos como os outros, no mesmo lugar, e **únicos**: o segundo não é oferecido. Aparecem marcados como **Fixo** (a coluna `fixed` da seção) e não têm setas nem campo "Ordem" — quem os posiciona é a moldura da loja, em todas as rotas, e a loja os resolve por tipo |
-| Restaurar o padrão | recria o que falta **na superfície em edição** (é o mesmo que `yarn seed-content` faz dentro do `make seed`): as seções do protótipo na vitrine, as estações na aba do tema. Não altera o que já existe |
+| Restaurar o padrão | recria o que falta **na superfície em edição** (é o mesmo que `yarn seed` faz dentro do `make seed`): as seções do protótipo na vitrine, as estações na aba do tema. Não altera o que já existe |
 | Salvar a edição de uma seção | a barra “Alterações não salvas” aparece no topo do formulário quando algo mudou, com **Salvar** e **Descartar** — sem alteração, não há o que salvar |
 | Fotos | envio pelo botão do campo de imagem; o valor gravado é a **chave** do arquivo |
 
@@ -397,14 +396,14 @@ O gerador continua existindo para o que o contrato **origina** e não é código
 
 O **contrato do CRM** (os formulários: tipos, rótulos, campos, opções) é um **registro no
 Postgres** — a tabela `content_contract` —, não uma leitura do código: o `contract.ts` é o
-*bootstrap* e o `seed-schema` grava a linha. A API tira do registro tanto o formulário que o
+*bootstrap* e o `seed` grava a linha. A API tira do registro tanto o formulário que o
 painel desenha quanto as regras do que pode ser gravado, então **um campo novo no registro
 aparece no CRM sem deploy**, e um campo que o código declara e o registro não tem é
 recusado com 400. (O **dado** gravado continua se chamando `schema`: o payload tem `schema` e
 `schemaVersion` — contrato é o registro, schema é o dado.)
 
 ```bash
-make seed-schema   # grava (o `make seed` já chama)
+make seed          # grava tudo: migrations, loja, conteúdo e o registro do contrato
 make check-schema  # só confere: sai != 0 e diz o que divergiu
 ```
 

@@ -102,7 +102,7 @@ if [ "$stack_up" -gt 0 ]; then
   if [ "$(pg_q "select to_regclass('public.content_contract') is not null")" = "t" ]; then
     linhas="$(pg_q 'select count(*) from content_contract')"
     if [ "${linhas:-0}" -gt 0 ]; then ok "registro do contrato gravado (${linhas} linha)"
-    else warn "tabela existe, mas o registro não foi gravado" "make seed-schema"
+    else warn "tabela existe, mas o registro não foi gravado" "make seed"
     fi
   else
     warn "a tabela content_contract ainda não existe" "make migrate"

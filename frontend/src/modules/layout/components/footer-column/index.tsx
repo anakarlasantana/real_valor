@@ -1,4 +1,7 @@
-import { type FooterColumn as FooterColumnContent } from "@lib/content/home-sections"
+import {
+  findSurface,
+  type FooterColumn as FooterColumnContent,
+} from "@lib/content/home-sections"
 import { type LivePage } from "@lib/data/pages"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
@@ -29,8 +32,8 @@ import NavLink from "@modules/layout/components/nav-link"
  * **o que alguém escolheu**, e um link digitado à mão pode apontar para uma
  * página que ainda não foi escrita (o defeito medido em 14.16 — "o link está
  * quebrado" é pior do que "o link não existe"). Aqui a lista vem do
- * conteúdo, já filtrada pela régua do 200 no servidor, e é por isso que ela
- * não tem como prometer um 404.
+ * conteúdo, já filtrada pela régua do 200 no servidor, e um link digitado para
+ * uma página declarada segue a mesma régua: fora do ar, não aparece.
  *
  * Regra de ouro das listas: vazia esconde o bloco. Coluna sem título ou
  * sem itens não aparece — é o que permite publicar o rodapé antes de o
@@ -246,7 +249,11 @@ export default function FooterColumn({
     )
   }
 
-  const links = column.links ?? []
+  const links = (column.links ?? []).filter((link) =>
+    linkDaPagina(link.href)
+      ? pages.some((page) => page.path === link.href)
+      : true
+  )
 
   if (links.length === 0) {
     return null
@@ -269,4 +276,8 @@ export default function FooterColumn({
       </ul>
     </ColumnShell>
   )
+}
+
+function linkDaPagina(href: string): boolean {
+  return findSurface(href.replace(/^\//, ""))?.kind === "page"
 }

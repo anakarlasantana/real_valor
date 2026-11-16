@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart recreate logs logs-all ps build migrate seed clean-db shell-backend shell-frontend health logs-admin revalidate gen test check types build-admin doctor admin-password
+.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check types build-admin doctor admin-password
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -41,7 +41,7 @@ help:
 	@echo "  Build e dados"
 	@echo "    make build         - Reconstroi as imagens do backend e do frontend"
 	@echo "    make migrate       - Aplica as migracoes do Medusa v2"
-	@echo "    make seed          - Prepara a loja (canais, regiao, frete e a chave do storefront), o conteudo (vitrine e tema) e o schema do CRM"
+	@echo "    make seed          - O UNICO comando de seed: migrations, loja (canal, regiao, frete, chave), conteudo (vitrine e tema) e o contrato do CRM"
 	@echo "    make clean-db      - APAGA os volumes do banco e reinicia do zero"
 	@echo ""
 	@echo "  Utilitarios"
@@ -166,7 +166,7 @@ build:
 # ---------------------------------------------------------------------------
 # Dados
 # ---------------------------------------------------------------------------
-# `migrate`, `seed` e `seed-schema` rodam com `-u root` de proposito: em DEV o
+# `migrate`, `seed` e `seed-limpar` rodam com `-u root` de proposito: em DEV o
 # `/app/node_modules` e' um volume anonimo herdado da imagem (dono root), e o
 # runner de migration quer criar `dist/migrations` dentro dos pacotes — sem
 # isso, `make migrate` morre com EACCES. A aplicacao em si (medusa develop,
@@ -174,52 +174,49 @@ build:
 migrate:
 	$(COMPOSE) exec -u root backend yarn medusa db:migrate
 
-# `seed` = bootstrap da loja (`seed.ts`) + conteúdo (`seed-content.ts`) +
-# registro do schema (`seed-schema.ts`).
+# O UNICO comando de seed: migrations, loja, conteudo, contrato e a chave no
+# `.env` — de um banco vazio ao app usavel.
 #
-# **Não há catálogo aqui.** O `seed.ts` não cria mais categoria, produto nem
-# nível de estoque (saiu em 2026-10-08): o catálogo é do lojista, pelo painel, e
-# uma base semeada nasce com a vitrine **vazia** (os estados vazios das seções
-# estão desenhados). O que ele cria é o que a loja precisa para funcionar —
-# canais de venda, moeda, região, nível fiscal, centro de distribuição, frete e a
-# publishable key, que ele imprime no fim para o `.env` do storefront. O porquê,
-# e o roteiro do que entra no lugar, em
-# `docs/real-valor/12-script-enriquecimento-catalogo.md`.
+# **Nao ha catalogo aqui.** Produto, categoria, colecao e pagina sao do lojista:
+# a base nasce com a vitrine vazia (os estados vazios das secoes estao
+# desenhados) e o painel com o conteudo pronto para editar.
 #
-# Os três são idempotentes: rodar de novo numa base já semeada não altera nada.
+# O que ele cria: canal de venda, moeda BRL, regiao Brasil, regiao fiscal,
+# centro de distribuicao (com o CEP de origem da cotacao), vinculos, perfil e
+# zona de envio, tres opcoes do SuperFrete, a caixa padrao, a publishable key —
+# as secoes da vitrine, as estacoes do tema e o registro do contrato.
 #
-# O `seed-content` popula as **duas** superfícies de conteúdo: as seções da
-# vitrine e as estações do tema (a mesma lista que o gerador escreve em
-# `frontend/themes/`, e que a loja lê do payload desde a R5).
+# Idempotente: rodar de novo numa base semeada nao altera nada.
 #
-# O conteúdo entra aqui para uma base nova nascer montada sem ninguém precisar
-# abrir o painel — e é a MESMA regra do botão "Restaurar padrão" do CRM
-# (`backend/src/modules/content/restore.ts`): só cria o que falta.
+# A chave vai para o `.env` pelo `scripts/sincronizar-chave.sh` e backend e
+# storefront sao RECRIADOS no fim: o token e' aleatorio em base nova, e `.env`
+# com a chave de um banco antigo derruba a loja com 500 em toda pagina. O
+# `--force-recreate` tambem e' o que salva o backend de base virgem: em DEV ele
+# sobe antes das migrations (`RUN_MIGRATIONS=0`), falha ao carregar os modulos
+# e ficaria assim ate' alguem reiniciar.
 #
-# POR QUE EM CONTAINER AVULSO (`compose run`) E NAO `compose exec`: os tres
-# scripts precisam de mais heap do que o limite do servico em DEV. Medido em
-# 2026-10-06: com o limite de 2G do `docker-compose.override.yml`, o `seed` morria
-# com `make: *** [Makefile:188: seed] Error 137` — SIGKILL do cgroup, sem causa
-# aparente no log. O `medusa develop`, que ja roda dentro do MESMO container,
-# fica com ~1,2 GiB dos 2 GiB, e o seed nao tem onde crescer. O container do
-# `compose run` e proprio: mesmo limite, sem o dev server dentro — e' a MESMA
-# escolha, pelo MESMO motivo, do `build-admin` (ver o alvo).
-#
-# Os tres scripts num SO container: cada `compose run` cria um volume anonimo
-# novo para `/app/node_modules` (herdado da imagem), e tres `run` pagariam essa
-# copia tres vezes.
+# POR QUE EM CONTAINER AVULSO (`compose run`) E NAO `compose exec`: o seed
+# precisa de mais heap do que o limite do servico em DEV. Medido em 2026-10-06:
+# com o limite de 2G do `docker-compose.override.yml`, o seed morria com
+# `Error 137` — SIGKILL do cgroup, sem causa aparente no log. O container do
+# `compose run` e proprio: mesmo limite, sem o dev server dentro.
 #
 # `--max-old-space-size=1536`: com a heap limitada, um estouro vira
-# `FATAL ERROR: Reached heap limit` no log em vez de SIGKILL silencioso.
+# `FATAL ERROR: Reached heap limit` em vez de SIGKILL silencioso.
 seed:
 	@test -n "$$($(COMPOSE) ps -q postgres)" || { echo "postgres nao esta rodando (rode 'make up')"; exit 1; }
-	@$(COMPOSE) run --rm -T -u root -e NODE_OPTIONS=--max-old-space-size=1536 backend sh -c 'yarn seed && yarn seed-content && yarn seed-schema'
+	@$(COMPOSE) run --rm -T -u root -e NODE_OPTIONS=--max-old-space-size=1536 backend sh -c 'yarn medusa db:migrate && yarn seed'
+	@scripts/sincronizar-chave.sh
+	@$(COMPOSE) up -d --force-recreate backend frontend >/dev/null
+	@echo ""
+	@echo "  Loja: http://localhost:8000/br   ·   Painel: http://localhost:9000/painel"
 
-# O registro do schema do CRM no Postgres: o contrato e o bootstrap, o banco e
-# a fonte em runtime. Entra no `seed` porque um banco novo precisa dele para o
-# CRM deixar de servir o bootstrap.
-seed-schema:
-	$(COMPOSE) exec -u root backend yarn seed-schema
+# Apaga o residuo do seed antigo (catalogo de demonstracao, locais de estoque
+# duplicados e opcoes de frete legadas). NAO e seed: e manutencao, e e opt-in.
+seed-limpar:
+	@echo "AVISO: isto apaga produtos de demonstracao, locais de estoque vazios e opcoes de frete legadas."
+	@read -r -p "Confirma? Digite 'sim' para continuar: " r; [ "$$r" = "sim" ] || { echo "Cancelado."; exit 1; }
+	$(COMPOSE) run --rm -T -u root -e NODE_OPTIONS=--max-old-space-size=1536 backend yarn seed-limpar:aplicar
 
 # So confere: nao grava nada e sai != 0 quando o registro esta velho (ou nao
 # existe). E o que a CI chama depois de `make check`.

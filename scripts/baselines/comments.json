@@ -5,20 +5,20 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 39369,
-      "comments": 8854
+      "lines": 39380,
+      "comments": 8855
     },
     "admin/src": {
       "lines": 9884,
       "comments": 1876
     },
     "backend/src": {
-      "lines": 24167,
-      "comments": 4672
+      "lines": 24438,
+      "comments": 4628
     },
     "packages/contrato/src": {
-      "lines": 2822,
-      "comments": 574
+      "lines": 2840,
+      "comments": 581
     },
     "scripts": {
       "lines": 1539,
@@ -717,8 +717,8 @@
       "header": 5
     },
     "frontend/src/modules/layout/components/footer-column/index.tsx": {
-      "comments": 72,
-      "lines": 273,
+      "comments": 73,
+      "lines": 284,
       "header": 5
     },
     "frontend/src/modules/layout/components/nav-link/index.tsx": {
@@ -1348,7 +1348,7 @@
     },
     "backend/src/modules/content/__tests__/schema-record.unit.spec.ts": {
       "comments": 16,
-      "lines": 193,
+      "lines": 216,
       "header": 10
     },
     "backend/src/modules/content/__tests__/themes.unit.spec.ts": {
@@ -1363,7 +1363,7 @@
     },
     "backend/src/modules/content/__tests__/wiring.unit.spec.ts": {
       "comments": 73,
-      "lines": 307,
+      "lines": 305,
       "header": 25
     },
     "backend/src/modules/content/contract.ts": {
@@ -1601,35 +1601,25 @@
       "lines": 23,
       "header": 17
     },
-    "backend/src/scripts/seed/chave.ts": {
-      "comments": 28,
-      "lines": 100,
+    "backend/src/scripts/seed/conteudo.ts": {
+      "comments": 32,
+      "lines": 192,
       "header": 5
     },
-    "backend/src/scripts/seed/regiao.ts": {
-      "comments": 13,
-      "lines": 73,
-      "header": 5
+    "backend/src/scripts/seed/sujeira.ts": {
+      "comments": 20,
+      "lines": 102,
+      "header": 8
     },
     "backend/src/scripts/seed/vinculo.ts": {
       "comments": 10,
       "lines": 30,
       "header": 1
     },
-    "backend/src/scripts/seed-content.ts": {
-      "comments": 53,
-      "lines": 129,
-      "header": 5
-    },
-    "backend/src/scripts/seed-schema.ts": {
-      "comments": 26,
-      "lines": 125,
-      "header": 5
-    },
     "backend/src/scripts/seed.ts": {
       "comments": 22,
-      "lines": 55,
-      "header": 4
+      "lines": 62,
+      "header": 5
     },
     "backend/src/subscribers/__tests__/catalog-revalidate.unit.spec.ts": {
       "comments": 45,
@@ -1643,12 +1633,12 @@
     },
     "packages/contrato/src/contract.ts": {
       "comments": 375,
-      "lines": 1734,
+      "lines": 1733,
       "header": 4
     },
     "packages/contrato/src/defaults.ts": {
       "comments": 70,
-      "lines": 375,
+      "lines": 367,
       "header": 5
     },
     "packages/contrato/src/payment.ts": {
@@ -1657,8 +1647,8 @@
       "header": 3
     },
     "packages/contrato/src/schema.ts": {
-      "comments": 55,
-      "lines": 173,
+      "comments": 62,
+      "lines": 200,
       "header": 5
     },
     "scripts/check-admin-modules.mjs": {

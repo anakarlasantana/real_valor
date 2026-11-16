@@ -31,6 +31,7 @@ import {
   SCHEMA_KEY,
   SCHEMA_VERSION,
   buildSchema,
+  contratoEmDia,
   resolveSchema,
 } from "../schema"
 
@@ -188,5 +189,27 @@ describe("o schema servido (o payload do CRM)", () => {
     expect(schema.darkTokens).toEqual(THEME_DARK_TOKENS)
     expect(schema.singletonTypes).toEqual(SINGLETON_SECTION_TYPES)
     expect(schema.surfaces).toEqual(CONTENT_SURFACES)
+  })
+})
+
+describe("contratoEmDia", () => {
+  const schema = buildSchema()
+
+  it("registro igual ao contrato está em dia", () => {
+    expect(contratoEmDia(schema, SCHEMA_VERSION, "db")).toBe(true)
+  })
+
+  it("versão diferente reprova, mesmo com o schema igual", () => {
+    expect(contratoEmDia(schema, SCHEMA_VERSION - 1, "db")).toBe(false)
+  })
+
+  it("schema diferente reprova", () => {
+    const velho = { ...schema, types: schema.types.slice(1) }
+
+    expect(contratoEmDia(velho, SCHEMA_VERSION, "db")).toBe(false)
+  })
+
+  it("sem registro no banco reprova — é o caso do bootstrap", () => {
+    expect(contratoEmDia(schema, SCHEMA_VERSION, "contract")).toBe(false)
   })
 })

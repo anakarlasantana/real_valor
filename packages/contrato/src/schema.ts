@@ -1,8 +1,10 @@
 /**
  * O schema do CRM: o que o formulário é, em um único objeto, montado de
- * `contract.ts`. Mora num lugar só porque a rota e o `seed-schema` precisam do
+ * `contract.ts`. Mora num lugar só porque a rota e o `seed` precisam do
  * mesmo dado; o contrato é o bootstrap quando o registro do Postgres não existe.
  */
+import { isDeepStrictEqual } from "node:util"
+
 import {
   CONTENT_DESTINATIONS,
   CONTENT_SURFACES,
@@ -33,11 +35,11 @@ import {
 } from "./crop.ts"
 
 /**
- * A versão do schema: `seed-schema` carimba na escrita, e ela sobe quando o
- * formato muda (chave, campo ou tipo novo). Sem `make seed-schema` o CRM desenha
- * o formulário antigo e a API **recusa** os campos novos — o `--check` acusa.
+ * A versão do schema: o `seed` carimba na escrita, e ela sobe quando o formato
+ * muda (chave, campo ou tipo novo). Sem `make seed` o CRM desenha o formulário
+ * antigo e a API **recusa** os campos novos — o `--check` acusa.
  */
-export const SCHEMA_VERSION = 17
+export const SCHEMA_VERSION = 18
 
 /** A chave da linha do registro — fixa, para o `saveSchema` ser um upsert. */
 export const SCHEMA_KEY = "content"
@@ -117,8 +119,33 @@ export function resolveSchema(row: SchemaRow): StoredSchema {
   }
 }
 
+/**
+ * O registro está em dia com o contrato?
+ *
+ * `isDeepStrictEqual`, e não comparar string: o `data` é `jsonb`, que não
+ * preserva a ordem das chaves — `JSON.stringify` acusaria divergência numa base
+ * recém-gravada.
+ */
+export function contratoEmDia(
+  stored: unknown,
+  version: number,
+  source: "db" | "contract",
+  esperado: ContentSchemaPayload = buildSchema()
+): boolean {
+  if (source !== "db" || version !== SCHEMA_VERSION) {
+    return false
+  }
+
+  return Object.keys(esperado).every((key) =>
+    isDeepStrictEqual(
+      (stored as Record<string, unknown>)[key],
+      (esperado as Record<string, unknown>)[key]
+    )
+  )
+}
+
 /** Monta o schema a partir do contrato — o mesmo contrato produz sempre o
- * mesmo schema, e é por isso que o `--check` do seed-schema pode comparar. */
+ * mesmo schema, e é por isso que o `--check` do seed pode comparar. */
 export function buildSchema(): ContentSchemaPayload {
   return {
     types: CONTENT_TYPES,

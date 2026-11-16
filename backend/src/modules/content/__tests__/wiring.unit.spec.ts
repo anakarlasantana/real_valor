@@ -49,8 +49,8 @@ const orderRoute = read(
   "route.ts"
 )
 const service = read("backend", "src", "modules", "content", "service.ts")
-const seedSchema = read("backend", "src", "scripts", "seed-schema.ts")
-const seedContent = read("backend", "src", "scripts", "seed-content.ts")
+const seed = read("backend", "src", "scripts", "seed.ts")
+const conteudo = read("backend", "src", "scripts", "seed", "conteudo.ts")
 const flags = read("backend", "src", "scripts", "flags.ts")
 
 describe("a rota do admin e o registro do schema", () => {
@@ -118,22 +118,20 @@ describe("a porta da ordem", () => {
 })
 
 describe("o registro do schema, do lado do seed", () => {
-  it("tem `--check`, que não grava e compara sem `stringify`", () => {
-    expect(seedSchema).toContain("--check")
-    expect(seedSchema).toContain("isDeepStrictEqual")
+  it("tem `--check` e `--contrato`, e não grava no `--check`", () => {
+    expect(seed).toContain("--check")
+    expect(seed).toContain("--contrato")
     // `data` é `jsonb`: não preserva ordem de chave, então `JSON.stringify`
-    // acusaria diff numa base recém-gravada.
-    expect(seedSchema).not.toContain("JSON.stringify(stored")
+    // acusaria diff numa base recém-gravada — quem compara é `contratoEmDia`.
+    expect(seed).not.toContain("JSON.stringify(stored")
   })
 
-  it("os dois seeds leem as flags de `process.argv`, pelo helper", () => {
+  it("o seed lê as flags de `process.argv`, pelo helper", () => {
     expect(flags).toContain("process.argv")
-    expect(seedSchema).toContain("scriptFlags")
-    expect(seedContent).toContain("scriptFlags")
+    expect(seed).toContain("scriptFlags")
     // A leitura própria era o defeito: o `--force` documentado voltava a ser
     // ignorado em silêncio.
-    expect(seedSchema).not.toMatch(/\(args \?\? \[\]\)\.includes\(/)
-    expect(seedContent).not.toMatch(/\(args \?\? \[\]\)\.includes\(/)
+    expect(seed).not.toMatch(/\(args \?\? \[\]\)\.includes\(/)
   })
 
   it("o seed de conteúdo semeia toda página declarada", () => {
@@ -142,8 +140,8 @@ describe("o registro do schema, do lado do seed", () => {
     // contrato e no CRM e **não** numa base nova — que é a linha "o loop do seed"
     // da tabela da superfície nova (14.10 do doc 14). O `...` é o que garante que
     // a lista está **dentro** do loop, e não só citada.
-    expect(seedContent).toContain("PAGE_SURFACES")
-    expect(seedContent).toMatch(/\.\.\.PAGE_SURFACES/)
+    expect(conteudo).toContain("PAGE_SURFACES")
+    expect(conteudo).toMatch(/\.\.\.PAGE_SURFACES/)
   })
 
   it("o serviço delega a decisão registro × bootstrap a `resolveSchema`", () => {

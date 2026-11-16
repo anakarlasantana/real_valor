@@ -27,7 +27,7 @@ Fora do escopo: tradução de PDP/checkout, catálogo, frete e pagamento.
 | Superfícies declaradas | **Duas** — a vitrine e o tema | `CONTENT_SURFACES`, `packages/contrato/src/contract.ts:1686` e `:1707` |
 | Leitura | Qualquer nome de superfície é aceito; só o `type` é validado | `backend/src/api/store/content/route.ts:40` (surface e type). `?surface=sobre` responde `{"sections":[],"schemaVersion":10}` — **200**, não 400 |
 | Escrita | `POST /admin/content` aceita qualquer superfície; só o `theme` é travado | `backend/src/modules/content/validation.ts` → `resolveSurface` |
-| Painel | As abas saem do `schema`, e o `schema` vem do **registro no Postgres** — não do bundle | `admin/src/admin/routes/content/page.tsx:862`; `service.getContract`, `service.ts:87`; o writer é `backend/src/scripts/seed-schema.ts` |
+| Painel | As abas saem do `schema`, e o `schema` vem do **registro no Postgres** — não do bundle | `admin/src/admin/routes/content/page.tsx:862`; `service.getContract`, `service.ts:87`; o writer é `backend/src/scripts/seed/conteudo.ts` |
 | Cromo | Cabeçalho, anúncio e rodapé saem da superfície `home` e são desenhados pelo **layout**, em todas as rotas de `(main)` | `frontend/src/app/[countryCode]/(main)/layout.tsx` |
 | Revalidação | Gravar no CRM invalida a tag global do conteúdo | `backend/src/modules/content/revalidate.ts` → `revalidateTag("content")` |
 | Cache da loja | `tags: ["content"]`, `revalidate: 60`, `cache: "force-cache"` | `frontend/src/lib/data/content.ts:63` |
@@ -210,7 +210,7 @@ da F2 — até lá ela é uma página de texto com o `editorial`.
 | `resolveSurface` (`validation.ts`) | aceita qualquer string | um typo no `surface` some sem aviso — o mesmo defeito do `/stroe` | aceitar só `CONTENT_SURFACES[i].id`; fora disso **400** em pt-BR |
 | `POST /admin/content` | recusa o **segundo** `nav` na mesma superfície | uma página poderia receber `hero`/`footer`: bloco que a loja **nunca** desenha | recusar `isSingletonSectionType` fora de `home`/`theme` |
 | `defaultsFor` (`restore.ts:81`) | superfície desconhecida → `DEFAULT_HOME_SECTIONS` | "Restaurar padrão" numa página **cria a home dentro dela** (anúncio, cabeçalho, capa, rodapé) | `home` → vitrine · `theme` → estações · `page` → `DEFAULT_PAGE_SECTIONS[surface] ?? []` |
-| `seed-content.ts` | loop explícito em `["home", THEME_SURFACE]` (com o comentário que explica por quê) | o `make seed` **não** semeia página nenhuma: a base nova nasce com a página declarada e **vazia** — e vazia, pela regra do defeito 4, é 404 | acrescentar `...PAGE_SURFACES.map((s) => s.id)` ao loop |
+| `seed/conteudo.ts` | loop explícito em `["home", THEME_SURFACE]` (com o comentário que explica por quê) | o `make seed` **não** semeia página nenhuma: a base nova nasce com a página declarada e **vazia** — e vazia, pela regra do defeito 4, é 404 | acrescentar `...PAGE_SURFACES.map((s) => s.id)` ao loop |
 
 **Frontend.**
 
@@ -430,7 +430,7 @@ respondendo. É a categoria de defeito mais cara de descobrir depois.
 | 3 | Unicidade **por superfície**, não por site | `SINGLETON_SECTION_TYPES` (`contract.ts:564`) promete "uma vez por superfície" — então `hero` numa página passaria na validação | F1: a regra passa a ser "uma vez, e só na vitrine" |
 | 4 | A página **vazia vira a home** | o fallback de `lib/data/content.ts:72-82` foi escrito para a vitrine ("vazio é mais frequentemente seed que não rodou") | F1: leitor de página **sem** fallback; vazio → `notFound()` |
 | 5 | Página nova com cache próprio (defasagem eterna ou perdida) | a loja lê com `tags: ["content"]` + `revalidate: 60` (`content.ts:63`); um leitor paralelo sem a tag fica fora do `revalidateTag` | F1: um leitor só (`getSurfaceSections`), a mesma tag |
-| 6 | **Schema no banco ≠ contrato no bundle** | o CRM monta as abas do `schema` que vem do Postgres (`page.tsx:862`; writer `scripts/seed-schema.ts`); a rota da loja, do bundle | F1: `seed-schema` no deploy + o `--check` que já existe |
+| 6 | **Schema no banco ≠ contrato no bundle** | o CRM monta as abas do `schema` que vem do Postgres (`page.tsx:862`; writer `scripts/seed/conteudo.ts`); a rota da loja, do bundle | F1: `seed` no deploy + o `--check` que já existe |
 | 7 | Página fora do índice e com título errado | não há `sitemap.ts`/`robots.ts`; e o `generateMetadata` herdado publica o título do starter | F1: os dois arquivos + `generateMetadata` |
 
 O defeito 1 é o mais fácil de rir e o mais caro: quem apagar por engano uma seção de `/trocas` e clicar
@@ -463,7 +463,7 @@ monta, não do layout.
 | `backend/src/modules/content/validation.ts:226` | `resolveSurface` valida contra o contrato | regra |
 | `backend/src/api/admin/content/route.ts:168` | tipo único só em `home`/`theme` | regra |
 | `backend/src/modules/content/restore.ts:81` | `defaultsFor` com o ramo `page` | regra |
-| `backend/src/scripts/seed-content.ts` | o loop de superfícies passa a incluir `PAGE_SURFACES` | dado |
+| `backend/src/scripts/seed/conteudo.ts` | o loop de superfícies passa a incluir `PAGE_SURFACES` | dado |
 | `frontend/src/lib/data/content.ts` | `getSurfaceSections(surface)`; `getHomeSections` vira uma chamada dela | leitura |
 | `frontend/src/modules/content/**` *(novo)* | registry de blocos (o `switch` sai da home e passa a ser compartilhado) | render |
 | `frontend/src/app/[countryCode]/(main)/[slug]/page.tsx` *(novo)* | a rota: `slug` declarado → renderiza; senão `notFound()` | rota |
@@ -485,7 +485,7 @@ Três listas de "o que se esquece". Nenhuma delas falha no `tsc`: as três falha
 | :--- | :--- | :--- |
 | A declaração (`id`, `label`, `types`, `order`, `hint`) | `CONTENT_SURFACES` | não há aba, e a leitura da Store API devolve vazio |
 | O padrão da superfície | `DEFAULT_PAGE_SECTIONS` + `defaultsFor` | "Restaurar padrão" repõe **a vitrine** dentro da página (defeito 1) |
-| O loop do seed | `seed-content.ts` | `make seed` não semeia a página: base nova nasce com a página vazia |
+| O loop do seed | `seed/conteudo.ts` | `make seed` não semeia a página: base nova nasce com a página vazia |
 | O consumo (rota + sitemap) | `PAGE_SURFACES` | a página existe no banco e **não** existe na web |
 
 **Tipo de seção novo (F2)** — nove lugares, um por linha da lista de 14.6.2. Os dois piores: sem
@@ -537,7 +537,7 @@ curl -s -H "x-publishable-api-key: $PUBLISHABLE_KEY" \
 curl -s -H "authorization: Bearer $ADMIN_TOKEN" http://localhost:9000/admin/content | jq 'keys'
 
 # 4. O contrato gravado bate com o que a loja conhece? (o `--check` do writer)
-corepack yarn --cwd backend seed-schema --check
+corepack yarn --cwd backend check-schema
 
 # 5. A home continua sendo o destino universal? (o sintoma do doc 13)
 curl -s http://localhost:8000/br | grep -o 'href="/br/[a-z-]*"' | sort | uniq -c | sort -rn
@@ -563,7 +563,7 @@ uma página que outro ainda não sabe desenhar.
 
 | PR | Conteúdo | Por que nesta ordem |
 | :--- | :--- | :--- |
-| **PR1 — F1 núcleo** | `kind` + `PAGE_SURFACES` + `PAGE_SECTION_TYPES`; as 4–6 superfícies; `defaultsFor`; `resolveSurface`; singleton só na vitrine; `getSurfaceSections`; registry de blocos; a rota `[slug]`; `sitemap`/`robots`; a guarda de colisão de slug | é o menor conjunto que faz uma página existir — e o único que precisa de `seed-schema` + `seed-content` no deploy |
+| **PR1 — F1 núcleo** | `kind` + `PAGE_SURFACES` + `PAGE_SECTION_TYPES`; as 4–6 superfícies; `defaultsFor`; `resolveSurface`; singleton só na vitrine; `getSurfaceSections`; registry de blocos; a rota `[slug]`; `sitemap`/`robots`; a guarda de colisão de slug | é o menor conjunto que faz uma página existir — e o único que precisa de `seed` + `seed` no deploy |
 | **PR2 — F1 rodapé** | colunas "Institucional" e "Atendimento" no padrão do rodapé (dado) — ✅ **executado**, ver 14.16 | precisa do PR1: antes dele, as colunas apontariam para 404 — a promessa continuaria vazia, agora com aparência de corrigida |
 | **PR3 — F2 texto longo** | o tipo `prose`, o formato (`markdown` + `MARKDOWN_MARKS` + `renderInline` com spec) e o editor do campo no CRM | é o que destrava Privacidade, Termos, Cuidados e Frete; vem antes do FAQ porque tem quatro páginas esperando — e é o PR em que o negrito passa a funcionar de ponta a ponta — ✅ **executado**, ver 14.17 |
 | **PR3b — F2 anexo** | o `kind` `document` (upload que já existe, chave gravada, `resolveMediaUrl` no render) | separado do formato porque não depende dele: o anexo é campo, não texto — e "página + PDF assinado" é o par que a LGPD pede (14.6.3) — ✅ **executado**, ver 14.18 |
@@ -574,7 +574,7 @@ uma página que outro ainda não sabe desenhar.
 
 Três cuidados de execução:
 
-- **PR1 é o único com dependência de ambiente** (rodar `seed-schema` e `seed-content`). Os outros são
+- **PR1 é o único com dependência de ambiente** (rodar `seed` e `seed`). Os outros são
   código ou dado de conteúdo.
 - **PR3/PR4 não podem entrar juntos**: cada tipo novo mexe na mesma lista de nove lugares (14.10) e no
   `SCHEMA_VERSION`. Dois bumps no mesmo PR escondem qual deles quebrou a tolerância da loja.
@@ -647,7 +647,7 @@ bloqueia a F1.
 | `backend/src/modules/content/validation.ts` | `resolveSurface` recusa (400, pt-BR) superfície **não declarada** e tipo que a superfície não aceita; `unknownSurfaceError` é a mensagem única das duas portas |
 | `backend/src/api/store/content/route.ts` | `?surface=<não declarada>` → **400** (era 200 com lista vazia) |
 | `backend/src/modules/content/restore.ts` | `defaultsFor` com o ramo `page` — fecha o defeito 1 (o "Restaurar padrão" de uma página não cria mais a vitrine dentro dela) |
-| `backend/src/scripts/seed-content.ts` | o laço passa a incluir `...PAGE_SURFACES` |
+| `backend/src/scripts/seed/conteudo.ts` | o laço passa a incluir `...PAGE_SURFACES` |
 | `frontend/src/modules/content/render-section.tsx` *(novo)* | o registro de blocos: o `switch` + `assertNever` saíram da home, e o embrulho de âncora (`id` do bloco + `rv-anchor` + aparência) virou `ContentSectionList` |
 | `frontend/src/lib/data/content.ts` | `getSurfaceSections(surface)` (uma leitura, a mesma tag, a mesma janela de 60s); `getHomeSections` = ela + o fallback da vitrine; `getPageSections` = ela **sem** fallback |
 | `frontend/src/lib/content/page-seo.ts` *(novo)* | `pageSeo(sections, label)`: título do bloco de abertura (com a ênfase, como o render desenha) e descrição do primeiro texto |
@@ -849,7 +849,7 @@ valor** do contrato — a mesma regra que já fazia `ITEM_FIELDS` e `ICON_LABELS
 - **Este PR também tem dependência de ambiente** — ao contrário do que o "Três cuidados" de 14.13 dizia
   (só o PR1). O `SCHEMA_VERSION` subiu, e o registro gravado é quem manda na API: medido, `POST
   /admin/content` com `type: "prose"` respondeu **400** (`deve ser um de: announcement, … theme`) até o
-  `make seed-schema` rodar, que escreveu *"Schema gravado (chave "content", versão 11, 13 tipo(s) de
+  `make seed` rodar, que escreveu *"Schema gravado (chave "content", versão 11, 13 tipo(s) de
   seção). Era v10."*. A loja, essa, já sabia desenhar antes: o tipo dela vem do contrato.
 
 
@@ -971,7 +971,7 @@ grande não é o arquivo, é o processo que o recebe.
 | :--- | :--- |
 | `make types` / `make test` | **0** / verde: backend **407**, CRM **81**, loja **396** (4 novos) |
 | `make build-admin` / `make check` / `make check-schema` | **0** / **0** / **0** (*"Registro do schema em dia (chave "content", versão 12)"*) |
-| `make seed-schema` | *"Schema gravado (chave "content", versão 12, 13 tipo(s) de seção). Era v11."* |
+| `make seed` | *"Schema gravado (chave "content", versão 12, 13 tipo(s) de seção). Era v11."* |
 | o envio (`POST /admin/uploads` com um PDF de teste) | **200**, e a resposta traz a **URL absoluta do backend** (`http://localhost:9000/static/<chave>`) — o motivo de o campo gravar só a chave |
 | `POST /admin/content` com `documentUrl` + `documentLabel` | **201**, e o `data` no Postgres guarda a **chave** (`1791593425255-rv-aviso.pdf`), nunca a URL |
 | `/br/privacidade` com o anexo publicado | **200**, com `<a href="/uploads/1791593425255-rv-aviso.pdf" download="">Baixar o aviso assinado (PDF)</a>` abaixo do texto |
@@ -1064,7 +1064,7 @@ dentro do item) — é limite anterior a este PR, e o efeito é o mesmo da image
 - **A dica da superfície estava velha, e foi corrigida.** O texto que o CRM mostra em
   `perguntas-frequentes` dizia *"o bloco de perguntas e respostas é o da fase seguinte"* — verdade no PR1,
   mentira a partir deste PR. A dica passou a descrever o presente ("as dúvidas em pares de pergunta e
-  resposta, abertos no clique"), e o registro foi regravado com `make seed-schema`. Texto que envelhece é
+  resposta, abertos no clique"), e o registro foi regravado com `make seed`. Texto que envelhece é
   defeito, mesmo quando ninguém quebra.
 
 ### Medido na stack local (loja `:8000`, backend `:9000`)
@@ -1073,7 +1073,7 @@ dentro do item) — é limite anterior a este PR, e o efeito é o mesmo da image
 | :--- | :--- |
 | `make types` / `make test` | **0** / verde: backend **409** (2 novos), CRM **81**, loja **408** (12 novos — 9 do `faq.spec`, 3 do `page-seo`) |
 | `make check` / `make check-schema` | **0** / **0** — *"Registro do schema em dia (chave \"content\", versão 13)"* |
-| `make seed-schema` | *"Schema gravado (chave \"content\", versão 13, 14 tipo(s) de seção). Era v12."* |
+| `make seed` | *"Schema gravado (chave \"content\", versão 13, 14 tipo(s) de seção). Era v12."* |
 | `make build-admin` / `make seed` | **0** / **0** — o painel compila sem uma linha nova nele (*"Frontend build completed successfully"*), e o `seed` é idempotente: *"Já existem 0 seção(ões) em \"perguntas-frequentes\" — nenhuma faltando. Nada foi alterado."* |
 | o payload do CRM (`GET /admin/content?surface=perguntas-frequentes`) | `schemaVersion: 13`, `schemaSource: db`; `faq` em `types`; `typeLabels.faq` = "Perguntas frequentes"; `fields.faq` = `title`, `items`; `itemFields["list:faqItem"]` = `question` (texto simples), `answer` (`markdown`); `markdownMarks` com as **4** marcas do PR3; e `faq` na lista de tipos que a aba da página oferece |
 | `POST /admin/content` (o `faq` com cinco itens) | **201**, e o `data` no Postgres guarda a **string crua** (`Você tem **30 dias** para trocar…`), nunca HTML |
@@ -1169,7 +1169,7 @@ rotas digitada à mão para envelhecer.
 | `make types` / `make test` | **0** / verde: backend **413** (24 suítes), CRM **83** (6), loja **411** (33) — **nove** testes novos (4 do contrato, 3 do storefront, 2 do CRM) |
 | `make check` / `make build-admin` | **0** / **0** — *"Frontend build completed successfully"* (36 s): o painel compila com o campo novo, e o `CONTENT_DESTINATIONS` no painel reprovaria a fronteira se fosse import de **valor** |
 | `make check-schema` **antes** do seed | sai **1** e diz exatamente o que mudou: *"O registro do schema está velho (gravado v13, contrato v14)"* — `fields: launches, editorial, banner`, `itemFields: list:hero-slide, list:highlight, list:link, list:action, list:social`, `destinations` |
-| `make seed-schema` | *"Schema gravado (chave \"content\", versão 14, 14 tipo(s) de seção). Era v13."* |
+| `make seed` | *"Schema gravado (chave \"content\", versão 14, 14 tipo(s) de seção). Era v13."* |
 | `make check-schema` depois | **0** — *"Registro do schema em dia (chave \"content\", versão 14)"* |
 | o payload do CRM (`GET /admin/content?surface=home`) | `schemaVersion: 14`, `schemaSource: db`, e `schema.destinations` com **12** entradas: as **seis** rotas (a vitrine, o catálogo, a sacola, a conta, a busca e o rastreio) e as **seis** páginas, cada uma com o rótulo da superfície |
 | os campos no payload | `kind: "href"` no `ctaHref` do `editorial` e do `banner`, no `viewAllHref` do `launches` e no `href`/`ctaHref` de `list:link`, `list:action`, `list:highlight` e `list:hero-slide`; `list:social.href` segue **`text`**, com a ajuda que explica por quê |
@@ -1302,7 +1302,7 @@ própria lista.
 | Arquivo | O que entrou |
 | :--- | :--- |
 | `packages/contrato/src/contract.ts` | a origem `pages` em `FOOTER_COLUMN_SOURCES` + o rótulo (`as páginas que estão no ar`); o `help` do campo `links` passa a dizer que ele só vale para a origem dos links digitados |
-| `packages/contrato/src/schema.ts` | `SCHEMA_VERSION` **14 → 15** — a opção nova no `<select>` do painel viaja no registro gravado (`make seed-schema`) |
+| `packages/contrato/src/schema.ts` | `SCHEMA_VERSION` **14 → 15** — a opção nova no `<select>` do painel viaja no registro gravado (`make seed`) |
 | `backend/.../modules/content/pages.ts` | `livePages` (a régua aplicada: só as `published`, sem contagem) e `readPageSections` (a leitura que as **duas** portas fazem, com `onlyEnabled` do chamador) |
 | `backend/.../api/store/content/pages/route.ts` *(novo)* | `GET /store/content/pages` — as páginas no ar + `schemaVersion`, `onlyEnabled: true` |
 | `backend/.../api/admin/content/pages/route.ts` | passa a usar `readPageSections` com `onlyEnabled: false` — o índice do CRM precisa das desabilitadas |
@@ -1336,7 +1336,7 @@ sobra. Por isso o `readPageSections` recebe `onlyEnabled` do chamador: o CRM pre
 | Medição | Resultado |
 | :--- | :--- |
 | `make types` / `make test` | **0** / verde: backend **424** (3 novos), CRM **85**, loja **416** (3 novos) |
-| `make check` / `make check-schema` | **0** / *"Registro do schema em dia (chave \"content\", versão 15)"* — o `seed-schema` do deploy grava a v15, e a opção `pages` entra no `<select>` do painel |
+| `make check` / `make check-schema` | **0** / *"Registro do schema em dia (chave \"content\", versão 15)"* — o `seed` do deploy grava a v15, e a opção `pages` entra no `<select>` do painel |
 | `make build-admin` | **0** — *"Frontend build completed successfully"* (backend 12,87s, frontend 36,28s): os quatro arquivos novos da loja compilam no bundle de produção |
 | o registro gravado traz a origem nova | `itemFields["list:column"]` → `source.options` = `["links","pages","categories","collections"]` com `optionLabels.pages` = *"as páginas que estão no ar"* |
 | `GET /store/content/pages` | **200** → `{"pages":[{"id":"sobre","label":"Sobre","path":"/sobre"}],"schemaVersion":15}` |
@@ -1380,7 +1380,7 @@ seção muda de aparência até alguém gravar um recorte de propósito.
 | `packages/contrato/src/contract.ts` | `kind: "imageCrop"`, `CROP_HELP`, `imageField(...)` (o par `imageUrl` → `imageUrlCrop`, com o `pattern` no campo) e `imageUrlCrop?: string` em `HeroSlide`, `CollectionHighlight`, `EditorialSection`, `BannerSection` e nos itens do Instagram |
 | `packages/contrato/src/schema.ts` | `SCHEMA_VERSION` **16 → 17**, `cropFrames` (a moldura por tipo de seção e por `kind` de lista) e `crop` (`pattern`, `zoomMax`, as frases do modal) no payload |
 | `backend/.../modules/content/crop.ts` *(novo)* | re-export de `@rv/contrato/crop` — o CRM lê a geometria por `@conteudo/crop`, sem caminho de arquivo do backend |
-| `backend/.../scripts/seed-schema.ts` | o `--check` passa a comparar **as chaves do contrato**: uma chave que o registro gravado tem e o contrato não declara mais não reprova (senão o `--check` mandaria rodar `seed-schema` para sempre) |
+| `backend/.../scripts/seed/conteudo.ts` | o `--check` passa a comparar **as chaves do contrato**: uma chave que o registro gravado tem e o contrato não declara mais não reprova (senão o `--check` mandaria rodar `seed` para sempre) |
 | `admin/.../lib/crop-window.ts` *(novo)* | a conta do painel: `cropFromPoint`/`pointFromCrop` (o arrasto), `zoomCrop`/`stepCrop` (a roda e o botão), presa à faixa 1–3 e à forma canônica |
 | `admin/.../components/{crop-frame,crop-preview,crop-field,image-crop-modal}.tsx` *(novos)* | a moldura da seção, a prévia com a conta do contrato, o par `imageUrl`→`imageUrlCrop` e o `FocusModal` (arrastar, roda, controle, duplo clique = padrão) |
 | `admin/.../components/image-input.tsx` | a prévia vira **a moldura da seção** (não um quadrado de 64px) e ganha "Ajustar enquadramento" |
@@ -1422,7 +1422,7 @@ paridade do contrato cobra a lista nos dois sentidos (`"o recorte existe exatame
 | :--- | :--- |
 | `make check` | **0** — artefato, fronteiras, camadas, comentário e convenção de teste em dia (a catraca de comentário foi reancorada, e o volume só desceu) |
 | `make types` | **0** — `tsc` do backend, do CRM e da loja |
-| `make seed-schema` / `make check-schema` | grava a **v17** / *"Registro do schema em dia (chave "content", versão 17)"* |
+| `make seed` / `make check-schema` | grava a **v17** / *"Registro do schema em dia (chave "content", versão 17)"* |
 | `make test` | verde: backend **434** (os 2 novos da validação e os 5 do `panel-crop`), CRM **120** (os 8 da janela do recorte + as ligações novas no `panel-wiring`), loja **471** (3 novos do `media` e 2 novos da régua) |
 | `make build-admin` | **0** — *"Frontend build completed successfully"*: nenhum import de valor por `@conteudo/*` no bundle |
 | o valor inválido na API | `PATCH /admin/content?id=editorial` com `"esquerda:meio"`, `"50:50:9"` e `"50:50:0.5"` → **400** com *"Campo "imageUrlCrop" deve estar no formato esperado (…)"*; `"center:34:1.4"` → **200** |

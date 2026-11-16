@@ -299,7 +299,7 @@ defeito que não é dela, ele vira item no doc 09 — não vira commit no meio.
 **Desde a v17 do schema, `make check-schema` compara as chaves do contrato**, e não o registro inteiro: uma
 chave que o registro gravado guarda e o contrato não declara mais (o `cropRatios` e o `imageAspects` de uma
 versão anterior, por exemplo) não é divergência — o CRM ignora o que não pediu, e o `--check` que reprovasse
-por isso mandaria rodar `seed-schema` para sempre. A divergência que importa é a do sentido contrário: uma
+por isso mandaria rodar `seed` para sempre. A divergência que importa é a do sentido contrário: uma
 chave do contrato ausente ou diferente no registro.
 
 | Comando | O que roda | Precisa de `node_modules`? |

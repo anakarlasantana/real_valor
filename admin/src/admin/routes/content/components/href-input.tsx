@@ -25,7 +25,7 @@
  *
  * ⚠️ **Dois limites declarados.** (1) Um registro gravado **antes da v14** não
  * tem `destinations`, e o campo degrada para caixa de texto — a lista é o que
- * falta, e `make seed-schema` a traz. (2) O servidor **não** confere o destino:
+ * falta, e `make seed` a traz. (2) O servidor **não** confere o destino:
  * `validateData` continua sem tocar em `href` (é o que o doc 13 mediu), então um
  * `/stroe` digitado à mão ainda vai ao ar. O que este campo muda é que o
  * lojista deixa de ter `/store` como única alternativa.

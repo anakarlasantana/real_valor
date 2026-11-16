@@ -3,7 +3,7 @@
  * -------------------------------------------------------------------------
  * A regra existe **uma vez** porque tem duas portas:
  *
- *   CLI   `medusa exec ./src/scripts/seed-content.ts` — o `make seed`
+ *   CLI   `medusa exec ./src/scripts/seed/conteudo.ts` — o `make seed`
  *         (uma base nova nasce com a vitrine montada, sem ninguém clicar);
  *   CRM   `POST /admin/content/restore` — o botão "Restaurar padrão", para
  *         quem apagou uma seção por engano ou adotou um banco que veio vazio.

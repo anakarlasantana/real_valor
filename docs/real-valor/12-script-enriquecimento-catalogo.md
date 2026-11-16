@@ -182,8 +182,8 @@ Medir e **colar no PR**:
 - `README.md`: linha 156 (exemplo do quickstart) e 633 (receita de base nova) prometem peça
   depois do `make seed` → trocar pelo passo "primeiro produto pelo admin".
 
-**Não mexer em** `seed-content.ts` (medido: `grep -c "product\|categor" → 0`) nem em
-`seed-schema.ts`.
+**Não mexer em** `seed/conteudo.ts` (medido: `grep -c "product\|categor" → 0`) nem em
+`seed/conteudo.ts`.
 
 **Aceite:** base limpa + `make seed` → a loja abre, a vitrine mostra os estados vazios, e o
 admin cria categoria, produto, preço e estoque sem erro. **Teste:** rodar `make seed`

@@ -9,7 +9,7 @@ import { model } from "@medusajs/framework/utils"
  * chave: o contrato é heterogêneo e versionado, e cada campo novo pediria
  * migration.
  *
- * A linha nasce pelo `seed-schema` (`SCHEMA_KEY`), não pela migration (que fica
+ * A linha nasce pelo `seed` (`SCHEMA_KEY`), não pela migration (que fica
  * só com o DDL): o conteúdo é derivado de código, não de snapshot.
  */
 const ContentContract = model.define("content_contract", {

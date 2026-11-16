@@ -23,7 +23,7 @@ import {
  *   normalização fiquem num lugar só;
  * - `getContract`/`saveContract` — o **registro** do contrato no Postgres: o
  *   schema que o CRM desenha e contra o qual a API valida. O `contract.ts` é o
- *   bootstrap/fallback (`schema.ts` monta, `seed-schema` grava).
+ *   bootstrap/fallback (`schema.ts` monta, `seed` grava).
  *
  * O nome `getContract` (e não `getSchema`) diz de que camada se está falando: a
  * linha é o contrato, o `schema` que ela carrega é o dado — ver o cabeçalho de
@@ -96,7 +96,7 @@ class ContentModuleService extends MedusaService({
    * Grava (ou regrava) o contrato a partir do `contract.ts`.
    *
    * Idempotente de propósito: é a mesma linha (`SCHEMA_KEY`) reescrita com a
-   * versão carimbada, então rodar o `seed-schema` mil vezes deixa o banco num
+   * versão carimbada, então rodar o `seed` mil vezes deixa o banco num
    * estado só. `version` e `schema` aceitam override para o `--check` não
    * precisar montar o schema duas vezes.
    */

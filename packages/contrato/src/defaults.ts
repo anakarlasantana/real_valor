@@ -52,7 +52,6 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     position: 3,
     slides: [
       {
-        imageUrl: "/brand/hero.jpg",
         imageAlt: "Alfaiataria feminina Real Valor",
         eyebrow: "Nova coleção",
         headline: "Você não precisa ser rica para se",
@@ -121,7 +120,6 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
       {
         title: "Essência",
         subtitle: "Para o seu dia a dia",
-        imageUrl: "/brand/collection-1.jpg",
         imageAlt: "Coleção Essência",
         href: "/store",
         ctaLabel: "Comprar agora",
@@ -129,7 +127,6 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
       {
         title: "Presença",
         subtitle: "Para grandes momentos",
-        imageUrl: "/brand/collection-2.jpg",
         imageAlt: "Coleção Presença",
         href: "/store",
         ctaLabel: "Comprar agora",
@@ -137,7 +134,6 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
       {
         title: "Autêntica",
         subtitle: "Para vestir você",
-        imageUrl: "/brand/collection-3.jpg",
         imageAlt: "Coleção Autêntica",
         href: "/store",
         ctaLabel: "Comprar agora",
@@ -160,7 +156,6 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     body: "A REAL VALOR acredita que elegância não é privilégio. É um direito. Criamos peças de alfaiataria feminina com estética sofisticada e preço acessível, para que mais mulheres possam se sentir bem vestidas na vida real.",
     ctaLabel: "Conheça a nossa história",
     ctaHref: "/store",
-    imageUrl: "/brand/story-1.jpg",
     imageAlt: "Detalhes de alfaiataria Real Valor",
     imagePosition: "left",
   },
@@ -174,7 +169,6 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     eyebrow: "REAL VALOR, REAL HISTÓRIA",
     title: "Mais que roupa,",
     titleEmphasis: "é sobre você.",
-    imageUrl: "/brand/story-2.jpg",
     imageAlt: "Editorial Real Valor",
     ctaLabel: "Descobrir a coleção",
     ctaHref: "/store",
@@ -266,14 +260,12 @@ export const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     handle: "@realvalor",
     title: "Siga a Real Valor",
     images: [
-      { imageUrl: "/brand/story-1.jpg", imageAlt: "Real Valor no Instagram" },
-      { imageUrl: "/brand/story-2.jpg", imageAlt: "Real Valor no Instagram" },
+      { imageAlt: "Real Valor no Instagram" },
+      { imageAlt: "Real Valor no Instagram" },
       {
-        imageUrl: "/brand/collection-1.jpg",
         imageAlt: "Real Valor no Instagram",
       },
       {
-        imageUrl: "/brand/collection-2.jpg",
         imageAlt: "Real Valor no Instagram",
       },
     ],
