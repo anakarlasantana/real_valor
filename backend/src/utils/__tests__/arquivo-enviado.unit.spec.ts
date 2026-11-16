@@ -4,6 +4,7 @@ import {
   LIMITE_DOCUMENTO,
   LIMITE_IMAGEM,
   recusaDoEnvio,
+  recusaDoPedido,
 } from "../arquivo-enviado"
 
 const MB = 1024 * 1024
@@ -79,8 +80,48 @@ describe("recusaDoEnvio", () => {
     expect(recusa).toMatch(/O arquivo\s+tem 9\.0 MB/)
   })
 
-  it("o teto absoluto é o do documento — é o que o multer corta", () => {
+  it("o teto absoluto é o do documento — é o que o content-length confere", () => {
     expect(LIMITE_ABSOLUTO).toBe(LIMITE_DOCUMENTO)
     expect(LIMITE_DOCUMENTO).toBeGreaterThan(LIMITE_IMAGEM)
+  })
+})
+
+describe("recusaDoPedido", () => {
+  const png = { originalname: "capa.png", mimetype: "image/png", size: 1024 }
+
+  it("aceita o pedido sem cabeçalho e com arquivo válido", () => {
+    expect(recusaDoPedido(undefined, [png])).toBeUndefined()
+  })
+
+  it("aceita o cabeçalho exatamente no teto absoluto", () => {
+    expect(recusaDoPedido(LIMITE_ABSOLUTO, [png])).toBeUndefined()
+    expect(recusaDoPedido(String(LIMITE_ABSOLUTO), [png])).toBeUndefined()
+  })
+
+  it("recusa pelo cabeçalho acima do teto, sem depender do arquivo", () => {
+    expect(recusaDoPedido(LIMITE_ABSOLUTO + 1, [png])).toBe(
+      `O arquivo excede o limite de ${LIMITE_ABSOLUTO / MB} MB.`
+    )
+  })
+
+  it("cabeçalho que não é número é tratado como ausente", () => {
+    expect(recusaDoPedido("", [png])).toBeUndefined()
+    expect(recusaDoPedido("abc", [png])).toBeUndefined()
+  })
+
+  it("pedido sem arquivo nenhum passa (quem recusa é a rota)", () => {
+    expect(recusaDoPedido(undefined, [])).toBeUndefined()
+  })
+
+  it("recusa o tipo proibido que veio na lista", () => {
+    expect(
+      recusaDoPedido(undefined, [{ mimetype: "text/html", size: 10 }])
+    ).toMatch(/não permitido/)
+  })
+
+  it("recusa a imagem acima do teto do tipo, mesmo abaixo do absoluto", () => {
+    expect(
+      recusaDoPedido(undefined, [{ mimetype: "image/png", size: 9 * MB }])
+    ).toMatch(/limite para este tipo é 8\.0 MB/)
   })
 })

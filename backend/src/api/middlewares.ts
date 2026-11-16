@@ -1,4 +1,3 @@
-import multer from "multer"
 import type {
   MedusaNextFunction,
   MedusaRequest,
@@ -7,7 +6,7 @@ import type {
 import { defineMiddlewares } from "@medusajs/medusa"
 import { MedusaError } from "@medusajs/framework/utils"
 
-import { LIMITE_ABSOLUTO, recusaDoEnvio } from "../utils/arquivo-enviado"
+import { recusaDoPedido } from "../utils/arquivo-enviado"
 import {
   chaveDoPedido,
   criarLimitador,
@@ -23,50 +22,25 @@ type ArquivoDoMulter = {
 }
 
 /**
- * O teto do envio (**RV-024**) e o rate limiting (**RV-025**), no servidor.
- *
- * O `multer` da rota nativa de `/admin/uploads` grava em memória sem `limits`:
- * um POST de 200 MB derrubava o processo antes de qualquer regra de negócio.
+ * RV-024 (teto do envio) e RV-025 (rate limiting), no servidor. Não lê o
+ * corpo: o `multer` nativo roda antes e entrega `req.files`; o teto absoluto
+ * vem do `content-length` — ver RV-024 no doc 19.
  */
-const envio = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: LIMITE_ABSOLUTO, files: 20 },
-})
-
 function receberArquivos(
   req: MedusaRequest,
   res: MedusaResponse,
   next: MedusaNextFunction
 ) {
-  envio.array("files")(req as never, res as never, (erro: unknown) => {
-    if (erro instanceof multer.MulterError) {
-      const falha = erro as multer.MulterError
-      const motivo =
-        falha.code === "LIMIT_FILE_SIZE"
-          ? `O arquivo excede o limite de ${LIMITE_ABSOLUTO / (1024 * 1024)} MB.`
-          : `Não foi possível ler o envio (${falha.code}).`
+  const arquivos = ((req as MedusaRequest & { files?: ArquivoDoMulter[] })
+    .files ?? []) as ArquivoDoMulter[]
 
-      return next(new MedusaError(MedusaError.Types.INVALID_DATA, motivo))
-    }
+  const recusa = recusaDoPedido(req.headers["content-length"], arquivos)
 
-    if (erro) {
-      return next(erro as Error)
-    }
+  if (recusa) {
+    return next(new MedusaError(MedusaError.Types.INVALID_DATA, recusa))
+  }
 
-    // O teto por *tipo* é o da regra: 12 MB cabe no absoluto, não na imagem.
-    const arquivos = ((req as MedusaRequest & { files?: ArquivoDoMulter[] })
-      .files ?? []) as ArquivoDoMulter[]
-
-    const recusa = arquivos
-      .map((arquivo) => recusaDoEnvio(arquivo))
-      .find((motivo): motivo is string => Boolean(motivo))
-
-    if (recusa) {
-      return next(new MedusaError(MedusaError.Types.INVALID_DATA, recusa))
-    }
-
-    next()
-  })
+  next()
 }
 
 /** Um limitador por janela: prefixos com a mesma janela dividem o contador. */

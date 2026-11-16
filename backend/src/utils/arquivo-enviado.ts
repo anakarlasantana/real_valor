@@ -6,7 +6,7 @@
 export const LIMITE_IMAGEM = 8 * 1024 * 1024
 export const LIMITE_DOCUMENTO = 25 * 1024 * 1024
 
-/** O teto de qualquer envio — o do documento, que é o que o `multer` corta. */
+/** O teto de qualquer envio — o do documento, conferido no `content-length`. */
 export const LIMITE_ABSOLUTO = LIMITE_DOCUMENTO
 
 /** Os tipos aceitos, por família, com o teto de cada um. */
@@ -54,6 +54,22 @@ export function recusaDoEnvio(arquivo: ArquivoEnviado): string | undefined {
   }
 
   return undefined
+}
+
+/** A recusa do pedido inteiro: o teto absoluto do `content-length` e, depois, cada arquivo. */
+export function recusaDoPedido(
+  declarado: string | number | undefined,
+  arquivos: readonly ArquivoEnviado[]
+): string | undefined {
+  const tamanho = Number(declarado)
+
+  if (Number.isFinite(tamanho) && tamanho > LIMITE_ABSOLUTO) {
+    return `O arquivo excede o limite de ${LIMITE_ABSOLUTO / (1024 * 1024)} MB.`
+  }
+
+  return arquivos
+    .map((arquivo) => recusaDoEnvio(arquivo))
+    .find((motivo): motivo is string => Boolean(motivo))
 }
 
 function familiaDoTipo(tipo: string): Familia | undefined {
