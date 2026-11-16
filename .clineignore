@@ -1,0 +1,26 @@
+# O que o agente NÃO precisa ler (contexto é caro e ruído esconde sinal).
+# Regras canônicas: AGENTS.md (raiz) e .clinerules/.
+node_modules
+**/node_modules
+.next
+.medusa
+dist
+build
+coverage
+.yarn/cache
+.yarn/install-state.gz
+
+# Evidência de teste: descartável (o contrato está em docs/real-valor/20-…)
+evidence
+test-results
+playwright-report
+.run
+
+# Segredos: o agente lê os NOMES em .env.example, nunca os valores.
+.env
+.env.*
+!.env.example
+
+# Backups e lixo de sistema
+backups
+.DS_Store

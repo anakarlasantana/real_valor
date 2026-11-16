@@ -286,6 +286,7 @@ junto (`admin/`, `COPY admin/ /app/admin`) e o storefront leva o pacote do contr
 | Onde | O que |
 |---|---|
 | [`README.md`](README.md) | este arquivo: subir a stack, operar o dia a dia, troubleshooting |
+| [`AGENTS.md`](AGENTS.md) | **as regras para qualquer agente de IA** (Cline, Kiro, Codex, Claude): o DoD executável (`make ready`), as oito regras duras e onde olhar antes de mexer |
 | [`backend/src/modules/content/README.md`](backend/src/modules/content/README.md) | o CMS: contrato, seed, API e painel |
 | [`frontend/src/app/fonts/README.md`](frontend/src/app/fonts/README.md) | por que as fontes são self-hosted e como regerá-las |
 | [`docs/real-valor/04-requisitos-funcionais.md`](docs/real-valor/04-requisitos-funcionais.md) | RV-001 a RV-013 e RV-042 a RV-046: regras, estados, integrações e critérios de aceite |
