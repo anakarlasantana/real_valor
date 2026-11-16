@@ -759,12 +759,10 @@ seção da vitrine mostra o estado vazio até receber curadoria.
 | **PostgreSQL** | `localhost:5439` | user `real_valor` / db `real_valor_db` (loopback) |
 | **Redis** | `localhost:6382` | cache e event bus (loopback) |
 
-> **Publicar para teste externo (celular, outra máquina).** `make tunnel` publica a loja **e** o painel
-> num endereço HTTPS único do ngrok — a loja em `https://<endereço>/br`, o painel em
-> `https://<endereço>/painel` — e `make tunnel-stop` derruba o agente e devolve o `.env` como estava.
-> Ele **recusa** publicar enquanto a senha do painel for a de exemplo (`admin123456`): rode
-> `make admin-password` antes. Passo a passo, o que quebra em silêncio e os limites honestos do plano
-> gratuito: `docs/real-valor/11-ambiente-local.md` §11.6 e §11.6.2.
+> **Teste externo (celular, outra máquina).** Não há túnel neste projeto: a stack publica portas só no
+> **host**, e nada é exposto na internet. Para abrir de fora é preciso um deploy com domínio e TLS;
+> sem ele, `MP_NOTIFICATION_URL` fica vazia e o pagamento confirma **manualmente** — ver
+> `docs/real-valor/11-ambiente-local.md` §11.6.
 
 > **CMS da vitrine:** a página **Conteúdo da vitrine** fica na **sidebar principal** do admin,
 > em `/painel/content` — ao lado dos menus nativos e, por isso, dentro do **personalizar
@@ -820,8 +818,8 @@ make admin-password NOVA='a senha nova'
 O script faz login com a senha atual, chama `POST /auth/user/emailpass/update` com
 o token, confere que a **nova é aceita** e que a **antiga é recusada** — e só
 então grava `ADMIN_PASSWORD` no `.env`. Se qualquer passo falhar, o `.env` fica
-como estava. (A senha de exemplo do `.env.example`, `admin123456`, é justamente a
-que `make tunnel` recusa publicar: o painel publicado é acesso administrativo.)
+como estava. (A senha de exemplo do `.env.example`, `admin123456`, não deve ir para
+endereço nenhum: o painel é acesso administrativo.)
 
 O `make up` tambem cria/verifica o admin logo
 depois das migrations, lendo `ADMIN_EMAIL`/`ADMIN_PASSWORD` do `.env` (o

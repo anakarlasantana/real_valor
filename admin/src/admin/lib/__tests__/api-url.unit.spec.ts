@@ -2,12 +2,11 @@
  * O endereço da API do painel — e o que a tela lê de volta.
  * -------------------------------------------------------------------------
  * `apiUrl` é a única peça do CRM que decide **onde** uma chamada bate, e a
- * diferença entre os dois endereços do painel é a diferença entre 200 e um 404
- * HTML. Medido com o painel publicado pelo storefront:
+ * diferença entre a origem certa e a errada é a diferença entre JSON e um 404
+ * HTML. Medido com um caminho relativo servido pela vitrine:
  *
  *     GET :8000/admin/content?surface=home      → 307 → /br/admin/content?surface=home
  *     GET :8000/br/admin/content?surface=home   → 404 (`Content-Type: text/html`)
- *     GET :8000/painel-api/admin/content        → 401 JSON
  *
  * É esse 404 que estourava o `res.json()` da tela (`SyntaxError` antes de o
  * `res.ok` ser lido): o defeito que o `apiUrl` fecha na saída e o `readJson`
@@ -59,29 +58,29 @@ describe("apiUrl", () => {
     )
   })
 
-  it("com a base do túnel, o prefixo `/painel-api` entra no caminho", () => {
-    // É o valor que o `make tunnel` grava em `MEDUSA_BACKEND_URL`: de fora, a
-    // API responde no MESMO endereço da página, sob o prefixo (§11.6.2).
-    globals.__BACKEND_URL__ = "https://exemplo.ngrok-free.dev/painel-api"
+  it("base com prefixo: o prefixo entra no caminho", () => {
+    // Um deploy pode publicar a API sob um caminho (proxy reverso, por
+    // exemplo); a base inteira é preservada, não só o host.
+    globals.__BACKEND_URL__ = "https://api.exemplo.com/v1"
 
     expect(apiUrl("/admin/shipping")).toBe(
-      "https://exemplo.ngrok-free.dev/painel-api/admin/shipping"
+      "https://api.exemplo.com/v1/admin/shipping"
     )
   })
 
   it("a barra final da base não vira barra dupla no caminho", () => {
     // `MEDUSA_BACKEND_URL` com e sem `/` descrevem o mesmo endereço; `//admin/…`
     // não é rota de ninguém.
-    globals.__BACKEND_URL__ = "https://exemplo.ngrok-free.dev/painel-api///"
+    globals.__BACKEND_URL__ = "https://api.exemplo.com/v1///"
 
     expect(apiUrl("/admin/content/pages")).toBe(
-      "https://exemplo.ngrok-free.dev/painel-api/admin/content/pages"
+      "https://api.exemplo.com/v1/admin/content/pages"
     )
   })
 
   it("um caminho sem barra inicial ganha uma", () => {
     // O contrato é `/admin/...`; a normalização existe para que um esquecimento
-    // não vire `…/painel-apiadmin/content`.
+    // não vire `…/v1admin/content`.
     globals.__BACKEND_URL__ = "http://localhost:9000"
 
     expect(apiUrl("admin/content")).toBe("http://localhost:9000/admin/content")

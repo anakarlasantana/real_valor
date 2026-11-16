@@ -45,15 +45,12 @@ describe("resolveMediaUrl", () => {
     )
   })
 
-  it("a mesma URL com o prefixo do túnel na frente também vira caminho do site", () => {
-    // Quando a loja é publicada por um endereço só (`make tunnel`), o
-    // `MEDUSA_BACKEND_URL` do backend passa a ser `https://<tunel>/painel-api` e
-    // o provider de arquivos monta a URL com esse namespace. O `/static/` deixa
-    // de estar no começo do caminho — e a foto não pode sumir por isso.
+  it("a mesma URL com um prefixo de caminho na frente também vira caminho do site", () => {
+    // Num deploy em que o backend ganha um prefixo (proxy reverso), o provider
+    // de arquivos monta a URL com esse namespace. O `/static/` deixa de estar no
+    // começo do caminho — e a foto não pode sumir por isso.
     expect(
-      resolveMediaUrl(
-        "https://algo.ngrok-free.dev/painel-api/static/1699-hero.jpg"
-      )
+      resolveMediaUrl("https://api.exemplo.com/base/static/1699-hero.jpg")
     ).toBe("/uploads/1699-hero.jpg")
   })
 

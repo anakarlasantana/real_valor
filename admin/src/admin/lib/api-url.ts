@@ -2,16 +2,16 @@
  * Onde o painel do CRM fala com a API — e como ele lê o que volta.
  *
  * Toda chamada `/admin/...` sai por `apiUrl`: um `fetch` com caminho relativo é
- * resolvido contra o endereço que **serve a página**, e isso só dá certo enquanto a
- * página vem do backend. O painel também é publicado pelo storefront (`/painel`,
- * reescritas do `frontend/next.config.js`; doc 11 §11.6.2), e ali o middleware da
- * loja prefixa o país e responde **307** — `GET :8000/admin/content` vira
- * `:8000/br/admin/content`, que devolve o **404 HTML** da vitrine; o `res.json()` da
- * tela estoura `SyntaxError` **antes** de o `res.ok` ser lido, e o status HTTP morre
- * dentro do erro de parse (o outro lado do mesmo defeito é o `readJson`, abaixo). A
- * base é o `__BACKEND_URL__` do bundle (o `baseUrl` do SDK do dashboard, injetado
- * pelo Vite de `admin.backendUrl`): o painel fala com a API pela **mesma origem** da
- * página, inclusive de fora (`https://<endereço>/painel-api`).
+ * resolvido contra o endereço que **serve a página**, e isso só dá certo enquanto
+ * página e API estão na MESMA origem. Servido por outra origem, o caminho pode
+ * cair em qualquer coisa que responda ali: `GET :8000/admin/content` vira
+ * `:8000/br/admin/content` (o middleware da loja prefixa o país) e volta o
+ * **404 HTML** da vitrine; o `res.json()` da tela estoura `SyntaxError` **antes**
+ * de o `res.ok` ser lido, e o status HTTP morre dentro do erro de parse (o outro
+ * lado do mesmo defeito é o `readJson`, abaixo). A base é o `__BACKEND_URL__` do
+ * bundle (o `baseUrl` do SDK do dashboard, injetado pelo Vite de
+ * `admin.backendUrl`): o painel fala com a API pelo endereço que o backend
+ * declara para si — `http://localhost:9000` em local.
  */
 
 /**

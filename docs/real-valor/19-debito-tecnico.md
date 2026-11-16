@@ -194,7 +194,7 @@ Estes itens estão listados no README §"Antes de ir para produção" e no doc 0
 | 7 | SuperFrete token | `SUPERFRETE_TOKEN` + saldo na carteira | Checkout abre sem frete (loja não vende) |
 | 8 | Webhook SuperFrete | `SUPERFRETE_WEBHOOK_SECRET`, URL pública + Webhook App criado | Rastreio e e-mail de envio/cancelamento não funcionam |
 
-**Ordem sugerida:** 1 → 3 → 7 → 2 → 8 → 4 → 5 → 6 (o túnel `make tunnel` resolve o HTTPS público em dev).
+**Ordem sugerida:** 1 → 3 → 7 → 2 → 8 → 4 → 5 → 6 (os itens 5, 6 e 8 dependem de um endereço público com TLS — ver doc 11 §11.6).
 
 ---
 

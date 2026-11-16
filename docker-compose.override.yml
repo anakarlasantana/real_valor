@@ -116,9 +116,9 @@ services:
       #
       # ⚠️ VAZIO POR PADRAO — e isso NAO e' descuido. O `@vite/client` faz
       # `port = clientPort || port`, entao VAZIO = usa a `HMR_PORT` (9001), que e'
-      # o comportamento nativo do painel em `localhost:9000`. So' o tunel precisa
-      # de outro valor, e quem o escreve e' o `scripts/tunnel.sh` (`make tunnel`),
-      # que grava `443` no `.env` e o remove no `make tunnel-stop`.
+      # o comportamento nativo do painel em `localhost:9000`. Um painel publicado
+      # por HTTPS precisaria de `443`: o valor se define no `.env`, do lado de
+      # quem publica.
       #
       # NAO coloque 443 aqui por padrao. Medido em 2026-10-19: com 443 fixo, o
       # painel LOCAL entra em REFRESH AUTOMATICO em laco. O socket primario
@@ -129,12 +129,12 @@ services:
       # no-cors), o ping se declara bem-sucedido e o cliente executa
       # `location.reload()`, recomecando o ciclo a cada ~1s.
       #
-      # PELO TUNEL (`443`) o mesmo valor esta' correto: o ngrok atende so' no 443
-      # do proprio dominio e o documento e' `https`, entao `wss://<host>:443/`
-      # acerta o TLS do tunel no primeiro try.
+      # Num painel publicado por HTTPS (`443`) o mesmo valor esta' correto: o
+      # documento e' `https`, entao `wss://<host>:443/` acerta o TLS no primeiro
+      # try.
       HMR_CLIENT_PORT: ${HMR_CLIENT_PORT:-}
-      # `wss` so' quando o tunel esta' ativo. Tambem vazio por padrao, para o
-      # painel local continuar em `ws://` (o `import.meta.url` de
+      # `wss` so' quando o painel e' servido por HTTPS. Tambem vazio por padrao,
+      # para o painel local continuar em `ws://` (o `import.meta.url` de
       # `http://localhost:9000` decide). Fixo em `wss`, o socket LOCAL sairia
       # como `wss://localhost:9001` num documento `http` e a maquina de
       # desenvolvimento precisaria de um certificado que nao tem.
@@ -147,14 +147,11 @@ services:
     # `localhost:9000` e ao `@vite/client` local, e nao ha' motivo para um
     # servidor de desenvolvimento ficar alcancavel pela rede da maquina.
     #
-    # O TUNEL NAO PUBLICA ESTA PORTA, e o HMR NAO ATRAVESSA o tunel: o ngrok
-    # free nao transporta o upgrade WebSocket (medido em 2026-10-19; o mesmo
-    # cliente direto aqui responde 101). Quem abre o painel pelo endereco
-    # publico usa o painel SEM hot reload — e por isso `HMR_CLIENT_PORT` e
-    # `HMR_PROTOCOL` ficam VAZIOS tambem durante o tunel: preenche-las com
-    # `443`/`wss` atinge o painel local e o poe em refresh em laco (o 443 desta
-    # maquina responde 404, e `no-cors` deixa o ping passar). O `scripts/tunnel.sh`
-    # sobe o agente em 8000 e o `/painel` chega ao Vite pela reescrita do storefront.
+    # A porta fica no LOOPBACK: serve ao hot reload do painel aberto nesta
+    # maquina, nao a clientes da rede. O HMR nao atravessa publicacao HTTPS, e
+    # `HMR_CLIENT_PORT`/`HMR_PROTOCOL` ficam VAZIOS de proposito: preenche-las
+    # com `443`/`wss` atinge o painel local e o poe em refresh em laco (o 443
+    # desta maquina responde 404, e `no-cors` deixa o ping passar).
     ports:
       - "127.0.0.1:9001:9001"
     volumes:

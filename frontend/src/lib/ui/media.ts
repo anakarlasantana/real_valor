@@ -16,10 +16,10 @@
  *   `http://localhost:9000/static/<chave>`  URL absoluta do backend, que é o
  *                           que o painel nativo da Medusa grava em alguns
  *                           lugares (foto de produto) — vira `/uploads/<chave>`;
- *   `https://<tunel>/painel-api/static/<chave>`  a MESMA URL quando a loja é
- *                           publicada por um endereço só (`make tunnel`): o
- *                           backend passa a se ver nesse endereço, com o prefixo
- *                           do painel na frente — idem;
+ *   `https://api.exemplo.com/base/static/<chave>`  a MESMA URL num deploy em
+ *                           que o backend ganha um prefixo de caminho (proxy
+ *                           reverso): o `/static/` deixa de estar no começo —
+ *                           idem;
  *   `https://cdn.awsli.com.br/...`          a foto colada do **site antigo da
  *                           loja** no CRM: terceiro, sai intacta e sem otimizar;
  *   `https://images.unsplash.com/...`       imagem de terceiro, colada à mão,
@@ -152,14 +152,13 @@ export function mediaImageProps(
  * A chave de um arquivo do backend a partir de um caminho — `/static/<chave>`.
  *
  * O `/static/` é procurado como SEGMENTO em qualquer posição, e não apenas no
- * começo: com a loja publicada por um endereço só (`make tunnel`),
- * `MEDUSA_BACKEND_URL` do backend ganha o prefixo do painel
- * (`https://<tunel>/painel-api`) e o provider de arquivos passa a devolver
- * `https://<tunel>/painel-api/static/<chave>` — o mesmo arquivo, com um
- * namespace na frente. Ancorar no começo do caminho deixaria essa URL passar
- * intacta e a foto sumiria no otimizador do `next/image` (que roda no servidor e
- * não alcança o endereço público), que é exatamente o desfecho que este arquivo
- * existe para impedir.
+ * começo: num deploy em que o backend ganha um prefixo de caminho (proxy
+ * reverso), o provider de arquivos devolve
+ * `https://<host>/<prefixo>/static/<chave>` — o mesmo arquivo, com um namespace
+ * na frente. Ancorar no começo do caminho deixaria essa URL passar intacta e a
+ * foto sumiria no otimizador do `next/image` (que roda no servidor e não alcança
+ * o endereço público), que é exatamente o desfecho que este arquivo existe para
+ * impedir.
  *
  * A inclusão das duas barras na busca é o que a mantém sendo um *segmento*:
  * `.../mystatic/<chave>` não casa.

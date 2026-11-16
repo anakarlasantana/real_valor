@@ -6,10 +6,9 @@
  * Quem define esta constante é o bundler do admin
  * (`define.__BACKEND_URL__`, em `getViteConfig` de `@medusajs/admin-bundler`), a
  * partir do `admin.backendUrl` do `backend/medusa-config.ts` — que lê
- * `MEDUSA_BACKEND_URL`. É por isso que o `make tunnel` reescreve essa variável
- * para `https://<endereço>/painel-api` enquanto o painel está publicado:
- * trocar o valor troca a base de TODA chamada que o painel faz (ver
- * `docs/real-valor/11-ambiente-local.md` §11.6.2).
+ * `MEDUSA_BACKEND_URL`. Trocar esse valor troca a base de TODA chamada que o
+ * painel faz: em local é `http://localhost:9000`, e num deploy é o endereço
+ * público do backend.
  *
  * A declaração existe para o `tsc` do painel: sem ela, a leitura da constante em
  * `src/admin/lib/api-url.ts` seria `TS2304: Cannot find name '__BACKEND_URL__'`.

@@ -1692,10 +1692,10 @@ foram confirmadas** por auditoria.
 | 4 | Provider de e-mail transacional | Os avisos de pedido |
 
 **A URL pública é o caminho crítico de infraestrutura.** O Compose **não** expõe proxy TLS — o
-`traefik_network` citado no `README.md` pertence a outros projetos. Em desenvolvimento o túnel resolve
-(`make tunnel`, doc 11 §11.6); em produção, é decisão de infraestrutura a tomar **antes da
-inauguração**. ⚠️ Enquanto `MP_NOTIFICATION_URL` apontar para o `webhook.site`, ele **captura a
-notificação e engole a venda**.
+`traefik_network` citado no `README.md` pertence a outros projetos. Em desenvolvimento não há endereço
+público: `MP_NOTIFICATION_URL` fica vazia (confirmação manual, doc 11 §11.6); em produção, é decisão
+de infraestrutura a tomar **antes da inauguração**. ⚠️ Enquanto `MP_NOTIFICATION_URL` apontar para o
+`webhook.site`, ele **captura a notificação e engole a venda**.
 
 Nada disso trava o desenvolvimento: o provider foi escrito e testado contra o ambiente de teste. **O
 que o RV-002 não prova** — e não vai provar antes do roteiro do §11.6 rodar — é a assinatura contra uma
@@ -1731,8 +1731,8 @@ R$ 0,00. A loja não vende enquanto o passo 1 abaixo não rodar.
    `/cart` não paga** — a cotação passa e a etiqueta falha, parecendo defeito de código.
 3. **Cotação e etiqueta.** Uma cotação no checkout e **uma** etiqueta de teste em `sandbox`
    (`POST /admin/shipping/:id/etiqueta`, depois `.../etiqueta/pdf`).
-4. **Rastreio.** `openssl rand -hex 32` → `SUPERFRETE_WEBHOOK_SECRET`; `make tunnel` (a SuperFrete não
-   entrega em `localhost`); criar o Webhook App no painel. ⚠️ O valor que vale é o **`secret_token`
+4. **Rastreio.** `openssl rand -hex 32` → `SUPERFRETE_WEBHOOK_SECRET`; um endereço público (a SuperFrete
+   não entrega em `localhost`); criar o Webhook App no painel. ⚠️ O valor que vale é o **`secret_token`
    devolvido por `POST /api/v0/webhook`** — um valor inventado responde **401**. O aceite é
    `order.posted` chegar em `/webhooks/superfrete` com **200**.
 

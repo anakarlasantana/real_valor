@@ -5,16 +5,16 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 39288,
-      "comments": 8875
+      "lines": 39369,
+      "comments": 8854
     },
     "admin/src": {
-      "lines": 9885,
-      "comments": 1877
+      "lines": 9884,
+      "comments": 1876
     },
     "backend/src": {
-      "lines": 24085,
-      "comments": 4680
+      "lines": 24167,
+      "comments": 4672
     },
     "packages/contrato/src": {
       "lines": 2822,
@@ -452,8 +452,8 @@
       "header": 23
     },
     "frontend/src/lib/ui/__tests__/media.unit.spec.ts": {
-      "comments": 39,
-      "lines": 191,
+      "comments": 38,
+      "lines": 188,
       "header": 15
     },
     "frontend/src/lib/ui/__tests__/motion.unit.spec.ts": {
@@ -467,8 +467,8 @@
       "header": 33
     },
     "frontend/src/lib/ui/media.ts": {
-      "comments": 120,
-      "lines": 199,
+      "comments": 119,
+      "lines": 198,
       "header": 51
     },
     "frontend/src/lib/ui/money.ts": {
@@ -482,8 +482,8 @@
       "header": 17
     },
     "frontend/src/middleware.ts": {
-      "comments": 44,
-      "lines": 196,
+      "comments": 26,
+      "lines": 178,
       "header": 5
     },
     "frontend/src/modules/account/components/account-nav/index.tsx": {
@@ -1032,9 +1032,9 @@
       "header": 18
     },
     "admin/src/admin/lib/__tests__/api-url.unit.spec.ts": {
-      "comments": 40,
-      "lines": 116,
-      "header": 25
+      "comments": 39,
+      "lines": 115,
+      "header": 24
     },
     "admin/src/admin/lib/__tests__/enriquecimento-form.unit.spec.ts": {
       "comments": 33,
@@ -1512,8 +1512,8 @@
       "header": 27
     },
     "backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts": {
-      "comments": 63,
-      "lines": 446,
+      "comments": 62,
+      "lines": 462,
       "header": 17
     },
     "backend/src/modules/payment/mercadopago/assinatura.ts": {
@@ -1562,8 +1562,8 @@
       "header": 5
     },
     "backend/src/modules/payment/mercadopago/preferencia.ts": {
-      "comments": 102,
-      "lines": 219,
+      "comments": 99,
+      "lines": 225,
       "header": 22
     },
     "backend/src/modules/payment/mercadopago/redigir.ts": {
@@ -1573,7 +1573,7 @@
     },
     "backend/src/modules/payment/mercadopago/service.ts": {
       "comments": 80,
-      "lines": 367,
+      "lines": 373,
       "header": 5
     },
     "backend/src/modules/payment/mercadopago/status.ts": {

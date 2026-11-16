@@ -40,9 +40,9 @@
 #   NOVA/$1    a senha nova (sem `"` e sem `\`: ela vai no corpo JSON)
 #   ATUAL      a senha atual (default: `ADMIN_PASSWORD` do `.env`)
 #   EMAIL      o email do admin (default: `ADMIN_EMAIL` do `.env`)
-#   BACKEND    onde o Medusa responde (default `http://localhost:9000`). Apontar
-#              para o endereco publico (`https://<tunel>/painel-api`) confere, de
-#              quebra, que o painel publicado aceita a senha nova.
+#   BACKEND    onde o Medusa responde (default `http://localhost:9000`). Num
+#              deploy, o endereco publico do backend confere, de quebra, que o
+#              painel publicado aceita a senha nova.
 # =============================================================================
 set -uo pipefail
 
@@ -55,8 +55,8 @@ ok()   { printf '  \033[32mok\033[0m    %s\n' "$1"; }
 info() { printf '  \033[36m-\033[0m     %s\n' "$1"; }
 bad()  { printf '  \033[31mFALHA\033[0m %s\n' "$1" >&2; }
 
-# As duas funcoes de `scripts/tunnel.sh`: o `.env` e' editado NO LUGAR (a ordem
-# das chaves e' documentacao), e uma chave ausente entra no fim do arquivo.
+# O `.env` e' editado NO LUGAR (a ordem das chaves e' documentacao), e uma chave
+# ausente entra no fim do arquivo.
 env_get() { sed -n "s/^$1=//p" "$ENVF" 2>/dev/null | head -1 | tr -d '"'\''\r'; }
 
 env_set() {
