@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check types build-admin doctor admin-password
+.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check ready ready-full types build-admin doctor admin-password
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -58,6 +58,7 @@ help:
 	@echo ""
 	@echo "  Testes, tipos e o CRM"
 	@echo "    make test          - Jest do backend e do CRM (admin/), vitest do storefront"
+	@echo "    make ready         - Os gates do repo (check + types + test) num veredito de 4 linhas — e' o que o ai-harness roda"
 	@echo "    make types         - tsc do backend, do storefront e do CRM (pacote admin/)"
 	@echo "    make build-admin   - Compila o admin (Vite) — o gate de quem mexe no CRM (cache do Vite isolado: nao toca o dev server)"
 	@echo ""
@@ -370,6 +371,27 @@ check:
 	@node scripts/check-storefront-tests.mjs
 	@echo ""
 	@echo "  Artefato, fronteira, camadas, comentario e convencao de teste conferidos."
+
+# ---------------------------------------------------------------------------
+# Prontidao: os gates do repositorio num veredito de 4 linhas
+# ---------------------------------------------------------------------------
+# E' o "definition of done" em um comando: `check` + `types` + `test`, cada um
+# com log em `.run/ready/<gate>.log` e UMA linha no terminal. Quem usa:
+#
+#   - o agente/IA, que precisa saber se pode commitar sem ler 400 linhas de jest
+#     (o `testCommand` do `.harness/context.json` aponta para ca');
+#   - a pessoa, que nao quer rodar tres alvos e conferir a saida de cada um.
+#
+# O script neutraliza o `.env` exportado no shell: ele tem precedencia sobre o
+# arquivo em qualquer ferramenta que leia `process.env`, e ja' fez um spec falhar
+# (EMAIL_ATENDIMENTO) sem nenhum defeito de codigo.
+ready:
+	@scripts/check-readiness.sh
+
+# Inclui `test:api` (personas de API) quando o alvo existir — hoje ele nao existe
+# e o script pula com aviso, em vez de falhar.
+ready-full:
+	@scripts/check-readiness.sh --full
 
 # ---------------------------------------------------------------------------
 # Build do admin: o gate de quem mexe no CRM
