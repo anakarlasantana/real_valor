@@ -22,6 +22,15 @@ yarn-error.log*
 # Runtime local do modo host (PIDs e logs de scripts/dev-host.sh)
 .run/
 
+# Evidência de teste ponta-a-ponta: ARTEFATO DESCARTAVEL (trace, console, rede,
+# log de container). O que é durável — o laudo e o registro do rework — mora em
+# `docs/real-valor/laudos/` e É versionado. Ver docs/real-valor/20-testes-ponta-a-ponta.md.
+evidence/
+
+# Estado de maquina do harness (memoria de tarefa). O registro legivel e' gerado
+# em docs/real-valor/laudos/; aqui fica o JSON por execucao.
+.harness/tasks/
+
 # Contrato de conteúdo: NAO ha artefato gerado desde o G5 — ele e o pacote
 # `packages/contrato` (versionado como qualquer fonte). O que o gerador ainda
 # escreve — o seed do tema (`frontend/themes/<id>/theme.json`) e

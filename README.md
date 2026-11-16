@@ -299,6 +299,9 @@ junto (`admin/`, `COPY admin/ /app/admin`) e o storefront leva o pacote do contr
 | [`docs/real-valor/15-arquitetura-modular.md`](docs/real-valor/15-arquitetura-modular.md) | **as camadas e as guardas:** a política de comentário, as fases F0–F10 e a convenção de um módulo novo (§15.9) |
 | [`docs/real-valor/16-requisitos-admin.md`](docs/real-valor/16-requisitos-admin.md) | **engenharia reversa do painel (CRM):** o que ele permite, o que recusa e o que grava — cada regra com `arquivo:linha` de evidência |
 | [`docs/real-valor/17-roteiro-validacao-checkout-e-email.md`](docs/real-valor/17-roteiro-validacao-checkout-e-email.md) | **roteiro manual dos quatro P0:** os estados da entrega, o filtro do meio manual, os três e-mails e o `INTERNAL_API_SECRET` — com o que ainda falta configurar |
+| [`docs/real-valor/18-hospedagem-e-imagens.md`](docs/real-valor/18-hospedagem-e-imagens.md) | **onde as imagens ficam e por quê:** disco × S3 + CDN, o custo de cada caminho e a nota de decisão |
+| [`docs/real-valor/19-debito-tecnico.md`](docs/real-valor/19-debito-tecnico.md) | **o registro dos débitos (RV-…):** o que bloqueia a inauguração, o que é produto, o que é infra — com o critério de "feito" de cada um |
+| [`docs/real-valor/20-testes-ponta-a-ponta.md`](docs/real-valor/20-testes-ponta-a-ponta.md) | **o contrato do E2E e do rework:** o que o repositório declara ao harness, o que vira evidência descartável e o que vira laudo/registro versionado |
 
 A numeração tem buracos **de propósito**: os docs 01, 02, 03, 07, 08 e 10 foram podados (ver a nota
 abaixo), e o código cita "doc 11", "doc 13", "doc 14" e "doc 15" por número.

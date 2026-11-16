@@ -1,0 +1,90 @@
+{
+  // ===========================================================================
+  // .harness/context.json — o que o ai-harness precisa saber sobre a Real Valor
+  // ===========================================================================
+  // O harness roda NA RAIZ deste repositorio e le este arquivo. Nada aqui e'
+  // especifico de um provedor: o que muda por provedor/modelo e' o `models`.
+  //
+  // Formato: JSONC (comentarios sao removidos pelo LocalContextLoader).
+  // Contrato completo: docs/real-valor/20-testes-ponta-a-ponta.md
+  // ===========================================================================
+
+  // Wire format inferido do endpoint no `.env` (HARNESS_BASE_URL).
+  "provider": "auto",
+
+  // ── Prontidao (definition of done) ────────────────────────────────────────
+  // O harness ja' usa `testCommand` como override do StackDetector: com isso
+  // `ai qa` roda o NOSSO gate (check + types + test) em vez de adivinhar stack.
+  "testCommand": "make ready",
+
+  // ── Modelo por etapa ─────────────────────────────────────────────────────
+  // Nomes REAIS do endpoint ativo: trocar de provedor exige remapear esta lista
+  // (o alias por capacidade — `forte`/`rapido`/`visao` — entra na fase 4).
+  // Forte onde ha raciocinio; rapido onde ha volume.
+  "models": {
+    "plan": "deepseek-v4-pro",
+    "spec": "deepseek-v4-pro",
+    "rework": "deepseek-v4-pro",
+    "review": "deepseek-v4-pro",
+    "debug": "deepseek-v4-pro",
+    "ship": "deepseek-v4-pro",
+    "code": "deepseek-flash",
+    "qa": "deepseek-flash",
+    "e2e": "deepseek-flash",
+    "sync": "deepseek-flash"
+  },
+  "defaultModel": "deepseek-flash",
+
+  // Etapas mecanicas rodam deterministicas.
+  "stages": {
+    "qa": { "temperature": 0, "maxTokens": 2000 },
+    "e2e": { "temperature": 0, "maxTokens": 2000 }
+  },
+
+  // ── Regras que o harness injeta no system prompt ─────────────────────────
+  // Preferir AGENTS.md (fase 2); esta lista e' o resumo executavel de agora.
+  "architectureRules": [
+    "Uma mudanca so' esta pronta quando `make ready` imprime PRONTO. Nunca use `git commit --no-verify`.",
+    "Diff minimo: nao reformate arquivo, nao renomeie por gosto, nao 'limpe' o que nao foi pedido.",
+    "Nao adicione comentario: a catraca do `make check` reprova qualquer linha a mais por arquivo/arvore.",
+    "packages/contrato e' a fonte unica: campo novo = `make gen` + bump de SCHEMA_VERSION + `make seed -- --contrato`.",
+    "Migration e' schema + backfill do que existe; dado de loja e' seed. Nao misture.",
+    "Nao rode `make clean-db`, `make seed-limpar` ou `docker compose down -v` sem pedido explicito.",
+    "Todo rework relatado vira registro em docs/real-valor/laudos/reworks/; sem veredito nao se fecha."
+  ],
+
+  // ── Ciclo do teste ponta-a-ponta (lido a partir da fase 4) ────────────────
+  // Hoje INERTE: o schema do loader ignora chaves desconhecidas (zod strip),
+  // entao nada quebra. Existe para o contrato ja' nascer escrito.
+  "verification": {
+    "readiness": { "command": "make ready", "timeoutMs": 300000 }
+  },
+  "e2e": {
+    "before": ["make e2e:up"],
+    "command": "make e2e:run",
+    "after": ["make e2e:down"],
+    "journey": {
+      "cliente": "make e2e:cliente",
+      "lojista": "make e2e:lojista"
+    },
+    "timeoutMs": 900000,
+    "evidenceDir": "evidence",
+    "digest": "resumo.md",
+    "logs": [
+      { "name": "backend", "command": "docker compose -p rv_e2e logs --since {since} backend" },
+      { "name": "frontend", "command": "docker compose -p rv_e2e logs --since {since} frontend" }
+    ],
+    "allowlist": [
+      { "status": 401, "path": "/store/customers/me" },
+      { "status": 404, "path": "/store/locales" }
+    ]
+  },
+
+  // ── Registro do rework (lido pelo gerador da fase 4) ─────────────────────
+  "rework": {
+    "dir": "docs/real-valor/laudos/reworks",
+    "indice": "docs/real-valor/laudos/reworks/indice.md",
+    "template": "RW-AAAA-NNN.md",
+    "regra": "sem veredito nao se fecha"
+  }
+}

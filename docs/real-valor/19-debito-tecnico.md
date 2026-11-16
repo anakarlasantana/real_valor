@@ -1,7 +1,7 @@
 # 19 — Débito Técnico da Real Valor
 
 **Status:** Revisado — débitos encerrados separados do backlog
-**Data:** 19/10/2026 (revisões: 21/10/2026 — RV-030, RV-035, RV-036, RV-037 e o checkout, RV-051 a RV-058)
+**Data:** 19/10/2026 (revisões: 21/10/2026 — RV-030, RV-035, RV-036, RV-037 e o checkout, RV-051 a RV-058; 17/11/2026 — RV-028 (escopo do E2E) e RV-059 (fluxo de rework))
 **Autor:** Engenharia
 **Base:** commit `60634d07d6` (develop), com a revisão de 21/10
 
@@ -620,7 +620,16 @@ sendo o que falta, e não o que faltava.
 | RV-023 | Armazenamento S3 + CDN | Trocar `@medusajs/file-local` por `@medusajs/file-s3` | Imagens servidas por CDN, nenhuma migração de conteúdo |
 | RV-026 | Analytics e funil | Registrar `@medusajs/analytics` e medir conversão, abandono, busca sem resultado | Eventos de funil visíveis no painel |
 | RV-027 | Auditoria de acessibilidade | Revisão por teclado de toda a jornada, iOS e desktop | Jornada completa operável por teclado |
-| RV-028 | Teste E2E da compra | Suíte automatizada clique → pedido confirmado | Fluxo verde em CI |
+| RV-028 | Teste E2E da compra | Suíte automatizada clique → pedido confirmado. **Escopo medido (17/11/2026):** L1 (API, personas) no CI **+** L2 (navegador) sob demanda com quarentena — browser em CI custa ~5 min e é a fonte clássica de flake | L1 verde em CI; L2 verde em `make e2e` |
+| RV-059 | Fluxo de rework: do relato ao patch verificado | `ai rework <RW-id>` abre o registro a partir do laudo, classifica (teste × produto), aplica em `fix/<RW-id>-<slug>`, roda os gates e grava o veredito | Um rework sai de `relatado` para `verificado` sem intervenção humana na escrita do código, e o PR cita o `RW-id` |
+
+> **RV-028 e RV-059 são o mesmo esforço em duas metades.** O 028 é a **peça**
+> (jornadas, evidência, laudo); o 059 é a **esteira** (o que fazer com o laudo).
+> O 059 depende do 028: sem `resumo.md`/`laudo.md` não existe relato para triar.
+> O contrato — o que o repositório declara, o que produz de evidência e onde o
+> registro mora — está em
+> [`20-testes-ponta-a-ponta.md`](20-testes-ponta-a-ponta.md). Fora de escopo do
+> 059: auto-merge, `e2e:mp` e o agente editar as próprias regras.
 
 > **RV-024 e RV-025 saíram desta lista.** O upload é validado no servidor
 > (`backend/src/api/middlewares.ts`): teto absoluto de 25 MB no `multer`, teto
