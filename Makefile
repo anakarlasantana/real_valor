@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-evidencia
+.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check gen-requisitos ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-evidencia
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -365,14 +365,16 @@ doctor:
 # docs/real-valor/15-arquitetura-modular.md
 gen:
 	@node scripts/gen-content.mjs
+	@node scripts/gen-requisitos.mjs
 
 check:
 	@node scripts/gen-content.mjs --check
+	@node scripts/gen-requisitos.mjs --check
 	@node scripts/check-boundaries.mjs
 	@node scripts/check-comments.mjs
 	@node scripts/check-storefront-tests.mjs
 	@echo ""
-	@echo "  Artefato, fronteira, camadas, comentario e convencao de teste conferidos."
+	@echo "  Artefato, fronteira, camadas, comentario e convencao de teste e indice de requisitos conferidos."
 
 # ---------------------------------------------------------------------------
 # Prontidao: os gates do repositorio num veredito de 4 linhas

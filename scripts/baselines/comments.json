@@ -13,7 +13,7 @@
       "comments": 1876
     },
     "backend/src": {
-      "lines": 24637,
+      "lines": 24649,
       "comments": 4655
     },
     "packages/contrato/src": {
@@ -21,8 +21,8 @@
       "comments": 581
     },
     "scripts": {
-      "lines": 1539,
-      "comments": 306
+      "lines": 1680,
+      "comments": 312
     }
   },
   "files": {
@@ -1598,7 +1598,7 @@
     },
     "backend/src/scripts/e2e-fixtures.ts": {
       "comments": 27,
-      "lines": 199,
+      "lines": 211,
       "header": 5
     },
     "backend/src/scripts/flags.ts": {

@@ -1,0 +1,640 @@
+{
+  "fonte": "docs/real-valor/04-requisitos-funcionais.md",
+  "total": 18,
+  "requisitos": [
+    {
+      "id": "RV-001",
+      "titulo": "Camada de abstração de pagamento",
+      "prioridade": "CRÍTICA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "`resolvePayment(\"pp_mercadopago_mercadopago\")` devolve o adapter do MP.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "`resolvePayment(\"pp_desconhecido_x\")` devolve o adapter `unsupported`, sem lançar.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Um adapter novo é adicionado **sem nenhuma alteração** em `modules/checkout/`.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "Remover um adapter do registry **não** quebra o build (só o torna indisponível em runtime).",
+          "prova": null
+        },
+        {
+          "id": "CA-5",
+          "texto": "`handleWebhook` de qualquer adapter devolve `PaymentResult` — não tipo cru do provedor.",
+          "prova": null
+        },
+        {
+          "id": "CA-6",
+          "texto": "Teste unitário cobre: registry vazio, id desconhecido, adapter sem `render`.",
+          "prova": null
+        },
+        {
+          "id": "CA-7",
+          "texto": "`grep -r \"adapters/\" frontend/src/modules/checkout/` retorna **vazio**.",
+          "prova": null
+        },
+        {
+          "id": "CA-8",
+          "texto": "`scripts/check-boundaries.mjs` passa a vigiar a fronteira L3↔L4.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-002",
+      "titulo": "Adapter Mercado Pago (Pix, cartão, parcelamento)",
+      "prioridade": "CRÍTICA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Um Pix pago no ambiente de teste do MP chega a `/order/[id]/confirmed`.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Reenvio do mesmo webhook **não** duplica o pedido.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Webhook com assinatura inválida é **rejeitado com 401 e sem efeito colateral**.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "Trocar `MP_ACCESS_TOKEN` no `.env` e redeployar muda a loja de conta — **sem tocar em código**.",
+          "prova": null
+        },
+        {
+          "id": "CA-5",
+          "texto": "Remover o MP do `medusa-config.ts` deixa a loja sem aquele meio, **sem erro de build**.",
+          "prova": null
+        },
+        {
+          "id": "CA-6",
+          "texto": "O valor do pagamento é sempre lido do carrinho no backend (teste que comprova).",
+          "prova": null
+        },
+        {
+          "id": "CA-7",
+          "texto": "O parcelamento exibido corresponde ao aceito pelo MP para o valor e a bandeira.",
+          "prova": null
+        },
+        {
+          "id": "CA-8",
+          "texto": "**`payment/index.tsx` não contém `isStripeLike`, `shouldInputCard` nem qualquer pergunta sobre cartão** — só `resolvePayment(id)` e `adapter.fulfillment`.",
+          "prova": null
+        },
+        {
+          "id": "CA-9",
+          "texto": "**Teste da abstração:** mudar `fulfillment` do MP para `\"inline\"` e implementar `render` **não altera nenhuma linha** de `modules/checkout/`. Se alterar, a abstração não é real.",
+          "prova": null
+        },
+        {
+          "id": "CA-10",
+          "texto": "`data.id` minúsculo no manifest da assinatura — teste unitário da função de validação.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-003",
+      "titulo": "Interface 100% pt-BR",
+      "prioridade": "CRÍTICA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "`grep -rn '\"[A-Z][a-z]* [a-z]' frontend/src --include=*.tsx | grep -v pt-` não encontra texto de UI.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Todos os `metadata.title` / `description` em pt-BR e sem \"Medusa\".",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Navegação por teclado em checkout **não** encontra rótulo em inglês.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "Teste visual confirma que nenhum botão quebra em 320px de largura.",
+          "prova": null
+        },
+        {
+          "id": "CA-5",
+          "texto": "Mensagens do Medusa/SDK nunca chegam cruas à tela.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-004",
+      "titulo": "Filtros de catálogo com contagem",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "`/br/store?size=P&color=preto` mostra só peças P pretas.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "A URL recarregada preserva os filtros; \"voltar\" desfaz.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Marcar \"Preto\" altera a contagem de \"P\" conforme os demais filtros.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "Faceta com zero resultado fica desabilitada, não oculta.",
+          "prova": null
+        },
+        {
+          "id": "CA-5",
+          "texto": "Trocar de categoria limpa os filtros.",
+          "prova": null
+        },
+        {
+          "id": "CA-6",
+          "texto": "Falha ao carregar facetas **não** impede a listagem de produtos.",
+          "prova": null
+        },
+        {
+          "id": "CA-7",
+          "texto": "Todos os controles operáveis por teclado; accordion com `aria-expanded`.",
+          "prova": null
+        },
+        {
+          "id": "CA-8",
+          "texto": "Mobile: nenhum scroll horizontal; drawer fecha e o filtro é aplicado.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-005",
+      "titulo": "Busca de produtos",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Digitar 2+ caracteres mostra sugestões em < 400 ms.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "`Enter` leva a `/br/busca?q=` e os resultados correspondem ao termo.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "A página de resultado **reutiliza** `PaginatedProducts` e `RefinementList` (verificável no código).",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "\"saías\" e \"saias\" retornam os mesmos resultados.",
+          "prova": null
+        },
+        {
+          "id": "CA-5",
+          "texto": "Busca falha → o header continua navegável; mensagem visível.",
+          "prova": null
+        },
+        {
+          "id": "CA-6",
+          "texto": "Mobile: a busca abre em tela cheia e fecha com \"voltar\".",
+          "prova": null
+        },
+        {
+          "id": "CA-7",
+          "texto": "Sugestões operáveis por teclado (setas, Enter, Esc).",
+          "prova": null
+        },
+        {
+          "id": "CA-8",
+          "texto": "A URL do resultado é compartilhável e preserva o termo.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-006",
+      "titulo": "Frete automático e plugável",
+      "prioridade": "ALTA",
+      "estado": "feito",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "`tabela-nacional` aparece na lista do Admin quando o provider está registrado.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Criada a opção com `price_type: \"calculated\"`, o preço no checkout muda com o **peso** e o **CEP**.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "CEP inválido não mostra preço 0 — a opção sai da lista.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "Peso acima de 20kg não calcula.",
+          "prova": null
+        },
+        {
+          "id": "CA-5",
+          "texto": "Nenhum valor em centavos onde se espera reais: `calculated_amount` sai em decimal (teste).",
+          "prova": null
+        },
+        {
+          "id": "CA-6",
+          "texto": "A tabela não tem buraco: todo par (região, faixa) tem número (teste).",
+          "prova": null
+        },
+        {
+          "id": "CA-7",
+          "texto": "Trocar de transportadora **não altera** carrinho, checkout, painel de envio nem `/rastreio`.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-007",
+      "titulo": "Metadados de SEO e dados estruturados",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Nenhum título de página contém \"Medusa\".",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Toda página com `metadata.title` tem descrição **diferente** do título.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "`/sitemap.xml` responde 200 e lista produtos, categorias e coleções.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "`/robots.txt` responde 200 e referencia o sitemap.",
+          "prova": null
+        },
+        {
+          "id": "CA-5",
+          "texto": "Checkout, carrinho, conta e pedido confirmado têm `noindex`.",
+          "prova": null
+        },
+        {
+          "id": "CA-6",
+          "texto": "A PDP emite JSON-LD `Product` válido (Rich Results Test).",
+          "prova": null
+        },
+        {
+          "id": "CA-7",
+          "texto": "`?size=P` declara `canonical` para a URL sem filtro.",
+          "prova": null
+        },
+        {
+          "id": "CA-8",
+          "texto": "Nenhum título passa de 60 caracteres.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-008",
+      "titulo": "Parcelamento e Pix na vitrine",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Cartão com parcelamento mostra \"6x de R$ X sem juros\".",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Adapter sem `describe` omite a linha, sem erro.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "O desconto Pix aparece uma única vez e bate com o total cobrado.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "Trocar o provedor no registry muda a linha sem alterar o componente.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-009",
+      "titulo": "Guia de medidas",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "O link aparece ao lado do seletor de tamanho em toda PDP com variantes.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Produto com tabela própria abre a sua tabela; sem tabela, a geral.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "A tabela é legível em 320px sem scroll da página inteira.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "Medidas em cm com unidade visível no cabeçalho.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-010",
+      "titulo": "Calculadora de frete na PDP",
+      "prioridade": "MÉDIA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "CEP válido mostra preço e prazo.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "CEP inválido mostra mensagem, não quebra.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "O CEP é reaproveitado no checkout.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-011",
+      "titulo": "Badge de desconto e tamanhos no card",
+      "prioridade": "MÉDIA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Produto com desconto real mostra badge correto.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Produto sem desconto **não** mostra badge.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Produto de tamanho único **não** mostra chips.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-012",
+      "titulo": "Newsletter no rodapé",
+      "prioridade": "MÉDIA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "O bloco aparece e desaparece pelo CMS, sem deploy.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "E-mail inválido não é aceito; mensagem em pt-BR.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Consentimento não vem pré-marcado.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "O sucesso é confirmado na tela.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-013",
+      "titulo": "Ordenação e rótulos do catálogo",
+      "prioridade": "MÉDIA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "\"Mais vendidos\" e \"Maior desconto\" aparecem na lista.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Trocar a ordenação leva à página 1.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Nenhum rótulo em inglês.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "A ordenação no mobile é um seletor compacto.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-042",
+      "titulo": "Captura do pagamento e reserva de estoque",
+      "prioridade": "CRÍTICA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Pix aprovado gera **um** pedido com estoque reservado.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Webhook repetido **não** duplica o pedido.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "`rejected` não cria pedido.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "Compra sem login funciona (Guest).",
+          "prova": null
+        },
+        {
+          "id": "CA-5",
+          "texto": "O valor do pedido bate com o do pagamento na API do MP.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-043",
+      "titulo": "Painel de envio (registro de rastreio)",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "O admin registra `carrier`, `tracking_number` e `tracking_url`.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "A rota de track passa a devolver esses valores.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "**Nenhum campo assume transportadora específica.**",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "`status_label` tem valor padrão.",
+          "prova": null
+        },
+        {
+          "id": "CA-5",
+          "texto": "Salvar não apaga itens nem endereço do pedido.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-044",
+      "titulo": "Página pública de rastreio",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Consulta correta mostra pedido, itens e status.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "CPF/e-mail errado → mensagem clara, sem vazar dados.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Pedido sem rastreio mostra status, sem bloco vazio.",
+          "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "Funciona sem login.",
+          "prova": null
+        },
+        {
+          "id": "CA-5",
+          "texto": "Acessível por teclado, com `aria-live` no resultado.",
+          "prova": null
+        },
+        {
+          "id": "CA-6",
+          "texto": "Pedido cancelado mostra **\"Pedido cancelado\"**, com ou sem código de rastreio.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-045",
+      "titulo": "Notificação de envio à cliente",
+      "prioridade": "MÉDIA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Salvar o código pela primeira vez dispara a notificação.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Re-salvar o mesmo código **não** reenvia.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Falha no e-mail não perde o rastreio.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-046",
+      "titulo": "Segunda transportadora",
+      "prioridade": "BAIXA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Carrinho e checkout **não são alterados** ao plugar a transportadora.",
+          "prova": null
+        },
+        {
+          "id": "CA-2",
+          "texto": "Preço e prazo reais para CEP de teste.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Nenhum consumidor precisa conhecer o nome da transportadora.",
+          "prova": null
+        }
+      ]
+    }
+  ]
+}
