@@ -31,6 +31,7 @@ evidence/
 # em docs/real-valor/laudos/; aqui fica o JSON por execucao.
 .harness/tasks/
 .harness/tests/
+.harness/rework/
 
 # Contrato de conteúdo: NAO ha artefato gerado desde o G5 — ele e o pacote
 # `packages/contrato` (versionado como qualquer fonte). O que o gerador ainda

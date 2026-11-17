@@ -155,9 +155,9 @@ Corpo: **Fato** · **Causa provável** · **Hipóteses** · **Plano** · **Tenta
 ```
 e2e FALHOU
    └─► relatado        ← harness, automático (ao gerar o laudo)
-         ├─► triado     ← agente: teste | produto | ambiente | dado
-         │     ├─► aplicado    ← agente: branch fix/RW-2026-001-<slug> + commit
-         │     │     └─► verificado  ← `make ready` + re-execução da jornada
+         ├─► triado     ← `ai fix <RW-id>`: fronteira + branch + dossiê
+         │     ├─► aplicado    ← agente: branch fix/rw-2026-001-<slug> + commit
+         │     │     └─► verificado  ← `ai fix <RW-id> --verificar` (prontidão + jornada)
          │     │           └─► fechado
          │     ├─► descartado  ← causa era ambiente/dado (registra o porquê)
          │     └─► bloqueado   ← 3 tentativas sem sucesso → escala para humano
@@ -165,6 +165,19 @@ e2e FALHOU
 
 **Regra dura:** nenhum rework é fechado sem veredito, e nenhum PR de correção é
 aberto sem o `RW-id` no título ou no corpo.
+
+Quem executa as transições é o `ai-harness` (contrato em
+`docs/fluxo-de-rework.md` dele):
+
+| Comando | Faz | Não faz |
+| :--- | :--- | :--- |
+| `ai fix <RW-id>` | valida a classificação, exige árvore limpa, abre `fix/<id>-<slug>`, escreve `.harness/rework/<id>/dossie.md` e marca `triado` | editar código |
+| `ai fix <RW-id> --verificar` | confere a **fronteira** do patch, roda `make ready` e a jornada, grava `gates`/`tentativas`/`estado` e anexa o veredito | commitar, abrir PR, dar merge |
+
+Fronteira: `teste` só toca o instrumento (`e2e/**`, `__tests__/**`, `*.spec`);
+`produto` não toca `e2e/**`; `ambiente`/`dado` não viram patch (exigem
+`--forcar`). `AGENTS.md`, `.clinerules/**` e `.harness/context.json` nunca são
+editados — regra que o agente edita não é regra.
 
 O índice (`laudos/reworks/indice.md`) é **derivado** — regenerar e conferir com
 `--check` na CI, como o `gen-content`. Tabela:
@@ -182,7 +195,7 @@ O índice (`laudos/reworks/indice.md`) é **derivado** — regenerar e conferir 
 | 4 | `E2ERunner` + `EvidenceDigest` + estágio `e2e` + `ai e2e` (no `ai-harness`) | ✅ feito — `ai e2e --readiness` **PASSOU** (39,8s) e `ai e2e --journey cliente` **PASSOU** (57s: preparo 36,5s + jornada 20,3s), com digest de 60 linhas e registro no dashboard |
 | **5.5** | **este documento + o contrato `.harness/context.json` + `laudos/`** | ✅ **feito** (`d71d662d6a`) |
 | 6 | 2º alvo (`rd-sesi-backend`, `hi-cleo`) — prova de genericidade | **fora do escopo do projeto**: o onboarding é feito por sistema, quando necessário (o contrato é declarativo para isso) |
-| 7 | `RV-059`: continuação do fluxo (do relato ao patch verificado) | ⬜ pendente |
+| 7 | `RV-059`: continuação do fluxo (do relato ao patch verificado) | ✅ feito — `ai fix <RW-id>` (fronteira, branch, dossiê) e `ai fix <RW-id> --verificar` (gates + veredito no registro). Validado com 4 combinações de fronteira e com a recusa de registro de ambiente |
 
 
 > **Estado da jornada (17/11/2026, 17:05).** A jornada `cliente-compra` está
