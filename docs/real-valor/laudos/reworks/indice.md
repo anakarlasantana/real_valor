@@ -6,7 +6,7 @@
 
 | id | data | jornada | severidade | estado | PR |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| _(nenhum rework registrado ainda)_ | — | — | — | — | — |
+| [RW-2026-001](RW-2026-001.md) | 2026-11-16 | cliente-compra | bloqueia-compra | `relatado` | — |
 
 ## Estados possíveis
 

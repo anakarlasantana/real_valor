@@ -1,0 +1,87 @@
+# =============================================================================
+# Real Valor — overlay do TESTE PONTA-A-PONTA (projeto `rv_e2e`)
+# =============================================================================
+# Nao e' um modo de execucao do produto: e' a SEGUNDA stack, isolada, onde a
+# jornada do Playwright cria produto, edita conteudo e faz pedido sem tocar na
+# base de desenvolvimento.
+#
+# Uso (sempre pelo `scripts/e2e-stack.sh`, nunca a mao):
+#
+#   docker compose -p rv_e2e \
+#     -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.e2e.yml \
+#     up -d postgres redis backend frontend
+#
+# Por que `-p rv_e2e`: o nome do projeto prefixa VOLUMES e REDE — os dados do
+# e2e nascem e morrem em `rv_e2e_*`, sem encostar em `real_valor_*`.
+#
+# Por que este arquivo precisa existir: `container_name` e' GLOBAL no Docker e o
+# compose base fixa `real_valor_*`. Sem sobrescrever, a segunda stack colidiria
+# com a primeira na criacao do container.
+# =============================================================================
+
+services:
+  postgres:
+    container_name: rv_e2e_pg
+    # `!override` (Compose 2.24+): a lista de `ports` e' SOMADA no merge, entao
+    # sem isto a stack e2e herdaria 5439 (dev) e nao subiria com a porta ocupada.
+    ports: !override
+      - "127.0.0.1:5440:5432"
+
+  redis:
+    container_name: rv_e2e_cache
+    ports: !override
+      - "127.0.0.1:6383:6379"
+
+  backend:
+    container_name: rv_e2e_api
+    # 9100 no host: a loja e o painel do e2e ficam separados dos de dev (8000/9000).
+    ports: !override
+      - "9100:9000"
+    environment:
+      # Migrations NAO pelo entrypoint: ele roda como `medusa` e o
+      # `/app/node_modules` e' do root (EACCES em `mkdir dist/migrations`).
+      # Quem migra e' o `scripts/e2e-stack.sh`, com `-u root`, igual ao `make migrate`.
+      RUN_MIGRATIONS: "0"
+      # URL publica DESTA stack (o painel do e2e e' aberto em :9100).
+      MEDUSA_BACKEND_URL: http://localhost:9100
+      STORE_CORS: http://localhost:8100
+      ADMIN_CORS: http://localhost:9100
+      AUTH_CORS: http://localhost:8100,http://localhost:9100
+      # Sem webhook: a jornada do e2e para no pagamento (decisao do doc 20).
+      MP_NOTIFICATION_URL: ""
+      MP_BACK_URL: ""
+      # O aviso de cache do storefront continua valendo (mesmo segredo do .env).
+      FRONTEND_URL: http://frontend:8000
+
+  frontend:
+    container_name: rv_e2e_web
+    ports: !override
+      - "8100:8000"
+    environment:
+      NEXT_PUBLIC_BASE_URL: http://localhost:8100
+      # SSR fala com o backend pela rede do Compose (nome do servico).
+      MEDUSA_BACKEND_URL: http://backend:9000
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9100
+      # A chave publicavel vem do banco DESTA stack — o script a exporta antes de
+      # subir o servico (o `${...}` do compose e' interpolado do ambiente).
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:-pk_test}
+
+# -----------------------------------------------------------------------------
+# ISOLAMENTO DE VERDADE: volume e rede com NOME PROPRIO
+# -----------------------------------------------------------------------------
+# Os nomes no arquivo base sao FIXOS (`name: real_valor_pgdata`), entao o `-p
+# rv_e2e` sozinho NAO os separa — o Compose avisa e usa o volume do projeto de
+# dev. Era o risco de a jornada criar produto na base que voce esta usando.
+# Redefinir a MESMA chave com outro `name` e' o que separa.
+volumes:
+  real_valor_pgdata:
+    name: rv_e2e_pgdata
+  real_valor_redisdata:
+    name: rv_e2e_redisdata
+  real_valor_uploads:
+    name: rv_e2e_uploads
+
+networks:
+  real_valor_net:
+    name: rv_e2e_net
+    driver: bridge

@@ -60,12 +60,11 @@
     "readiness": { "command": "make ready", "timeoutMs": 300000 }
   },
   "e2e": {
-    "before": ["make e2e:up"],
-    "command": "make e2e:run",
-    "after": ["make e2e:down"],
+    "before": ["make e2e-up"],
+    "command": "make e2e",
+    "after": ["make e2e-down"],
     "journey": {
-      "cliente": "make e2e:cliente",
-      "lojista": "make e2e:lojista"
+      "cliente": "make e2e-cliente"
     },
     "timeoutMs": 900000,
     "evidenceDir": "evidence",

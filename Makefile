@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check ready ready-full types build-admin doctor admin-password
+.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-evidencia
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -59,6 +59,8 @@ help:
 	@echo "  Testes, tipos e o CRM"
 	@echo "    make test          - Jest do backend e do CRM (admin/), vitest do storefront"
 	@echo "    make ready         - Os gates do repo (check + types + test) num veredito de 4 linhas — e' o que o ai-harness roda"
+	@echo "    make e2e           - Sobe a stack ISOLADA (rv_e2e, :8100/:9100), roda a jornada da cliente e escreve evidence/<ts>/resumo.md"
+	@echo "    make e2e-cliente   - So' a jornada da cliente (o stack precisa estar de pe': make e2e-up)"
 	@echo "    make types         - tsc do backend, do storefront e do CRM (pacote admin/)"
 	@echo "    make build-admin   - Compila o admin (Vite) — o gate de quem mexe no CRM (cache do Vite isolado: nao toca o dev server)"
 	@echo ""
@@ -392,6 +394,40 @@ ready:
 # e o script pula com aviso, em vez de falhar.
 ready-full:
 	@scripts/check-readiness.sh --full
+
+# ---------------------------------------------------------------------------
+# Teste ponta-a-ponta (fase 3 do docs/real-valor/20-testes-ponta-a-ponta.md)
+# ---------------------------------------------------------------------------
+# `make e2e` sobe a stack ISOLADA (projeto rv_e2e, portas 8100/9100), roda a
+# jornada da cliente no Chromium e escreve a evidencia em `evidence/<timestamp>/`:
+# `resumo.md` (o digest lido pelo agente), `captura/` (rede e console) e
+# `playwright/` (trace e video, retain-on-failure).
+#
+# O stack fica DE PE' para investigar — `make e2e-down` derruba; para apagar os
+# dados de teste, `scripts/e2e-stack.sh destroy`.
+#
+# A jornada PARA no pagamento de proposito: a loja filtra o `pp_system_default`
+# (que "paga" sem cobrar), entao fechar pedido sem provedor real seria mentira.
+E2E_EVIDENCIA := evidence/$(shell date +%Y-%m-%dT%H-%M-%S)
+
+e2e: e2e-up
+	@mkdir -p "$(E2E_EVIDENCIA)"
+	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidencia.sh "$(E2E_EVIDENCIA)"; exit $$code' 
+
+e2e-up:
+	@mkdir -p .run
+	@scripts/e2e-stack.sh up
+
+e2e-down:
+	@scripts/e2e-stack.sh down
+
+# Uma jornada so' (a mesma stack): util enquanto se desenvolve o spec.
+e2e-cliente:
+	@mkdir -p "$(E2E_EVIDENCIA)"
+	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --grep cliente-compra 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidencia.sh "$(E2E_EVIDENCIA)"; exit $$code' 
+
+e2e-evidencia:
+	@scripts/e2e-evidencia.sh "$(E2E_EVIDENCIA)"
 
 # ---------------------------------------------------------------------------
 # Build do admin: o gate de quem mexe no CRM

@@ -1,15 +1,24 @@
 # e2e/ — as jornadas de navegador
 
-Esta pasta recebe o teste ponta-a-ponta da loja (Playwright). Ainda **vazia de
-propósito**: as jornadas entram na fase 3 do contrato.
+Playwright, uma jornada por spec em `e2e/jornadas/`. Roda contra a stack
+**isolada** `rv_e2e` (`scripts/e2e-stack.sh up`), nunca a de dev — a jornada cria
+peça e mexe no carrinho.
 
-O que já está decidido (ver [doc 20](../docs/real-valor/20-testes-ponta-a-ponta.md)):
+```bash
+make e2e           # sobe o stack, roda a jornada e escreve evidence/<ts>/
+make e2e-cliente   # só a jornada da cliente (stack já de pé)
+make e2e-down      # derruba
+```
 
-- uma jornada por spec, em `e2e/jornadas/<jornada>.spec.ts` — `cliente`, `lojista`;
-- seletor por `getByRole`/`getByTestId`; `waitForTimeout` é proibido;
-- os artefatos (`network.ndjson`, `console.ndjson`, `trace.zip`) vão para
-  `evidence/<timestamp>/`, que é **gitignored**;
-- a stack é a do projeto `rv_e2e` (portas próprias), nunca a base de dev.
+- `fixtures/gravador.ts` grava rede e console em `evidence/<ts>/captura/*.ndjson`;
+- `scripts/e2e-evidencia.sh` transforma isso em `resumo.md` (≤60 linhas);
+- o contrato completo (artefatos, allowlist, ciclo) está no
+  [doc 20](../docs/real-valor/20-testes-ponta-a-ponta.md);
+- as regras de escrita para esta pasta estão em
+  [`.clinerules/06-e2e-e-jornadas.md`](../.clinerules/06-e2e-e-jornadas.md).
 
-As regras de escrita para esta pasta estão em
-[`.clinerules/06-e2e-e-jornadas.md`](../.clinerules/06-e2e-e-jornadas.md).
+A jornada da cliente **para no pagamento** de propósito: a loja filtra o
+`pp_system_default` (que "paga" sem cobrar), então fechar pedido sem provedor
+real seria mentira. O fechamento é do `test:api` (fase 4/6) e o `e2e:mp` cobre o
+PIX em modo teste.
+

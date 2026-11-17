@@ -13,8 +13,8 @@
       "comments": 1876
     },
     "backend/src": {
-      "lines": 24438,
-      "comments": 4628
+      "lines": 24603,
+      "comments": 4650
     },
     "packages/contrato/src": {
       "lines": 2840,
@@ -1594,6 +1594,11 @@
     "backend/src/modules/shipping/tracking.ts": {
       "comments": 57,
       "lines": 343,
+      "header": 5
+    },
+    "backend/src/scripts/e2e-fixtures.ts": {
+      "comments": 22,
+      "lines": 165,
       "header": 5
     },
     "backend/src/scripts/flags.ts": {
