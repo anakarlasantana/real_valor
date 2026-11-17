@@ -43,19 +43,21 @@ resumo_json="$(DIR="$DIR" node -e '
   const linhas = specs.map((sp) => {
     const t = (sp.tests ?? [])[0] ?? {};
     const ultimo = (t.results ?? [])[(t.results ?? []).length - 1] ?? {};
+    const status = t.status ?? ultimo.status ?? "?";
+    const veredito = status === "expected" || status === "skipped" ? "ok" : "falhou";
     const erro = (ultimo.error?.message ?? "").split("\n").filter(Boolean).slice(0, 4).join(" | ");
-    return [sp.title, t.status ?? ultimo.status ?? "?", Math.round((ultimo.duration ?? 0) / 100) / 10, erro].join("\t");
+    return [veredito, sp.title, status, Math.round((ultimo.duration ?? 0) / 100) / 10, erro].join("\t");
   });
   console.log(linhas.join("\n") || "SEM_SPECS");
   process.exit(0);
 ' 2>/dev/null || echo "SEM_RESULTADO")"
 
 falhou=0
-# `status` no reporter JSON e' `passed` / `unexpected` / `skipped` — nao existe
-# `failed`. Conta como falha: qualquer spec que nao passou, ou a ausencia do
-# proprio relatorio (runner que morreu antes de escrever).
+# O reporter JSON usa `expected` / `unexpected` / `flaky` / `skipped` — nao
+# existe `passed`. O node ja classificou cada spec; conta como falha o que nao
+# e' `expected`/`skipped`, alem da ausencia do proprio relatorio.
 printf '%s\n' "$resumo_json" | grep -qE 'SEM_RESULTADO|SEM_SPECS' && falhou=1
-printf '%s\n' "$resumo_json" | grep -q . && printf '%s\n' "$resumo_json" | grep -qv $'\tpassed\t' && falhou=1
+printf '%s\n' "$resumo_json" | grep -q '^falhou' && falhou=1
 [ -n "$cincoxx" ] && falhou=1
 [ -n "$errosconsole" ] && falhou=1
 
@@ -68,7 +70,7 @@ printf '%s\n' "$resumo_json" | grep -q . && printf '%s\n' "$resumo_json" | grep 
 
   echo "## jornadas"
   echo
-  printf '%s\n' "$resumo_json" | while IFS=$'\t' read -r titulo status duracao erro; do
+  printf '%s\n' "$resumo_json" | while IFS=$'\t' read -r veredito titulo status duracao erro; do
     [ -z "${titulo:-}" ] && continue
     echo "- \`$titulo\` — $status (${duracao}s)"
     [ -n "${erro:-}" ] && echo "  - $erro"

@@ -6,6 +6,7 @@ import {
 import {
   createProductsWorkflow,
   createShippingOptionsWorkflow,
+  updateProductsWorkflow,
   updateRegionsWorkflow,
 } from "@medusajs/medusa/core-flows"
 
@@ -22,16 +23,15 @@ export const PROVEDORES_DE_PAGAMENTO_E2E = [
  *
  * Cria o que a jornada precisa e que **não** é dado de loja:
  *
- *   1. uma peça de teste, com preço, publicada e no canal online;
- *   2. uma opção de envio de **preço fixo** — o seed só cria opções
- *      `calculated` do SuperFrete, e a jornada não pode depender de saldo na
- *      transportadora nem de rede externa.
+ *   1. uma peça de teste, com preço, com perfil de envio, publicada e no canal
+ *      online;
+ *   2. uma opção de envio de **preço fixo** — a jornada não pode depender de
+ *      saldo na transportadora.
  *
  * Idempotente: casa pelo `handle` da peça e pelo nome da opção.
  *
- * Por que no backend e não no Playwright: criar peça e opção exige os workflows
- * do Medusa (perfil de envio, zona, preço). Pela API do admin seria meia dúzia
- * de chamadas com ids intermediários — aqui é o mesmo caminho do seed.
+ * Por que no backend: criar peça exige os workflows do Medusa (perfil, zona,
+ * preço); pela API do admin seriam meia dúzia de chamadas com ids no meio.
  */
 export const PRODUTO_E2E = {
   title: "[e2e] Vestido de Teste",
@@ -63,10 +63,14 @@ export default async function e2eFixtures({
     )
   }
 
-  // A loja **filtra** o `pp_system_default` (ele "paga" sem cobrar), e o seed cria
-  // a região só com ele — sem esta linha o checkout abriria em "pagamento
-  // indisponível" e o formulário nem apareceria. A região do e2e ganha os meios
-  // reais; a jornada não cria sessão de pagamento, só chega ao passo.
+  const perfis = await fulfillment.listShippingProfiles({ type: "default" })
+
+  if (!perfis.length) {
+    throw new Error("Sem perfil de envio — rode `yarn seed` antes dos fixtures.")
+  }
+
+  // A loja **filtra** o `pp_system_default`, então a região do e2e precisa dos
+  // meios reais; sem isso o checkout abriria em "pagamento indisponível".
   const { data: regioes } = await query.graph({
     entity: "region",
     fields: ["id", "payment_providers.id"],
@@ -98,6 +102,15 @@ export default async function e2eFixtures({
   })
   if (existentes?.length) {
     logger.info(`[e2e] peça já existe (${PRODUTO_E2E.handle}).`)
+
+    // Sem perfil de envio o Medusa filtra os itens do carrinho no cálculo do
+    // frete e a cotação responde 500 ("o pedido não tem itens para enviar").
+    await updateProductsWorkflow(container).run({
+      input: {
+        selector: { id: existentes[0].id },
+        update: { shipping_profile_id: perfis[0].id },
+      },
+    })
   } else {
     await createProductsWorkflow(container).run({
       input: {
@@ -106,6 +119,7 @@ export default async function e2eFixtures({
             title: PRODUTO_E2E.title,
             handle: PRODUTO_E2E.handle,
             status: "published",
+            shipping_profile_id: perfis[0].id,
             description: "Peça criada pela stack de teste ponta-a-ponta.",
             options: [{ title: "Tamanho", values: ["Único"] }],
             variants: [
@@ -116,7 +130,11 @@ export default async function e2eFixtures({
                 manage_inventory: false,
                 options: { Tamanho: "Único" },
                 prices: [
-                  { amount: PRODUTO_E2E.precoCentavos, currency_code: "brl" },
+                  {
+                    // `amount` é em reais; a constante é em centavos.
+                    amount: PRODUTO_E2E.precoCentavos / 100,
+                    currency_code: "brl",
+                  },
                 ],
               },
             ],
@@ -127,12 +145,6 @@ export default async function e2eFixtures({
     })
 
     logger.info(`[e2e] peça criada: ${PRODUTO_E2E.handle}.`)
-  }
-
-  const perfis = await fulfillment.listShippingProfiles({ type: "default" })
-
-  if (!perfis.length) {
-    throw new Error("Sem perfil de envio — rode `yarn seed` antes dos fixtures.")
   }
 
   const { data: sets } = await query.graph({
@@ -167,7 +179,7 @@ export default async function e2eFixtures({
           service_zone_id: zona,
           shipping_profile_id: perfis[0].id,
           prices: [
-            { amount: ENVIO_E2E.precoCentavos, currency_code: "brl" },
+            { amount: ENVIO_E2E.precoCentavos / 100, currency_code: "brl" },
           ],
           // O Medusa exige o TIPO da opção (`shipping_option_type_id`): sem este
           // bloco o workflow falha com "ShippingOption.shipping_option_type_id
