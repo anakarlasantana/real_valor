@@ -179,19 +179,23 @@ O índice (`laudos/reworks/indice.md`) é **derivado** — regenerar e conferir 
 | 1 | `make ready` + `scripts/check-readiness.sh` | ✅ feito (`c9a48c9e7e`) |
 | 2 | `AGENTS.md` + `.clinerules/` + `.clineignore` | ✅ feito (`cd47f90ad2`) |
 | 3 | overlay `docker-compose.e2e.yml` + `e2e/` (Playwright) + jornada `cliente` + evidência | ✅ feito (`da1769b943`) — **jornada verde** do zero em 17/11 (`7d0b9f43c6` em diante) |
-| 4 | `E2ERunner` + `EvidenceDigest` + estágio `e2e` + `ai e2e` (no `ai-harness`) | ⬜ pendente |
+| 4 | `E2ERunner` + `EvidenceDigest` + estágio `e2e` + `ai e2e` (no `ai-harness`) | ✅ feito — `ai e2e --readiness` **PASSOU** (39,8s) e `ai e2e --journey cliente` **PASSOU** (57s: preparo 36,5s + jornada 20,3s), com digest de 60 linhas e registro no dashboard |
 | **5.5** | **este documento + o contrato `.harness/context.json` + `laudos/`** | ✅ **feito** (`d71d662d6a`) |
 | 6 | 2º alvo (`rd-sesi-backend`, `hi-cleo`) — prova de genericidade | **fora do escopo do projeto**: o onboarding é feito por sistema, quando necessário (o contrato é declarativo para isso) |
 | 7 | `RV-059`: continuação do fluxo (do relato ao patch verificado) | ⬜ pendente |
 
 
-> **Estado da jornada (17/11/2026, 17:00).** A jornada `cliente-compra` está
-> **verde do zero**: `destroy` → `up` (migrations, seed, fixtures, rotas
-> aquecidas) → `make e2e-cliente` **PASSOU** em 24,6s e em 10,3s/10,9s no mesmo
-> stack, com 0 5xx e 0 erro de console. Os cinco achados do caminho viraram
-> registro: `RW-2026-001` e `-002` (teste/fixture), `-003` (peça sem perfil de
-> envio, que fazia o cálculo do frete responder 500), `-004` (dado de teste em
-> centavos) e `-005` (o resumo lia o status errado).
+> **Estado da jornada (17/11/2026, 17:05).** A jornada `cliente-compra` está
+> **verde do zero** e o harness já a executa sozinho: `ai e2e --readiness`
+> PASSOU (39,8s) e `ai e2e --journey cliente` PASSOU (57s). Os seis achados do
+> caminho viraram registro: `RW-2026-001` e `-002` (teste/fixture), `-003` (peça
+> sem perfil de envio, que fazia o cálculo do frete responder 500), `-004` (dado
+> de teste em centavos), `-005` (o resumo lia o status errado) e `-006` (preparo
+> pulado deixa a Server Action pendente).
+>
+> Observabilidade: cada execução do harness vira `testRuns[]` em
+> `.harness/tasks/<id>.json` e aparece no `ai dashboard` (painel "Testes das
+> aplicações") com passos, 5xx, console e caminho do digest — ao vivo.
 
 ### Fora de escopo (declarado)
 
