@@ -366,15 +366,17 @@ doctor:
 gen:
 	@node scripts/gen-content.mjs
 	@node scripts/gen-requisitos.mjs
+	@node scripts/gen-rastreio.mjs
 
 check:
 	@node scripts/gen-content.mjs --check
 	@node scripts/gen-requisitos.mjs --check
+	@node scripts/gen-rastreio.mjs --check
 	@node scripts/check-boundaries.mjs
 	@node scripts/check-comments.mjs
 	@node scripts/check-storefront-tests.mjs
 	@echo ""
-	@echo "  Artefato, fronteira, camadas, comentario e convencao de teste e indice de requisitos conferidos."
+	@echo "  Artefato, fronteira, camadas, comentario e convencao de teste e indice de requisitos e rastreio conferidos."
 
 # ---------------------------------------------------------------------------
 # Prontidao: os gates do repositorio num veredito de 4 linhas

@@ -27,23 +27,21 @@ acoplamento.
 
 ## 20.2 O contrato — `.harness/context.json`
 
-O harness roda na raiz do repositório e lê este arquivo (JSONC). Hoje ele já
-aproveita duas chaves: `testCommand` (o *definition of done* em um comando) e
-`architectureRules` (regras injetadas no prompt). Os blocos `verification`,
-`e2e` e `rework` estão **escritos e inertes** — o carregador ignora chave
-desconhecida, então o contrato nasce pronto e é ligado na fase 4.
+O harness roda na raiz do repositório e lê este arquivo (JSONC). Todas as
+chaves abaixo são lidas hoje: `ai verify ready` usa `verification.readiness`,
+`ai verify e2e` usa o bloco `e2e` inteiro, e `ai fix` usa `rework`.
 
 | Chave | Estado | Para que serve |
 | :--- | :--- | :--- |
 | `provider` / `models` / `stages` | **ativo** | wire format e modelo por etapa (hoje com nomes reais do endpoint) |
 | `testCommand` | **ativo** | `make ready` — o harness roda o gate do repo em vez de adivinhar stack |
-| `architectureRules` | **ativo** | resumo executável das regras (a versão completa vem no `AGENTS.md`, fase 2) |
-| `verification.readiness` | inerte | mesmo comando do `testCommand`, com `timeoutMs` explícito |
-| `e2e.before/command/after` | inerte | ciclo de vida: sobe stack → roda jornadas → derruba (**sempre**, mesmo em falha) |
-| `e2e.journey` | inerte | uma jornada por comando (`make e2e:cliente`, `make e2e:lojista`) |
-| `e2e.logs` | inerte | comandos de log declarados — o harness só substitui `{since}`; **não** conhece container |
-| `e2e.allowlist` | inerte | respostas esperadas que **não** reprovam (ver §20.4) |
-| `rework` | inerte | onde o registro é gerado e o índice conferido |
+| `architectureRules` | **ativo** | resumo executável das regras (a versão completa é o `AGENTS.md`) |
+| `verification.readiness` | **ativo** | mesmo comando do `testCommand`, com `timeoutMs` explícito |
+| `e2e.before/command/after` | **ativo** | ciclo de vida: sobe stack → roda jornadas → derruba (**sempre**, mesmo em falha) |
+| `e2e.journey` | **ativo** | uma jornada por comando (`make e2e-cliente`; `lojista` ainda não existe) |
+| `e2e.logs` | **ativo** | comandos de log declarados — o harness só substitui `{since}`; **não** conhece container |
+| `e2e.allowlist` | **ativo** | respostas esperadas que **não** reprovam (ver §20.4) |
+| `rework` | **ativo** | onde o registro é gerado e o índice conferido |
 
 ---
 
@@ -114,7 +112,7 @@ ambiente: { stack: rv_e2e, portas: [8100, 9100], tema: natal }
 classificacao: produto          # teste | produto | ambiente | dado | indefinido
 severidade: bloqueia-compra     # bloqueia-compra | degrada | cosmetico
 sintoma: "POST /store/payment-collections → 500 (3 tentativas)"
-reproducao: 'make e2e:cliente -- --grep "pagamento"'
+reproducao: 'make e2e-cliente -- --grep "pagamento"'
 evidencias:                     # o essencial INLINE — sobrevive ao evidence/ apagado
   requests_5xx: ["POST /store/payment-collections"]
   console_errors: ["A valid publishable key is required…"]
@@ -122,7 +120,7 @@ evidencias:                     # o essencial INLINE — sobrevive ao evidence/ 
 causa_provavel: { arquivo: "backend/src/api/…", linha: 0, porque: "…" }
 hipoteses: []                   # cada uma com estado: aberta | confirmada | descartada
 arquivos_suspeitos: []
-testes_a_rodar: ["make ready", "make e2e:cliente", "make test:api"]
+testes_a_rodar: ["make ready", "make e2e-cliente", "make test:api"]
 criterio_de_aceite: "…"
 risco_de_regressao: medio
 patch: { branch: "", commits: [], pr: "" }
@@ -216,3 +214,35 @@ O índice (`laudos/reworks/indice.md`) é **derivado** — regenerar e conferir 
 - **`e2e:mp`** (pagamento real em modo teste) — só depois do `RV-028` fechar;
 - o agente **editar as próprias regras** (`AGENTS.md`, `.clinerules`) — regra que
   o modelo reescreve não é regra.
+
+## 20.8 Requisito → critério → prova (o rastreio)
+
+O elo entre o documento e o teste é **declarado**, não lembrado:
+
+```
+docs/real-valor/04-requisitos-funcionais.md     ← fonte (prosa revisada)
+        │ node scripts/gen-requisitos.mjs
+        ▼
+requisitos.json        18 requisitos · 98 critérios · CA-1..CA-n
+        │
+spec/<ID>-<slug>/requisito.md    CA-n com `prova:` e `aprovado_sha`
+        │ node scripts/gen-rastreio.mjs
+        ▼
+rastreio.json          CA → prova → resolvido? (arquivo/teste/passo existe)
+```
+
+`make check` reprova em três casos, todos medidos:
+
+| Caso | Mensagem |
+| :--- | :--- |
+| critério editado depois da aprovação | `criterios mudaram depois da aprovacao (sha X -> Y)` |
+| prova declarada inexistente | `arquivo ausente: …` / `passo ausente na jornada: …` |
+| derivado velho | `requisitos.json desatualizado` / `rastreio.json desatualizado` |
+
+**Piloto:** `spec/RV-006-frete-plugavel/` — frete já entregue, aprovado
+retroativamente, **7/7 critérios com prova resolvida** (6 unitários e 1 jornada).
+Os demais 17 requisitos continuam só no índice; viram spec quando forem
+planejados, ou retroativamente se já estiverem entregues.
+
+Níveis de prova: `unit:<arquivo>` (existe), `jornada:<nome>@<passo>` (spec existe
+e contém o `test.step`), `api:<nome>` (fase E).

@@ -19,6 +19,6 @@ make e2e-down      # derruba
 
 A jornada da cliente **para no pagamento** de propósito: a loja filtra o
 `pp_system_default` (que "paga" sem cobrar), então fechar pedido sem provedor
-real seria mentira. O fechamento é do `test:api` (fase 4/6) e o `e2e:mp` cobre o
+real seria mentira. O fechamento é do `test:api` (pendência B do roadmap) e o `e2e:mp` cobre o
 PIX em modo teste.
 

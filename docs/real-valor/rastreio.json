@@ -1,0 +1,82 @@
+{
+  "gerado_de": "spec/**/requisito.md",
+  "total_specs": 1,
+  "total_ca": 7,
+  "provados": 7,
+  "specs": [
+    {
+      "id": "RV-006",
+      "pasta": "spec/RV-006-frete-plugavel",
+      "estado": "aprovado",
+      "retroativo": true,
+      "aprovado_por": "Ana Karla Santana",
+      "aprovado_sha": "b0f93169097aaff457a9276519a6a2c66120a669b93f32fd70d872852775a93a",
+      "sha_atual": "b0f93169097aaff457a9276519a6a2c66120a669b93f32fd70d872852775a93a",
+      "criterios": [
+        {
+          "ca": "CA-1",
+          "texto": "`tabela-nacional` aparece na lista do Admin quando o provider está registrado.",
+          "prova": "unit:backend/src/modules/fulfillment/tabela/__tests__/registro.unit.spec.ts",
+          "tipo": "unit",
+          "alvo": "backend/src/modules/fulfillment/tabela/__tests__/registro.unit.spec.ts",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-2",
+          "texto": "Criada a opção com `price_type: \"calculated\"`, o preço no checkout muda com o **peso** e o **CEP**.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/cotacao.unit.spec.ts",
+          "tipo": "unit",
+          "alvo": "backend/src/modules/fulfillment/superfrete/__tests__/cotacao.unit.spec.ts",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-3",
+          "texto": "CEP inválido não mostra preço 0 — a opção sai da lista.",
+          "prova": "unit:backend/src/modules/fulfillment/tabela/__tests__/tabela.unit.spec.ts",
+          "tipo": "unit",
+          "alvo": "backend/src/modules/fulfillment/tabela/__tests__/tabela.unit.spec.ts",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-4",
+          "texto": "Peso acima de 20kg não calcula.",
+          "prova": "unit:backend/src/modules/fulfillment/tabela/__tests__/tabela.unit.spec.ts",
+          "tipo": "unit",
+          "alvo": "backend/src/modules/fulfillment/tabela/__tests__/tabela.unit.spec.ts",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-5",
+          "texto": "Nenhum valor em centavos onde se espera reais: `calculated_amount` sai em decimal.",
+          "prova": "unit:backend/src/modules/fulfillment/__tests__/dinheiro.unit.spec.ts",
+          "tipo": "unit",
+          "alvo": "backend/src/modules/fulfillment/__tests__/dinheiro.unit.spec.ts",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-6",
+          "texto": "A tabela não tem buraco: todo par (região, faixa) tem número.",
+          "prova": "unit:backend/src/modules/fulfillment/tabela/__tests__/tabela.unit.spec.ts",
+          "tipo": "unit",
+          "alvo": "backend/src/modules/fulfillment/tabela/__tests__/tabela.unit.spec.ts",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-7",
+          "texto": "Trocar de transportadora **não altera** carrinho, checkout, painel de envio nem `/rastreio`.",
+          "prova": "jornada:cliente@checkout · entrega cota e aceita a opção",
+          "tipo": "jornada",
+          "alvo": "cliente@checkout · entrega cota e aceita a opção",
+          "resolvido": true,
+          "motivo": null
+        }
+      ]
+    }
+  ]
+}
