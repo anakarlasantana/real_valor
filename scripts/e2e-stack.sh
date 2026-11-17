@@ -90,6 +90,15 @@ subir() {
   esperar "loja em http://localhost:$PORTA_LOJA/br" \
     "curl -fsS http://localhost:$PORTA_LOJA/br" 60 || return 1
 
+  # O `next dev` compila a rota sob demanda, e a PRIMEIRA visita pode abortar a
+  # navegacao do Playwright (net::ERR_ABORTED - RW-2026-003). Aquecer aqui e'
+  # barato e tira a corrida de dentro do teste.
+  info "aquecendo as rotas da jornada (next dev compila sob demanda)"
+  for rota in "/br" "/br/store" "/br/products/e2e-vestido-de-teste"; do
+    curl -s -o /dev/null --max-time 90 "http://localhost:$PORTA_LOJA$rota" || true
+  done
+  ok "rotas aquecidas"
+
   printf '\n'
   ok "loja:  http://localhost:$PORTA_LOJA/br"
   ok "painel: http://localhost:$PORTA_BACKEND/painel"

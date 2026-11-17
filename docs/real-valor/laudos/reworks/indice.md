@@ -8,7 +8,8 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | [RW-2026-001](RW-2026-001.md) | 2026-11-16 | cliente-compra | cosmetico | `descartado` (defeito do teste) | - |
 | [RW-2026-002](RW-2026-002.md) | 2026-11-17 | cliente-compra | bloqueia-compra | `descartado` (fixture/regiao) | - |
-| [RW-2026-003](RW-2026-003.md) | 2026-11-17 | cliente-compra | degrada | `relatado` | - |
+| [RW-2026-003](RW-2026-003.md) | 2026-11-17 | cliente-compra | degrada | `relatado` (grupo Entrega) | - |
+| [RW-2026-004](RW-2026-004.md) | 2026-11-17 | cliente-compra | bloqueia-compra | `relatado` (preco 100x) | - |
 
 ## Estados possiveis
 

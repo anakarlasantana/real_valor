@@ -1,3 +1,5 @@
+import type { Page } from "@playwright/test"
+
 import { expect, test } from "../fixtures/gravador"
 
 /**
@@ -14,20 +16,38 @@ import { expect, test } from "../fixtures/gravador"
 
 const PRODUTO = "[e2e] Vestido de Teste"
 
+/**
+ * Navegação com segunda tentativa.
+ *
+ * O `next dev` compila sob demanda e a ação de adicionar dispara refresh do
+ * router: um `goto` em cima disso volta `net::ERR_ABORTED` (RW-2026-003). Não é
+ * retry de asserção — é a navegação em si, e o alvo é o mesmo.
+ */
+async function irPara(page: Page, caminho: string): Promise<void> {
+  for (let tentativa = 1; tentativa <= 2; tentativa++) {
+    try {
+      await page.goto(caminho, { waitUntil: "domcontentloaded" })
+      return
+    } catch (erro) {
+      if (tentativa === 2) throw erro
+    }
+  }
+}
+
 test("cliente-compra: vitrine → produto → sacola → entrega → pagamento", async ({
   page,
   gravador,
 }) => {
   await test.step("home da loja abre", async () => {
-    await page.goto("/br")
+    await irPara(page, "/br")
     await expect(page).toHaveTitle(/Real Valor/)
     // A faixa da capa é o primeiro conteúdo da home; se ela não desenhou, a
     // página veio com erro e o resto da jornada não prova nada.
-    await expect(page.locator("main")).toBeVisible()
+    await expect(page.locator("main").first()).toBeVisible()
   })
 
   await test.step("catálogo mostra a peça de teste", async () => {
-    await page.goto("/br/store")
+    await irPara(page, "/br/store")
     const cartao = page.getByTestId("product-title").filter({ hasText: PRODUTO })
     await expect(cartao.first()).toBeVisible()
     await cartao.first().click()
@@ -71,16 +91,7 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
   })
 
   await test.step("sacola tem a peça", async () => {
-    // Um `goto` pode ser abortado pelo refresh em voo; a segunda tentativa pega
-    // o router já assentado. Não é retry de asserção: é a navegação em si.
-    for (let tentativa = 1; tentativa <= 2; tentativa++) {
-      try {
-        await page.goto("/br/cart")
-        break
-      } catch (erro) {
-        if (tentativa === 2) throw erro
-      }
-    }
+    await irPara(page, "/br/cart")
 
     await expect(
       page.getByTestId("empty-state"),
@@ -93,7 +104,7 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
     // Vai direto ao endereço do checkout: o cookie do carrinho é o mesmo, e o
     // link da sacola varia com o layout (o primeiro teste pagou esse preço —
     // clicou num link de rodapé e o campo de e-mail nunca apareceu).
-    await page.goto("/br/checkout?step=address")
+    await irPara(page, "/br/checkout?step=address")
 
     // O sintoma que importa: se o carrinho não persistiu, o checkout abre em
     // `empty-state` e NÃO existe campo para preencher. Falhar aqui (e não no
@@ -123,6 +134,10 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
     await preencher("shipping-first-name-input", "Cliente")
     await preencher("shipping-last-name-input", "De Teste")
     await preencher("shipping-phone-input", "85999990000")
+    // O CPF é obrigatório no checkout desta loja (a etiqueta de envio sai com
+    // ele); sem preencher, o passo de endereço não avança e a entrega nunca
+    // aparece.
+    await preencher("shipping-cpf-input", "52998224725")
 
     // O CEP dispara a busca de endereço (`shipping-cep-buscando`); preencher o
     // resto ANTES dela voltar deixa o formulário pela metade.
