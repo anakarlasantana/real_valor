@@ -176,13 +176,20 @@ O índice (`laudos/reworks/indice.md`) é **derivado** — regenerar e conferir 
 
 | Fase | Entrega | Estado |
 | :--- | :--- | :--- |
-| 1 | `make ready` + `scripts/check-readiness.sh` | ⬜ pendente |
-| 2 | `AGENTS.md` + `.clinerules/` + `.clineignore` | ⬜ pendente |
-| 3 | overlay `docker-compose.e2e.yml` + `e2e/` (Playwright) + jornada `cliente` + evidência | ⬜ pendente |
+| 1 | `make ready` + `scripts/check-readiness.sh` | ✅ feito (`c9a48c9e7e`) |
+| 2 | `AGENTS.md` + `.clinerules/` + `.clineignore` | ✅ feito (`cd47f90ad2`) |
+| 3 | overlay `docker-compose.e2e.yml` + `e2e/` (Playwright) + jornada `cliente` + evidência | ✅ feito (`da1769b943`) — estável até a sacola; o checkout depende do RW-2026-003 |
 | 4 | `E2ERunner` + `EvidenceDigest` + estágio `e2e` + `ai e2e` (no `ai-harness`) | ⬜ pendente |
-| **5.5** | **este documento + o contrato `.harness/context.json` + `laudos/`** | ✅ **feito** |
-| 6 | 2º alvo (`rd-sesi-backend`, `hi-cleo`) — prova de genericidade | ⬜ pendente |
+| **5.5** | **este documento + o contrato `.harness/context.json` + `laudos/`** | ✅ **feito** (`d71d662d6a`) |
+| 6 | 2º alvo (`rd-sesi-backend`, `hi-cleo`) — prova de genericidade | **fora do escopo do projeto**: o onboarding é feito por sistema, quando necessário (o contrato é declarativo para isso) |
 | 7 | `RV-059`: continuação do fluxo (do relato ao patch verificado) | ⬜ pendente |
+
+
+> **Estado da jornada (17/11/2026).** Home → catálogo → produto → sacola verdes.
+> O passo do checkout ficou bloqueado por duas causas **resolvidas** —
+> `RW-2026-001` (defeito do teste: navegar abortava a Server Action) e
+> `RW-2026-002` (fixture/região de pagamento) — e uma **aberta**:
+> `RW-2026-003` (o `next dev` aborta navegação enquanto compila).
 
 ### Fora de escopo (declarado)
 

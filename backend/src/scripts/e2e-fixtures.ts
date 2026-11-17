@@ -6,7 +6,14 @@ import {
 import {
   createProductsWorkflow,
   createShippingOptionsWorkflow,
+  updateRegionsWorkflow,
 } from "@medusajs/medusa/core-flows"
+
+/** Os meios que a **loja** mostra (o `pp_system_default` é filtrado pela vitrine). */
+export const PROVEDORES_DE_PAGAMENTO_E2E = [
+  "pp_mercadopago_pix",
+  "pp_mercadopago_cartao",
+] as const
 
 /**
  * Fixtures do teste ponta-a-ponta — **só** a stack `rv_e2e` chama isto.
@@ -56,12 +63,39 @@ export default async function e2eFixtures({
     )
   }
 
+  // A loja **filtra** o `pp_system_default` (ele "paga" sem cobrar), e o seed cria
+  // a região só com ele — sem esta linha o checkout abriria em "pagamento
+  // indisponível" e o formulário nem apareceria. A região do e2e ganha os meios
+  // reais; a jornada não cria sessão de pagamento, só chega ao passo.
+  const { data: regioes } = await query.graph({
+    entity: "region",
+    fields: ["id", "payment_providers.id"],
+    filters: { currency_code: "brl" },
+  })
+
+  const atuais = new Set(
+    (regioes?.[0]?.payment_providers ?? []).map((provider: any) =>
+      String(provider?.id)
+    )
+  )
+  const faltam = PROVEDORES_DE_PAGAMENTO_E2E.filter((id) => !atuais.has(id))
+
+  if (regioes?.[0] && faltam.length) {
+    await updateRegionsWorkflow(container).run({
+      input: {
+        selector: { id: regioes[0].id },
+        update: { payment_providers: [...atuais, ...faltam] },
+      },
+    })
+
+    logger.info(`[e2e] meios de pagamento na região: ${faltam.join(", ")}.`)
+  }
+
   const { data: existentes } = await query.graph({
     entity: "product",
     fields: ["id"],
     filters: { handle: PRODUTO_E2E.handle },
   })
-
   if (existentes?.length) {
     logger.info(`[e2e] peça já existe (${PRODUTO_E2E.handle}).`)
   } else {

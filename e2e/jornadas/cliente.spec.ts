@@ -35,16 +35,57 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
 
   await test.step("página de produto e adicionar à sacola", async () => {
     await expect(page.getByRole("heading", { name: PRODUTO })).toBeVisible()
-    await page.getByRole("button", { name: "Comprar" }).click()
-    await expect(
-      page.getByTestId("product-quantity").or(page.getByRole("dialog"))
-    ).toBeVisible({ timeout: 15_000 }).catch(() => {
-      // O clique pode ir direto para a sacola; o passo seguinte confirma.
+
+    // Adicionar é uma Server Action (POST na própria página). Dois cuidados que
+    // a primeira versão não tinha (RW-2026-001):
+    //   1. navegar logo após o clique ABORTA o POST — e com ele o `Set-Cookie`;
+    //   2. o clique pode cair ANTES da hidratação e virar no-op silencioso.
+    // Por isso esperamos a resposta da ação e, se ela não veio, clicamos de novo.
+    const botaoComprar = page.getByTestId("add-product-button")
+    await expect(botaoComprar).toBeEnabled({ timeout: 20_000 })
+
+    let adicionou = false
+
+    for (let tentativa = 1; tentativa <= 3 && !adicionou; tentativa++) {
+      const acao = page
+        .waitForResponse((resposta) => resposta.request().method() === "POST", {
+          timeout: 6_000,
+        })
+        .catch(() => null)
+
+      await botaoComprar.click()
+      adicionou = Boolean(await acao)
+    }
+
+    expect(
+      adicionou,
+      "o clique em Comprar não disparou a Server Action (hidratação?)"
+    ).toBe(true)
+
+    // Espera o app refletir o item (o contador da sacola no cabeçalho) antes de
+    // navegar: a ação dispara um refresh do router, e sair no meio ABORTA a
+    // navegação (`net::ERR_ABORTED`). É o mesmo sinal que a pessoa usa.
+    await expect(page.getByTestId("nav-cart-link")).toContainText("1", {
+      timeout: 15_000,
     })
   })
 
   await test.step("sacola tem a peça", async () => {
-    await page.goto("/br/cart")
+    // Um `goto` pode ser abortado pelo refresh em voo; a segunda tentativa pega
+    // o router já assentado. Não é retry de asserção: é a navegação em si.
+    for (let tentativa = 1; tentativa <= 2; tentativa++) {
+      try {
+        await page.goto("/br/cart")
+        break
+      } catch (erro) {
+        if (tentativa === 2) throw erro
+      }
+    }
+
+    await expect(
+      page.getByTestId("empty-state"),
+      "a sacola abriu vazia — o carrinho não persistiu"
+    ).toHaveCount(0, { timeout: 15_000 })
     await expect(page.getByText(PRODUTO).first()).toBeVisible()
   })
 
@@ -65,17 +106,41 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
       "o checkout abriu vazio: o carrinho não sobreviveu entre o add-to-cart e o checkout"
     ).toHaveCount(0, { timeout: 15_000 })
 
-    await page.getByTestId("email-input").fill("cliente@e2e.realvalor.test")
-    await page.getByTestId("billing-first-name-input").fill("Cliente")
-    await page.getByTestId("billing-last-name-input").fill("De Teste")
-    await page.getByTestId("billing-phone-input").fill("85999990000")
-    await page.getByTestId("billing-postal-input").fill("60352680")
-    await page.getByTestId("billing-address-number-input").fill("388")
-    await page.getByTestId("billing-neighborhood-input").fill("Alvaro Weyne")
-    await page.getByTestId("billing-city-input").fill("Fortaleza")
-    await page.getByTestId("billing-province-input").fill("CE")
+    // O passo de endereço usa os campos `shipping-*` (os `billing-*` são do
+    // bloco de cobrança, que só existe quando é outro endereço).
+    const preencher = async (testid: string, valor: string) => {
+      const campo = page.getByTestId(testid)
+      const ehSelect = await campo.evaluate((el) => el.tagName === "SELECT")
 
-    await page.getByRole("button", { name: "Continuar para a entrega" }).click()
+      if (ehSelect) {
+        await campo.selectOption(valor)
+      } else {
+        await campo.fill(valor)
+      }
+    }
+
+    await preencher("shipping-email-input", "cliente@e2e.realvalor.test")
+    await preencher("shipping-first-name-input", "Cliente")
+    await preencher("shipping-last-name-input", "De Teste")
+    await preencher("shipping-phone-input", "85999990000")
+
+    // O CEP dispara a busca de endereço (`shipping-cep-buscando`); preencher o
+    // resto ANTES dela voltar deixa o formulário pela metade.
+    await preencher("shipping-postal-code-input", "60352680")
+    await page
+      .getByTestId("shipping-cep-buscando")
+      .waitFor({ state: "detached", timeout: 8_000 })
+      .catch(() => {
+        // A busca pode não existir nesta configuração; o preenchimento abaixo
+        // vale de qualquer forma.
+      })
+
+    await preencher("shipping-address-number-input", "388")
+    await preencher("shipping-neighborhood-input", "Alvaro Weyne")
+    await preencher("shipping-city-input", "Fortaleza")
+    await preencher("shipping-province-input", "CE")
+
+    await page.getByTestId("submit-address-button").click()
   })
 
   await test.step("checkout · entrega cota e aceita a opção", async () => {
