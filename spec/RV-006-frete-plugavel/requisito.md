@@ -5,11 +5,17 @@ persona: cliente
 prioridade: ALTA
 origem: docs/real-valor/04-requisitos-funcionais.md#rv-006
 estado: aprovado
-retroativo: true
+retroativo: "true"
 aprovado_por: Ana Karla Santana
 aprovado_conta: t-ana.santana@cni.com.br
 aprovado_em: 2026-11-18T00:00:00-03:00
 aprovado_sha: b0f93169097aaff457a9276519a6a2c66120a669b93f32fd70d872852775a93a
+plano_aprovado_por: Ana Karla Santana
+plano_aprovado_conta: t-ana.santana@cni.com.br
+plano_aprovado_em: 2026-11-17T23:54:58.203Z
+plano_sha: bbeee7fbb9f430ae9a0bcf3dfa917892e39647d30ec292af3e2a96911a5bad30
+plano_risco: 5 tarefas (limite 3 sem G2)
+plano_terminal: "false"
 ---
 
 ## História

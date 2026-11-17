@@ -239,6 +239,11 @@ rastreio.json          CA → prova → resolvido? (arquivo/teste/passo existe)
 | prova declarada inexistente | `arquivo ausente: …` / `passo ausente na jornada: …` |
 | derivado velho | `requisitos.json desatualizado` / `rastreio.json desatualizado` |
 
+**Dois gates humanos, nunca por critério:** G1 aprova a spec inteira
+(`ai spec approve`) e G2 aprova o plano **só quando há risco** — >3 tarefas,
+`packages/contrato` ou migration (`ai plan approve`). A verificação de cada CA é
+da máquina (DoR + rastreio).
+
 **Piloto:** `spec/RV-006-frete-plugavel/` — frete já entregue, aprovado
 retroativamente, **7/7 critérios com prova resolvida** (6 unitários e 1 jornada).
 Os demais 17 requisitos continuam só no índice; viram spec quando forem
