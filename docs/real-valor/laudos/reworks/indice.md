@@ -12,6 +12,7 @@
 | [RW-2026-004](RW-2026-004.md) | 2026-11-17 | cliente-compra | bloqueia-compra | `verificado` (dado de teste em centavos) | - |
 | [RW-2026-005](RW-2026-005.md) | 2026-11-17 | cliente-compra | degrada | `verificado` (resumo lia status errado) | - |
 | [RW-2026-006](RW-2026-006.md) | 2026-11-17 | cliente-compra | degrada | `verificado` (preparo pulado: `--skip-before`) | - |
+| [RW-2026-008](RW-2026-008.md) | 2026-11-17 | cliente-compra | bloqueia-compra | `verificado` (submit do endereço sem retry) | - |
 
 ## Estados possiveis
 

@@ -155,7 +155,28 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
     await preencher("shipping-city-input", "Fortaleza")
     await preencher("shipping-province-input", "CE")
 
-    await page.getByTestId("submit-address-button").click()
+    // O envio do endereço também é Server Action: o clique pode cair ANTES da
+    // hidratação e virar no-op silencioso — o grupo "Entrega" então fica em
+    // "Informe o endereço acima…" (medido em 17/11, RW-2026-008). Mesmo cuidado
+    // do add-to-cart: espera a resposta e, se não veio, clica de novo.
+    const enviarEndereco = page.getByTestId("submit-address-button")
+    let enviou = false
+
+    for (let tentativa = 1; tentativa <= 3 && !enviou; tentativa++) {
+      const acao = page
+        .waitForResponse((resposta) => resposta.request().method() === "POST", {
+          timeout: 8_000,
+        })
+        .catch(() => null)
+
+      await enviarEndereco.click()
+      enviou = Boolean(await acao)
+    }
+
+    expect(
+      enviou,
+      "o clique em Continuar para a entrega não disparou a Server Action (hidratação?)"
+    ).toBe(true)
   })
 
   await test.step("checkout · entrega cota e aceita a opção", async () => {
