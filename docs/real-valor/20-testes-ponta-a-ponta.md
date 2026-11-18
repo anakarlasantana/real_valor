@@ -249,5 +249,9 @@ retroativamente, **7/7 critérios com prova resolvida** (6 unitários e 1 jornad
 Os demais 17 requisitos continuam só no índice; viram spec quando forem
 planejados, ou retroativamente se já estiverem entregues.
 
+Para ver o rastreio sem escrever nada: `ai verify proofs` (specs do alvo,
+prova de cada CA e catálogo de jornadas — nome, comando, passos e qual CA ela
+prova). Sai com código 1 quando o elo quebra.
+
 Níveis de prova: `unit:<arquivo>` (existe), `jornada:<nome>@<passo>` (spec existe
 e contém o `test.step`), `api:<nome>` (fase E).
