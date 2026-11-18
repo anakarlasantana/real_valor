@@ -14,6 +14,8 @@ lockfile, três runtimes. A stack roda em Docker (`make up`).
 ## Definition of Done (executável)
 
 - `make ready` tem de imprimir `VEREDITO: PRONTO` antes de qualquer commit.
+- Código começa por spec aprovada: `ai build code <task> "<instrução>" --spec <RV-id>`
+  (G1; G2 quando o plano tem risco). Sem spec, `--sem-spec` e a decisão fica registrada.
 - Nunca `git commit --no-verify`. O hook roda o `make check` de propósito.
 - Nunca diga "está pronto" sem colar a saída do veredito.
 
