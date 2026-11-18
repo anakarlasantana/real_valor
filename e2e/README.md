@@ -11,7 +11,7 @@ make e2e-down      # derruba
 ```
 
 - `fixtures/gravador.ts` grava rede e console em `evidence/<ts>/captura/*.ndjson`;
-- `scripts/e2e-evidencia.sh` transforma isso em `resumo.md` (≤60 linhas);
+- `scripts/e2e-evidence.sh` transforma isso em `resumo.md` (≤60 linhas);
 - o contrato completo (artefatos, allowlist, ciclo) está no
   [doc 20](../docs/real-valor/20-testes-ponta-a-ponta.md);
 - as regras de escrita para esta pasta estão em

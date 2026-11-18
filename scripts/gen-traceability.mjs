@@ -1,7 +1,7 @@
 /** Rastreio requisito → critério → prova (unit, api, jornada).
- *  node scripts/gen-rastreio.mjs           → regrava docs/real-valor/rastreio.json
- *  node scripts/gen-rastreio.mjs --check   → exit 1 se velho, sem prova ou sem hash
- *  node scripts/gen-rastreio.mjs --sha ID  → imprime o sha dos critérios de uma spec
+ *  node scripts/gen-traceability.mjs           → regrava docs/real-valor/traceability.json
+ *  node scripts/gen-traceability.mjs --check   → exit 1 se velho, sem prova ou sem hash
+ *  node scripts/gen-traceability.mjs --sha ID  → imprime o sha dos critérios de uma spec
  */
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url"
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const specsDir = join(raiz, "spec")
-const destino = "docs/real-valor/rastreio.json"
+const destino = "docs/real-valor/traceability.json"
 
 function frontmatter(texto) {
   const bloco = /^---\n([\s\S]*?)\n---/.exec(texto)?.[1] ?? ""
@@ -163,7 +163,7 @@ if (process.argv.includes("--check")) {
     process.exit(0)
   }
 
-  console.error("  FAIL rastreio:\n" + problemas.map((p) => `       - ${p}`).join("\n") + "\n  Rode: node scripts/gen-rastreio.mjs")
+  console.error("  FAIL rastreio:\n" + problemas.map((p) => `       - ${p}`).join("\n") + "\n  Rode: node scripts/gen-traceability.mjs")
   process.exit(1)
 }
 

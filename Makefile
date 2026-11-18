@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check gen-requisitos ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-evidencia
+.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check gen-requirements ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-evidence
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -365,18 +365,18 @@ doctor:
 # docs/real-valor/15-arquitetura-modular.md
 gen:
 	@node scripts/gen-content.mjs
-	@node scripts/gen-requisitos.mjs
-	@node scripts/gen-rastreio.mjs
+	@node scripts/gen-requirements.mjs
+	@node scripts/gen-traceability.mjs
 
 check:
 	@node scripts/gen-content.mjs --check
-	@node scripts/gen-requisitos.mjs --check
-	@node scripts/gen-rastreio.mjs --check
+	@node scripts/gen-requirements.mjs --check
+	@node scripts/gen-traceability.mjs --check
 	@node scripts/check-boundaries.mjs
 	@node scripts/check-comments.mjs
 	@node scripts/check-storefront-tests.mjs
 	@echo ""
-	@echo "  Artefato, fronteira, camadas, comentario e convencao de teste e indice de requisitos e rastreio conferidos."
+	@echo "  Artefato, fronteira, camadas, comentario e convencao de teste e indice de requisitos e rastreabilidade conferidos."
 
 # ---------------------------------------------------------------------------
 # Prontidao: os gates do repositorio num veredito de 4 linhas
@@ -416,7 +416,7 @@ E2E_EVIDENCIA := evidence/$(shell date +%Y-%m-%dT%H-%M-%S)
 
 e2e: e2e-up
 	@mkdir -p "$(E2E_EVIDENCIA)"
-	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidencia.sh "$(E2E_EVIDENCIA)"; exit $$code' 
+	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code' 
 
 e2e-up:
 	@mkdir -p .run
@@ -428,10 +428,10 @@ e2e-down:
 # Uma jornada so' (a mesma stack): util enquanto se desenvolve o spec.
 e2e-cliente:
 	@mkdir -p "$(E2E_EVIDENCIA)"
-	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --grep cliente-compra 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidencia.sh "$(E2E_EVIDENCIA)"; exit $$code' 
+	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --grep cliente-compra 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code' 
 
-e2e-evidencia:
-	@scripts/e2e-evidencia.sh "$(E2E_EVIDENCIA)"
+e2e-evidence:
+	@scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"
 
 # ---------------------------------------------------------------------------
 # Build do admin: o gate de quem mexe no CRM

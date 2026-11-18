@@ -19,6 +19,15 @@ lockfile, três runtimes. A stack roda em Docker (`make up`).
 - Nunca `git commit --no-verify`. O hook roda o `make check` de propósito.
 - Nunca diga "está pronto" sem colar a saída do veredito.
 
+## Idioma e nomenclatura
+
+- **Código em inglês**: arquivo, tipo, função, variável, flag, chave, coluna.
+- **pt-BR** para: comentário, mensagem de UI/CLI, documentação e nomes de
+  domínio do produto (`loja`, `conteudo`, `requirements.json`).
+- Nome de arquivo **diz o que é ou faz** (`gen-requirements.mjs`,
+  `check-boundaries.mjs`), nunca `utils`/`gen-requisitos`.
+- Sigla só se for universal (`E2E`, `CLI`, `HTTP`). `DoR` não é.
+
 ## Regras duras
 
 1. **Comentário é orçamento.** A catraca do `make check` reprova **qualquer**

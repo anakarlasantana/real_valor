@@ -1,6 +1,6 @@
 /** Índice de requisitos — derivado do doc 04 (a fonte é o Markdown).
- *  node scripts/gen-requisitos.mjs          → regrava requisitos.json
- *  node scripts/gen-requisitos.mjs --check  → exit 1 se estiver velho
+ *  node scripts/gen-requirements.mjs          → regrava requirements.json
+ *  node scripts/gen-requirements.mjs --check  → exit 1 se estiver velho
  *  Por que `CA-n` e `prova:`: doc 20, "requisito → prova".
  */
 import { readFileSync, writeFileSync } from "node:fs"
@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url"
 
 const raiz = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const fonte = "docs/real-valor/04-requisitos-funcionais.md"
-const destino = "docs/real-valor/requisitos.json"
+const destino = "docs/real-valor/requirements.json"
 
 const ansi = (t) => t.replace(/\u001b\[[0-9;]*m/g, "")
 
@@ -102,7 +102,7 @@ if (process.argv.includes("--check")) {
   try {
     atual = readFileSync(caminho, "utf8")
   } catch {
-    console.error(`  FAIL ${destino} não existe. Rode: node scripts/gen-requisitos.mjs`)
+    console.error(`  FAIL ${destino} não existe. Rode: node scripts/gen-requirements.mjs`)
     process.exit(1)
   }
 
@@ -128,7 +128,7 @@ if (process.argv.includes("--check")) {
       removidos.slice(0, 6).map((m) => `       - ${m}`).join("\n") +
       (removidos.length ? "\n" : "") +
       adicionados.slice(0, 6).map((m) => `       + ${m}`).join("\n") +
-      "\n  Rode: node scripts/gen-requisitos.mjs"
+      "\n  Rode: node scripts/gen-requirements.mjs"
   )
   process.exit(1)
 }

@@ -221,14 +221,14 @@ O elo entre o documento e o teste é **declarado**, não lembrado:
 
 ```
 docs/real-valor/04-requisitos-funcionais.md     ← fonte (prosa revisada)
-        │ node scripts/gen-requisitos.mjs
+        │ node scripts/gen-requirements.mjs
         ▼
-requisitos.json        18 requisitos · 98 critérios · CA-1..CA-n
+requirements.json        18 requisitos · 98 critérios · CA-1..CA-n
         │
 spec/<ID>-<slug>/requisito.md    CA-n com `prova:` e `aprovado_sha`
-        │ node scripts/gen-rastreio.mjs
+        │ node scripts/gen-traceability.mjs
         ▼
-rastreio.json          CA → prova → resolvido? (arquivo/teste/passo existe)
+traceability.json          CA → prova → resolvido? (arquivo/teste/passo existe)
 ```
 
 `make check` reprova em três casos, todos medidos:
@@ -237,7 +237,7 @@ rastreio.json          CA → prova → resolvido? (arquivo/teste/passo existe)
 | :--- | :--- |
 | critério editado depois da aprovação | `criterios mudaram depois da aprovacao (sha X -> Y)` |
 | prova declarada inexistente | `arquivo ausente: …` / `passo ausente na jornada: …` |
-| derivado velho | `requisitos.json desatualizado` / `rastreio.json desatualizado` |
+| derivado velho | `requirements.json desatualizado` / `traceability.json desatualizado` |
 
 **Dois gates humanos, nunca por critério:** G1 aprova a spec inteira
 (`ai spec approve`) e G2 aprova o plano **só quando há risco** — >3 tarefas,

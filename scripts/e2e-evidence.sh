@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# e2e-evidencia.sh — transforma a captura bruta no `resumo.md` (<= 60 linhas).
+# e2e-evidence.sh — transforma a captura bruta no `resumo.md` (<= 60 linhas).
 # =============================================================================
 # Entrada: o diretorio da execucao (`evidence/<timestamp>/`), que o Playwright
 # ja' preencheu com `resultado.json`, `captura/*.ndjson` e `playwright/`.
@@ -21,7 +21,7 @@ cd "$RAIZ"
 
 DIR="${1:-}"
 if [ -z "$DIR" ] || [ ! -d "$DIR" ]; then
-  echo "uso: scripts/e2e-evidencia.sh evidence/<timestamp>" >&2
+  echo "uso: scripts/e2e-evidence.sh evidence/<timestamp>" >&2
   exit 2
 fi
 
