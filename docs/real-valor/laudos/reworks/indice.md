@@ -17,6 +17,7 @@
 | [RW-2026-010](RW-2026-010.md) | 2026-11-23 | cliente-compra | degrada | `descartado` (dedupe existe no Medusa; CA-2 reescrito com prova e CA-6 criado) | - |
 | [RW-2026-011](RW-2026-011.md) | 2026-11-23 | cliente-compra | degrada | `descartado` (CPU disputada com make ready/jest; 3/3 verdes ocioso) | - |
 | [RW-2026-012](RW-2026-012.md) | 2026-11-23 | cliente-compra | degrada | `verificado` (passo de pagamento assertava o rádio da entrega) | - |
+| [RW-2026-013](RW-2026-013.md) | 2026-11-23 | cliente-compra | degrada | `verificado` (testar conexão cotava serviço desligado) | - |
 
 ## Estados possiveis
 

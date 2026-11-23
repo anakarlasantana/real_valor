@@ -1397,6 +1397,10 @@ um aviso **assinado** da transportadora — nunca de inferência da tela.
    prova: `unit:backend/src/api/admin/shipping/[id]/etiqueta/__tests__/route.unit.spec.ts`
 15. Saldo insuficiente no pagamento da etiqueta responde **400 com instrução** e **não grava nada** — a etiqueta criada não fica no pedido.
    prova: `unit:backend/src/api/admin/shipping/[id]/etiqueta/__tests__/route.unit.spec.ts`
+16. O teste de conexão cota **só os serviços ativos** por padrão (todos, com `todos`), marca cada cotação como ativa/desligada e leva a requisição que saiu quando a transportadora recusa.
+   prova: `unit:backend/src/api/admin/shipping/testar/__tests__/route.unit.spec.ts`
+17. Ligar/desligar serviço aplica a regra `enabled_in_store`, **recusa** desligar o último ativo (422) e só invalida o cache quando algo mudou.
+   prova: `unit:backend/src/api/admin/shipping/servicos/__tests__/route.unit.spec.ts`
 
 ---
 

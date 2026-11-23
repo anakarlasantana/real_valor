@@ -15,10 +15,7 @@ import {
 import { PACOTES_MODULE } from "../../../../modules/fulfillment/pacotes"
 import type PacotesModuleService from "../../../../modules/fulfillment/pacotes/service"
 import { testarCotacao } from "../../../../modules/fulfillment/superfrete/servico"
-import {
-  opcoesDoServico,
-  estaAtiva,
-} from "../../../../modules/fulfillment/superfrete/servicos"
+import { opcoesDoServico } from "../../../../modules/fulfillment/superfrete/servicos"
 
 /** A origem vem do local de estoque, não do `.env` — a mesma da cotação do checkout. */
 async function cepDoEstoque(req: MedusaRequest): Promise<string> {
@@ -71,7 +68,7 @@ export async function POST(
   })
   const lidas = opcoesDoServico(data ?? [])
   // `todos`: testa também as desligadas — é a única forma de saber se cotam.
-  const opcoes = corpo.todos ? lidas : lidas.filter(estaAtiva)
+  const opcoes = corpo.todos ? lidas : lidas.filter((opcao) => opcao.ativa)
   const servicos = opcoes
     .map((opcao) => opcao.servico)
     .filter((servico): servico is Servico => Boolean(servico))
@@ -87,7 +84,7 @@ export async function POST(
 
   // A tela mostra "ativo"/"desligado" mesmo no teste de todos.
   const ativos = new Set(
-    lidas.filter(estaAtiva).map((opcao) => opcao.servico),
+    lidas.filter((opcao) => opcao.ativa).map((opcao) => opcao.servico),
   )
 
   const pacotes = req.scope.resolve<PacotesModuleService>(PACOTES_MODULE)
