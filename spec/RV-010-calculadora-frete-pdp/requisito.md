@@ -32,5 +32,5 @@ colocar no carrinho — para não descobrir o custo só no fim do checkout.
 
 ## Não-objetivos
 
-- Re-cotar ao trocar de tamanho na mesma visita (follow-up registrado no doc 19).
+- Re-cotar ao trocar de tamanho na mesma visita — débito remanescente no doc 19 §6.2.
 - Cotar sem CEP (não há como).
