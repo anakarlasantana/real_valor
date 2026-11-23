@@ -379,6 +379,8 @@ num pedido de R$ 1.000.
    prova: `unit:backend/src/modules/payment/mercadopago/__tests__/assinatura.unit.spec.ts`
 15. O parcelamento exibido corresponde ao aceito pelo MP para o valor e a bandeira.
 16. A loja oferece apenas os meios reais do provedor — **Pix** e **Cartão de crédito** — e nunca o meio manual que "paga" sem cobrar.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/credenciais.unit.spec.ts`
+17. Configuração incoerente **não sobe**: `MP_AMBIENTE=producao` com token `TEST-` é **erro** (a loja no ar que não cobra), e valor irreconhecível cai no default seguro (`teste`).
    prova: `jornada:cliente@checkout · pagamento é oferecido`
 
 
@@ -1132,6 +1134,8 @@ O webhook do MP (RV-002) recebe `approved` e precisa disparar a criação do ped
 13. Pix **`pending`** (QR recém-gerado) responde **200 sem selar e sem emitir** — QR gerado e abandonado não reserva estoque.
    prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
 14. **Aprovação legítima** sela a sessão com status, valor e `payment_id`, e emite **um** evento.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/estorno.unit.spec.ts`
+15. O estorno **não é feito por código**: a instrução devolvida diz onde fazê-lo (painel do Mercado Pago, Atividade → Pagamentos), identifica o pagamento **mascarado** e leva o valor.
    prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
 
 ---
@@ -1384,6 +1388,10 @@ um aviso **assinado** da transportadora — nunca de inferência da tela.
    prova: `unit:backend/src/api/admin/shipping/[id]/etiqueta/cancelar/__tests__/route.unit.spec.ts`
 11. O saldo da carteira SuperFrete é lido em **centavos** (1763,04 → 176304) e falha de leitura é **falha**, nunca "saldo zero".
    prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts`
+12. O link da etiqueta vem do provedor; quando ele não devolve URL, a entrega **recusa** em vez de mandar o navegador para lugar nenhum.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/vinculo.unit.spec.ts`
+13. Achar o pedido de uma etiqueta percorre as páginas **sem pôr paginação no filtro**, respeita a janela de dias e devolve `null` quando não há pedido.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts`
 
 ---
 
@@ -1426,6 +1434,8 @@ passa por `enviar.ts` → provider `resend` (ou `local`, que registra no log). O
    prova: `unit:backend/src/subscribers/__tests__/order-canceled.unit.spec.ts`
 8. Sem credenciais, o provider `local` registra no log e a compra não falha.
 9. O endereço de e-mail sai mascarado no log.
+   prova: `unit:backend/src/modules/notification/__tests__/resend.unit.spec.ts`
+10. Erro do provedor de e-mail é **traduzido** (422 de template não publicado, 429 de teto do plano, timeout e rede) e não derruba o pedido.
    prova: `unit:backend/src/modules/notification/__tests__/enviar.unit.spec.ts`
 
 ---

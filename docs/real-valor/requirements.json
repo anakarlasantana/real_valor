@@ -134,6 +134,11 @@
         {
           "id": "CA-16",
           "texto": "A loja oferece apenas os meios reais do provedor — **Pix** e **Cartão de crédito** — e nunca o meio manual que \"paga\" sem cobrar.",
+          "prova": "unit:backend/src/modules/payment/mercadopago/__tests__/credenciais.unit.spec.ts"
+        },
+        {
+          "id": "CA-17",
+          "texto": "Configuração incoerente **não sobe**: `MP_AMBIENTE=producao` com token `TEST-` é **erro** (a loja no ar que não cobra), e valor irreconhecível cai no default seguro (`teste`).",
           "prova": "jornada:cliente@checkout · pagamento é oferecido"
         }
       ]
@@ -595,6 +600,11 @@
         {
           "id": "CA-14",
           "texto": "**Aprovação legítima** sela a sessão com status, valor e `payment_id`, e emite **um** evento.",
+          "prova": "unit:backend/src/modules/payment/mercadopago/__tests__/estorno.unit.spec.ts"
+        },
+        {
+          "id": "CA-15",
+          "texto": "O estorno **não é feito por código**: a instrução devolvida diz onde fazê-lo (painel do Mercado Pago, Atividade → Pagamentos), identifica o pagamento **mascarado** e leva o valor.",
           "prova": "unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts"
         }
       ]
@@ -786,6 +796,16 @@
           "id": "CA-11",
           "texto": "O saldo da carteira SuperFrete é lido em **centavos** (1763,04 → 176304) e falha de leitura é **falha**, nunca \"saldo zero\".",
           "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts"
+        },
+        {
+          "id": "CA-12",
+          "texto": "O link da etiqueta vem do provedor; quando ele não devolve URL, a entrega **recusa** em vez de mandar o navegador para lugar nenhum.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/vinculo.unit.spec.ts"
+        },
+        {
+          "id": "CA-13",
+          "texto": "Achar o pedido de uma etiqueta percorre as páginas **sem pôr paginação no filtro**, respeita a janela de dias e devolve `null` quando não há pedido.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts"
         }
       ]
     },
@@ -838,6 +858,11 @@
         {
           "id": "CA-9",
           "texto": "O endereço de e-mail sai mascarado no log.",
+          "prova": "unit:backend/src/modules/notification/__tests__/resend.unit.spec.ts"
+        },
+        {
+          "id": "CA-10",
+          "texto": "Erro do provedor de e-mail é **traduzido** (422 de template não publicado, 429 de teto do plano, timeout e rede) e não derruba o pedido.",
           "prova": "unit:backend/src/modules/notification/__tests__/enviar.unit.spec.ts"
         }
       ]
