@@ -1091,11 +1091,13 @@ O webhook do MP (RV-002) recebe `approved` e precisa disparar a criação do ped
 
 ### Critérios de aceite
 1. Pix aprovado gera **um** pedido com estoque reservado.
-2. Webhook repetido **não** duplica o pedido.
+2. Reentrega do mesmo aviso mantém a chave de deduplicação: o selo sai com o mesmo `payment_id` da primeira entrega, preservando o `data` da sessão.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
 3. `rejected` não cria pedido.
    prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
 4. Compra sem login funciona (Guest).
 5. O valor do pedido bate com o do pagamento na API do MP.
+6. Uma entrega confirmada resulta em **um** `payment` e **um** pedido, mesmo com o aviso repetido — garantia do Medusa (`payment-module.js:232` e `process-payment.js:166`), ainda sem prova neste repositório (fase E, `api:`).
 
 ---
 

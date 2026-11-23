@@ -499,8 +499,8 @@
         },
         {
           "id": "CA-2",
-          "texto": "Webhook repetido **não** duplica o pedido.",
-          "prova": null
+          "texto": "Reentrega do mesmo aviso mantém a chave de deduplicação: o selo sai com o mesmo `payment_id` da primeira entrega, preservando o `data` da sessão.",
+          "prova": "unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts"
         },
         {
           "id": "CA-3",
@@ -515,6 +515,11 @@
         {
           "id": "CA-5",
           "texto": "O valor do pedido bate com o do pagamento na API do MP.",
+          "prova": null
+        },
+        {
+          "id": "CA-6",
+          "texto": "Uma entrega confirmada resulta em **um** `payment` e **um** pedido, mesmo com o aviso repetido — garantia do Medusa (`payment-module.js:232` e `process-payment.js:166`), ainda sem prova neste repositório (fase E, `api:`).",
           "prova": null
         }
       ]

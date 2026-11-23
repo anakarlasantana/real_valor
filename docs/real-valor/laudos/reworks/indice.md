@@ -14,7 +14,7 @@
 | [RW-2026-006](RW-2026-006.md) | 2026-11-17 | cliente-compra | degrada | `verificado` (preparo pulado: `--skip-before`) | - |
 | [RW-2026-008](RW-2026-008.md) | 2026-11-17 | cliente-compra | bloqueia-compra | `verificado` (submit do endereço sem retry) | - |
 | [RW-2026-009](RW-2026-009.md) | 2026-11-23 | cliente-compra | degrada | `verificado` (rastreio não listava os itens) | - |
-| [RW-2026-010](RW-2026-010.md) | 2026-11-23 | cliente-compra | degrada | `descartado` (dedupe existe no Medusa: payment-module.js:232 + process-payment.js:166) | - |
+| [RW-2026-010](RW-2026-010.md) | 2026-11-23 | cliente-compra | degrada | `descartado` (dedupe existe no Medusa; CA-2 reescrito com prova e CA-6 criado) | - |
 
 ## Estados possiveis
 
