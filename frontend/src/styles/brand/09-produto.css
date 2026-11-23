@@ -414,6 +414,39 @@
 
 /* O CEP que não é CEP: a mensagem de estado no mesmo lugar em que apareceria o
  * resultado — a lista só troca de cor e de frase. */
+.rv-shipping-quote-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.rv-shipping-quote-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.rv-shipping-quote-input {
+  flex: 1;
+  min-width: 0;
+  height: 3rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--rv-border);
+  background-color: var(--rv-offwhite);
+  color: var(--rv-fg-strong);
+  font-family: var(--rv-font-sans);
+  font-size: 0.75rem;
+}
+
+.rv-shipping-quote-aviso {
+  margin-top: 0.5rem;
+  color: var(--rv-muted);
+  font-size: var(--rv-text-xs);
+}
+
 .rv-shipping-quote-validation {
   color: var(--rv-danger);
   font-size: var(--rv-text-xs);
@@ -459,3 +492,9 @@
   color: var(--rv-rose);
 }
 
+@media (max-width: 640px) {
+  .rv-shipping-quote-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -219,9 +219,9 @@ export default function ProductActions({
       {/*
         O frete abaixo do botão ("chega até mim?"). O contrato é o invertido: só
         aparece com opção de entrega real calculada para o CEP (`shipping-quote`),
-        e sem ela devolve `null` — a promessa fixa da referência não foi portada.
+        e o preço vem do backend — nunca de uma promessa fixa.
       */}
-      <ShippingQuote />
+      {selectedVariant?.id && <ShippingQuote variantId={selectedVariant.id} />}
 
       <MobileActions
         product={product}

@@ -423,12 +423,12 @@
         {
           "id": "CA-1",
           "texto": "CEP válido mostra preço e prazo.",
-          "prova": null
+          "prova": "unit:frontend/src/lib/data/__tests__/frete.unit.spec.ts"
         },
         {
           "id": "CA-2",
           "texto": "CEP inválido mostra mensagem, não quebra.",
-          "prova": null
+          "prova": "unit:frontend/src/lib/checkout/__tests__/cep-frete.unit.spec.ts"
         },
         {
           "id": "CA-3",

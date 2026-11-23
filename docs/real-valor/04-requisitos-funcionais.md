@@ -937,7 +937,9 @@ Bloco discreto abaixo do seletor de tamanho: campo de 8 dígitos + botão "Calcu
 
 ### Critérios de aceite
 1. CEP válido mostra preço e prazo.
+   prova: `unit:frontend/src/lib/data/__tests__/frete.unit.spec.ts`
 2. CEP inválido mostra mensagem, não quebra.
+   prova: `unit:frontend/src/lib/checkout/__tests__/cep-frete.unit.spec.ts`
 3. O CEP é reaproveitado no checkout.
 4. A cotação da PDP e a do checkout usam a **mesma** regra: mesmo CEP e mesmo peso não divergem em preço nem em prazo.
 

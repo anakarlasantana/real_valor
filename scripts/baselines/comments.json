@@ -5,15 +5,15 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 39380,
-      "comments": 8855
+      "lines": 39888,
+      "comments": 8814
     },
     "admin/src": {
       "lines": 9884,
       "comments": 1876
     },
     "backend/src": {
-      "lines": 24649,
+      "lines": 25522,
       "comments": 4655
     },
     "packages/contrato/src": {
@@ -816,16 +816,6 @@
       "lines": 110,
       "header": 5
     },
-    "frontend/src/modules/products/components/shipping-quote/__tests__/index.unit.spec.tsx": {
-      "comments": 14,
-      "lines": 78,
-      "header": 12
-    },
-    "frontend/src/modules/products/components/shipping-quote/index.tsx": {
-      "comments": 27,
-      "lines": 77,
-      "header": 5
-    },
     "frontend/src/modules/products/components/thumbnail/index.tsx": {
       "comments": 74,
       "lines": 180,
@@ -933,7 +923,7 @@
     },
     "frontend/src/modules/tracking/templates/index.tsx": {
       "comments": 40,
-      "lines": 238,
+      "lines": 248,
       "header": 18
     },
     "frontend/src/styles/brand/01-tokens.css": {
@@ -978,7 +968,7 @@
     },
     "frontend/src/styles/brand/09-produto.css": {
       "comments": 133,
-      "lines": 462,
+      "lines": 501,
       "header": 1
     },
     "frontend/src/styles/brand/10-sacola.css": {
@@ -1513,7 +1503,7 @@
     },
     "backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts": {
       "comments": 62,
-      "lines": 462,
+      "lines": 496,
       "header": 17
     },
     "backend/src/modules/payment/mercadopago/assinatura.ts": {
@@ -1588,7 +1578,7 @@
     },
     "backend/src/modules/shipping/__tests__/tracking.unit.spec.ts": {
       "comments": 20,
-      "lines": 357,
+      "lines": 493,
       "header": 13
     },
     "backend/src/modules/shipping/tracking.ts": {
