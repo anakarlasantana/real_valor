@@ -805,7 +805,17 @@
         {
           "id": "CA-13",
           "texto": "Achar o pedido de uma etiqueta percorre as páginas **sem pôr paginação no filtro**, respeita a janela de dias e devolve `null` quando não há pedido.",
-          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts"
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/vinculo.unit.spec.ts"
+        },
+        {
+          "id": "CA-14",
+          "texto": "Emitir grava `superfrete_id`, transportadora, link e situação no `metadata` **sem perder o CPF**; pedido que já tem etiqueta responde **409** e o provedor não é chamado.",
+          "prova": "unit:backend/src/api/admin/shipping/[id]/etiqueta/__tests__/route.unit.spec.ts"
+        },
+        {
+          "id": "CA-15",
+          "texto": "Saldo insuficiente no pagamento da etiqueta responde **400 com instrução** e **não grava nada** — a etiqueta criada não fica no pedido.",
+          "prova": "unit:backend/src/api/admin/shipping/[id]/etiqueta/__tests__/route.unit.spec.ts"
         }
       ]
     },

@@ -1392,7 +1392,11 @@ um aviso **assinado** da transportadora — nunca de inferência da tela.
 12. O link da etiqueta vem do provedor; quando ele não devolve URL, a entrega **recusa** em vez de mandar o navegador para lugar nenhum.
    prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/vinculo.unit.spec.ts`
 13. Achar o pedido de uma etiqueta percorre as páginas **sem pôr paginação no filtro**, respeita a janela de dias e devolve `null` quando não há pedido.
-   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts`
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/vinculo.unit.spec.ts`
+14. Emitir grava `superfrete_id`, transportadora, link e situação no `metadata` **sem perder o CPF**; pedido que já tem etiqueta responde **409** e o provedor não é chamado.
+   prova: `unit:backend/src/api/admin/shipping/[id]/etiqueta/__tests__/route.unit.spec.ts`
+15. Saldo insuficiente no pagamento da etiqueta responde **400 com instrução** e **não grava nada** — a etiqueta criada não fica no pedido.
+   prova: `unit:backend/src/api/admin/shipping/[id]/etiqueta/__tests__/route.unit.spec.ts`
 
 ---
 
