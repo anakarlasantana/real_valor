@@ -94,7 +94,18 @@ export async function GET() {
   }
 
   if (resposta.status === 404) {
-    return naoEncontrado()
+    const doBackend = (await resposta.json().catch(() => ({}))) as {
+      pagamento?: unknown
+    }
+
+    return NextResponse.json(
+      {
+        encontrado: false,
+        pagamento:
+          typeof doBackend.pagamento === "string" ? doBackend.pagamento : null,
+      },
+      { status: 404, headers: { "Cache-Control": "no-store" } }
+    )
   }
 
   if (!resposta.ok) {

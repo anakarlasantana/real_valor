@@ -10,7 +10,7 @@
  * com itens, endereço e total.
  *
  * Então a pergunta é feita por **servidor a servidor**, autenticada por um
- * segredo (`INTERNAL_API_SECRET`), e a resposta é **três campos**: `id`,
+ * segredo (`INTERNAL_API_SECRET`), e a resposta é **três campos** (e o estado
  * `display_id` e `status`. Não é o pedido: é o suficiente para o storefront
  * montar o link de confirmação. Buscar o resto, ele busca pela rota normal, já
  * autenticado como a cliente.
@@ -64,9 +64,48 @@ function segredosConferem(recebido: string, esperado: string): boolean {
   return timingSafeEqual(new Uint8Array(a), new Uint8Array(b))
 }
 
-/** O 404 de todas as causas. Sem corpo útil, de propósito. */
-function naoEncontrado(res: MedusaResponse): void {
-  res.status(404).json({ message: "Not Found" })
+/** O 404 de todas as causas, com o estado do pagamento quando ele existe. */
+function naoEncontrado(res: MedusaResponse, pagamento?: string): void {
+  res.status(404).json(
+    pagamento ? { message: "Not Found", pagamento } : { message: "Not Found" }
+  )
+}
+
+async function estadoDoPagamento(
+  query: { graph: (input: Record<string, unknown>) => Promise<{ data: any[] }> },
+  cartId: string
+): Promise<string | null> {
+  try {
+    const { data } = await query.graph({
+      entity: "cart",
+      fields: [
+        "payment_collection.payment_sessions.provider_id",
+        "payment_collection.payment_sessions.data",
+      ],
+      filters: { id: cartId },
+    })
+
+    const primeira = (data ?? [])[0] as Record<string, any> | undefined
+    const sessoes = (primeira?.payment_collection?.payment_sessions ?? []) as Record<string, any>[]
+
+    const nossa = sessoes.find((sessao) =>
+      String(sessao?.provider_id ?? "").startsWith("pp_mercadopago")
+    )
+
+    if (!nossa) {
+      return null
+    }
+
+    const status = String(
+      (nossa.data as Record<string, unknown> | null)?.mp_ultimo_status ?? ""
+    ).toLowerCase()
+
+    return status === "rejected" || status === "cancelled"
+      ? "recusado"
+      : "pendente"
+  } catch {
+    return null
+  }
 }
 
 export async function GET(
@@ -128,7 +167,7 @@ export async function GET(
     // não processou. O storefront chama de novo em alguns segundos. Responder
     // 200 com `null` seria pior — obrigaria o storefront a distinguir "não
     // existe" de "não ainda" numa resposta de sucesso.
-    return naoEncontrado(res)
+    return naoEncontrado(res, (await estadoDoPagamento(query as never, cartId)) ?? undefined)
   }
 
   // --- 4. O pedido, reduzido ao que o storefront precisa. ------------------

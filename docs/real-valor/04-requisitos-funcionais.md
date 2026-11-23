@@ -378,7 +378,9 @@ num pedido de R$ 1.000.
 11. A preferência nasce com as três `back_urls` (e `auto_return` só junto delas): a cliente volta para a loja, não para o site do provedor.
    prova: `unit:backend/src/modules/payment/mercadopago/__tests__/preferencia.unit.spec.ts`
 12. Pagamento **recusado** não cria pedido e a cliente lê mensagem clara no retorno — nunca tela em branco.
+   prova: `unit:frontend/src/lib/checkout/__tests__/desfecho-do-pagamento.unit.spec.ts`
 13. Pix `in_process`: a página mostra **aguardando** e nada nasce antes do `approved`.
+   prova: `unit:frontend/src/lib/checkout/__tests__/desfecho-do-pagamento.unit.spec.ts`
 14. Nenhum log contém CPF, cartão ou e-mail cru: `redigirPagamento` e `semPii` mascararam os campos.
    prova: `unit:backend/src/modules/payment/mercadopago/__tests__/assinatura.unit.spec.ts`
 15. O parcelamento exibido corresponde ao aceito pelo MP para o valor e a bandeira.

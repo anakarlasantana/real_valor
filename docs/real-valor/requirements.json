@@ -114,12 +114,12 @@
         {
           "id": "CA-12",
           "texto": "Pagamento **recusado** não cria pedido e a cliente lê mensagem clara no retorno — nunca tela em branco.",
-          "prova": null
+          "prova": "unit:frontend/src/lib/checkout/__tests__/desfecho-do-pagamento.unit.spec.ts"
         },
         {
           "id": "CA-13",
           "texto": "Pix `in_process`: a página mostra **aguardando** e nada nasce antes do `approved`.",
-          "prova": null
+          "prova": "unit:frontend/src/lib/checkout/__tests__/desfecho-do-pagamento.unit.spec.ts"
         },
         {
           "id": "CA-14",

@@ -300,6 +300,25 @@ export async function receberNotificacao(
         `sem ação (só "approved" cria pedido)`
     )
 
+    if (status === "rejected" || status === "cancelled") {
+      try {
+        await pagamentos.updatePaymentSession({
+          id: referencia,
+          amount: centavosDaSessao,
+          currency_code: String(sessao.currency_code ?? ""),
+          data: { ...(sessao.data ?? {}), mp_ultimo_status: status },
+        })
+      } catch (e) {
+        logger.error(
+          `[mercadopago/webhook] falha ao registrar a recusa ` +
+            `${idMascarado(id)}: ${(e as Error)?.message}`
+        )
+
+        responder(res, 500)
+        return
+      }
+    }
+
     responder(res, 200)
     return
   }

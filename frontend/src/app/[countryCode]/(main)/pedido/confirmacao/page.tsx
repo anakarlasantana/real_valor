@@ -25,6 +25,7 @@
  */
 import { useEffect, useRef, useState } from "react"
 
+import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 
 /** A cada quanto tempo perguntar. Curto o bastante para parecer imediato. */
@@ -40,7 +41,9 @@ const INTERVALO_MS = 3_000
  */
 const TENTATIVAS = 20
 
-type Estado = "verificando" | "demorando" | "mal-configurado"
+import { desfechoDaResposta } from "@lib/checkout/desfecho-do-pagamento"
+
+type Estado = "verificando" | "demorando" | "mal-configurado" | "recusado"
 
 export default function PagamentoEmProcessamento() {
   const router = useRouter()
@@ -72,23 +75,29 @@ export default function PagamentoEmProcessamento() {
         return
       }
 
-      if (resposta.status === 200) {
-        const dados = (await resposta.json()) as { id?: string }
+      const desfecho = desfechoDaResposta(
+        resposta.status,
+        await resposta.json().catch(() => ({}))
+      )
 
-        if (dados.id) {
-          // `replace` e não `push`: a página de espera não deve ficar no
-          // histórico. Voltar para ela seria voltar para uma tela que pergunta
-          // por um pedido que já foi encontrado.
-          const prefixo = params?.countryCode ? `/${params.countryCode}` : ""
-          router.replace(`${prefixo}/order/${dados.id}/confirmed`)
-          return
-        }
+      if (desfecho.tipo === "pedido") {
+        // `replace` e não `push`: a página de espera não deve ficar no
+        // histórico. Voltar para ela seria voltar para uma tela que pergunta
+        // por um pedido que já foi encontrado.
+        const prefixo = params?.countryCode ? `/${params.countryCode}` : ""
+        router.replace(`${prefixo}/order/${desfecho.id}/confirmed`)
+        return
       }
 
-      if (resposta.status === 503) {
+      if (desfecho.tipo === "indisponivel") {
         // O storefront está sem `INTERNAL_API_SECRET`. Nenhuma tentativa vai
         // resolver isto, e insistir por um minuto só atrasaria a informação.
         setEstado("mal-configurado")
+        return
+      }
+
+      if (desfecho.tipo === "recusado") {
+        setEstado("recusado")
         return
       }
 
@@ -128,6 +137,31 @@ export default function PagamentoEmProcessamento() {
           Seu pagamento não foi perdido. Fale com a gente pelo WhatsApp com o
           comprovante do Mercado Pago e resolvemos na hora.
         </p>
+      </div>
+    )
+  }
+
+  if (estado === "recusado") {
+    return (
+      <div
+        className="content-container py-24 text-center"
+        data-testid="pagamento-recusado"
+        role="status"
+      >
+        <h1 className="text-2xl font-semibold text-ui-fg-base">
+          O pagamento não foi aprovado
+        </h1>
+        <p className="mt-4 text-ui-fg-subtle">
+          Nada foi cobrado. Você pode tentar de novo com outro meio de pagamento
+          ou outro cartão.
+        </p>
+        <Link
+          href={`/${params?.countryCode ?? "br"}/checkout?step=payment`}
+          className="mt-6 inline-block text-sm underline"
+          data-testid="pagamento-tentar-de-novo"
+        >
+          Tentar de novo
+        </Link>
       </div>
     )
   }

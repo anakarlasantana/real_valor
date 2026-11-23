@@ -96,6 +96,29 @@ describe("GET /api/pedido/status", () => {
     expect(await ler(resposta)).toMatchObject({ encontrado: false })
   })
 
+  it("404 com recusa leva o estado do pagamento", async () => {
+    statusDoBackend = 404
+    corpoDoBackend = { pagamento: "recusado" }
+
+    const resposta = await GET()
+
+    expect(resposta.status).toBe(404)
+    expect(await ler(resposta)).toMatchObject({
+      encontrado: false,
+      pagamento: "recusado",
+    })
+  })
+
+  it("404 sem estado devolve pagamento nulo", async () => {
+    statusDoBackend = 404
+    corpoDoBackend = {}
+
+    const resposta = await GET()
+
+    expect(resposta.status).toBe(404)
+    expect(await ler(resposta)).toMatchObject({ encontrado: false, pagamento: null })
+  })
+
   it("assina a chamada interna com o segredo e sem cache", async () => {
     statusDoBackend = 200
     corpoDoBackend = { id: "order_1", display_id: 42, status: "pending" }

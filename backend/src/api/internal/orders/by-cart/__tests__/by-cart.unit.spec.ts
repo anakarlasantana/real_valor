@@ -40,6 +40,7 @@ type Cenario = {
   link?: { order_id?: string }[] | Error
   /** O que `retrieveOrder` devolve. */
   pedido?: Record<string, unknown>
+  sessoes?: Record<string, unknown>[]
   /** Faz `retrieveOrder` explodir (o pedido sumiu após o link existir). */
   pedidoSumiu?: boolean
 }
@@ -72,6 +73,18 @@ function cenario(config: Cenario = {}) {
 
               if (config.link instanceof Error) {
                 throw config.link
+              }
+
+              if (consulta.entity === "cart") {
+                return {
+                  data: [
+                    {
+                      payment_collection: {
+                        payment_sessions: config.sessoes ?? [],
+                      },
+                    },
+                  ],
+                }
               }
 
               return { data: config.link ?? [] }
@@ -237,6 +250,44 @@ describe("o formato do cart_id", () => {
     await GET(req as never, res as never)
 
     expect(res.statusCode).toBe(404)
+  })
+})
+
+describe("o estado do pagamento no 404", () => {
+  it("recusa registrada no selo vira `recusado`", async () => {
+    const { req, res } = cenario({
+      link: [],
+      sessoes: [
+        { provider_id: "pp_mercadopago_pix", data: { mp_ultimo_status: "rejected" } },
+      ],
+    })
+
+    await GET(req as never, res as never)
+
+    expect(res.statusCode).toBe(404)
+    expect(res.corpo).toMatchObject({ pagamento: "recusado" })
+  })
+
+  it("sessão sem recusa é `pendente`", async () => {
+    const { req, res } = cenario({
+      link: [],
+      sessoes: [{ provider_id: "pp_mercadopago_pix", data: {} }],
+    })
+
+    await GET(req as never, res as never)
+
+    expect(res.statusCode).toBe(404)
+    expect(res.corpo).toMatchObject({ pagamento: "pendente" })
+  })
+
+  it("sem sessão nenhuma, o 404 não fala de pagamento", async () => {
+    const { req, res } = cenario({ link: [] })
+
+    await GET(req as never, res as never)
+
+    expect(res.statusCode).toBe(404)
+    expect(res.corpo).toMatchObject({ message: "Not Found" })
+    expect((res.corpo as Record<string, unknown>).pagamento).toBeUndefined()
   })
 })
 

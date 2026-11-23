@@ -425,6 +425,27 @@ describe("o que NÃO pode criar pedido", () => {
     expect(passos.some((p) => p.includes('está "pending"'))).toBe(true)
   })
 
+  it("status `rejected` grava a recusa no selo, sem emitir", async () => {
+    const { req, res, emitidos, selagens } = cenario({
+      pagamento: {
+        id: PAGAMENTO,
+        status: "rejected",
+        transaction_amount: 189.9,
+        external_reference: SESSAO,
+      },
+      sessao: SESSAO_DO_PIX,
+    })
+
+    await receberNotificacao(req as never, res as never)
+
+    expect(res.statusCode).toBe(200)
+    expect(emitidos).toEqual([])
+    expect(selagens).toHaveLength(1)
+    expect(
+      (selagens[0].data as Record<string, unknown>).mp_ultimo_status
+    ).toBe("rejected")
+  })
+
   it("pagamento de outra integração (sem external_reference) é ignorado", async () => {
     const { req, res, emitidos } = cenario({
       pagamento: { id: PAGAMENTO, status: "approved", transaction_amount: 10 },
