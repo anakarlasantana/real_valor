@@ -1098,6 +1098,22 @@ O webhook do MP (RV-002) recebe `approved` e precisa disparar a criação do ped
 4. Compra sem login funciona (Guest).
 5. O valor do pedido bate com o do pagamento na API do MP.
 6. Uma entrega confirmada resulta em **um** `payment` e **um** pedido, mesmo com o aviso repetido — garantia do Medusa (`payment-module.js:232` e `process-payment.js:166`), ainda sem prova neste repositório (fase E, `api:`; a lacuna está no RV-060 do doc 19).
+7. Webhook com **assinatura inválida** — header ausente, header quebrado, HMAC feito com outro segredo ou segredo não configurado — responde **401** e **não consulta o provedor, não grava selo, não emite evento**.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
+8. Assinatura legítima com `data.id` **divergente** do corpo, e corpo **sem** `data.id`, respondem **401 sem consultar o provedor**.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
+9. **Valor divergente** (pedido de R$ 1.899,00 confirmado por R$ 1,00) **nada aplica** — sem selo e sem evento — e o log registra `VALOR DIVERGENTE`.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
+10. Pagamento **de outra integração** (sem `external_reference`), **sessão inexistente** e **sessão de outro provedor** são ignorados com **200 e sem efeito**.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
+11. O provedor do evento é o **da sessão**, não o da URL: aviso que diz `pix` para uma sessão de cartão emite para o cartão.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
+12. **Provedor indisponível** responde **500** e **falha ao gravar o selo** responde **500** — os dois sem emitir evento, porque o 500 é o pedido de reentrega e engolir perderia o pedido.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
+13. Pix **`pending`** (QR recém-gerado) responde **200 sem selar e sem emitir** — QR gerado e abandonado não reserva estoque.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
+14. **Aprovação legítima** sela a sessão com status, valor e `payment_id`, e emite **um** evento.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
 
 ---
 
