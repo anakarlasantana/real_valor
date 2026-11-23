@@ -32,6 +32,7 @@ Caminhos sem marcador já existem no repositório.
 | [RV-061](#rv-061--ciclo-da-etiqueta-e-avisos-do-superfrete) | Ciclo da etiqueta e avisos do SuperFrete | **ALTA** |
 | [RV-062](#rv-062--e-mails-transacionais-do-pedido) | E-mails transacionais do pedido | **ALTA** |
 | [RV-063](#rv-063--confirmação-da-compra-na-loja) | Confirmação da compra na loja | **CRÍTICA** |
+| [RV-064](#rv-064--limites-de-requisição-e-abuso) | Limites de requisição e abuso | **ALTA** |
 
 > **Bloco de pedido e envio (RV-042 a RV-046):** o provedor de frete **está decidido e implementado** —
 > SuperFrete por API (F1b–F3: cotação, etiqueta e webhook). O provider `tabela` (RV-006) continua como
@@ -1481,6 +1482,29 @@ sempre, com o pedido existindo.
 
 ---
 
+
+---
+
+## RV-064 — Limites de requisição e abuso
+
+**Prioridade:** ALTA · **Tipo:** infraestrutura + segurança · **Complexidade:** baixa
+**Depende de:** RV-006 (cotação) e RV-002 (webhook) · **Impacta:** cliente (não ser bloqueado) e operação (não queimar a carteira)
+
+### Objetivo
+Proteger a carteira do SuperFrete e o webhook do provedor de rajada — sem bloquear quem
+usa a loja normalmente.
+
+### Regras de negócio
+1. Janela **deslizante** por IP, não um balde que zera de tempo em tempo.
+2. O prefixo **mais longo** vence: `/store/shipping/quote` herda a regra de `/store/shipping`.
+3. O teto do webhook é **alto** de propósito: perder evento custa pedido.
+4. A varredura de chaves vencidas não derruba a chave que está tentando agora.
+
+### Critérios de aceite
+1. Cotação: 20 pedidos em 5 minutos passam e o 21º é recusado com `Retry-After` em segundos; a janela é deslizante, e um IP não gasta a cota do outro.
+   prova: `unit:backend/src/utils/__tests__/limite-de-requisicoes.unit.spec.ts`
+2. O webhook aceita 120 eventos por minuto e o prefixo mais longo vence na escolha da regra.
+   prova: `unit:backend/src/utils/__tests__/limite-de-requisicoes.unit.spec.ts`
 ## 4.14 Requisitos verificados como já atendidos
 
 Registrados para que **não sejam reimplementados**:

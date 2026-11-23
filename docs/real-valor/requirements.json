@@ -1,6 +1,6 @@
 {
   "fonte": "docs/real-valor/04-requisitos-funcionais.md",
-  "total": 21,
+  "total": 22,
   "requisitos": [
     {
       "id": "RV-001",
@@ -907,6 +907,24 @@
           "id": "CA-7",
           "texto": "A rota do navegador expõe **apenas** `id`, `display_id` e `status` — nunca e-mail, CPF, itens ou total, mesmo que o backend devolva o pedido inteiro.",
           "prova": "unit:frontend/src/app/api/pedido/status/__tests__/route.unit.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "RV-064",
+      "titulo": "Limites de requisição e abuso",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Cotação: 20 pedidos em 5 minutos passam e o 21º é recusado com `Retry-After` em segundos; a janela é deslizante, e um IP não gasta a cota do outro.",
+          "prova": "unit:backend/src/utils/__tests__/limite-de-requisicoes.unit.spec.ts"
+        },
+        {
+          "id": "CA-2",
+          "texto": "O webhook aceita 120 eventos por minuto e o prefixo mais longo vence na escolha da regra.",
+          "prova": "unit:backend/src/utils/__tests__/limite-de-requisicoes.unit.spec.ts"
         }
       ]
     }
