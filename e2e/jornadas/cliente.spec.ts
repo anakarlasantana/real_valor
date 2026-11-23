@@ -185,9 +185,20 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
     })
 
     await page.getByTestId("delivery-option-radio").first().check()
+
+    // Este clique também é Server Action: sem esperar a resposta, o passo
+    // seguinte sai com POST em voo e a navegação o aborta (net::ERR_ABORTED).
+    const avancou = page
+      .waitForResponse((resposta) => resposta.request().method() === "POST", {
+        timeout: 15_000,
+      })
+      .catch(() => null)
+
     await page
       .getByRole("button", { name: "Continuar para o pagamento" })
       .click()
+
+    await avancou
   })
 
   await test.step("checkout · pagamento é oferecido", async () => {
@@ -197,20 +208,36 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
   })
 
   await test.step("rastreio · consulta sem login mostra o resultado", async () => {
+    // Ainda há POST do checkout em voo; navegar agora abortaria um deles.
+    await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => null)
     await irPara(page, "/br/rastreio")
     await expect(
       page.getByRole("heading", { name: "Rastrear pedido" })
     ).toBeVisible()
 
-    await page.getByLabel("Número do pedido").fill("999999")
-    await page.getByLabel("CPF").fill("52998224725")
-    await page.getByRole("button", { name: "Consultar" }).click()
+    // Só teclado: foco no primeiro campo, Tab entre os três e Enter no botão —
+    // é o caminho de quem não usa mouse (RV-044 CA-5).
+    await page.getByLabel("Número do pedido").focus()
+    await page.keyboard.type("999999")
+
+    await page.keyboard.press("Tab")
+    await expect(page.getByLabel("CPF")).toBeFocused()
+    await page.keyboard.type("52998224725")
+
+    await page.keyboard.press("Tab")
+    await page.keyboard.press("Tab")
+    await expect(
+      page.getByRole("button", { name: "Consultar" })
+    ).toBeFocused()
+    await page.keyboard.press("Enter")
 
     // Pedido inexistente de propósito: prova que a tela responde ao submit sem
-    // login e sem expor dado de outro pedido, em vez de ficar muda.
+    // login, sem vazar dado de outro pedido, e que o resultado é anunciado
+    // (`role=status` + `aria-live`) em vez de a página ficar muda.
+    await expect(page.getByRole("status")).toBeVisible({ timeout: 20_000 })
     await expect(
       page.getByRole("heading", { name: "Pedido não encontrado" })
-    ).toBeVisible({ timeout: 20_000 })
+    ).toBeVisible()
   })
 
   await test.step("evidência: sem 5xx e sem erro de console", async () => {

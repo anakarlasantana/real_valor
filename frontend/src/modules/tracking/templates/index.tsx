@@ -177,6 +177,7 @@ function Resultado({ resultado }: { resultado: ResultadoRastreio }) {
 
   return (
     <section
+      role="status"
       aria-live="polite"
       className="mt-10 border-t border-ui-border-base pt-8"
     >
@@ -200,6 +201,7 @@ function PedidoEncontrado({ resultado }: { resultado: Extract<ResultadoRastreio,
 
   return (
     <section
+      role="status"
       aria-live="polite"
       className="mt-10 border-t border-ui-border-base pt-8"
     >

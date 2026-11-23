@@ -581,7 +581,7 @@
         {
           "id": "CA-5",
           "texto": "Acessível por teclado, com `aria-live` no resultado.",
-          "prova": null
+          "prova": "jornada:cliente@rastreio · consulta sem login mostra o resultado"
         },
         {
           "id": "CA-6",
