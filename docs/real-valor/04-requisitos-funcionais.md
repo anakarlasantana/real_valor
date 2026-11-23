@@ -1093,6 +1093,7 @@ O webhook do MP (RV-002) recebe `approved` e precisa disparar a criação do ped
 1. Pix aprovado gera **um** pedido com estoque reservado.
 2. Webhook repetido **não** duplica o pedido.
 3. `rejected` não cria pedido.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
 4. Compra sem login funciona (Guest).
 5. O valor do pedido bate com o do pagamento na API do MP.
 
@@ -1138,10 +1139,13 @@ modelado para a transportadora escolhida hoje, a decisão de amanhã obriga a re
 
 ### Critérios de aceite
 1. O admin registra `carrier`, `tracking_number` e `tracking_url`.
+   prova: `unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts`
 2. A rota de track passa a devolver esses valores.
 3. **Nenhum campo assume transportadora específica.**
 4. `status_label` tem valor padrão.
+   prova: `unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts`
 5. Salvar não apaga itens nem endereço do pedido.
+   prova: `unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts`
 
 ---
 
@@ -1199,10 +1203,13 @@ diria "Pedido recebido" a quem teve o pedido cancelado.
 ### Critérios de aceite
 1. Consulta correta mostra pedido, itens e status.
 2. CPF/e-mail errado → mensagem clara, sem vazar dados.
+   prova: `unit:frontend/src/lib/data/__tests__/tracking.unit.spec.ts`
 3. Pedido sem rastreio mostra status, sem bloco vazio.
+   prova: `unit:frontend/src/lib/data/__tests__/tracking.unit.spec.ts`
 4. Funciona sem login.
 5. Acessível por teclado, com `aria-live` no resultado.
 6. Pedido cancelado mostra **"Pedido cancelado"**, com ou sem código de rastreio.
+   prova: `unit:frontend/src/lib/data/__tests__/tracking.unit.spec.ts`
 
 ---
 

@@ -505,7 +505,7 @@
         {
           "id": "CA-3",
           "texto": "`rejected` não cria pedido.",
-          "prova": null
+          "prova": "unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts"
         },
         {
           "id": "CA-4",
@@ -528,7 +528,7 @@
         {
           "id": "CA-1",
           "texto": "O admin registra `carrier`, `tracking_number` e `tracking_url`.",
-          "prova": null
+          "prova": "unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts"
         },
         {
           "id": "CA-2",
@@ -543,12 +543,12 @@
         {
           "id": "CA-4",
           "texto": "`status_label` tem valor padrão.",
-          "prova": null
+          "prova": "unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts"
         },
         {
           "id": "CA-5",
           "texto": "Salvar não apaga itens nem endereço do pedido.",
-          "prova": null
+          "prova": "unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts"
         }
       ]
     },
@@ -566,12 +566,12 @@
         {
           "id": "CA-2",
           "texto": "CPF/e-mail errado → mensagem clara, sem vazar dados.",
-          "prova": null
+          "prova": "unit:frontend/src/lib/data/__tests__/tracking.unit.spec.ts"
         },
         {
           "id": "CA-3",
           "texto": "Pedido sem rastreio mostra status, sem bloco vazio.",
-          "prova": null
+          "prova": "unit:frontend/src/lib/data/__tests__/tracking.unit.spec.ts"
         },
         {
           "id": "CA-4",
@@ -586,7 +586,7 @@
         {
           "id": "CA-6",
           "texto": "Pedido cancelado mostra **\"Pedido cancelado\"**, com ou sem código de rastreio.",
-          "prova": null
+          "prova": "unit:frontend/src/lib/data/__tests__/tracking.unit.spec.ts"
         }
       ]
     },
