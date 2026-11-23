@@ -327,6 +327,40 @@ describe("o caminho que cria o pedido", () => {
     expect(res.statusCode).toBe(200)
     expect(emitidos[0]).toMatchObject({ data: { provider: "mercadopago_cartao" } })
   })
+
+  it("duas entregas do mesmo pagamento selam a mesma sessão com o mesmo payment_id", async () => {
+    const primeira = cenario({ sessao: SESSAO_DO_PIX })
+    await receberNotificacao(primeira.req as never, primeira.res as never)
+
+    const segunda = cenario({
+      sessao: {
+        ...SESSAO_DO_PIX,
+        data: {
+          ...SESSAO_DO_PIX.data,
+          mp_confirmacao: {
+            payment_id: PAGAMENTO,
+            status: "approved",
+            amount: 18990,
+            em: "2026-11-23T00:00:00.000Z",
+          },
+        },
+      },
+    })
+    await receberNotificacao(segunda.req as never, segunda.res as never)
+
+    expect(primeira.res.statusCode).toBe(200)
+    expect(segunda.res.statusCode).toBe(200)
+    expect(primeira.emitidos).toHaveLength(1)
+    expect(segunda.emitidos).toHaveLength(1)
+
+    const selo1 = (primeira.selagens[0].data as Record<string, unknown>)
+      .mp_confirmacao as Record<string, unknown>
+    const selo2 = (segunda.selagens[0].data as Record<string, unknown>)
+      .mp_confirmacao as Record<string, unknown>
+
+    expect(selo1.payment_id).toBe(PAGAMENTO)
+    expect(selo2.payment_id).toBe(PAGAMENTO)
+  })
 })
 
 describe("o que NÃO pode criar pedido", () => {
