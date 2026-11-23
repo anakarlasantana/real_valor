@@ -416,6 +416,7 @@ E2E_EVIDENCIA := evidence/$(shell date +%Y-%m-%dT%H-%M-%S)
 
 e2e: e2e-up
 	@mkdir -p "$(E2E_EVIDENCIA)"
+	@scripts/e2e-stack.sh warm || true
 	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code' 
 
 e2e-up:
@@ -428,6 +429,7 @@ e2e-down:
 # Uma jornada so' (a mesma stack): util enquanto se desenvolve o spec.
 e2e-cliente:
 	@mkdir -p "$(E2E_EVIDENCIA)"
+	@scripts/e2e-stack.sh warm || true
 	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --grep cliente-compra 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code' 
 
 e2e-evidence:

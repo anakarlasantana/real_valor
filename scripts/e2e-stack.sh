@@ -114,6 +114,12 @@ destruir() {
   compose down -v --remove-orphans
 }
 
+aquecer() {
+  for rota in "/br" "/br/store" "/br/products/e2e-vestido-de-teste" "/br/rastreio" "/br/cart"; do
+    curl -s -o /dev/null --max-time 90 "http://localhost:$PORTA_LOJA$rota" || true
+  done
+}
+
 saude() {
   printf '  backend :%s  ' "$PORTA_BACKEND"
   curl -fsS "http://localhost:$PORTA_BACKEND/health" >/dev/null && echo "OK" || echo "INDISPONIVEL"
@@ -125,6 +131,7 @@ case "${1:-}" in
   up)      subir ;;
   down)    derrubar ;;
   destroy) destruir ;;
+  warm)    aquecer ;;
   health)  saude ;;
-  *)       echo "uso: $0 up|down|destroy|health" >&2; exit 2 ;;
+  *)       echo "uso: $0 up|down|destroy|warm|health" >&2; exit 2 ;;
 esac

@@ -378,6 +378,8 @@ num pedido de R$ 1.000.
 14. Nenhum log contém CPF, cartão ou e-mail cru: `redigirPagamento` e `semPii` mascararam os campos.
    prova: `unit:backend/src/modules/payment/mercadopago/__tests__/assinatura.unit.spec.ts`
 15. O parcelamento exibido corresponde ao aceito pelo MP para o valor e a bandeira.
+16. A loja oferece apenas os meios reais do provedor — **Pix** e **Cartão de crédito** — e nunca o meio manual que "paga" sem cobrar.
+   prova: `jornada:cliente@checkout · pagamento é oferecido`
 
 
 ---
@@ -1374,8 +1376,10 @@ um aviso **assinado** da transportadora — nunca de inferência da tela.
    prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/webhook.unit.spec.ts`
 9. O aviso assinado vira a **situação** e o rótulo que a cliente lê no rastreio, e evento de outro pedido não sobrescreve este.
    prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/webhook.unit.spec.ts`
-10. Cancelar a etiqueta preserva itens e endereço, e o rastreio passa a "Pedido cancelado".
-11. Saldo insuficiente no SuperFrete aparece no painel com o número e **não** bloqueia a compra na loja.
+10. Cancelar a etiqueta grava **só** `superfrete_cancelada` e o rótulo: o resto do `metadata` (CPF, código, transportadora) fica intacto — e pedido sem etiqueta responde **409**.
+   prova: `unit:backend/src/api/admin/shipping/[id]/etiqueta/cancelar/__tests__/route.unit.spec.ts`
+11. O saldo da carteira SuperFrete é lido em **centavos** (1763,04 → 176304) e falha de leitura é **falha**, nunca "saldo zero".
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts`
 
 ---
 

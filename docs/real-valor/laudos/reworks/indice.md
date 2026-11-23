@@ -16,6 +16,7 @@
 | [RW-2026-009](RW-2026-009.md) | 2026-11-23 | cliente-compra | degrada | `verificado` (rastreio não listava os itens) | - |
 | [RW-2026-010](RW-2026-010.md) | 2026-11-23 | cliente-compra | degrada | `descartado` (dedupe existe no Medusa; CA-2 reescrito com prova e CA-6 criado) | - |
 | [RW-2026-011](RW-2026-011.md) | 2026-11-23 | cliente-compra | degrada | `relatado` (flake: recompilação do dev server estoura o orçamento de 45s) | - |
+| [RW-2026-012](RW-2026-012.md) | 2026-11-23 | cliente-compra | degrada | `verificado` (passo de pagamento assertava o rádio da entrega) | - |
 
 ## Estados possiveis
 

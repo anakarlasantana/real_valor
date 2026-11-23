@@ -202,9 +202,17 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
   })
 
   await test.step("checkout · pagamento é oferecido", async () => {
-    await expect(page.getByTestId("radio-button").first()).toBeVisible({
-      timeout: 20_000,
-    })
+    const rotulos = page.getByTestId("payment-option-label")
+
+    // `radio-button` também existe na entrega (shipping/index.tsx): usar o
+    // primeiro da página assertava o frete e passava sem ver o pagamento.
+    await expect(rotulos).toHaveCount(2, { timeout: 20_000 })
+
+    // O meio manual do Medusa ("paga" sem cobrar) é filtrado na loja: se ele
+    // aparecer na lista, a cliente fecha compra sem pagar.
+    expect(
+      (await rotulos.allTextContents()).map((rotulo) => rotulo.trim()).sort()
+    ).toEqual(["Cartão de crédito", "Pix"])
   })
 
   await test.step("rastreio · consulta sem login mostra o resultado", async () => {

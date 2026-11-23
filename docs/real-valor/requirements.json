@@ -130,6 +130,11 @@
           "id": "CA-15",
           "texto": "O parcelamento exibido corresponde ao aceito pelo MP para o valor e a bandeira.",
           "prova": null
+        },
+        {
+          "id": "CA-16",
+          "texto": "A loja oferece apenas os meios reais do provedor — **Pix** e **Cartão de crédito** — e nunca o meio manual que \"paga\" sem cobrar.",
+          "prova": "jornada:cliente@checkout · pagamento é oferecido"
         }
       ]
     },
@@ -774,13 +779,13 @@
         },
         {
           "id": "CA-10",
-          "texto": "Cancelar a etiqueta preserva itens e endereço, e o rastreio passa a \"Pedido cancelado\".",
-          "prova": null
+          "texto": "Cancelar a etiqueta grava **só** `superfrete_cancelada` e o rótulo: o resto do `metadata` (CPF, código, transportadora) fica intacto — e pedido sem etiqueta responde **409**.",
+          "prova": "unit:backend/src/api/admin/shipping/[id]/etiqueta/cancelar/__tests__/route.unit.spec.ts"
         },
         {
           "id": "CA-11",
-          "texto": "Saldo insuficiente no SuperFrete aparece no painel com o número e **não** bloqueia a compra na loja.",
-          "prova": null
+          "texto": "O saldo da carteira SuperFrete é lido em **centavos** (1763,04 → 176304) e falha de leitura é **falha**, nunca \"saldo zero\".",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts"
         }
       ]
     },
