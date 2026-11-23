@@ -16,6 +16,12 @@ make e2e-down      # derruba
   [doc 20](../docs/real-valor/20-testes-ponta-a-ponta.md);
 - as regras de escrita para esta pasta estão em
   [`.clinerules/06-e2e-e-jornadas.md`](../.clinerules/06-e2e-e-jornadas.md).
+- **rode a jornada sozinha.** Medido em 23/11/2026: 18 rodadas com `make ready`/
+  jest em paralelo deram ~1 falha a cada 3 (timeout de 45s no primeiro passo que
+  espera render); as 3 rodadas seguintes, com a máquina ociosa, passaram em
+  32,4s · 26,2s · 28,4s. O `next dev` compila sob demanda e o orçamento do teste
+  é disputado com o resto — a falha aparece em **passo diferente** a cada
+  variante de instrumento, que é a assinatura de falta de CPU, não de seletor.
 
 A jornada da cliente **para no pagamento** de propósito: a loja filtra o
 `pp_system_default` (que "paga" sem cobrar), então fechar pedido sem provedor
