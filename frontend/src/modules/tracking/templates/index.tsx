@@ -195,7 +195,7 @@ function Resultado({ resultado }: { resultado: ResultadoRastreio }) {
 }
 
 /** O pedido com rastreio: número, situação, transportadora, código e link. */
-function PedidoEncontrado({ resultado }: { resultado: Extract<ResultadoRastreio, { situacao: "encontrado" }> }) {
+export function PedidoEncontrado({ resultado }: { resultado: Extract<ResultadoRastreio, { situacao: "encontrado" }> }) {
   const pedido = resultado.dados.order
   const rastreio = pedido.tracking
 
@@ -209,6 +209,14 @@ function PedidoEncontrado({ resultado }: { resultado: Extract<ResultadoRastreio,
       <p className="text-sm text-ui-fg-subtle">
         {pedido.metadata.order_status_label}
       </p>
+
+      <ul className="mt-4 flex flex-col gap-1">
+        {pedido.items.map((item) => (
+          <li key={item.id} className="text-sm">
+            {item.quantity}× {item.title}
+          </li>
+        ))}
+      </ul>
 
       <dl className="mt-4 flex flex-col gap-2">
         <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">

@@ -561,7 +561,7 @@
         {
           "id": "CA-1",
           "texto": "Consulta correta mostra pedido, itens e status.",
-          "prova": null
+          "prova": "unit:frontend/src/modules/tracking/templates/__tests__/index.unit.spec.tsx"
         },
         {
           "id": "CA-2",

@@ -1202,6 +1202,7 @@ diria "Pedido recebido" a quem teve o pedido cancelado.
 
 ### Critérios de aceite
 1. Consulta correta mostra pedido, itens e status.
+   prova: `unit:frontend/src/modules/tracking/templates/__tests__/index.unit.spec.tsx`
 2. CPF/e-mail errado → mensagem clara, sem vazar dados.
    prova: `unit:frontend/src/lib/data/__tests__/tracking.unit.spec.ts`
 3. Pedido sem rastreio mostra status, sem bloco vazio.
