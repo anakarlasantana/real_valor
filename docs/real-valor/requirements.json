@@ -519,7 +519,7 @@
         },
         {
           "id": "CA-6",
-          "texto": "Uma entrega confirmada resulta em **um** `payment` e **um** pedido, mesmo com o aviso repetido — garantia do Medusa (`payment-module.js:232` e `process-payment.js:166`), ainda sem prova neste repositório (fase E, `api:`).",
+          "texto": "Uma entrega confirmada resulta em **um** `payment` e **um** pedido, mesmo com o aviso repetido — garantia do Medusa (`payment-module.js:232` e `process-payment.js:166`), ainda sem prova neste repositório (fase E, `api:`; a lacuna está no RV-060 do doc 19).",
           "prova": null
         }
       ]

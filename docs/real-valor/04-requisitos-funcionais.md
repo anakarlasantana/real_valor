@@ -1097,7 +1097,7 @@ O webhook do MP (RV-002) recebe `approved` e precisa disparar a criação do ped
    prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
 4. Compra sem login funciona (Guest).
 5. O valor do pedido bate com o do pagamento na API do MP.
-6. Uma entrega confirmada resulta em **um** `payment` e **um** pedido, mesmo com o aviso repetido — garantia do Medusa (`payment-module.js:232` e `process-payment.js:166`), ainda sem prova neste repositório (fase E, `api:`).
+6. Uma entrega confirmada resulta em **um** `payment` e **um** pedido, mesmo com o aviso repetido — garantia do Medusa (`payment-module.js:232` e `process-payment.js:166`), ainda sem prova neste repositório (fase E, `api:`; a lacuna está no RV-060 do doc 19).
 
 ---
 
