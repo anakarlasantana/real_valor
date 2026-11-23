@@ -818,12 +818,12 @@
         {
           "id": "CA-6",
           "texto": "Falha do provedor **não** relança: o pedido continua válido e o worker não entra em loop.",
-          "prova": null
+          "prova": "unit:backend/src/modules/notification/__tests__/enviar.unit.spec.ts"
         },
         {
           "id": "CA-7",
           "texto": "Dois eventos do mesmo cancelamento geram **um** e-mail.",
-          "prova": null
+          "prova": "unit:backend/src/subscribers/__tests__/order-canceled.unit.spec.ts"
         },
         {
           "id": "CA-8",
@@ -833,7 +833,7 @@
         {
           "id": "CA-9",
           "texto": "O endereço de e-mail sai mascarado no log.",
-          "prova": null
+          "prova": "unit:backend/src/modules/notification/__tests__/enviar.unit.spec.ts"
         }
       ]
     },
@@ -870,8 +870,13 @@
         },
         {
           "id": "CA-6",
-          "texto": "Backend indisponível mantém \"aguardando\" com mensagem — sem tela branca e sem 5xx na página.",
-          "prova": null
+          "texto": "Backend indisponível responde **502** (e não 404), para a página distinguir \"ainda não há pedido\" de \"não consegui perguntar\" e seguir mostrando \"aguardando\" — e a rota **nunca** chama o backend sem segredo configurado (503).",
+          "prova": "unit:frontend/src/app/api/pedido/status/__tests__/route.unit.spec.ts"
+        },
+        {
+          "id": "CA-7",
+          "texto": "A rota do navegador expõe **apenas** `id`, `display_id` e `status` — nunca e-mail, CPF, itens ou total, mesmo que o backend devolva o pedido inteiro.",
+          "prova": "unit:frontend/src/app/api/pedido/status/__tests__/route.unit.spec.ts"
         }
       ]
     }

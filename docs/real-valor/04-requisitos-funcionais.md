@@ -1409,9 +1409,12 @@ passa por `enviar.ts` → provider `resend` (ou `local`, que registra no log). O
 5. Dinheiro sai em pt-BR (`R$ 1.234,56`) e nunca em centavos.
    prova: `unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts`
 6. Falha do provedor **não** relança: o pedido continua válido e o worker não entra em loop.
+   prova: `unit:backend/src/modules/notification/__tests__/enviar.unit.spec.ts`
 7. Dois eventos do mesmo cancelamento geram **um** e-mail.
+   prova: `unit:backend/src/subscribers/__tests__/order-canceled.unit.spec.ts`
 8. Sem credenciais, o provider `local` registra no log e a compra não falha.
 9. O endereço de e-mail sai mascarado no log.
+   prova: `unit:backend/src/modules/notification/__tests__/enviar.unit.spec.ts`
 
 ---
 
@@ -1449,7 +1452,10 @@ sempre, com o pedido existindo.
    prova: `unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts`
 5. Com pedido, responde 200 com status e valor, e a página renderiza o pedido.
    prova: `unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts`
-6. Backend indisponível mantém "aguardando" com mensagem — sem tela branca e sem 5xx na página.
+6. Backend indisponível responde **502** (e não 404), para a página distinguir "ainda não há pedido" de "não consegui perguntar" e seguir mostrando "aguardando" — e a rota **nunca** chama o backend sem segredo configurado (503).
+   prova: `unit:frontend/src/app/api/pedido/status/__tests__/route.unit.spec.ts`
+7. A rota do navegador expõe **apenas** `id`, `display_id` e `status` — nunca e-mail, CPF, itens ou total, mesmo que o backend devolva o pedido inteiro.
+   prova: `unit:frontend/src/app/api/pedido/status/__tests__/route.unit.spec.ts`
 
 ---
 
