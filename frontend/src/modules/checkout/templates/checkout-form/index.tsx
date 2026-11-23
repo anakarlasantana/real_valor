@@ -1,3 +1,4 @@
+import { getCepHerdado } from "@lib/data/cookies"
 import { listCartShippingMethods } from "@lib/data/fulfillment"
 import { listCartPaymentMethods } from "@lib/data/payment"
 import { HttpTypes } from "@medusajs/types"
@@ -35,6 +36,7 @@ export default async function CheckoutForm({
 
   const shippingMethods = await listCartShippingMethods(cart.id)
   const paymentMethods = await listCartPaymentMethods(cart.region?.id ?? "")
+  const cepHerdado = await getCepHerdado()
 
   if (shippingMethods.estado === "indisponivel") {
     return <CheckoutUnavailable motivo="entrega-indisponivel" />
@@ -57,7 +59,7 @@ export default async function CheckoutForm({
         <h1>Checkout</h1>
       </div>
 
-      <Addresses cart={cart} customer={customer} />
+      <Addresses cart={cart} customer={customer} cepHerdado={cepHerdado} />
 
       <Shipping cart={cart} availableShippingMethods={shippingMethods.opcoes} />
 

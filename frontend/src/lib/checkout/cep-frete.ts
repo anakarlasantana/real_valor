@@ -1,4 +1,8 @@
-import { cepValido, normalizarCep, type OpcaoDeEntrega } from "./shipping-quote"
+import {
+  cepValido,
+  normalizarCep,
+  type OpcaoDeEntrega,
+} from "./shipping-quote"
 
 export type EstadoDoCep =
   | { fase: "vazio" }
@@ -50,4 +54,19 @@ export function mensagemDoEstado(estado: EstadoDoCep): string | null {
     default:
       return null
   }
+}
+
+export function cepDoCheckout(
+  cepDoCarrinho: string | null | undefined,
+  cepHerdado: string | null | undefined
+): string {
+  const doCarrinho = normalizarCep(cepDoCarrinho)
+
+  if (cepValido(doCarrinho)) {
+    return doCarrinho
+  }
+
+  const herdado = normalizarCep(cepHerdado)
+
+  return cepValido(herdado) ? herdado : ""
 }

@@ -3,7 +3,7 @@
 import { FALHA_NA_COTACAO, SEM_OPCAO } from "@lib/checkout/cep-frete"
 import { descreverPrazo, type OpcaoDeEntrega } from "@lib/checkout/shipping-quote"
 import { sdk } from "@lib/config"
-import { getAuthHeaders } from "@lib/data/cookies"
+import { getAuthHeaders, setCepHerdado } from "@lib/data/cookies"
 
 type CotacaoCrua = {
   servico?: string
@@ -47,9 +47,13 @@ export async function cotarNaPeca({
       }))
       .filter((opcao) => opcao.titulo !== "")
 
-    return opcoes.length > 0
-      ? { ok: true, opcoes }
-      : { ok: false, mensagem: SEM_OPCAO }
+    if (opcoes.length === 0) {
+      return { ok: false, mensagem: SEM_OPCAO }
+    }
+
+    await setCepHerdado(cep)
+
+    return { ok: true, opcoes }
   } catch {
     return { ok: false, mensagem: FALHA_NA_COTACAO }
   }

@@ -433,12 +433,12 @@
         {
           "id": "CA-3",
           "texto": "O CEP é reaproveitado no checkout.",
-          "prova": null
+          "prova": "unit:frontend/src/lib/data/__tests__/cookies-cep.unit.spec.ts"
         },
         {
           "id": "CA-4",
           "texto": "A cotação da PDP e a do checkout usam a **mesma** regra: mesmo CEP e mesmo peso não divergem em preço nem em prazo.",
-          "prova": null
+          "prova": "unit:backend/src/api/store/shipping/quote/__tests__/equivalencia.unit.spec.ts"
         }
       ]
     },

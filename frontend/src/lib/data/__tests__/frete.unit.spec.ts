@@ -6,8 +6,11 @@ vi.mock("@lib/config", () => ({
   sdk: { client: { fetch: (...args: unknown[]) => fetchMock(...args) } },
 }))
 
+const { setCepMock } = vi.hoisted(() => ({ setCepMock: vi.fn() }))
+
 vi.mock("@lib/data/cookies", () => ({
   getAuthHeaders: async () => ({ "x-publishable-api-key": "pk_teste" }),
+  setCepHerdado: (...args: unknown[]) => setCepMock(...args),
 }))
 
 import { FALHA_NA_COTACAO, SEM_OPCAO } from "@lib/checkout/cep-frete"
@@ -16,6 +19,7 @@ import { cotarNaPeca } from "../frete"
 
 beforeEach(() => {
   fetchMock.mockReset()
+  setCepMock.mockReset()
 })
 
 describe("cotarNaPeca", () => {
@@ -30,6 +34,7 @@ describe("cotarNaPeca", () => {
       ok: true,
       opcoes: [{ titulo: "PAC", prazo: "até 5 dias úteis", preco: 19.9, moeda: "brl" }],
     })
+    expect(setCepMock).toHaveBeenCalledWith("01310100")
   })
 
   it("manda CEP, variação e quantidade, sem cache", async () => {
@@ -53,6 +58,7 @@ describe("cotarNaPeca", () => {
     await expect(
       cotarNaPeca({ cep: "01310100", variantId: "variant_1" })
     ).resolves.toEqual({ ok: false, mensagem: SEM_OPCAO })
+    expect(setCepMock).not.toHaveBeenCalled()
   })
 
   it("rede fora devolve mensagem de falha, sem lançar", async () => {

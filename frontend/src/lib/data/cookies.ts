@@ -18,6 +18,36 @@ export const getAuthHeaders = async (): Promise<
   }
 }
 
+export const CEP_COOKIE = "rv_cep"
+
+export const getCepHerdado = async (): Promise<string> => {
+  try {
+    const cookies = await nextCookies()
+    return String(cookies.get(CEP_COOKIE)?.value ?? "").replace(/\D/g, "").slice(0, 8)
+  } catch {
+    return ""
+  }
+}
+
+export const setCepHerdado = async (cep: string): Promise<void> => {
+  const digitos = String(cep ?? "").replace(/\D/g, "").slice(0, 8)
+
+  if (digitos.length !== 8) {
+    return
+  }
+
+  try {
+    const cookies = await nextCookies()
+    cookies.set(CEP_COOKIE, digitos, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+      sameSite: "lax",
+    })
+  } catch {
+    return
+  }
+}
+
 export const getCacheTag = async (tag: string): Promise<string> => {
   try {
     const cookies = await nextCookies()

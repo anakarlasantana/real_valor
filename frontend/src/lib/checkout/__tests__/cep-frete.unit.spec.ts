@@ -4,6 +4,7 @@ import {
   CALCULANDO,
   CEP_INVALIDO,
   SEM_OPCAO,
+  cepDoCheckout,
   estadoAoConsultar,
   estadoDaResposta,
   mensagemDoEstado,
@@ -74,5 +75,21 @@ describe("mensagemDoEstado", () => {
       mensagemDoEstado({ fase: "ok", cep: "01310100", opcoes: [opcao] })
     ).toBeNull()
     expect(mensagemDoEstado({ fase: "vazio" })).toBeNull()
+  })
+})
+
+describe("cepDoCheckout", () => {
+  it("usa o CEP do carrinho quando ele está completo", () => {
+    expect(cepDoCheckout("60352-680", "01310100")).toBe("60352680")
+  })
+
+  it("sem CEP no carrinho, herda o que a cliente digitou na peça", () => {
+    expect(cepDoCheckout("", "01310100")).toBe("01310100")
+    expect(cepDoCheckout(null, "01310-100")).toBe("01310100")
+  })
+
+  it("sem os dois, o campo nasce vazio em vez de meio preenchido", () => {
+    expect(cepDoCheckout("0131", "")).toBe("")
+    expect(cepDoCheckout(undefined, undefined)).toBe("")
   })
 })

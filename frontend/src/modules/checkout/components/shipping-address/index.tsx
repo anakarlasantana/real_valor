@@ -1,5 +1,6 @@
 import { HttpTypes } from "@medusajs/types"
 import { formatarDocumento, lerDocumento } from "@rv/contrato"
+import { cepDoCheckout } from "@lib/checkout/cep-frete"
 import { mascararCampoDeEndereco } from "@lib/checkout/mascaras-de-endereco"
 import { useCepAutofill } from "@lib/checkout/use-cep-autofill"
 import { buscarCep } from "@lib/data/shipping-cep"
@@ -18,11 +19,13 @@ const ShippingAddress = ({
   cart,
   checked,
   onChange,
+  cepHerdado,
 }: {
   customer: HttpTypes.StoreCustomer | null
   cart: HttpTypes.StoreCart | null
   checked: boolean
   onChange: () => void
+  cepHerdado?: string
 }) => {
   const documentoDoCarrinho = (cart?.metadata as Record<string, unknown> | null)
     ?.cpf
@@ -39,7 +42,10 @@ const ShippingAddress = ({
     "shipping_address.address_2": cart?.shipping_address?.address_2 || "",
     "shipping_address.bairro": String(metadataDoEndereco.bairro ?? ""),
     "shipping_address.company": cart?.shipping_address?.company || "",
-    "shipping_address.postal_code": cart?.shipping_address?.postal_code || "",
+    "shipping_address.postal_code": cepDoCheckout(
+      cart?.shipping_address?.postal_code,
+      cepHerdado
+    ),
     "shipping_address.city": cart?.shipping_address?.city || "",
     "shipping_address.country_code": cart?.shipping_address?.country_code || "",
     "shipping_address.province": cart?.shipping_address?.province || "",

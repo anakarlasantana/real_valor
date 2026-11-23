@@ -38,9 +38,11 @@ import { SubmitButton } from "../submit-button"
 const Addresses = ({
   cart,
   customer,
+  cepHerdado,
 }: {
   cart: HttpTypes.StoreCart | null
   customer: HttpTypes.StoreCustomer | null
+  cepHerdado?: string
 }) => {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -81,6 +83,7 @@ const Addresses = ({
             checked={sameAsBilling}
             onChange={toggleSameAsBilling}
             cart={cart}
+            cepHerdado={cepHerdado}
           />
 
           {!sameAsBilling && (

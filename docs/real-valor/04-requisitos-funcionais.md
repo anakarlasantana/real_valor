@@ -941,7 +941,9 @@ Bloco discreto abaixo do seletor de tamanho: campo de 8 dígitos + botão "Calcu
 2. CEP inválido mostra mensagem, não quebra.
    prova: `unit:frontend/src/lib/checkout/__tests__/cep-frete.unit.spec.ts`
 3. O CEP é reaproveitado no checkout.
+   prova: `unit:frontend/src/lib/data/__tests__/cookies-cep.unit.spec.ts`
 4. A cotação da PDP e a do checkout usam a **mesma** regra: mesmo CEP e mesmo peso não divergem em preço nem em prazo.
+   prova: `unit:backend/src/api/store/shipping/quote/__tests__/equivalencia.unit.spec.ts`
 
 
 ---
