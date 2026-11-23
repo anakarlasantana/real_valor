@@ -1,6 +1,6 @@
 {
   "fonte": "docs/real-valor/04-requisitos-funcionais.md",
-  "total": 18,
+  "total": 21,
   "requisitos": [
     {
       "id": "RV-001",
@@ -104,6 +104,31 @@
         {
           "id": "CA-10",
           "texto": "`data.id` minúsculo no manifest da assinatura — teste unitário da função de validação.",
+          "prova": null
+        },
+        {
+          "id": "CA-11",
+          "texto": "A preferência nasce com as três `back_urls` (e `auto_return` só junto delas): a cliente volta para a loja, não para o site do provedor.",
+          "prova": "unit:backend/src/modules/payment/mercadopago/__tests__/preferencia.unit.spec.ts"
+        },
+        {
+          "id": "CA-12",
+          "texto": "Pagamento **recusado** não cria pedido e a cliente lê mensagem clara no retorno — nunca tela em branco.",
+          "prova": null
+        },
+        {
+          "id": "CA-13",
+          "texto": "Pix `in_process`: a página mostra **aguardando** e nada nasce antes do `approved`.",
+          "prova": null
+        },
+        {
+          "id": "CA-14",
+          "texto": "Nenhum log contém CPF, cartão ou e-mail cru: `redigirPagamento` e `semPii` mascararam os campos.",
+          "prova": "unit:backend/src/modules/payment/mercadopago/__tests__/assinatura.unit.spec.ts"
+        },
+        {
+          "id": "CA-15",
+          "texto": "O parcelamento exibido corresponde ao aceito pelo MP para o valor e a bandeira.",
           "prova": null
         }
       ]
@@ -404,6 +429,11 @@
           "id": "CA-3",
           "texto": "O CEP é reaproveitado no checkout.",
           "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "A cotação da PDP e a do checkout usam a **mesma** regra: mesmo CEP e mesmo peso não divergem em preço nem em prazo.",
+          "prova": null
         }
       ]
     },
@@ -655,6 +685,16 @@
           "id": "CA-3",
           "texto": "Falha no e-mail não perde o rastreio.",
           "prova": null
+        },
+        {
+          "id": "CA-4",
+          "texto": "O e-mail de envio mostra o código e o link de rastreio do pedido.",
+          "prova": "unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts"
+        },
+        {
+          "id": "CA-5",
+          "texto": "O endereço de e-mail sai mascarado no log.",
+          "prova": null
         }
       ]
     },
@@ -677,6 +717,160 @@
         {
           "id": "CA-3",
           "texto": "Nenhum consumidor precisa conhecer o nome da transportadora.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-061",
+      "titulo": "Ciclo da etiqueta e avisos do SuperFrete",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Pedido **não pago** não gera etiqueta: a recusa é **409** com motivo legível.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts"
+        },
+        {
+          "id": "CA-2",
+          "texto": "Destinatário **sem CPF** é recusado, e a mensagem junta **todos** os campos faltantes de uma vez.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts"
+        },
+        {
+          "id": "CA-3",
+          "texto": "Remetente incompleto é recusado com mensagem que aponta o centro de distribuição.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts"
+        },
+        {
+          "id": "CA-4",
+          "texto": "Pedido **sem itens** não gera etiqueta.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts"
+        },
+        {
+          "id": "CA-5",
+          "texto": "A caixa **padrão** é escolhida; caixa inativa é ignorada e, sem nenhuma ativa, o retorno é `null`.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts"
+        },
+        {
+          "id": "CA-6",
+          "texto": "Nome de uma palavra é prefixado — a API de etiqueta exige nome e sobrenome.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts"
+        },
+        {
+          "id": "CA-7",
+          "texto": "O aviso do SuperFrete exige **HMAC-SHA256** do corpo cru (aceita `sha256=` e hexadecimal em maiúsculas) e recusa tudo quando não há segredo configurado.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/webhook.unit.spec.ts"
+        },
+        {
+          "id": "CA-8",
+          "texto": "Só os **quatro** eventos assinados mudam a situação; `criado` e `pago` são ignorados, sem e-mail e sem mudar a tela.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/webhook.unit.spec.ts"
+        },
+        {
+          "id": "CA-9",
+          "texto": "O aviso assinado vira a **situação** e o rótulo que a cliente lê no rastreio, e evento de outro pedido não sobrescreve este.",
+          "prova": "unit:backend/src/modules/fulfillment/superfrete/__tests__/webhook.unit.spec.ts"
+        },
+        {
+          "id": "CA-10",
+          "texto": "Cancelar a etiqueta preserva itens e endereço, e o rastreio passa a \"Pedido cancelado\".",
+          "prova": null
+        },
+        {
+          "id": "CA-11",
+          "texto": "Saldo insuficiente no SuperFrete aparece no painel com o número e **não** bloqueia a compra na loja.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-062",
+      "titulo": "E-mails transacionais do pedido",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "A confirmação traz número do pedido, itens, total formatado e link do pedido.",
+          "prova": "unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts"
+        },
+        {
+          "id": "CA-2",
+          "texto": "O cancelamento traz motivo, previsão de reembolso e link — com valor padrão quando o dado não existe.",
+          "prova": "unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts"
+        },
+        {
+          "id": "CA-3",
+          "texto": "O e-mail de envio traz código e link; sem código, usa o texto padrão em vez de campo vazio.",
+          "prova": "unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts"
+        },
+        {
+          "id": "CA-4",
+          "texto": "Todo campo vindo da cliente é **escapado** (nome com `<script>` não vira tag).",
+          "prova": "unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts"
+        },
+        {
+          "id": "CA-5",
+          "texto": "Dinheiro sai em pt-BR (`R$ 1.234,56`) e nunca em centavos.",
+          "prova": "unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts"
+        },
+        {
+          "id": "CA-6",
+          "texto": "Falha do provedor **não** relança: o pedido continua válido e o worker não entra em loop.",
+          "prova": null
+        },
+        {
+          "id": "CA-7",
+          "texto": "Dois eventos do mesmo cancelamento geram **um** e-mail.",
+          "prova": null
+        },
+        {
+          "id": "CA-8",
+          "texto": "Sem credenciais, o provider `local` registra no log e a compra não falha.",
+          "prova": null
+        },
+        {
+          "id": "CA-9",
+          "texto": "O endereço de e-mail sai mascarado no log.",
+          "prova": null
+        }
+      ]
+    },
+    {
+      "id": "RV-063",
+      "titulo": "Confirmação da compra na loja",
+      "prioridade": "CRÍTICA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Sem `x-rv-internal`, a rota responde **404** e não distingue de carrinho inexistente.",
+          "prova": "unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts"
+        },
+        {
+          "id": "CA-2",
+          "texto": "Fail-closed: sem `INTERNAL_API_SECRET` no backend, recusa e registra o aviso.",
+          "prova": "unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts"
+        },
+        {
+          "id": "CA-3",
+          "texto": "`cart_id` fora do formato responde 404 **sem consultar o banco**.",
+          "prova": "unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts"
+        },
+        {
+          "id": "CA-4",
+          "texto": "Carrinho sem pedido responde 404 e a página mostra \"aguardando\" (não erro).",
+          "prova": "unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts"
+        },
+        {
+          "id": "CA-5",
+          "texto": "Com pedido, responde 200 com status e valor, e a página renderiza o pedido.",
+          "prova": "unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts"
+        },
+        {
+          "id": "CA-6",
+          "texto": "Backend indisponível mantém \"aguardando\" com mensagem — sem tela branca e sem 5xx na página.",
           "prova": null
         }
       ]

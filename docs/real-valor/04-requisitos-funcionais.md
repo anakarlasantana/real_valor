@@ -29,6 +29,9 @@ Caminhos sem marcador já existem no repositório.
 | [RV-044](#rv-044--pgina-pblica-de-rastreio) | Página pública de rastreio | **ALTA** |
 | [RV-045](#rv-045--notificao-de-envio-cliente) | Notificação de envio à cliente | MÉDIA |
 | [RV-046](#rv-046--segunda-transportadora) | Segunda transportadora *(opcional)* | BAIXA |
+| [RV-061](#rv-061--ciclo-da-etiqueta-e-avisos-do-superfrete) | Ciclo da etiqueta e avisos do SuperFrete | **ALTA** |
+| [RV-062](#rv-062--e-mails-transacionais-do-pedido) | E-mails transacionais do pedido | **ALTA** |
+| [RV-063](#rv-063--confirmação-da-compra-na-loja) | Confirmação da compra na loja | **CRÍTICA** |
 
 > **Bloco de pedido e envio (RV-042 a RV-046):** o provedor de frete **está decidido e implementado** —
 > SuperFrete por API (F1b–F3: cotação, etiqueta e webhook). O provider `tabela` (RV-006) continua como
@@ -368,6 +371,14 @@ num pedido de R$ 1.000.
 9. **Teste da abstração:** mudar `fulfillment` do MP para `"inline"` e implementar `render`
    **não altera nenhuma linha** de `modules/checkout/`. Se alterar, a abstração não é real.
 10. `data.id` minúsculo no manifest da assinatura — teste unitário da função de validação.
+11. A preferência nasce com as três `back_urls` (e `auto_return` só junto delas): a cliente volta para a loja, não para o site do provedor.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/preferencia.unit.spec.ts`
+12. Pagamento **recusado** não cria pedido e a cliente lê mensagem clara no retorno — nunca tela em branco.
+13. Pix `in_process`: a página mostra **aguardando** e nada nasce antes do `approved`.
+14. Nenhum log contém CPF, cartão ou e-mail cru: `redigirPagamento` e `semPii` mascararam os campos.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/assinatura.unit.spec.ts`
+15. O parcelamento exibido corresponde ao aceito pelo MP para o valor e a bandeira.
+
 
 ---
 
@@ -926,6 +937,8 @@ Bloco discreto abaixo do seletor de tamanho: campo de 8 dígitos + botão "Calcu
 1. CEP válido mostra preço e prazo.
 2. CEP inválido mostra mensagem, não quebra.
 3. O CEP é reaproveitado no checkout.
+4. A cotação da PDP e a do checkout usam a **mesma** regra: mesmo CEP e mesmo peso não divergem em preço nem em prazo.
+
 
 ---
 
@@ -1264,6 +1277,10 @@ A regra 2 (não reenviar) e a regra 3 (falha não desfaz o salvamento) continuam
 1. Salvar o código pela primeira vez dispara a notificação.
 2. Re-salvar o mesmo código **não** reenvia.
 3. Falha no e-mail não perde o rastreio.
+4. O e-mail de envio mostra o código e o link de rastreio do pedido.
+   prova: `unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts`
+5. O endereço de e-mail sai mascarado no log.
+
 
 ---
 
@@ -1304,6 +1321,135 @@ ou `order.metadata`, e `carrier` lá é texto livre de propósito.
 1. Carrinho e checkout **não são alterados** ao plugar a transportadora.
 2. Preço e prazo reais para CEP de teste.
 3. Nenhum consumidor precisa conhecer o nome da transportadora.
+
+---
+
+
+## RV-061 — Ciclo da etiqueta e avisos do SuperFrete
+
+**Prioridade:** ALTA · **Tipo:** funcional + backend · **Complexidade:** média
+**Depende de:** RV-006 (frete) e RV-042 (pedido pago) · **Impacta:** cliente (envio e situação) e lojista (emissão)
+
+### Objetivo
+Garantir que a etiqueta só nasça para um pedido que pode ser enviado, que o erro chegue ao
+lojista como **uma** mensagem acionável, e que a situação que a cliente lê no rastreio venha de
+um aviso **assinado** da transportadora — nunca de inferência da tela.
+
+### Descrição
+`backend/src/modules/fulfillment/superfrete/etiqueta.ts` valida o pedido antes de chamar a API
+(`problemaDaEtiqueta`) e escolhe o volume (`caixaDoEnvio`); `webhook.ts` valida o aviso
+(`assinaturaConfere`, `ehEventoAssinado`) e traduz o evento em metadata (`metadataDoAviso`,
+`SITUACAO_DO_EVENTO`); o consumidor é `backend/src/subscribers/superfrete-webhook.ts`.
+
+### Regras de negócio
+1. Etiqueta exige pedido **pago**: checkout abandonado não consome saldo nem gera volume.
+2. O CPF do destinatário é obrigatório — a transportadora recusa sem ele.
+3. Os campos faltantes são relatados **de uma vez** (o lojista corrige numa passada).
+4. Erro de remetente aponta o **centro de distribuição**, não a cliente.
+5. Sem caixa ativa não se inventa volume: a emissão para com erro claro.
+6. Aviso sem HMAC válido é recusado — inclusive quando o segredo **não** está configurado (fail-closed).
+7. Só `order.generated`, `order.posted`, `order.delivered` e `order.cancelled` mudam o que a loja mostra.
+8. Cancelar a etiqueta não apaga itens, endereço nem pedido; a cliente passa a ver "Cancelado".
+
+### Critérios de aceite
+1. Pedido **não pago** não gera etiqueta: a recusa é **409** com motivo legível.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts`
+2. Destinatário **sem CPF** é recusado, e a mensagem junta **todos** os campos faltantes de uma vez.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts`
+3. Remetente incompleto é recusado com mensagem que aponta o centro de distribuição.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts`
+4. Pedido **sem itens** não gera etiqueta.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts`
+5. A caixa **padrão** é escolhida; caixa inativa é ignorada e, sem nenhuma ativa, o retorno é `null`.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts`
+6. Nome de uma palavra é prefixado — a API de etiqueta exige nome e sobrenome.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/etiqueta.unit.spec.ts`
+7. O aviso do SuperFrete exige **HMAC-SHA256** do corpo cru (aceita `sha256=` e hexadecimal em maiúsculas) e recusa tudo quando não há segredo configurado.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/webhook.unit.spec.ts`
+8. Só os **quatro** eventos assinados mudam a situação; `criado` e `pago` são ignorados, sem e-mail e sem mudar a tela.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/webhook.unit.spec.ts`
+9. O aviso assinado vira a **situação** e o rótulo que a cliente lê no rastreio, e evento de outro pedido não sobrescreve este.
+   prova: `unit:backend/src/modules/fulfillment/superfrete/__tests__/webhook.unit.spec.ts`
+10. Cancelar a etiqueta preserva itens e endereço, e o rastreio passa a "Pedido cancelado".
+11. Saldo insuficiente no SuperFrete aparece no painel com o número e **não** bloqueia a compra na loja.
+
+---
+
+## RV-062 — E-mails transacionais do pedido
+
+**Prioridade:** ALTA · **Tipo:** funcional + integração · **Complexidade:** baixa
+**Depende de:** RV-042 (pedido) e RV-043 (código de rastreio) · **Impacta:** cliente (confiança e suporte)
+
+### Objetivo
+A cliente recebe **confirmação** ao comprar, **envio** ao postar e **cancelamento** ao cancelar —
+sem duplicar, sem vazar dado pessoal e sem derrubar o pedido quando o provedor falha.
+
+### Descrição
+Três templates (`pedido-confirmado`, `pedido-enviado`, `pedido-cancelado`) em
+`backend/src/modules/notification/templates.ts`; os dados são montados em `pedido.ts`; o envio
+passa por `enviar.ts` → provider `resend` (ou `local`, que registra no log). Os disparos vivem em
+`subscribers/order-confirmation.ts`, `subscribers/order-canceled.ts` e no caminho de envio (RV-045).
+
+### Regras de negócio
+1. `order.placed` dispara confirmação; `order.canceled` dispara cancelamento; envio dispara `pedido-enviado`.
+2. Dois eventos do mesmo cancelamento geram **um** e-mail.
+3. Falha de e-mail **nunca** relança — o pedido já existe e o evento não pode entrar em loop.
+4. Sem credenciais, o provider `local` registra no log em vez de falhar a compra.
+5. Nenhum dado do cliente aparece cru no log; o HTML de campo vindo da cliente é escapado.
+
+### Critérios de aceite
+1. A confirmação traz número do pedido, itens, total formatado e link do pedido.
+   prova: `unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts`
+2. O cancelamento traz motivo, previsão de reembolso e link — com valor padrão quando o dado não existe.
+   prova: `unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts`
+3. O e-mail de envio traz código e link; sem código, usa o texto padrão em vez de campo vazio.
+   prova: `unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts`
+4. Todo campo vindo da cliente é **escapado** (nome com `<script>` não vira tag).
+   prova: `unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts`
+5. Dinheiro sai em pt-BR (`R$ 1.234,56`) e nunca em centavos.
+   prova: `unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts`
+6. Falha do provedor **não** relança: o pedido continua válido e o worker não entra em loop.
+7. Dois eventos do mesmo cancelamento geram **um** e-mail.
+8. Sem credenciais, o provider `local` registra no log e a compra não falha.
+9. O endereço de e-mail sai mascarado no log.
+
+---
+
+## RV-063 — Confirmação da compra na loja
+
+**Prioridade:** CRÍTICA · **Tipo:** funcional + segurança · **Complexidade:** baixa
+**Depende de:** RV-042 (pedido) · **Impacta:** cliente (é a tela que fecha a compra)
+
+### Objetivo
+A página de confirmação mostra o **pedido certo** logo depois do pagamento — e nunca fica em
+"aguardando" por falta de configuração, nem revela a existência de carrinho de outra pessoa.
+
+### Descrição
+`backend/src/api/internal/orders/by-cart/route.ts` responde o pedido ligado a um `cart_id`,
+protegido por `x-rv-internal` (`INTERNAL_API_SECRET`); a página `order/[id]/confirmed` consome essa
+rota. O `README` alerta: sem o segredo nos dois serviços, a confirmação mostra "aguardando" para
+sempre, com o pedido existindo.
+
+### Regras de negócio
+1. Sem o header interno, a resposta é **404 indistinto** — não se revela se o carrinho existe.
+2. **Fail-closed**: sem segredo configurado no backend, recusa e avisa no log.
+3. `cart_id` fora do formato (Crockford base32) → 404 **sem tocar o banco**.
+4. Carrinho ainda sem pedido é o caso comum: 404, e a tela mostra "aguardando" em vez de erro.
+5. Com pedido, a tela mostra número, status e valor.
+6. Indisponibilidade do backend não vira tela branca.
+
+### Critérios de aceite
+1. Sem `x-rv-internal`, a rota responde **404** e não distingue de carrinho inexistente.
+   prova: `unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts`
+2. Fail-closed: sem `INTERNAL_API_SECRET` no backend, recusa e registra o aviso.
+   prova: `unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts`
+3. `cart_id` fora do formato responde 404 **sem consultar o banco**.
+   prova: `unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts`
+4. Carrinho sem pedido responde 404 e a página mostra "aguardando" (não erro).
+   prova: `unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts`
+5. Com pedido, responde 200 com status e valor, e a página renderiza o pedido.
+   prova: `unit:backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts`
+6. Backend indisponível mantém "aguardando" com mensagem — sem tela branca e sem 5xx na página.
 
 ---
 

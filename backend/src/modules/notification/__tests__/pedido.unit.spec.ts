@@ -20,6 +20,20 @@ import {
 
 const texto = (valor: string) => valor.replace(/\u00a0/g, " ");
 
+const atendimentoDoShell = process.env.EMAIL_ATENDIMENTO
+
+beforeEach(() => {
+  delete process.env.EMAIL_ATENDIMENTO
+})
+
+afterEach(() => {
+  if (atendimentoDoShell === undefined) {
+    delete process.env.EMAIL_ATENDIMENTO
+  } else {
+    process.env.EMAIL_ATENDIMENTO = atendimentoDoShell
+  }
+})
+
 const pedido = {
   id: "order_123",
   display_id: 1042,
