@@ -11,7 +11,10 @@
  * usa para validar a identidade. Se a gravação regravar o objeto inteiro, o CPF
  * some e a consulta passa a dar 403 para a própria cliente.
  */
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+
 import {
+  avisar,
   buildShippingMetadata,
   guessTrackingUrl,
   rastreioPublico,
@@ -365,5 +368,125 @@ describe("rastreioPublico", () => {
 
     expect(resposta.order.shipping_address.first_name).toBeNull()
     expect(resposta.order.items).toEqual([])
+  })
+})
+
+function containerDeAviso(
+  opcoes: { criar?: (dados: Record<string, unknown>) => unknown } = {}
+) {
+  const avisos: string[] = []
+  const infos: string[] = []
+  const criadas: Record<string, unknown>[] = []
+
+  const container = {
+    resolve: (chave: string) => {
+      if (chave === ContainerRegistrationKeys.LOGGER) {
+        return {
+          warn: (mensagem: string) => avisos.push(mensagem),
+          info: (mensagem: string) => infos.push(mensagem),
+          error: () => undefined,
+        }
+      }
+
+      if (chave === Modules.NOTIFICATION) {
+        return {
+          createNotifications: async (dados: Record<string, unknown>) => {
+            criadas.push(dados)
+            return opcoes.criar ? opcoes.criar(dados) : { id: "notif_1" }
+          },
+        }
+      }
+
+      return undefined
+    },
+  }
+
+  return { container, avisos, infos, criadas }
+}
+
+const PEDIDO_AVISO = {
+  id: "order_1",
+  display_id: 42,
+  email: "ana.silva@exemplo.com",
+  currency_code: "brl",
+  total: 189.9,
+  payment_status: "captured",
+  created_at: "2026-11-17T00:00:00Z",
+  items: [{ title: "Vestido", quantity: 1, unit_price: 189.9 }],
+  metadata: {},
+}
+
+describe("avisar", () => {
+  it("mesmo código e mesma situação usam a mesma chave: não reenvia", async () => {
+    const meta = { tracking_number: "AA123456789BR", status_label: "Postada" }
+
+    const primeira = containerDeAviso()
+    await avisar(primeira.container as never, "saiu", PEDIDO_AVISO as never, meta)
+
+    const segunda = containerDeAviso({ criar: () => undefined })
+    await avisar(segunda.container as never, "saiu", PEDIDO_AVISO as never, meta)
+
+    expect(primeira.criadas[0].idempotency_key).toBe(
+      "order-shipped:order_1:AA123456789BR:Postada"
+    )
+    expect(segunda.criadas[0].idempotency_key).toBe(
+      primeira.criadas[0].idempotency_key
+    )
+    expect(primeira.infos).toHaveLength(1)
+    expect(segunda.infos).toEqual([])
+  })
+
+  it("situação nova gera chave nova", async () => {
+    const container = containerDeAviso()
+
+    await avisar(container.container as never, "atualizado", PEDIDO_AVISO as never, {
+      tracking_number: "AA123456789BR",
+      status_label: "Entregue",
+    })
+
+    expect(container.criadas[0].idempotency_key).toBe(
+      "order-shipped:order_1:AA123456789BR:Entregue"
+    )
+  })
+
+  it("cancelado usa o template e a chave do cancelamento", async () => {
+    const container = containerDeAviso()
+
+    await avisar(container.container as never, "cancelado", PEDIDO_AVISO as never, {})
+
+    expect(container.criadas[0]).toMatchObject({
+      template: "pedido-cancelado",
+      idempotency_key: "order-canceled:order_1",
+    })
+  })
+
+  it("sem e-mail avisa no log e não envia", async () => {
+    const container = containerDeAviso()
+
+    await avisar(
+      container.container as never,
+      "saiu",
+      { ...PEDIDO_AVISO, email: null } as never,
+      {}
+    )
+
+    expect(container.criadas).toEqual([])
+    expect(container.avisos[0]).toContain("sem e-mail")
+  })
+
+  it("falha no e-mail não lança: o rastreio já gravado permanece", async () => {
+    const container = containerDeAviso({
+      criar: () => {
+        throw new Error("resend fora")
+      },
+    })
+
+    await expect(
+      avisar(container.container as never, "saiu", PEDIDO_AVISO as never, {
+        tracking_number: "AA123456789BR",
+      })
+    ).resolves.toBeUndefined()
+
+    expect(container.avisos.some((m) => m.includes("a***@exemplo.com"))).toBe(true)
   })
 })

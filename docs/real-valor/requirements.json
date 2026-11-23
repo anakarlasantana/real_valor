@@ -674,17 +674,17 @@
         {
           "id": "CA-1",
           "texto": "Salvar o código pela primeira vez dispara a notificação.",
-          "prova": null
+          "prova": "unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts"
         },
         {
           "id": "CA-2",
           "texto": "Re-salvar o mesmo código **não** reenvia.",
-          "prova": null
+          "prova": "unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts"
         },
         {
           "id": "CA-3",
           "texto": "Falha no e-mail não perde o rastreio.",
-          "prova": null
+          "prova": "unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts"
         },
         {
           "id": "CA-4",
@@ -694,7 +694,7 @@
         {
           "id": "CA-5",
           "texto": "O endereço de e-mail sai mascarado no log.",
-          "prova": null
+          "prova": "unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts"
         }
       ]
     },

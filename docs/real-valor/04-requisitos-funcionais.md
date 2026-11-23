@@ -1275,11 +1275,15 @@ A regra 2 (não reenviar) e a regra 3 (falha não desfaz o salvamento) continuam
 
 ### Critérios de aceite
 1. Salvar o código pela primeira vez dispara a notificação.
+   prova: `unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts`
 2. Re-salvar o mesmo código **não** reenvia.
+   prova: `unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts`
 3. Falha no e-mail não perde o rastreio.
+   prova: `unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts`
 4. O e-mail de envio mostra o código e o link de rastreio do pedido.
    prova: `unit:backend/src/modules/notification/__tests__/pedido.unit.spec.ts`
 5. O endereço de e-mail sai mascarado no log.
+   prova: `unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts`
 
 
 ---
