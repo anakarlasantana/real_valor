@@ -576,7 +576,7 @@
         {
           "id": "CA-4",
           "texto": "Funciona sem login.",
-          "prova": null
+          "prova": "jornada:cliente@rastreio · consulta sem login mostra o resultado"
         },
         {
           "id": "CA-5",

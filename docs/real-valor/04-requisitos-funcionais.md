@@ -1207,6 +1207,7 @@ diria "Pedido recebido" a quem teve o pedido cancelado.
 3. Pedido sem rastreio mostra status, sem bloco vazio.
    prova: `unit:frontend/src/lib/data/__tests__/tracking.unit.spec.ts`
 4. Funciona sem login.
+   prova: `jornada:cliente@rastreio · consulta sem login mostra o resultado`
 5. Acessível por teclado, com `aria-live` no resultado.
 6. Pedido cancelado mostra **"Pedido cancelado"**, com ou sem código de rastreio.
    prova: `unit:frontend/src/lib/data/__tests__/tracking.unit.spec.ts`

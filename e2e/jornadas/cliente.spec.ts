@@ -196,6 +196,23 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
     })
   })
 
+  await test.step("rastreio · consulta sem login mostra o resultado", async () => {
+    await irPara(page, "/br/rastreio")
+    await expect(
+      page.getByRole("heading", { name: "Rastrear pedido" })
+    ).toBeVisible()
+
+    await page.getByLabel("Número do pedido").fill("999999")
+    await page.getByLabel("CPF").fill("52998224725")
+    await page.getByRole("button", { name: "Consultar" }).click()
+
+    // Pedido inexistente de propósito: prova que a tela responde ao submit sem
+    // login e sem expor dado de outro pedido, em vez de ficar muda.
+    await expect(
+      page.getByRole("heading", { name: "Pedido não encontrado" })
+    ).toBeVisible({ timeout: 20_000 })
+  })
+
   await test.step("evidência: sem 5xx e sem erro de console", async () => {
     const cincoXX = gravador.rede.filter((linha) => linha.status >= 500)
     const errosDeConsole = gravador.console.filter(
