@@ -363,15 +363,18 @@ num pedido de R$ 1.000.
 1. Um Pix pago no ambiente de teste do MP chega a `/order/[id]/confirmed`.
 2. Reenvio do mesmo webhook **não** duplica o pedido.
 3. Webhook com assinatura inválida é **rejeitado com 401 e sem efeito colateral**.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts`
 4. Trocar `MP_ACCESS_TOKEN` no `.env` e redeployar muda a loja de conta — **sem tocar em código**.
 5. Remover o MP do `medusa-config.ts` deixa a loja sem aquele meio, **sem erro de build**.
 6. O valor do pagamento é sempre lido do carrinho no backend (teste que comprova).
 7. O parcelamento exibido corresponde ao aceito pelo MP para o valor e a bandeira.
 8. **`payment/index.tsx` não contém `isStripeLike`, `shouldInputCard` nem qualquer pergunta sobre
    cartão** — só `resolvePayment(id)` e `adapter.fulfillment`.
+   prova: `unit:frontend/src/__checks__/payment-wiring.spec.ts`
 9. **Teste da abstração:** mudar `fulfillment` do MP para `"inline"` e implementar `render`
    **não altera nenhuma linha** de `modules/checkout/`. Se alterar, a abstração não é real.
 10. `data.id` minúsculo no manifest da assinatura — teste unitário da função de validação.
+   prova: `unit:backend/src/modules/payment/mercadopago/__tests__/assinatura.unit.spec.ts`
 11. A preferência nasce com as três `back_urls` (e `auto_return` só junto delas): a cliente volta para a loja, não para o site do provedor.
    prova: `unit:backend/src/modules/payment/mercadopago/__tests__/preferencia.unit.spec.ts`
 12. Pagamento **recusado** não cria pedido e a cliente lê mensagem clara no retorno — nunca tela em branco.

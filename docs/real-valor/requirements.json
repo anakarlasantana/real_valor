@@ -69,7 +69,7 @@
         {
           "id": "CA-3",
           "texto": "Webhook com assinatura inválida é **rejeitado com 401 e sem efeito colateral**.",
-          "prova": null
+          "prova": "unit:backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts"
         },
         {
           "id": "CA-4",
@@ -94,7 +94,7 @@
         {
           "id": "CA-8",
           "texto": "**`payment/index.tsx` não contém `isStripeLike`, `shouldInputCard` nem qualquer pergunta sobre cartão** — só `resolvePayment(id)` e `adapter.fulfillment`.",
-          "prova": null
+          "prova": "unit:frontend/src/__checks__/payment-wiring.spec.ts"
         },
         {
           "id": "CA-9",
@@ -104,7 +104,7 @@
         {
           "id": "CA-10",
           "texto": "`data.id` minúsculo no manifest da assinatura — teste unitário da função de validação.",
-          "prova": null
+          "prova": "unit:backend/src/modules/payment/mercadopago/__tests__/assinatura.unit.spec.ts"
         },
         {
           "id": "CA-11",
