@@ -538,12 +538,12 @@
         {
           "id": "CA-2",
           "texto": "A rota de track passa a devolver esses valores.",
-          "prova": null
+          "prova": "unit:backend/src/api/store/orders/track/__tests__/route.unit.spec.ts"
         },
         {
           "id": "CA-3",
           "texto": "**Nenhum campo assume transportadora específica.**",
-          "prova": null
+          "prova": "unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts"
         },
         {
           "id": "CA-4",

@@ -138,6 +138,19 @@ describe("buildShippingMetadata", () => {
     expect(meta.status_label).toBe(DEFAULT_STATUS_LABEL)
   })
 
+  it("aceita transportadora fora de qualquer lista conhecida", () => {
+    const registro = {
+      carrier: "Loggi Express",
+      trackingNumber: "LGX99887766",
+    }
+
+    expect(validateShippingUpdate(registro)).toBeNull()
+
+    const meta = buildShippingMetadata(null, registro)
+    expect(meta.carrier).toBe("Loggi Express")
+    expect(meta.tracking_number).toBe("LGX99887766")
+  })
+
   it("PRESERVA o que já estava no metadata e não é de envio", () => {
     // O CPF é o que a rota de rastreio usa para validar a identidade (403).
     // Perder ele aqui faria a própria cliente ser recusada na consulta.

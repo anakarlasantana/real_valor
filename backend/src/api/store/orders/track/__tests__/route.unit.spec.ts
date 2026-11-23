@@ -165,6 +165,34 @@ describe("GET /store/orders/track", () => {
     })
   })
 
+  it("devolve o rastreio que o painel gravou no metadata", async () => {
+    const comRastreio = {
+      ...PEDIDO,
+      metadata: {
+        cpf: "12345678900",
+        carrier: "Correios",
+        tracking_number: "AA123456789BR",
+        tracking_url: "https://rastreio.exemplo/AA123456789BR",
+        status_label: "Postada",
+      },
+    }
+
+    const { req, res, resposta } = dublar(
+      { display_id: "42", cpf: "12345678900" },
+      [comRastreio]
+    )
+
+    await GET(req, res)
+
+    expect(resposta.status).toBe(200)
+    expect(resposta.corpo.order.tracking).toEqual({
+      tracking_number: "AA123456789BR",
+      tracking_url: "https://rastreio.exemplo/AA123456789BR",
+      carrier: "Correios",
+    })
+    expect(resposta.corpo.order.metadata.order_status_label).toBe("Postada")
+  })
+
   it("o CPF e o e-mail do pedido NÃO saem na resposta", async () => {
     const { req, res, resposta } = dublar({ display_id: "42", cpf: "12345678900" }, [PEDIDO])
 

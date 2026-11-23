@@ -1143,7 +1143,9 @@ modelado para a transportadora escolhida hoje, a decisão de amanhã obriga a re
 1. O admin registra `carrier`, `tracking_number` e `tracking_url`.
    prova: `unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts`
 2. A rota de track passa a devolver esses valores.
+   prova: `unit:backend/src/api/store/orders/track/__tests__/route.unit.spec.ts`
 3. **Nenhum campo assume transportadora específica.**
+   prova: `unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts`
 4. `status_label` tem valor padrão.
    prova: `unit:backend/src/modules/shipping/__tests__/tracking.unit.spec.ts`
 5. Salvar não apaga itens nem endereço do pedido.
