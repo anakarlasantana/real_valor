@@ -86,5 +86,15 @@ export default defineConfig({
       testMatch: /conta\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "checkout",
+      testMatch: /checkout\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "pos-venda",
+      testMatch: /pos-venda\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 })

@@ -4,11 +4,7 @@ import { Modules } from "@medusajs/framework/utils"
 import { rastreioPublico } from "../../../../modules/shipping/tracking"
 
 /**
- * Endpoint de Rastreamento de Pedido sem Login (Zero Fricção)
- * GET /store/orders/track?display_id=123&cpf=12345678900 ou ?order_id=...&email=...
- *
- * Permite ao cliente acompanhar o status do pedido, código de rastreamento de frete,
- * itens e status de pagamento apenas informando o número do pedido e CPF ou E-mail.
+ * GET /store/orders/track?display_id=123&cpf=... — rastreio sem login.
  */
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const query = req.query as {
@@ -44,6 +40,25 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     }
 
     const [orders] = await orderModuleService.listAndCountOrders(filters, {
+      // `select` explicito: com `relations` sozinho o Medusa v2 deixa `email` e
+      // `metadata` de fora e a rota recusava todo pedido com 403 (medido).
+      // `shipping_methods.version` e' exigido pela leitura das ajustagens.
+      select: [
+        "id",
+        "display_id",
+        "status",
+        "email",
+        "currency_code",
+        "metadata",
+        "created_at",
+        "total",
+        "items.*",
+        "items.detail.*",
+        "shipping_methods.*",
+        "shipping_methods.amount",
+        "shipping_methods.version",
+        "shipping_address.*",
+      ],
       relations: ["items", "shipping_methods", "shipping_address"],
     })
 

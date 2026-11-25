@@ -86,6 +86,7 @@ export default function RastreioTemplate() {
           className="flex w-full max-w-xl flex-col gap-4 pt-6"
           onSubmit={consultar}
           noValidate
+          data-testid="rastreio-form"
         >
           <div className="flex w-full flex-col gap-1">
             <label htmlFor="numero-pedido" className="text-sm text-ui-fg-subtle">
@@ -180,6 +181,7 @@ function Resultado({ resultado }: { resultado: ResultadoRastreio }) {
       role="status"
       aria-live="polite"
       className="mt-10 border-t border-ui-border-base pt-8"
+      data-testid="rastreio-mensagem"
     >
       <h2 className="heading-core text-xl">{erro.titulo}</h2>
       <p className="text-sm text-ui-fg-subtle">{erro.texto}</p>
@@ -204,9 +206,10 @@ export function PedidoEncontrado({ resultado }: { resultado: Extract<ResultadoRa
       role="status"
       aria-live="polite"
       className="mt-10 border-t border-ui-border-base pt-8"
+      data-testid="rastreio-resultado"
     >
       <h2 className="heading-core text-xl">Pedido #{pedido.display_id}</h2>
-      <p className="text-sm text-ui-fg-subtle">
+      <p className="text-sm text-ui-fg-subtle" data-testid="rastreio-situacao">
         {pedido.metadata.order_status_label}
       </p>
 

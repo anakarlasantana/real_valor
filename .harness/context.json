@@ -70,7 +70,9 @@
       "vitrine": "make e2e-vitrine",
       "produto": "make e2e-produto",
       "sacola": "make e2e-sacola",
-      "conta": "make e2e-conta"
+      "conta": "make e2e-conta",
+      "checkout": "make e2e-checkout",
+      "pos-venda": "make e2e-pos-venda"
     },
     "timeoutMs": 900000,
     "evidenceDir": "evidence",
