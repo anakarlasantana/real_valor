@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check gen-requirements ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-lojista e2e-vitrine e2e-produto e2e-test e2e-evidence
+.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check gen-requirements ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-lojista e2e-vitrine e2e-produto e2e-sacola e2e-conta e2e-test e2e-evidence
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -452,6 +452,16 @@ e2e-produto:
 	@mkdir -p "$(E2E_EVIDENCIA)"
 	@scripts/e2e-stack.sh warm || true
 	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project produto 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
+
+e2e-sacola:
+	@mkdir -p "$(E2E_EVIDENCIA)"
+	@scripts/e2e-stack.sh warm || true
+	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project sacola 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
+
+e2e-conta:
+	@mkdir -p "$(E2E_EVIDENCIA)"
+	@scripts/e2e-stack.sh warm || true
+	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project conta 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
 
 
 e2e-evidence:

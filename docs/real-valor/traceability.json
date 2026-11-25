@@ -1,8 +1,8 @@
 {
   "gerado_de": "spec/**/requisito.md",
-  "total_specs": 4,
-  "total_ca": 19,
-  "provados": 19,
+  "total_specs": 5,
+  "total_ca": 23,
+  "provados": 23,
   "specs": [
     {
       "id": "RV-006",
@@ -167,6 +167,53 @@
           "prova": "jornada:produto@CEP válido cota e CEP inválido avisa",
           "tipo": "jornada",
           "alvo": "produto@CEP válido cota e CEP inválido avisa",
+          "resolvido": true,
+          "motivo": null
+        }
+      ]
+    },
+    {
+      "id": "RV-072",
+      "pasta": "spec/RV-072-jornada-de-sacola-e-conta-da-cliente",
+      "estado": "rascunho",
+      "retroativo": false,
+      "aprovado_por": null,
+      "aprovado_sha": null,
+      "sha_atual": "4f8418f9a1c14c15309c6d65e90b496944320581e473226cc1cf13c8a6ede8dc",
+      "criterios": [
+        {
+          "ca": "CA-1",
+          "texto": "When a cliente adiciona uma peça e ajusta a quantidade na sacola, the storefront shall refletir a mudança no contador do cabeçalho e no total.",
+          "prova": "jornada:sacola@aumentar e diminuir a quantidade ajusta o total",
+          "tipo": "jornada",
+          "alvo": "sacola@aumentar e diminuir a quantidade ajusta o total",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-2",
+          "texto": "When a cliente remove o último item, the storefront shall mostrar o estado vazio da sacola em vez de uma lista em branco.",
+          "prova": "jornada:sacola@remover o item devolve o estado vazio",
+          "tipo": "jornada",
+          "alvo": "sacola@remover o item devolve o estado vazio",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-3",
+          "texto": "When a cliente se registra com um e-mail novo e sai, the storefront shall mantê-la capaz de entrar de novo com a mesma senha.",
+          "prova": "jornada:conta@registrar, sair e entrar de novo",
+          "tipo": "jornada",
+          "alvo": "conta@registrar, sair e entrar de novo",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-4",
+          "texto": "When a cliente autenticada abre a conta, the storefront shall oferecer endereços e pedidos na navegação, e a lista de pedidos responder sem erro.",
+          "prova": "jornada:conta@a conta oferece endereços e pedidos",
+          "tipo": "jornada",
+          "alvo": "conta@a conta oferece endereços e pedidos",
           "resolvido": true,
           "motivo": null
         }

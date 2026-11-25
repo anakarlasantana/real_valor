@@ -68,7 +68,9 @@
       "cliente": "make e2e-cliente",
       "lojista": "make e2e-lojista",
       "vitrine": "make e2e-vitrine",
-      "produto": "make e2e-produto"
+      "produto": "make e2e-produto",
+      "sacola": "make e2e-sacola",
+      "conta": "make e2e-conta"
     },
     "timeoutMs": 900000,
     "evidenceDir": "evidence",
