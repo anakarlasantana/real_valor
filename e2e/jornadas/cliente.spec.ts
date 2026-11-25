@@ -26,7 +26,9 @@ const PRODUTO = "[e2e] Vestido de Teste"
 async function irPara(page: Page, caminho: string): Promise<void> {
   for (let tentativa = 1; tentativa <= 2; tentativa++) {
     try {
-      await page.goto(caminho, { waitUntil: "domcontentloaded" })
+      // O servidor retorna 307 de / para /br; garantir caminho absoluto
+      const url = caminho.startsWith("/") ? `http://localhost:8100${caminho}` : caminho
+      await page.goto(url, { waitUntil: "domcontentloaded" })
       return
     } catch (erro) {
       if (tentativa === 2) throw erro
