@@ -252,8 +252,14 @@ test("cliente-compra: vitrine → produto → sacola → entrega → pagamento",
 
   await test.step("evidência: sem 5xx e sem erro de console", async () => {
     const cincoXX = gravador.rede.filter((linha) => linha.status >= 500)
+
+    // `pageerror` e' excecao nao tratada: sempre reprova. `net::ERR_ABORTED`
+    // em `requestfailed` e' o proprio Next cancelando o RSC de uma navegacao
+    // que ele substituiu — nao e' a tela falhando.
     const errosDeConsole = gravador.console.filter(
-      (linha) => linha.tipo === "pageerror" || linha.nivel === "error"
+      (linha) =>
+        linha.tipo === "pageerror" ||
+        (linha.nivel === "error" && !linha.texto.includes("net::ERR_ABORTED"))
     )
 
     expect(cincoXX, `5xx na jornada: ${JSON.stringify(cincoXX)}`).toEqual([])

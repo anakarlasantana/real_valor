@@ -6,15 +6,10 @@ import {
   type EstadoDaEntrega,
 } from "@lib/checkout/delivery-availability"
 import { HttpTypes } from "@medusajs/types"
-import { getAuthHeaders, getCacheOptions } from "./cookies"
+import { getAuthHeaders } from "./cookies"
 
 /**
- * O que o checkout recebe ao pedir as opções de entrega.
- *
- * O tipo obriga o `CheckoutForm` a tratar os três casos. Antes a função
- * devolvia `null` tanto para falha quanto para lista vazia, e o formulário
- * devolvia `null` para os dois — a página em branco. A regra da classificação
- * mora em `lib/checkout/delivery-availability.ts`, onde é testável sem I/O.
+ * O que o checkout recebe ao pedir as opções de entrega, nos três casos.
  */
 export type OpcoesDeEntrega =
   EstadoDaEntrega<HttpTypes.StoreCartShippingOptionWithServiceZone>
@@ -48,17 +43,23 @@ export const listCartShippingMethods = async (
     .catch(() => ({ estado: "indisponivel" as const }))
 }
 
+/**
+ * A cotacao do frete: preco quando deu certo, motivo quando nao.
+ *
+ * O erro **nao** e lancado: esta e' uma Server Action, e excecao atravessando a
+ * fronteira vira 500 na pagina inteira (medido no `step=delivery`).
+ */
+export type CotacaoDaOpcao =
+  | { ok: true; opcao: HttpTypes.StoreCartShippingOption }
+  | { ok: false; motivo: string; status: number }
+
 export const calculatePriceForShippingOption = async (
   optionId: string,
   cartId: string,
   data?: Record<string, unknown>
-) => {
+): Promise<CotacaoDaOpcao> => {
   const headers = {
     ...(await getAuthHeaders()),
-  }
-
-  const next = {
-    ...(await getCacheOptions("fulfillment")),
   }
 
   const body = { cart_id: cartId, data }
@@ -74,12 +75,20 @@ export const calculatePriceForShippingOption = async (
         method: "POST",
         body,
         headers,
-        next,
+        // Dado por sessao: cachear trocaria o preco de um visitante no outro.
+        cache: "no-store",
       }
     )
-    .then(({ shipping_option }) => shipping_option)
-    .catch((e) => {
-      return null
+    .then(({ shipping_option }): CotacaoDaOpcao => ({ ok: true, opcao: shipping_option }))
+    .catch((erro: unknown): CotacaoDaOpcao => {
+      const causa = erro as { status?: number; message?: string }
+      const mensagem = String(causa?.message ?? "").trim()
+
+      return {
+        ok: false,
+        motivo: mensagem || "O cálculo do frete não respondeu. Tente novamente.",
+        status: Number(causa?.status) || 502,
+      }
     })
 }
 

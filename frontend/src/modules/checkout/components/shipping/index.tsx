@@ -19,10 +19,8 @@ const PICKUP_OPTION_OFF = "__PICKUP_OFF"
 type ShippingProps = {
   cart: HttpTypes.StoreCart
   /**
-   * `StoreCartShippingOptionWithServiceZone`, e nao o `StoreCartShippingOption`
-   * base: e' a varianie que traz `service_zone` — de onde sai o tipo "pickup"
-   * e o endereco da loja (`listCartShippingMethods` ja devolve esse formato).
-   * Tipar pela base fazia o `tsc` reprovar leitura de dado que existe.
+   * A variante `…WithServiceZone`, e nao a base: e' dela que sai o tipo
+   * "pickup" e o endereco da loja.
    */
   availableShippingMethods: HttpTypes.StoreCartShippingOptionWithServiceZone[] | null
 }
@@ -79,8 +77,7 @@ function formatAddress(address: PrintableAddress | null | undefined) {
  * valor na ponta direita — e o cartão inteiro é o alvo do clique.
  *
  * **O que não mudou:** o `RadioGroup` do headlessui (o teclado e o `role="radio"`
- * são dele), o `setShippingMethod`, o cálculo de preço por CEP
- * (`calculatePriceForShippingOption`) e todos os `data-testid`.
+ * são dele), o `setShippingMethod`, o cálculo de preço por CEP e os `data-testid`.
  *
  * Duas escolhas de conteúdo, e as duas são para não prometer o que não se sabe:
  *
@@ -102,6 +99,7 @@ const Shipping: React.FC<ShippingProps> = ({
     Record<string, number>
   >({})
   const [error, setError] = useState<string | null>(null)
+  const [erroDePreco, setErroDePreco] = useState<string | null>(null)
   const [shippingMethodId, setShippingMethodId] = useState<string | null>(
     cart.shipping_methods?.at(-1)?.shipping_option_id || null
   )
@@ -149,6 +147,7 @@ const Shipping: React.FC<ShippingProps> = ({
     })
 
     if (_shippingMethods?.length) {
+      // A Server Action devolve resultado como dado: excecao na fronteira da 500.
       const promises = _shippingMethods
         .filter((sm) => sm.price_type === "calculated")
         .map((sm) => calculatePriceForShippingOption(sm.id, cart.id))
@@ -156,11 +155,20 @@ const Shipping: React.FC<ShippingProps> = ({
       if (promises.length) {
         Promise.allSettled(promises).then((res) => {
           const pricesMap: Record<string, number> = {}
-          res
-            .filter((r) => r.status === "fulfilled")
-            .forEach((p) => (pricesMap[p.value?.id || ""] = p.value?.amount!))
+          const falhas: string[] = []
+
+          for (const r of res) {
+            const valor = r.status === "fulfilled" ? r.value : null
+
+            if (valor?.ok) {
+              pricesMap[valor.opcao.id] = valor.opcao.amount!
+            } else if (valor) {
+              falhas.push(valor.motivo)
+            }
+          }
 
           setCalculatedPricesMap(pricesMap)
+          setErroDePreco(falhas.find(Boolean) ?? null)
           setIsLoadingPrices(false)
         })
       }
@@ -325,6 +333,7 @@ const Shipping: React.FC<ShippingProps> = ({
                       className={clx("rv-option-price", {
                         "rv-option-price-free": preco === 0,
                       })}
+                      data-testid="delivery-option-price"
                     >
                       {typeof preco === "number"
                         ? preco === 0
@@ -332,7 +341,7 @@ const Shipping: React.FC<ShippingProps> = ({
                           : dinheiro(preco)
                         : isLoadingPrices
                           ? "…"
-                          : "-"}
+                          : "indisponível"}
                     </span>
                   </Radio>
                 )
@@ -394,6 +403,16 @@ const Shipping: React.FC<ShippingProps> = ({
             error={error}
             data-testid="delivery-option-error-message"
           />
+          {erroDePreco && (
+            <p
+              className="rv-fieldset-note"
+              role="status"
+              data-testid="delivery-option-error-message"
+            >
+              Não foi possível calcular o frete: {erroDePreco}
+            </p>
+          )}
+
           <button
             type="button"
             className="rv-btn rv-btn-primary"

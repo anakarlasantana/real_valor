@@ -33,20 +33,25 @@ const SENHA = process.env.E2E_ADMIN_PASSWORD ?? "admin123456"
 const LENTO = { timeout: 90_000 }
 
 async function entrar(page: Page): Promise<void> {
+  // `networkidle`, e nao `domcontentloaded`: os campos existem no HTML antes de
+  // o bundle do dashboard hidratar, e preencher nesse intervalo deixa o clique
+  // num botao que ainda nao tem handler — o form "envia" e nada acontece
+  // (medido: nenhuma requisicao a `/auth/*` saia).
   await page.goto(`${PAINEL}/login`, {
-    waitUntil: "domcontentloaded",
+    waitUntil: "networkidle",
     timeout: 90_000,
   })
 
+  const botao = page.getByRole("button", { name: /continue with email/i })
+  await expect(botao).toBeEnabled(LENTO)
+
   await page.locator('input[type="email"], input[name="email"]').first().fill(EMAIL)
   await page.locator('input[type="password"]').first().fill(SENHA)
-  await page.locator('button[type="submit"]').first().click()
 
   // A senha some quando a sessao existe; a navegacao e' `history.pushState`.
+  await botao.click()
   await expect(page.locator('input[type="password"]')).toBeHidden(LENTO)
 
-  // Depois do login o dashboard pinta o menu; esperar aqui deixa os passos
-  // seguintes livres do custo de compilacao do `vite dev` (medido: 1a carga).
   await expect(page.getByRole("link", { name: "Envios" })).toBeVisible(LENTO)
 }
 
