@@ -96,5 +96,12 @@ export default defineConfig({
       testMatch: /pos-venda\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      // O celular e' o aparelho da maioria do trafego (doc 05 §5.6) e o divisor
+      // mobile/desktop e' `small: 1024px`. Pixel 7 = 412x915, abaixo dele.
+      name: "mobile-chrome",
+      testMatch: /responsividade\.spec\.ts/,
+      use: { ...devices["Pixel 7"] },
+    },
   ],
 })

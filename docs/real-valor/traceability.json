@@ -1,8 +1,8 @@
 {
   "gerado_de": "spec/**/requisito.md",
-  "total_specs": 6,
-  "total_ca": 27,
-  "provados": 27,
+  "total_specs": 7,
+  "total_ca": 31,
+  "provados": 31,
   "specs": [
     {
       "id": "RV-006",
@@ -261,6 +261,53 @@
           "prova": "jornada:pos-venda@CPF que não é do pedido não vaza nada",
           "tipo": "jornada",
           "alvo": "pos-venda@CPF que não é do pedido não vaza nada",
+          "resolvido": true,
+          "motivo": null
+        }
+      ]
+    },
+    {
+      "id": "RV-074",
+      "pasta": "spec/RV-074-responsividade-das-jornadas-do-cliente",
+      "estado": "rascunho",
+      "retroativo": false,
+      "aprovado_por": null,
+      "aprovado_sha": null,
+      "sha_atual": "df41fecfe2fcbd9fd0d227a49f5da79f0515602836d6895cedac8423e9c6dac1",
+      "criterios": [
+        {
+          "ca": "CA-1",
+          "texto": "When a cliente abre uma rota da loja no celular, the storefront shall não produzir rolagem horizontal.",
+          "prova": "jornada:responsividade@nenhuma rota rola na horizontal no celular",
+          "tipo": "jornada",
+          "alvo": "responsividade@nenhuma rota rola na horizontal no celular",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-2",
+          "texto": "When a cliente abre o menu no celular, the storefront shall abrir a gaveta de navegação e fechá-la pelo botão próprio.",
+          "prova": "jornada:responsividade@o menu abre e fecha no celular",
+          "tipo": "jornada",
+          "alvo": "responsividade@o menu abre e fecha no celular",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-3",
+          "texto": "When a cliente abre os filtros no catálogo no celular, the storefront shall oferecer a gaveta de filtros, que no desktop não existe.",
+          "prova": "jornada:responsividade@o filtro é gaveta no celular e painel no desktop",
+          "tipo": "jornada",
+          "alvo": "responsividade@o filtro é gaveta no celular e painel no desktop",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-4",
+          "texto": "When a cliente toca os controles da compra no celular, the storefront shall manter a área de toque de pelo menos 44 px.",
+          "prova": "jornada:responsividade@os controles da compra têm área de toque",
+          "tipo": "jornada",
+          "alvo": "responsividade@os controles da compra têm área de toque",
           "resolvido": true,
           "motivo": null
         }

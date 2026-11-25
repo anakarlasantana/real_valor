@@ -72,7 +72,8 @@
       "sacola": "make e2e-sacola",
       "conta": "make e2e-conta",
       "checkout": "make e2e-checkout",
-      "pos-venda": "make e2e-pos-venda"
+      "pos-venda": "make e2e-pos-venda",
+      "responsividade": "make e2e-resp"
     },
     "timeoutMs": 900000,
     "evidenceDir": "evidence",
