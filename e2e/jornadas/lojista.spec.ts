@@ -48,6 +48,24 @@ async function entrar(page: Page): Promise<void> {
   const botao = page.getByRole("button", { name: /continue with email/i })
   await expect(botao).toBeEnabled(LENTO)
 
+  // O `networkidle` NAO garante hidratacao: o Vite re-otimiza deps quando outra
+  // jornada ja' rodou e o chunk sai `net::ERR_ABORTED`, deixando o formulario
+  // sem handler — o clique passa e nenhum `/auth/*` sai (medido na suite
+  // completa: isolada 9,1s, depois da cliente 90s de timeout). Esperar o
+  // React assumir o campo e' o unico sinal que nao depende do bundle inteiro.
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const campo = document.querySelector<HTMLInputElement>('input[type="email"], input[name="email"]')
+          if (!campo) return false
+          const chave = Object.keys(campo).find((k) => k.startsWith("__reactProps$"))
+          return Boolean(chave)
+        }),
+      { timeout: 90_000, message: "o formulario do painel nao hidratou (chunk do Vite abortado?)" }
+    )
+    .toBe(true)
+
   await page.locator('input[type="email"], input[name="email"]').first().fill(EMAIL)
   await page.locator('input[type="password"]').first().fill(SENHA)
 

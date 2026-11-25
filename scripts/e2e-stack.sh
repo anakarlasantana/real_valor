@@ -124,6 +124,13 @@ aquecer() {
   for rota in "/br" "/br/store" "/br/products/e2e-vestido-de-teste" "/br/rastreio" "/br/cart"; do
     curl -s -o /dev/null --max-time 90 "http://localhost:$PORTA_LOJA$rota" || true
   done
+  # O painel tambem compila sob demanda, e o primeiro carregamento dele aborta
+  # modulos do Vite em voo (`net::ERR_ABORTED` no `@fs/.../.vite/deps/*`) — o
+  # login responde 200 e a tela nao chega a montar. Medido em 25/11/2026 na
+  # suite completa: isolada passava em 9,1s, depois da cliente estourava os 90s.
+  for rota in "/painel/login" "/painel"; do
+    curl -s -o /dev/null --max-time 120 "http://localhost:$PORTA_BACKEND$rota" || true
+  done
 }
 
 saude() {
