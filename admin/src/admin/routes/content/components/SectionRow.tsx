@@ -97,7 +97,7 @@ export function SectionRow({
   }
 
   return (
-    <Container className="overflow-hidden p-0">
+    <Container className="overflow-hidden p-0" data-testid="theme-section">
       <div className="flex items-center justify-between gap-x-4 p-4">
         <div className="flex items-center gap-x-3">
           {movable ? (

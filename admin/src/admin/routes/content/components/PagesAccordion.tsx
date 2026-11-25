@@ -25,7 +25,7 @@ export function PagesAccordion({
   onToggle,
 }: PagesAccordionProps) {
   return (
-    <Container className="flex flex-col gap-y-4">
+    <Container className="flex flex-col gap-y-4" data-testid="pages-accordion">
       {surfaces.map((surface) => (
         <PageAccordionItem
           key={surface.id}

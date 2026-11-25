@@ -65,7 +65,8 @@
     "command": "make e2e",
     "after": ["make e2e-down"],
     "journey": {
-      "cliente": "make e2e-cliente"
+      "cliente": "make e2e-cliente",
+      "lojista": "make e2e-lojista"
     },
     "timeoutMs": 900000,
     "evidenceDir": "evidence",

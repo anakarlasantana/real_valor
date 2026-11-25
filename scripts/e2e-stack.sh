@@ -27,6 +27,12 @@ USUARIO="${USUARIO:-real_valor}"
 BANCO="$(sed -n 's/^POSTGRES_DB=//p' .env | head -1)"
 BANCO="${BANCO:-real_valor_db}"
 
+# A credencial do painel, da MESMA fonte que o `make admin-password` usa. A
+# jornada do lojista nao pode trazer literal: o `.env` e' a senha real e o spec
+# que adivinhava (`admin123456`) morria em `unauthorized` + timeout (RV-076).
+SENHA_PAINEL="$(sed -n 's/^ADMIN_PASSWORD=//p' .env | head -1)"
+EMAIL_PAINEL="$(sed -n 's/^ADMIN_EMAIL=//p' .env | head -1)"
+
 compose() {
   docker compose -p "$PROJETO" \
     -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.e2e.yml "$@"

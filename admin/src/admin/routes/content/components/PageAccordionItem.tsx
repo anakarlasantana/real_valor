@@ -101,7 +101,10 @@ export function PageAccordionItem({
         : "Vazia"
 
   return (
-    <Container className="overflow-hidden rounded-lg border border-ui-border-base p-0">
+    <Container
+      className="overflow-hidden rounded-lg border border-ui-border-base p-0"
+      data-testid="page-item"
+    >
       <div className="flex items-center justify-between gap-x-4 p-4">
         <button
           type="button"

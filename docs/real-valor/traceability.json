@@ -1,8 +1,8 @@
 {
   "gerado_de": "spec/**/requisito.md",
-  "total_specs": 2,
-  "total_ca": 11,
-  "provados": 11,
+  "total_specs": 3,
+  "total_ca": 15,
+  "provados": 15,
   "specs": [
     {
       "id": "RV-006",
@@ -120,6 +120,53 @@
           "prova": "unit:backend/src/api/store/shipping/quote/__tests__/equivalencia.unit.spec.ts",
           "tipo": "unit",
           "alvo": "backend/src/api/store/shipping/quote/__tests__/equivalencia.unit.spec.ts",
+          "resolvido": true,
+          "motivo": null
+        }
+      ]
+    },
+    {
+      "id": "RV-076",
+      "pasta": "spec/RV-076-jornada-do-lojista-autentica-com-a-crede",
+      "estado": "rascunho",
+      "retroativo": false,
+      "aprovado_por": null,
+      "aprovado_sha": null,
+      "sha_atual": "9e6b3db87ae07c1acf0c41308ec15be785d6e96007ccb6d744217020ca53f698",
+      "criterios": [
+        {
+          "ca": "CA-1",
+          "texto": "When o painel recebe a credencial da stack, the jornada do lojista shall autenticar e mostrar o menu de envios.",
+          "prova": "jornada:lojista@admin abre",
+          "tipo": "jornada",
+          "alvo": "lojista@admin abre",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-2",
+          "texto": "When a variável de senha está ausente, the fixture shall falhar com mensagem que nomeia a variável, sem tentar autenticar.",
+          "prova": "unit:e2e/fixtures/__tests__/painel.unit.spec.ts",
+          "tipo": "unit",
+          "alvo": "e2e/fixtures/__tests__/painel.unit.spec.ts",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-3",
+          "texto": "When a jornada do lojista roda, the contrato shall declará-la em `e2e.journey` e o `Makefile` shall expor o alvo próprio.",
+          "prova": "jornada:lojista@admin abre",
+          "tipo": "jornada",
+          "alvo": "lojista@admin abre",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-4",
+          "texto": "When a credencial é lida, the fixture shall devolvê-la sem literal de senha no código do spec.",
+          "prova": "unit:e2e/fixtures/__tests__/painel.unit.spec.ts",
+          "tipo": "unit",
+          "alvo": "e2e/fixtures/__tests__/painel.unit.spec.ts",
           "resolvido": true,
           "motivo": null
         }

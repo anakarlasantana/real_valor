@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test"
 
 import { expect, test } from "../fixtures/gravador"
 import { irPara as irParaComRetentativa } from "../fixtures/navegacao"
+import { credencialPainel } from "../fixtures/painel"
 
 /**
  * Jornada do lojista — o painel da loja (doc 20 §20.3, RV-069).
@@ -29,8 +30,7 @@ const ROTULOS: Record<string, string> = {
   [VITRINE]: "Conteúdo da vitrine",
 }
 
-const EMAIL = process.env.E2E_ADMIN_EMAIL ?? "admin@realvalor.com.br"
-const SENHA = process.env.E2E_ADMIN_PASSWORD ?? "admin123456"
+const { email: EMAIL, senha: SENHA } = credencialPainel()
 
 /** O painel compila sob demanda (`vite dev`) e o dashboard monta um SPA: a 1a visita e' lenta. */
 const LENTO = { timeout: 90_000 }

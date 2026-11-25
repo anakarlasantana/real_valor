@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check gen-requirements ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-evidence
+.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check gen-requirements ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-lojista e2e-test e2e-evidence
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -61,6 +61,8 @@ help:
 	@echo "    make ready         - Os gates do repo (check + types + test) num veredito de 4 linhas — e' o que o ai-harness roda"
 	@echo "    make e2e           - Sobe a stack ISOLADA (rv_e2e, :8100/:9100), roda a jornada da cliente e escreve evidence/<ts>/resumo.md"
 	@echo "    make e2e-cliente   - So' a jornada da cliente (o stack precisa estar de pe': make e2e-up)"
+	@echo "    make e2e-lojista   - So' a jornada do lojista (credencial vem do .env)"
+	@echo "    make e2e-test      - Jest dos helpers do e2e (e2e/fixtures/__tests__)"
 	@echo "    make types         - tsc do backend, do storefront e do CRM (pacote admin/)"
 	@echo "    make build-admin   - Compila o admin (Vite) — o gate de quem mexe no CRM (cache do Vite isolado: nao toca o dev server)"
 	@echo ""
@@ -432,8 +434,24 @@ e2e-cliente:
 	@scripts/e2e-stack.sh warm || true
 	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --grep cliente-compra 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code' 
 
+# A jornada do lojista. A credencial vem do `.env` (a mesma que o
+# `make admin-password` mantem) e vai por AMBIENTE, nunca por arquivo: o `spec`
+# sem ela falha dizendo o que falta, em vez de tentar uma senha inventada
+# (RV-076 — antes era `admin123456`, que o painel recusa).
+e2e-lojista:
+	@mkdir -p "$(E2E_EVIDENCIA)"
+	@scripts/e2e-stack.sh warm || true
+	@bash -o pipefail -c 'E2E_ADMIN_EMAIL="$$(sed -n "s/^ADMIN_EMAIL=//p" .env | head -1)" E2E_ADMIN_PASSWORD="$$(sed -n "s/^ADMIN_PASSWORD=//p" .env | head -1)" E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project lojista 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
+
+
 e2e-evidence:
 	@scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"
+
+# Jest dos helpers do instrumento. `make test` roda os tres pacotes e nenhum
+# alcanca `e2e/`; sem este alvo o helper do painel ficaria sem prova unit — foi
+# justamente a senha hardcoded que escapou por essa fresta (RV-076).
+e2e-test:
+	@./node_modules/.bin/jest -c e2e/jest.config.js
 
 # ---------------------------------------------------------------------------
 # Build do admin: o gate de quem mexe no CRM

@@ -68,7 +68,10 @@ export function SurfaceSectionsPanel({
   const canUse = working === null
 
   return (
-    <div className="flex flex-col gap-y-4">
+    <div
+      className="flex flex-col gap-y-4"
+      data-testid={surfaceId === "theme" ? "theme-sections" : undefined}
+    >
       {/* Toolbar da superfície. O cabeçalho é do painel quando ele não está
           embutido: dentro do acordeão, o `label` da página já apareceu. */}
       <div className="flex items-center justify-between gap-x-4">
