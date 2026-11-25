@@ -5,7 +5,7 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 39888,
+      "lines": 40245,
       "comments": 8814
     },
     "admin/src": {
@@ -13,7 +13,7 @@
       "comments": 1876
     },
     "backend/src": {
-      "lines": 25522,
+      "lines": 26342,
       "comments": 4655
     },
     "packages/contrato/src": {
@@ -21,8 +21,8 @@
       "comments": 581
     },
     "scripts": {
-      "lines": 1852,
-      "comments": 317
+      "lines": 1934,
+      "comments": 330
     }
   },
   "files": {
@@ -83,7 +83,7 @@
     },
     "frontend/src/app/[countryCode]/(main)/pedido/confirmacao/page.tsx": {
       "comments": 43,
-      "lines": 168,
+      "lines": 202,
       "header": 5
     },
     "frontend/src/app/[countryCode]/(main)/products/[handle]/page.tsx": {
@@ -103,7 +103,7 @@
     },
     "frontend/src/app/api/pedido/status/route.ts": {
       "comments": 48,
-      "lines": 130,
+      "lines": 141,
       "header": 32
     },
     "frontend/src/app/api/revalidate/route.ts": {
@@ -333,7 +333,7 @@
     },
     "frontend/src/lib/data/cookies.ts": {
       "comments": 56,
-      "lines": 168,
+      "lines": 198,
       "header": 5
     },
     "frontend/src/lib/data/pages.ts": {
@@ -583,7 +583,7 @@
     },
     "frontend/src/modules/checkout/templates/checkout-form/index.tsx": {
       "comments": 15,
-      "lines": 70,
+      "lines": 72,
       "header": 5
     },
     "frontend/src/modules/checkout/templates/checkout-summary/index.tsx": {
@@ -1248,12 +1248,12 @@
     },
     "backend/src/api/internal/orders/by-cart/__tests__/by-cart.unit.spec.ts": {
       "comments": 58,
-      "lines": 346,
+      "lines": 397,
       "header": 25
     },
     "backend/src/api/internal/orders/by-cart/route.ts": {
       "comments": 74,
-      "lines": 174,
+      "lines": 213,
       "header": 30
     },
     "backend/src/api/store/content/pages/route.ts": {
@@ -1503,7 +1503,7 @@
     },
     "backend/src/modules/payment/mercadopago/__tests__/webhook.unit.spec.ts": {
       "comments": 62,
-      "lines": 496,
+      "lines": 517,
       "header": 17
     },
     "backend/src/modules/payment/mercadopago/assinatura.ts": {
@@ -1573,7 +1573,7 @@
     },
     "backend/src/modules/payment/mercadopago/webhook.ts": {
       "comments": 130,
-      "lines": 391,
+      "lines": 410,
       "header": 30
     },
     "backend/src/modules/shipping/__tests__/tracking.unit.spec.ts": {
@@ -1655,6 +1655,11 @@
       "comments": 40,
       "lines": 114,
       "header": 33
+    },
+    "scripts/check-requirements-provas.mjs": {
+      "comments": 13,
+      "lines": 82,
+      "header": 8
     },
     "scripts/gen-content.mjs": {
       "comments": 57,

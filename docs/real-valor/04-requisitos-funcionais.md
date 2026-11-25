@@ -7,7 +7,20 @@ negócio · Comportamento visual · Responsividade · Estados · Integrações �
 **Convenção de arquivos:** caminhos marcados com *(proposto)* **não existem** — são criação nova.
 Caminhos sem marcador já existem no repositório.
 
-**Índice**
+> **Nota sobre o padrão `prova:`**
+> - Sempre inserir `prova:` **antes** da linha da âncora (`## ID. Título`), nunca depois. Inserir depois empurra todas as linhas abaixo, causando o "swap" silencioso de CA-16/CA-17 que já foi corrigido.
+> - O tipo `unit:` verifica se o caminho de arquivo existe no repo.
+> - O tipo `jornada:nome@passo` verifica se o spec da jornada existe e se o passo (`test.step("passo")`) está nele.
+> - Se o critério já tem prova, remova outra no mesmo arquivo (orçamento de comentário).
+>
+> **Exemplo correto** (inserir antes de `## 16. A loja oferece`):
+> ```
+> 15. Configuração incoerente **não sobe**: ...
+>   prova: `unit:backend/src/.../credenciais.unit.spec.ts`
+> 16. A loja oferece apenas os meios reais do provedor — **Pix** e **Cartão de crédito** — e nunca o meio manual que "paga" sem cobrar.
+> ```
+>
+> **Índice**
 
 | ID | Requisito | Prioridade |
 | :--- | :--- | :--- |
