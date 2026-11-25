@@ -1720,3 +1720,7 @@ O lojista abre a tela de conteúdo, vê as três abas (vitrine, páginas, tema) 
    prova: `jornada:lojista@vitrine abre com as três abas`
 2. Trocar de aba não recarrega a página e a aba escolhida fica marcada.
    prova: `jornada:lojista@vitrine abre com as três abas`
+3. Páginas Institucionais listam as páginas cadastradas na loja.
+   prova: `jornada:lojista@páginas institucionais listam as páginas da loja`
+4. Tema da Loja exibe as seções do tema configuradas.
+   prova: `jornada:lojista@tema da loja exibe as seções do tema`

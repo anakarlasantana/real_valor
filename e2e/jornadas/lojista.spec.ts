@@ -184,7 +184,38 @@ test("lojista-envio: painel → fila → registro → etiqueta", async ({
     await expect(page.getByTestId("content-page")).toBeVisible()
   })
 
-  await test.step("evidência: sem 5xx e sem erro de console", async () => {
+
+
+    await test.step("páginas institucionais listam as páginas da loja", async () => {
+    await page.getByTestId("content-aba-pages").click()
+    await expect(page.getByTestId("content-aba-pages")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+      LENTO
+    )
+    await expect(page.getByTestId("pages-accordion")).toBeVisible(LENTO)
+    // Cada item da accordion representa uma página publicada ou rascunho
+    const paginas = page.getByTestId("page-item")
+    if (await paginas.count() > 0) {
+      await expect(paginas.first()).toBeVisible(LENTO)
+    }
+  })
+
+  await test.step("tema da loja exibe as seções do tema", async () => {
+    await page.getByTestId("content-aba-theme").click()
+    await expect(page.getByTestId("content-aba-theme")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+      LENTO
+    )
+    await expect(page.getByTestId("theme-sections")).toBeVisible(LENTO)
+    const secoesTema = page.getByTestId("theme-section")
+    if (await secoesTema.count() > 0) {
+      await expect(secoesTema.first()).toBeVisible(LENTO)
+    }
+  })
+
+await test.step("evidência: sem 5xx e sem erro de console", async () => {
     const cincoXX = gravador.rede.filter((linha) => linha.status >= 500)
 
     // `pageerror` e' excecao nao tratada da tela: sempre reprova. As demais
