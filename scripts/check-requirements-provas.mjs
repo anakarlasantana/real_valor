@@ -25,8 +25,12 @@ let numeroLinha = 0
 while ((match = regex.exec(conteúdo)) !== null) {
   numeroLinha = regex.lastIndex
   const prova = match[1].trim()
-  // O tipo é o parte antes dos dois pontos, o alvo é o depois
-  const [tipo, alvo] = prova.split(":", 2)
+  // O tipo e' o que vem antes do PRIMEIRO dois-pontos; o alvo pode ter mais
+  // (`evidência: sem 5xx…`), por isso `slice` e nao `split` — `split(…, 2)`
+  // cortava o alvo e a guarda reprovava prova que existia.
+  const corte = prova.indexOf(":")
+  const tipo = prova.slice(0, corte)
+  const alvo = prova.slice(corte + 1)
   const tipoLimpo = tipo.trim()
   const alvoLimpo = alvo ? alvo.trim() : ""
 
@@ -59,7 +63,6 @@ while ((match = regex.exec(conteúdo)) !== null) {
     }
 
     const textoJornada = readFileSync(arquivoJornada, "utf8")
-    const temPasso = passo ? textoJornada.includes(`test.step("\${passo}")`) : true
     // Nota: simples check de string; para produção usaria parser adequado
     resolvido = !passo || textoJornada.includes(`test.step("${passo}"`)
     motivo = resolvido ? null : `passo ausente na jornada: \`${passo}\``
@@ -77,6 +80,6 @@ if (problemas.length > 0) {
   console.error("FAIL provas do requisito 04:\\n" + problemas.join("\n"))
   process.exit(1)
 } else {
-  console.log(`ok   ${problemas.length} provas validadas — todas resolvidas no docs/real-valor/04-requitos-funcionais.md`)
+  console.log(`ok   provas validadas — todas resolvidas no docs/real-valor/04-requisitos-funcionais.md`)
   process.exit(0)
 }

@@ -4,6 +4,7 @@ import {
   Modules,
 } from "@medusajs/framework/utils"
 import {
+  createOrderWorkflow,
   createProductsWorkflow,
   createShippingOptionsWorkflow,
   updateProductsWorkflow,
@@ -206,5 +207,170 @@ export default async function e2eFixtures({
     })
 
     logger.info(`[e2e] envio criado: ${ENVIO_E2E.name}.`)
+  }
+
+  try {
+    await pedidosDeTeste(container)
+  } catch (erro) {
+    logger.error(`[e2e] pedidos: ${String((erro as Error)?.message ?? erro)}`)
+    throw erro
+  }
+}
+
+async function pedidosDeTeste(container: ExecArgs["container"]): Promise<void> {
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+
+  const { data: jaExistem } = await query.graph({
+    entity: "order",
+    fields: ["id", "display_id", "metadata"],
+  })
+
+  const marcados = new Set(
+    (jaExistem ?? [])
+      .map((pedido: any) => String(pedido?.metadata?.e2e_pedido ?? ""))
+      .filter(Boolean)
+  )
+
+  if (marcados.has("pago") && marcados.has("pendente")) {
+    logger.info("[e2e] pedidos de teste já existem (pago e pendente).")
+    return
+  }
+
+  const { data: regioes } = await query.graph({
+    entity: "region",
+    fields: ["id", "currency_code"],
+    filters: { currency_code: "brl" },
+  })
+  const regiao = regioes?.[0]
+
+  const { data: variantes } = await query.graph({
+    entity: "product_variant",
+    fields: ["id", "sku"],
+    filters: { sku: PRODUTO_E2E.sku },
+  })
+  const variante = variantes?.[0]
+
+  const { data: opcoesDeEnvio } = await query.graph({
+    entity: "shipping_option",
+    fields: ["id"],
+    filters: { name: ENVIO_E2E.name },
+  })
+  const metodo = opcoesDeEnvio?.[0]
+
+  if (!regiao || !variante || !metodo) {
+    throw new Error(
+      "Sem região, variante ou opção de envio — rode os fixtures base antes."
+    )
+  }
+
+  const endereco = {
+    first_name: "Cliente",
+    last_name: "E2E",
+    address_1: "Rua das Flores, 100",
+    city: "Fortaleza",
+    province: "CE",
+    postal_code: "60000000",
+    country_code: "br",
+    phone: "85999999999",
+    metadata: { numero: "100", bairro: "Centro" },
+  }
+
+  for (const cenario of ["pago", "pendente"] as const) {
+    if (marcados.has(cenario)) {
+      continue
+    }
+
+    const { result } = await createOrderWorkflow(container).run({
+      input: {
+        region_id: regiao.id,
+        email: `lojista-${cenario}@realvalor.test`,
+        items: [
+          {
+            title: PRODUTO_E2E.title,
+            variant_id: variante.id,
+            quantity: 1,
+            unit_price: PRODUTO_E2E.precoCentavos / 100,
+          },
+        ],
+        shipping_methods: [
+          {
+            name: ENVIO_E2E.name,
+            shipping_option_id: metodo.id,
+            amount: ENVIO_E2E.precoCentavos / 100,
+          },
+        ],
+        shipping_address: endereco,
+        billing_address: endereco,
+        metadata: { e2e_pedido: cenario, cpf: "52998224725" },
+      },
+    })
+
+    const orderService = container.resolve("order") as {
+      updateOrders: (
+        data: Array<{ id: string; metadata?: Record<string, unknown> }>
+      ) => Promise<unknown>
+    }
+    const { id: orderId } = result as { id: string }
+
+    await orderService.updateOrders([{ id: orderId, metadata: { e2e_pedido: cenario, cpf: "52998224725" } }])
+
+    if (cenario === "pago") {
+      const { createOrderPaymentCollectionWorkflow } = await import(
+        "@medusajs/medusa/core-flows"
+      )
+
+      const payment = container.resolve(Modules.PAYMENT) as {
+        createPaymentSession: (
+          collectionId: string,
+          input: {
+            provider_id: string
+            amount: number
+            currency_code: string
+            context?: Record<string, unknown>
+            data?: Record<string, unknown>
+          }
+        ) => Promise<{ id: string }>
+        authorizePaymentSession: (
+          id: string,
+          context: Record<string, unknown>
+        ) => Promise<unknown>
+        capturePayment: (input: {
+          payment_id: string
+          amount?: number
+        }) => Promise<unknown>
+      }
+
+
+      const { result: colecoes } = await createOrderPaymentCollectionWorkflow(
+        container
+      ).run({
+        input: {
+          order_id: String((result as any).id),
+          amount: PRODUTO_E2E.precoCentavos / 100,
+        },
+      })
+
+      const colecaoId = String((colecoes as any[])[0]?.id)
+
+      const sessao = await payment.createPaymentSession(colecaoId, {
+        provider_id: "pp_system_default",
+        amount: PRODUTO_E2E.precoCentavos / 100,
+        currency_code: "brl",
+        context: { id: colecaoId },
+      })
+
+      const autorizada = (await payment.authorizePaymentSession(
+        String(sessao.id),
+        {}
+      )) as Record<string, unknown>
+
+
+      await payment.capturePayment({
+        payment_id: String((autorizada as any).payment?.id ?? autorizada.id),
+      })
+    }
+
+    logger.info(`[e2e] pedido ${cenario} criado`)
   }
 }

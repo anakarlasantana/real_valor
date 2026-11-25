@@ -46,9 +46,20 @@ export async function GET(
       "fulfillment_status",
       "metadata",
       "items.title",
+      "items.quantity",
+      "payment_collections.status",
     ],
     pagination: { take: LIMITE, order: { created_at: "ASC" } },
   })
+
+  const statusDePagamento = (colecoes: unknown): string => {
+    const lista = (colecoes ?? []) as Array<{ status?: string }>
+
+    if (lista.some((c) => c?.status === "completed")) return "captured"
+    if (lista.some((c) => c?.status === "authorized")) return "authorized"
+
+    return String(lista[0]?.status ?? "")
+  }
 
   const linhas = (pedidos ?? []).map((pedido) => {
     const p = pedido as Record<string, any>
@@ -58,7 +69,8 @@ export async function GET(
       display_id: Number(p.display_id),
       email: String(p.email ?? ""),
       status: String(p.status ?? ""),
-      payment_status: String(p.payment_status ?? ""),
+      payment_status:
+        String(p.payment_status ?? "") || statusDePagamento(p.payment_collections),
       created_at: String(p.created_at ?? ""),
       // Só o primeiro item serve para identificar o pedido na fila; a lista
       // completa vive no detalhe.

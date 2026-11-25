@@ -253,19 +253,19 @@ function ShippingPage() {
   }
 
   return (
-    <Container>
+    <Container data-testid="shipping-page">
       <Heading level="h1">Envios</Heading>
       <Text size="small" color="fg-subtle">
         O que a cliente vê em <code>/rastreio</code> é exatamente o que é
         gravado aqui.
       </Text>
 
-      <div className="flex items-center gap-3 py-3">
+      <div className="flex items-center gap-3 py-3" data-testid="shipping-carteira">
         <Text size="small" weight="plus">
           Carteira SuperFrete: {saldo === null ? "—" : reais(saldo)}
         </Text>
         {saldoErro && (
-          <Text size="small" color="fg-danger">
+          <Text size="small" color="fg-danger" data-testid="shipping-carteira-erro">
             {saldoErro}
           </Text>
         )}
@@ -354,7 +354,11 @@ function Linha({
   const { acao, rotulo, motivo } = acaoDoPedido(pedido)
 
   return (
-    <Container className="flex items-center justify-between gap-4 py-2">
+    <Container
+      className="flex items-center justify-between gap-4 py-2"
+      data-testid="shipping-pedido"
+      data-pedido={pedido.display_id}
+    >
       <div className="flex flex-col">
         <Text size="small" weight="plus">
           #{pedido.display_id} — {pedido.resumo || "Sem itens"}
@@ -376,10 +380,18 @@ function Linha({
       </div>
 
       <div className="flex items-center gap-2">
-        <Badge color={cor}>{texto}</Badge>
+        <Badge color={cor} data-testid="shipping-situacao">
+          {texto}
+        </Badge>
 
         {acao === "gerar" && (
-          <Button size="small" onClick={onGerar} isLoading={ocupado} disabled={ocupado}>
+          <Button
+            size="small"
+            onClick={onGerar}
+            isLoading={ocupado}
+            disabled={ocupado}
+            data-testid="shipping-gerar-etiqueta"
+          >
             {rotulo}
           </Button>
         )}
@@ -395,7 +407,12 @@ function Linha({
           </>
         )}
 
-        <Button variant="secondary" size="small" onClick={onAbrir}>
+        <Button
+          variant="secondary"
+          size="small"
+          onClick={onAbrir}
+          data-testid="shipping-registrar-envio"
+        >
           {pedido.envio.enviado ? "Editar" : "Registrar envio"}
         </Button>
       </div>
@@ -419,7 +436,7 @@ function Formulario({
   const { pedido, rascunho } = aberto
 
   return (
-    <Container className="my-4 rounded-lg border p-4">
+    <Container className="my-4 rounded-lg border p-4" data-testid="envio-form">
       <Heading level="h3">Envio do pedido #{pedido.display_id}</Heading>
 
       <Label size="small">Transportadora</Label>
@@ -427,6 +444,7 @@ function Formulario({
         value={rascunho.carrier}
         onChange={(e) => onMudar("carrier", e.target.value)}
         placeholder="Ex.: Correios"
+        data-testid="envio-carrier"
       />
 
       <Label size="small" className="mt-3">
@@ -436,6 +454,7 @@ function Formulario({
         value={rascunho.tracking_number}
         onChange={(e) => onMudar("tracking_number", e.target.value)}
         placeholder="Ex.: BR123456789BR"
+        data-testid="envio-tracking-number"
       />
 
       <Label size="small" className="mt-3">
@@ -445,6 +464,7 @@ function Formulario({
         value={rascunho.tracking_url}
         onChange={(e) => onMudar("tracking_url", e.target.value)}
         placeholder="Deixe vazio para gerar pelo formato do código"
+        data-testid="envio-tracking-url"
       />
 
       <Label size="small" className="mt-3">
@@ -454,6 +474,7 @@ function Formulario({
         value={rascunho.status_label}
         onChange={(e) => onMudar("status_label", e.target.value)}
         placeholder="Ex.: Entregue"
+        data-testid="envio-situacao"
       />
 
       <div className="mt-4 flex gap-2">
@@ -462,6 +483,7 @@ function Formulario({
           onClick={onSalvar}
           disabled={salvando}
           isLoading={salvando}
+          data-testid="envio-salvar"
         >
           Salvar
         </Button>

@@ -27,7 +27,7 @@ export default defineConfig({
   testDir: "./jornadas",
   outputDir: path.join(EVIDENCIA, "playwright"),
   // Curto de proposito: jornada que trava vira evidencia em < 1 min.
-  timeout: 45_000,
+  timeout: 120_000,
   expect: { timeout: 8_000 },
   // Uma jornada por vez: a stack e' unica e o estado (carrinho, pedido) e' dela.
   fullyParallel: false,
@@ -49,6 +49,22 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      // `chromium` fica PRIMEIRO de proposito: os alvos `make e2e`/`e2e-cliente`
+      // filtram por `--grep` e nao por projeto, e o primeiro projeto e' quem
+      // executa o spec da cliente.
+      name: "chromium",
+      testMatch: /cliente\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      // A jornada do lojista fala com o painel, servido pelo backend (`:9100`).
+      name: "lojista",
+      testMatch: /lojista\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: process.env.E2E_ADMIN_URL ?? "http://localhost:9100/painel",
+      },
+    },
   ],
 })

@@ -1,6 +1,6 @@
 {
   "fonte": "docs/real-valor/04-requisitos-funcionais.md",
-  "total": 23,
+  "total": 27,
   "requisitos": [
     {
       "id": "RV-001",
@@ -957,7 +957,7 @@
         {
           "id": "CA-1",
           "texto": "`campoDoEnvio` retorna apenas o que mudou em relação ao atual (lógica de preservação).",
-          "prova": "unit:backend/src/admin/routes/shipping/envio-form.unit.spec.ts"
+          "prova": "unit:admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts"
         },
         {
           "id": "CA-2",
@@ -967,7 +967,99 @@
         {
           "id": "CA-3",
           "texto": "Salvar com apenas `status_label` alterado não apaga `tracking_number`.",
-          "prova": "unit:backend/src/admin/routes/shipping/envio-form.unit.spec.ts"
+          "prova": "unit:admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "RV-066",
+      "titulo": "Salvar registro de envio sem perder o rastreio",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "`corpoDoEnvio(atual, atual)` devolve `{}`.",
+          "prova": "unit:admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts"
+        },
+        {
+          "id": "CA-2",
+          "texto": "Mudar só a situação devolve um corpo com `status_label` e **sem** `tracking_number`.",
+          "prova": "unit:admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts"
+        },
+        {
+          "id": "CA-3",
+          "texto": "Salvar duas vezes — a segunda mudando só a situação — mantém o código na fila.",
+          "prova": "jornada:lojista@envio registrado preserva o código"
+        }
+      ]
+    },
+    {
+      "id": "RV-067",
+      "titulo": "Etiqueta só para pedido pago",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Pedido sem captura devolve `aguardar` e o motivo diz que a etiqueta sai após a captura.",
+          "prova": "unit:admin/src/admin/routes/shipping/__tests__/etiqueta-fila.unit.spec.ts"
+        },
+        {
+          "id": "CA-2",
+          "texto": "Pedido pago e sem etiqueta devolve `gerar`.",
+          "prova": "unit:admin/src/admin/routes/shipping/__tests__/etiqueta-fila.unit.spec.ts"
+        },
+        {
+          "id": "CA-3",
+          "texto": "Pedido com etiqueta devolve `imprimir` mesmo que mude a situação.",
+          "prova": "unit:admin/src/admin/routes/shipping/__tests__/etiqueta-fila.unit.spec.ts"
+        },
+        {
+          "id": "CA-4",
+          "texto": "Na fila, o pedido pago do fixture oferece \"Gerar etiqueta\".",
+          "prova": "jornada:lojista@fila de envio mostra o pedido pago"
+        }
+      ]
+    },
+    {
+      "id": "RV-068",
+      "titulo": "Carteira e cotação de teste no painel",
+      "prioridade": "MÉDIA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "Erro na carteira mostra a mensagem e não exibe `R$ 0,00`.",
+          "prova": "jornada:lojista@carteira sem credencial mostra o motivo"
+        },
+        {
+          "id": "CA-2",
+          "texto": "A tela de envios abre com o bloco da carteira visível.",
+          "prova": "jornada:lojista@fila de envio mostra o pedido pago"
+        }
+      ]
+    },
+    {
+      "id": "RV-069",
+      "titulo": "Jornada do lojista no painel",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "O painel abre autenticado e a tela de envios carrega.",
+          "prova": "jornada:lojista@admin abre"
+        },
+        {
+          "id": "CA-2",
+          "texto": "A fila mostra o pedido pago do fixture.",
+          "prova": "jornada:lojista@fila de envio mostra o pedido pago"
+        },
+        {
+          "id": "CA-3",
+          "texto": "A jornada termina sem 5xx e sem erro de console.",
+          "prova": "jornada:lojista@evidência: sem 5xx e sem erro de console"
         }
       ]
     }

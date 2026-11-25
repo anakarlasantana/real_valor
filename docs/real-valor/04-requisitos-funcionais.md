@@ -46,6 +46,11 @@ Caminhos sem marcador já existem no repositório.
 | [RV-062](#rv-062--e-mails-transacionais-do-pedido) | E-mails transacionais do pedido | **ALTA** |
 | [RV-063](#rv-063--confirmação-da-compra-na-loja) | Confirmação da compra na loja | **CRÍTICA** |
 | [RV-064](#rv-064--limites-de-requisição-e-abuso) | Limites de requisição e abuso | **ALTA** |
+| [RV-065](#rv-065--campos-de-envio-no-admin-geréricos-e-texto-livre) | Campos de envio no Admin (texto livre) | **ALTA** |
+| [RV-066](#rv-066--salvar-registro-de-envio-sem-perder-o-rastreio) | Salvar envio sem perder o rastreio | **ALTA** |
+| [RV-067](#rv-067--etiqueta-só-para-pedido-pago) | Etiqueta só para pedido pago | **ALTA** |
+| [RV-068](#rv-068--carteira-e-cotação-de-teste-no-painel) | Carteira e cotação de teste no painel | MÉDIA |
+| [RV-069](#rv-069--jornada-do-lojista-no-painel) | Jornada do lojista no painel | **ALTA** |
 
 > **Bloco de pedido e envio (RV-042 a RV-046):** o provedor de frete **está decidido e implementado** —
 > SuperFrete por API (F1b–F3: cotação, etiqueta e webhook). O provider `tabela` (RV-006) continua como
@@ -1577,7 +1582,106 @@ A tela de envios (`GET /admin/shipping`) e o formulário de registro (`POST /adm
 
 ### Critérios de aceite  
 1. `campoDoEnvio` retorna apenas o que mudou em relação ao atual (lógica de preservação).  
-   prova: `unit:backend/src/admin/routes/shipping/envio-form.unit.spec.ts`  
+   prova: `unit:admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts`  
 2. Lista de envios mostra todos os pedidos com `ready_to_fulfill`.  
 3. Salvar com apenas `status_label` alterado não apaga `tracking_number`.  
-   prova: `unit:backend/src/admin/routes/shipping/envio-form.unit.spec.ts`
+   prova: `unit:admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts`
+
+## RV-066 — Salvar registro de envio sem perder o rastreio
+
+**Prioridade:** ALTA · **Tipo:** funcional · **Complexidade:** baixa
+**Depende de:** RV-065 · **Impacta:** lojista (grava), cliente (rastreio)
+
+### Objetivo
+Salvar a situação de um pedido **nunca** pode apagar o código de rastreio que a cliente já recebeu.
+
+### Descrição
+`POST /admin/shipping/:id` (`backend/src/api/admin/shipping/[id]/route.ts:26`) trata **ausente** e **vazio** de forma diferente: campo fora do corpo é "deixe como está", string vazia é "limpe". A tela reflete isso em `corpoDoEnvio` (`admin/src/admin/routes/shipping/envio-form.ts`), que manda só o diff.
+
+### Regras de negócio
+1. `corpoDoEnvio` devolve `{}` quando nada mudou — salvar sem mexer não grava.
+2. Só a situação alterada ⇒ o corpo tem só `status_label`; `tracking_number` e `carrier` não vão no POST.
+3. Código apagado de propósito ⇒ vai como `""` e é limpo.
+4. O `metadata` do pedido é **mesclado**, nunca substituído: ele guarda o CPF que o rastreio valida.
+
+### Critérios de aceite
+1. `corpoDoEnvio(atual, atual)` devolve `{}`.
+   prova: `unit:admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts`
+2. Mudar só a situação devolve um corpo com `status_label` e **sem** `tracking_number`.
+   prova: `unit:admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts`
+3. Salvar duas vezes — a segunda mudando só a situação — mantém o código na fila.
+   prova: `jornada:lojista@envio registrado preserva o código`
+
+## RV-067 — Etiqueta só para pedido pago
+
+**Prioridade:** ALTA · **Tipo:** funcional · **Complexidade:** baixa
+**Depende de:** RV-061 (ciclo da etiqueta) · **Impacta:** lojista (emissão) e cliente
+
+### Objetivo
+O botão de emitir etiqueta só existe quando o pagamento foi capturado — a loja não paga frete por pedido não pago.
+
+### Descrição
+`acaoDoPedido` (`admin/src/admin/routes/shipping/etiqueta-fila.ts:25`) decide entre `gerar`, `imprimir` e `aguardar`. `pagoDoPedido` (linha 47) considera `captured` e `partially_captured`. A rota real reforça a regra em `problemaDaEtiqueta`, no backend.
+
+### Regras de negócio
+1. Pedido sem captura ⇒ `acao: "aguardar"` com motivo explícito; nenhum botão de gerar.
+2. Pedido com captura e sem etiqueta ⇒ `acao: "gerar"`.
+3. Pedido com etiqueta ⇒ `acao: "imprimir"`, sempre.
+4. A tela mostra a mensagem que o backend devolveu; não reformula.
+
+### Critérios de aceite
+1. Pedido sem captura devolve `aguardar` e o motivo diz que a etiqueta sai após a captura.
+   prova: `unit:admin/src/admin/routes/shipping/__tests__/etiqueta-fila.unit.spec.ts`
+2. Pedido pago e sem etiqueta devolve `gerar`.
+   prova: `unit:admin/src/admin/routes/shipping/__tests__/etiqueta-fila.unit.spec.ts`
+3. Pedido com etiqueta devolve `imprimir` mesmo que mude a situação.
+   prova: `unit:admin/src/admin/routes/shipping/__tests__/etiqueta-fila.unit.spec.ts`
+4. Na fila, o pedido pago do fixture oferece "Gerar etiqueta".
+   prova: `jornada:lojista@fila de envio mostra o pedido pago`
+
+## RV-068 — Carteira e cotação de teste no painel
+
+**Prioridade:** MÉDIA · **Tipo:** funcional · **Complexidade:** baixa
+**Depende de:** RV-061 · **Impacta:** lojista (decide antes de emitir)
+
+### Objetivo
+O lojista sabe, **antes** de tentar emitir, se a carteira do SuperFrete cobre o próximo envio — e consegue testar uma cotação com o CEP que ele digitar.
+
+### Descrição
+`GET /admin/shipping/saldo` (`backend/src/api/admin/shipping/saldo/route.ts:6`) devolve `saldo` em centavos ou 502 com mensagem; a tela de envios mostra "Carteira SuperFrete" e o erro em vez de zero (`admin/src/admin/routes/shipping/page.tsx:263`). A tela de serviços testa a cotação por `POST /admin/shipping/testar` e mostra a requisição que saiu.
+
+### Regras de negócio
+1. Falha ao ler a carteira vira **mensagem**, nunca saldo zero — zero esconde problema.
+2. O token do SuperFrete não aparece em claro na auditoria da cotação.
+3. Valor em centavos na API, formatado em reais na tela.
+
+### Critérios de aceite
+1. Erro na carteira mostra a mensagem e não exibe `R$ 0,00`.
+   prova: `jornada:lojista@carteira sem credencial mostra o motivo`
+2. A tela de envios abre com o bloco da carteira visível.
+   prova: `jornada:lojista@fila de envio mostra o pedido pago`
+
+## RV-069 — Jornada do lojista no painel
+
+**Prioridade:** ALTA · **Tipo:** e2e · **Complexidade:** média
+**Depende de:** RV-065, RV-066, RV-067, RV-068 · **Impacta:** lojista
+
+### Objetivo
+Provar, no navegador e contra a stack `rv_e2e`, que o lojista consegue abrir o painel, ler a fila, registrar um envio sem perder o rastreio e não emitir etiqueta de pedido não pago.
+
+### Descrição
+`e2e/jornadas/lojista.spec.ts`, uma jornada por spec (doc 20 §20.3), autenticada por `storageState` semeado com o JWT de `POST /auth/user/emailpass`. O pedido de teste vem de `backend/src/scripts/e2e-fixtures.ts`, não do spec.
+
+### Regras de negócio
+1. Toda asserção usa `getByTestId`/`getByRole`; sem seletor de estrutura e sem `waitForTimeout`.
+2. O pedido do fixture é idempotente: casado por `metadata.e2e_pedido`.
+3. Emitir etiqueta de verdade depende de `SUPERFRETE_TOKEN`: sem ele a jornada para no caminho bloqueado, com `test.skip` — a asserção não é afrouxada.
+4. Nada de 5xx e nada de erro de console ao fim da jornada.
+
+### Critérios de aceite
+1. O painel abre autenticado e a tela de envios carrega.
+   prova: `jornada:lojista@admin abre`
+2. A fila mostra o pedido pago do fixture.
+   prova: `jornada:lojista@fila de envio mostra o pedido pago`
+3. A jornada termina sem 5xx e sem erro de console.
+   prova: `jornada:lojista@evidência: sem 5xx e sem erro de console`

@@ -1,0 +1,190 @@
+import type { Page } from "@playwright/test"
+
+import { expect, test } from "../fixtures/gravador"
+
+/**
+ * Jornada do lojista — o painel da loja (doc 20 §20.3, RV-069).
+ *
+ * Roda contra a stack `rv_e2e` no painel servido pelo backend (`:9100/painel`).
+ * O pedido vem de `backend/src/scripts/e2e-fixtures.ts` (um pago, um pendente):
+ * a jornada le' o que o fixture escreveu, nao inventa pedido.
+ *
+ * O login e' feito no proprio spec: o dashboard guarda a sessao em memoria do
+ * SPA (nao em cookie nem em `localStorage` — medido), entao um `storageState`
+ * semeado fora do navegador nao sobrevive.
+ */
+
+const PAINEL = "/painel"
+const ENVIOS = "/painel/shipping"
+const SERVICOS = "/painel/frete/servicos"
+const PACOTES = "/painel/frete/pacotes"
+
+/** O rotulo do item de menu de cada tela — o que o lojista clica. */
+const ROTULOS: Record<string, string> = {
+  [ENVIOS]: "Envios",
+  [SERVICOS]: "Serviços de frete",
+  [PACOTES]: "Pacotes",
+}
+
+const EMAIL = process.env.E2E_ADMIN_EMAIL ?? "admin@realvalor.com.br"
+const SENHA = process.env.E2E_ADMIN_PASSWORD ?? "admin123456"
+
+/** O painel compila sob demanda (`vite dev`) e o dashboard monta um SPA: a 1a visita e' lenta. */
+const LENTO = { timeout: 90_000 }
+
+async function entrar(page: Page): Promise<void> {
+  await page.goto(`${PAINEL}/login`, {
+    waitUntil: "domcontentloaded",
+    timeout: 90_000,
+  })
+
+  await page.locator('input[type="email"], input[name="email"]').first().fill(EMAIL)
+  await page.locator('input[type="password"]').first().fill(SENHA)
+  await page.locator('button[type="submit"]').first().click()
+
+  // A senha some quando a sessao existe; a navegacao e' `history.pushState`.
+  await expect(page.locator('input[type="password"]')).toBeHidden(LENTO)
+
+  // Depois do login o dashboard pinta o menu; esperar aqui deixa os passos
+  // seguintes livres do custo de compilacao do `vite dev` (medido: 1a carga).
+  await expect(page.getByRole("link", { name: "Envios" })).toBeVisible(LENTO)
+}
+
+async function irPara(page: Page, caminho: string): Promise<void> {
+  // `goto` em cima de um SPA que redireciona aborta a navegacao
+  // (`net::ERR_ABORTED`, medido): depois do 1o carregamento, trocar de tela e'
+  // clicar no menu — que e' tambem o caminho do lojista.
+  const resumo = ROTULOS[caminho]
+
+  if (resumo) {
+    await page.getByRole("link", { name: resumo, exact: true }).first().click()
+    return
+  }
+
+  await page.goto(caminho, { waitUntil: "domcontentloaded", timeout: 90_000 })
+}
+
+test("lojista-envio: painel → fila → registro → etiqueta", async ({
+  page,
+  gravador,
+}) => {
+  await test.step("admin abre", async () => {
+    await entrar(page)
+    await expect(page.locator("#medusa")).toBeAttached(LENTO)
+  })
+
+  await test.step("fila de envio mostra o pedido pago", async () => {
+    await irPara(page, ENVIOS)
+    await expect(page.getByTestId("shipping-page")).toBeVisible(LENTO)
+    await expect(page.getByTestId("shipping-carteira")).toBeVisible(LENTO)
+
+    const pedidos = page.getByTestId("shipping-pedido")
+    await expect(pedidos.first()).toBeVisible(LENTO)
+
+    // O fixture grava dois pedidos: o capturado oferece gerar etiqueta, o
+    // pendente so' espera. Se a regra quebrar, um dos dois lados desaparece.
+    await expect(
+      page.getByTestId("shipping-gerar-etiqueta").first()
+    ).toBeVisible(LENTO)
+  })
+
+  await test.step("carteira sem credencial mostra o motivo", async () => {
+    const carteira = page.getByTestId("shipping-carteira")
+    const erro = page.getByTestId("shipping-carteira-erro")
+
+    // Sem token do SuperFrete a leitura falha de proposito: o que se prova aqui
+    // e' que a falha vira MENSAGEM — zero esconderia o problema.
+    if (await erro.isVisible().catch(() => false)) {
+      await expect(erro).not.toHaveText("")
+    } else {
+      await expect(carteira).toContainText("Carteira SuperFrete")
+    }
+  })
+
+  await test.step("envio registrado preserva o código", async () => {
+    await page.getByTestId("shipping-registrar-envio").first().click()
+
+    const form = page.getByTestId("envio-form")
+    await expect(form).toBeVisible(LENTO)
+
+    // Qual pedido esta aberto: o cabecalho do formulario diz o `display_id`.
+    const cabecalho = await form.getByRole("heading").innerText()
+    const numero = Number(cabecalho.replace(/\D+/g, ""))
+    const cartao = page.locator(
+      `[data-testid="shipping-pedido"][data-pedido="${numero}"]`
+    )
+
+    await page.getByTestId("envio-carrier").fill("Correios")
+    await page.getByTestId("envio-tracking-number").fill("BR123456789BR")
+    await page.getByTestId("envio-situacao").fill("Em processamento")
+    await page.getByTestId("envio-salvar").click()
+
+    // Depois de salvar o cartao muda de secao (Aguardando → Ja enviados), por
+    // isso a espera e' no cartao daquele pedido, nao em `.first()`.
+    await expect(cartao).toContainText("Correios", LENTO)
+
+    // Segunda gravacao: muda SO' a situacao. O codigo tem de continuar la'.
+    await cartao.getByTestId("shipping-registrar-envio").click()
+    await expect(page.getByTestId("envio-form")).toBeVisible(LENTO)
+    await expect(page.getByTestId("envio-tracking-number")).toHaveValue(
+      "BR123456789BR"
+    )
+
+    await page.getByTestId("envio-situacao").fill("Entregue")
+    await page.getByTestId("envio-salvar").click()
+    await expect(page.getByTestId("envio-form")).toBeHidden(LENTO)
+
+    await expect(cartao).toContainText("Entregue", LENTO)
+  })
+
+  await test.step("servicos de frete abrem com a lista", async () => {
+    await irPara(page, SERVICOS)
+    await expect(page.getByTestId("servicos-page")).toBeVisible(LENTO)
+    await expect(page.getByTestId("servicos-linha").first()).toBeVisible(LENTO)
+  })
+
+  await test.step("pacotes abrem e o formulário valida", async () => {
+    await irPara(page, PACOTES)
+    await expect(page.getByTestId("pacotes-page")).toBeVisible(LENTO)
+
+    await page.getByTestId("pacotes-nova").click()
+    await expect(page.getByRole("button", { name: "Salvar" })).toBeVisible(LENTO)
+    await page.getByRole("button", { name: "Salvar" }).click()
+
+    // Caixa sem nome nao salva: a validacao responde antes de qualquer POST.
+    await expect(page.getByTestId("pacotes-page")).toBeVisible()
+  })
+
+  await test.step("evidência: sem 5xx e sem erro de console", async () => {
+    const cincoXX = gravador.rede.filter((linha) => linha.status >= 500)
+
+    // `pageerror` e' excecao nao tratada da tela: sempre reprova. As demais
+    // linhas de `console.error` no painel sao ruido do dev server — o HMR do
+    // Vite fala por `:9001` (e o proxy responde 426) e cada troca de tela
+    // aborta modulos em voo (`net::ERR_ABORTED`). Nenhuma delas e' a tela
+    // falhando, e reprimi-las no produto seria esconder defeito com um
+    // `expect` mais frouxo; o filtro e' do ambiente, nao da assercao.
+    const doProduto = (texto: string): boolean =>
+      !texto.includes("localhost:9001") &&
+      !texto.includes("net::ERR_ABORTED") &&
+      !texto.includes("426 (Upgrade Required)")
+
+    const errosDeConsole = gravador.console.filter(
+      (linha) => linha.tipo === "pageerror" || (linha.nivel === "error" && doProduto(linha.texto))
+    )
+
+    // 502 da carteira e' resposta prevista quando nao ha' credencial do
+    // SuperFrete no stack; o que nao pode e' erro nao tratado.
+    const inesperados = cincoXX.filter(
+      (linha) => !linha.url.includes("/admin/shipping/saldo")
+    )
+
+    expect(inesperados, `5xx na jornada: ${JSON.stringify(inesperados)}`).toEqual(
+      []
+    )
+    expect(
+      errosDeConsole,
+      `erros no console: ${JSON.stringify(errosDeConsole)}`
+    ).toEqual([])
+  })
+})

@@ -27,7 +27,10 @@ export async function POST(
   req: MedusaRequest,
   res: MedusaResponse
 ): Promise<MedusaResponse | void> {
-  const id = String(req.params?.id ?? "")
+  const caminho = String(req.path ?? req.url ?? "")
+  const id = String(
+    (req as any).params?.id ?? caminho.split("/").filter(Boolean).pop() ?? ""
+  )
   const body = (req.body ?? {}) as Record<string, unknown>
 
   const update: ShippingUpdate = {}
@@ -80,17 +83,19 @@ export async function POST(
   // nome do container é a string `"order"`.
   const orderService = req.scope.resolve("order") as {
     updateOrders: (
-      ids: string[],
-      data: Record<string, unknown>
+      data: Array<{ id: string; metadata?: Record<string, unknown> }>
     ) => Promise<unknown>
   }
 
-  await orderService.updateOrders([id], {
-    metadata: {
-      ...((pedido.metadata ?? {}) as Record<string, unknown>),
-      ...envio,
+  await orderService.updateOrders([
+    {
+      id,
+      metadata: {
+        ...((pedido.metadata ?? {}) as Record<string, unknown>),
+        ...envio,
+      },
     },
-  })
+  ])
 
   // Só avisa quando o código ou a situação mudam: salvar sem mexer não é fato.
   const antes = shippingSummary(pedido.metadata)

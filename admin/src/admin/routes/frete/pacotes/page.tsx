@@ -144,7 +144,7 @@ function PacotesPage() {
   }
 
   return (
-    <Container className="divide-y p-0">
+    <Container className="divide-y p-0" data-testid="pacotes-page">
       <div className="flex items-center justify-between px-6 py-4">
         <div>
           <Heading>Caixas de envio</Heading>
@@ -157,7 +157,7 @@ function PacotesPage() {
           <Button size="small" variant="secondary" onClick={restaurar}>
             Restaurar padrões
           </Button>
-          <Button size="small" onClick={() => abrir()}>
+          <Button size="small" onClick={() => abrir()} data-testid="pacotes-nova">
             Nova caixa
           </Button>
         </div>

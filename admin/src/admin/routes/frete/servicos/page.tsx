@@ -185,7 +185,7 @@ function ServicosPage() {
   }
 
   return (
-    <Container className="divide-y p-0">
+    <Container className="divide-y p-0" data-testid="servicos-page">
       <div className="flex items-center justify-between px-6 py-4">
         <div>
           <Heading>Serviços de frete</Heading>
@@ -417,7 +417,7 @@ function LinhaServico({
   onMudar: (ativo: boolean) => void
 }) {
   return (
-    <div className="flex items-center justify-between px-6 py-4">
+    <div className="flex items-center justify-between px-6 py-4" data-testid="servicos-linha">
       <div>
         <div className="flex items-center gap-2">
           <Text weight="plus">{servico.nome}</Text>
@@ -443,6 +443,7 @@ function LinhaServico({
           checked={ativo}
           onCheckedChange={onMudar}
           disabled={!servico.servico}
+          data-testid="servicos-switch"
           title={
             servico.servico
               ? undefined
