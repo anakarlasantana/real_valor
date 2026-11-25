@@ -1,6 +1,6 @@
 {
   "fonte": "docs/real-valor/04-requisitos-funcionais.md",
-  "total": 22,
+  "total": 23,
   "requisitos": [
     {
       "id": "RV-001",
@@ -945,6 +945,29 @@
           "id": "CA-2",
           "texto": "O webhook aceita 120 eventos por minuto e o prefixo mais longo vence na escolha da regra.",
           "prova": "unit:backend/src/utils/__tests__/limite-de-requisicoes.unit.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "RV-065",
+      "titulo": "Campos de Envio no Admin (geréricos e texto livre)",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "`campoDoEnvio` retorna apenas o que mudou em relação ao atual (lógica de preservação).",
+          "prova": "unit:backend/src/admin/routes/shipping/envio-form.unit.spec.ts"
+        },
+        {
+          "id": "CA-2",
+          "texto": "Lista de envios mostra todos os pedidos com `ready_to_fulfill`.",
+          "prova": null
+        },
+        {
+          "id": "CA-3",
+          "texto": "Salvar com apenas `status_label` alterado não apaga `tracking_number`.",
+          "prova": "unit:backend/src/admin/routes/shipping/envio-form.unit.spec.ts"
         }
       ]
     }

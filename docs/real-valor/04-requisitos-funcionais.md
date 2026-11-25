@@ -1553,5 +1553,31 @@ Registrados para que **não sejam reimplementados**:
 | Testes com CI | **790 testes** em 3 runners (386 backend · 70 CRM · 334 storefront) |
 | Purge de cache | `POST /api/revalidate` com `REVALIDATE_SECRET` |
 
-**Conclusão:** nenhum destes entra em backlog. O backlog em `09-backlog-implementacao.md` cobre
-apenas o que falta.
+## RV-065 — Campos de Envio no Admin (geréricos e texto livre)
+
+**Prioridade:** ALTA · **Tipo:** funcional · **Complexidade:** baixa  
+**Depende de:** nenhuma · **Independe da transportadora: SIM**  
+
+### Objetivo  
+Permitir ao lojista registrar código de rastreio, carrier e situação em pedidos — sem depender de uma lista fixa de transportadoras.
+
+### Descrição  
+A tela de envios (`GET /admin/shipping`) e o formulário de registro (`POST /admin/shipping/:id`) devem aceitar valores **livres em texto** para `carrier`, `tracking_number`, `tracking_url` e `status_label`. Não deve haver enumeração ou escolha de transportadora na interface.
+
+### Regras de negócio  
+1. Campos são **texto livre** — sem seleção de transportadora no painel.  
+2. `tracking_url` opcional: se vazio, monta a partir do padrão do carrier (ex.: `https://rastreios.correios.com.br/x` para códigos BR).  
+3. `status_label` tem valor padrão "Em processamento" e é editável.  
+4. Salvar dispara **RV-045** (notificação ao cliente).  
+5. Campos **preservados** em qualquer operação posterior — não apagar código de rastreio ao só mudar situação.  
+6. Todos os pedidos com `ready_to_fulfill` **aparecem** na lista de envios.  
+
+### Estados  
+`sem código` (não exibir campo) · `salvando` · `salvo` · `código inválido` (aviso, não bloqueio).  
+
+### Critérios de aceite  
+1. `campoDoEnvio` retorna apenas o que mudou em relação ao atual (lógica de preservação).  
+   prova: `unit:backend/src/admin/routes/shipping/envio-form.unit.spec.ts`  
+2. Lista de envios mostra todos os pedidos com `ready_to_fulfill`.  
+3. Salvar com apenas `status_label` alterado não apaga `tracking_number`.  
+   prova: `unit:backend/src/admin/routes/shipping/envio-form.unit.spec.ts`
