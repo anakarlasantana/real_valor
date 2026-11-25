@@ -37,6 +37,7 @@
 
   // Etapas mecanicas rodam deterministicas.
   "stages": {
+    "code": { "temperature": 0, "maxTokens": 8000 },
     "qa": { "temperature": 0, "maxTokens": 2000 },
     "e2e": { "temperature": 0, "maxTokens": 2000 }
   },
@@ -85,5 +86,19 @@
     "indice": "docs/real-valor/laudos/reworks/indice.md",
     "template": "RW-AAAA-NNN.md",
     "regra": "sem veredito nao se fecha"
+  },
+
+  // ── Ferramentas do agente ────────────────────────────────────────────────
+  // Sem servidor MCP o `ai build code` nao tem como ler nem escrever arquivo:
+  // o catalogo fica so com `harness.repo_map` e o modelo responde em texto
+  // (medido em 25/11/2026 — `toolCalls=0` em tres execucoes). O filesystem fica
+  // preso a raiz do repositorio de proposito: o agente edita este projeto e
+  // nada fora dele.
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/sn-387116/Documents/real_valor"],
+      "autoApprove": ["read_file", "read_text_file", "list_directory", "directory_tree", "search_files", "get_file_info", "list_allowed_directories", "write_file", "edit_file", "create_directory"]
+    }
   }
 }

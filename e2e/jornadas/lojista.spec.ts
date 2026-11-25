@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test"
 
 import { expect, test } from "../fixtures/gravador"
+import { irPara as irParaComRetentativa } from "../fixtures/navegacao"
 
 /**
  * Jornada do lojista — o painel da loja (doc 20 §20.3, RV-069).
@@ -68,7 +69,7 @@ async function irPara(page: Page, caminho: string): Promise<void> {
     return
   }
 
-  await page.goto(caminho, { waitUntil: "domcontentloaded", timeout: 90_000 })
+  await irParaComRetentativa(page, caminho, { timeout: 90_000 })
 }
 
 test("lojista-envio: painel → fila → registro → etiqueta", async ({

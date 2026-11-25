@@ -1,6 +1,5 @@
-import type { Page } from "@playwright/test"
-
 import { expect, test } from "../fixtures/gravador"
+import { irPara } from "../fixtures/navegacao"
 
 /**
  * Jornada da cliente — da vitrine até o pagamento (doc 20 §20.3).
@@ -15,26 +14,6 @@ import { expect, test } from "../fixtures/gravador"
  */
 
 const PRODUTO = "[e2e] Vestido de Teste"
-
-/**
- * Navegação com segunda tentativa.
- *
- * O `next dev` compila sob demanda e a ação de adicionar dispara refresh do
- * router: um `goto` em cima disso volta `net::ERR_ABORTED` (RW-2026-003). Não é
- * retry de asserção — é a navegação em si, e o alvo é o mesmo.
- */
-async function irPara(page: Page, caminho: string): Promise<void> {
-  for (let tentativa = 1; tentativa <= 2; tentativa++) {
-    try {
-      // O servidor retorna 307 de / para /br; garantir caminho absoluto
-      const url = caminho.startsWith("/") ? `http://localhost:8100${caminho}` : caminho
-      await page.goto(url, { waitUntil: "domcontentloaded" })
-      return
-    } catch (erro) {
-      if (tentativa === 2) throw erro
-    }
-  }
-}
 
 test("cliente-compra: vitrine → produto → sacola → entrega → pagamento", async ({
   page,
