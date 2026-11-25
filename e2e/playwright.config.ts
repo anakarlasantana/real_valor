@@ -66,5 +66,15 @@ export default defineConfig({
         baseURL: process.env.E2E_ADMIN_URL ?? "http://localhost:9100/painel",
       },
     },
+    {
+      name: "vitrine",
+      testMatch: /vitrine\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "produto",
+      testMatch: /produto\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 })

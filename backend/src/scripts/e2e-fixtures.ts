@@ -30,6 +30,14 @@ export const PRODUTO_E2E = {
   precoCentavos: 19990,
 } as const
 
+export const PRODUTO_E2E_TAMANHOS = {
+  title: "[e2e] Blusa com Tamanhos",
+  handle: "e2e-blusa-com-tamanhos",
+  skuP: "E2E-TAM-P",
+  skuM: "E2E-TAM-M",
+  precoCentavos: 8990,
+} as const
+
 export const ENVIO_E2E = {
   name: "E2E — Envio fixo",
   precoCentavos: 1990,
@@ -135,6 +143,60 @@ export default async function e2eFixtures({
     })
 
     logger.info(`[e2e] peça criada: ${PRODUTO_E2E.handle}.`)
+  }
+
+  const { data: comTamanhos } = await query.graph({
+    entity: "product",
+    fields: ["id"],
+    filters: { handle: PRODUTO_E2E_TAMANHOS.handle },
+  })
+
+  if (comTamanhos?.length) {
+    logger.info(`[e2e] peça já existe (${PRODUTO_E2E_TAMANHOS.handle}).`)
+  } else {
+    await createProductsWorkflow(container).run({
+      input: {
+        products: [
+          {
+            title: PRODUTO_E2E_TAMANHOS.title,
+            handle: PRODUTO_E2E_TAMANHOS.handle,
+            status: "published",
+            shipping_profile_id: perfis[0].id,
+            description: "Peça de dois tamanhos, criada pela stack de teste.",
+            options: [{ title: "Tamanho", values: ["P", "M"] }],
+            variants: [
+              {
+                title: "P",
+                sku: PRODUTO_E2E_TAMANHOS.skuP,
+                manage_inventory: false,
+                options: { Tamanho: "P" },
+                prices: [
+                  {
+                    amount: PRODUTO_E2E_TAMANHOS.precoCentavos / 100,
+                    currency_code: "brl",
+                  },
+                ],
+              },
+              {
+                title: "M",
+                sku: PRODUTO_E2E_TAMANHOS.skuM,
+                manage_inventory: false,
+                options: { Tamanho: "M" },
+                prices: [
+                  {
+                    amount: PRODUTO_E2E_TAMANHOS.precoCentavos / 100,
+                    currency_code: "brl",
+                  },
+                ],
+              },
+            ],
+            sales_channels: [{ id: canais[0].id }],
+          },
+        ],
+      },
+    })
+
+    logger.info(`[e2e] peça criada: ${PRODUTO_E2E_TAMANHOS.handle}.`)
   }
 
   const { data: sets } = await query.graph({

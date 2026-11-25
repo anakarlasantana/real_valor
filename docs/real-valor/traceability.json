@@ -1,8 +1,8 @@
 {
   "gerado_de": "spec/**/requisito.md",
-  "total_specs": 3,
-  "total_ca": 15,
-  "provados": 15,
+  "total_specs": 4,
+  "total_ca": 19,
+  "provados": 19,
   "specs": [
     {
       "id": "RV-006",
@@ -120,6 +120,53 @@
           "prova": "unit:backend/src/api/store/shipping/quote/__tests__/equivalencia.unit.spec.ts",
           "tipo": "unit",
           "alvo": "backend/src/api/store/shipping/quote/__tests__/equivalencia.unit.spec.ts",
+          "resolvido": true,
+          "motivo": null
+        }
+      ]
+    },
+    {
+      "id": "RV-071",
+      "pasta": "spec/RV-071-jornadas-do-cliente-descoberta-sacola-co",
+      "estado": "rascunho",
+      "retroativo": false,
+      "aprovado_por": null,
+      "aprovado_sha": null,
+      "sha_atual": "beff0461fd6f044393b7318ddae870e641c048d71e299098fb9d1bad0481ef38",
+      "criterios": [
+        {
+          "ca": "CA-1",
+          "texto": "When a cliente aplica um filtro no catálogo, the storefront shall refletir o recorte na contagem de peças e mantê-lo ao fechar a gaveta.",
+          "prova": "jornada:vitrine@o filtro muda a contagem e sobrevive ao fechar a gaveta",
+          "tipo": "jornada",
+          "alvo": "vitrine@o filtro muda a contagem e sobrevive ao fechar a gaveta",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-2",
+          "texto": "When a cliente busca um termo sem resultado, the storefront shall mostrar o estado vazio da busca em vez de lista muda.",
+          "prova": "jornada:vitrine@busca sem resultado mostra o estado vazio",
+          "tipo": "jornada",
+          "alvo": "vitrine@busca sem resultado mostra o estado vazio",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-3",
+          "texto": "When a cliente troca o tamanho na página de produto, the storefront shall refletir a variante escolhida na URL e manter a compra liberada, sem nunca deixar a sacola ganhar item antes do clique.",
+          "prova": "jornada:produto@trocar o tamanho reflete a variante na URL",
+          "tipo": "jornada",
+          "alvo": "produto@trocar o tamanho reflete a variante na URL",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-4",
+          "texto": "When a cliente informa o CEP na página de produto, the storefront shall cotar o frete quando o CEP serve e avisar quando não serve.",
+          "prova": "jornada:produto@CEP válido cota e CEP inválido avisa",
+          "tipo": "jornada",
+          "alvo": "produto@CEP válido cota e CEP inválido avisa",
           "resolvido": true,
           "motivo": null
         }
