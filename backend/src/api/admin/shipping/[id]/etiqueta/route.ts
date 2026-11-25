@@ -15,6 +15,7 @@ const CAMPOS = [
   "email",
   "status",
   "payment_status",
+  "payment_collections.status",
   "metadata",
   "customer.first_name",
   "customer.last_name",
@@ -42,11 +43,30 @@ const CAMPOS = [
   "items.title",
   "items.product_title",
   "items.quantity",
+  "items.detail.quantity",
   "items.unit_price",
+  "items.detail.unit_price",
   "shipping_methods.shipping_option_id",
   "shipping_methods.data",
   "shipping_methods.amount",
 ] as const
+
+/**
+ * O `payment_status` do `query.graph` vem vazio para pedido criado por
+ * workflow (medido): a fonte e' a colecao de pagamento.
+ */
+function statusDePagamento(pedido: Record<string, any>): string {
+  const direto = String(pedido.payment_status ?? "").trim()
+
+  if (direto) {
+    return direto
+  }
+
+  const colecoes = (pedido.payment_collections ?? []) as Array<{ status?: string }>
+  const completo = colecoes.some((c) => c?.status === "completed")
+
+  return completo ? "captured" : String(colecoes[0]?.status ?? "")
+}
 
 export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<void> {
   const id = String(req.params?.id ?? "")
@@ -90,7 +110,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<voi
     remetente: remetenteDoLocal((locais ?? [])[0] as Record<string, any>),
     destinatario: destinatarioDoPedido(pedido, metadata),
     produtos: produtosDoPedido(pedido.items),
-    pago: pago(pedido.fulfillment_status, pedido.payment_status),
+    pago: pago(pedido.fulfillment_status, statusDePagamento(pedido)),
   }
 
   if (!servico) {
@@ -127,20 +147,26 @@ export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<voi
   }
 
   const orderService = req.scope.resolve("order") as {
-    updateOrders: (ids: string[], data: Record<string, unknown>) => Promise<unknown>
+    updateOrders: (
+      data: Array<{ id: string; metadata?: Record<string, unknown> }>
+    ) => Promise<unknown>
   }
 
-  // O `metadata` é mesclado: ele também guarda o CPF que o rastreio valida.
-  await orderService.updateOrders([id], {
-    metadata: {
-      ...metadata,
-      carrier: transportadoraDo(paraEtiqueta.servico),
-      superfrete_id: resultado.id,
-      superfrete_preco: resultado.precoCentavos,
-      status_label: situacaoDaEtiqueta(resultado.situacao),
-      tracking_url: linkDeRastreio(resultado.id),
+  // O Medusa v2 recebe a lista de ATUALIZACOES, nao `(ids, dados)`; e o
+  // `metadata` é mesclado porque guarda o CPF que o rastreio valida.
+  await orderService.updateOrders([
+    {
+      id,
+      metadata: {
+        ...metadata,
+        carrier: transportadoraDo(paraEtiqueta.servico),
+        superfrete_id: resultado.id,
+        superfrete_preco: resultado.precoCentavos,
+        status_label: situacaoDaEtiqueta(resultado.situacao),
+        tracking_url: linkDeRastreio(resultado.id),
+      },
     },
-  })
+  ])
 
   res.status(201).json({
     etiqueta: resultado.id,

@@ -5,23 +5,23 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 40245,
+      "lines": 40273,
       "comments": 8814
     },
     "admin/src": {
-      "lines": 9884,
+      "lines": 9909,
       "comments": 1876
     },
     "backend/src": {
-      "lines": 26342,
-      "comments": 4655
+      "lines": 26576,
+      "comments": 4659
     },
     "packages/contrato/src": {
       "lines": 2840,
       "comments": 581
     },
     "scripts": {
-      "lines": 1934,
+      "lines": 1937,
       "comments": 330
     }
   },
@@ -1178,7 +1178,7 @@
     },
     "admin/src/admin/routes/content/page.tsx": {
       "comments": 42,
-      "lines": 145,
+      "lines": 147,
       "header": 21
     },
     "admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts": {
@@ -1193,7 +1193,7 @@
     },
     "admin/src/admin/routes/shipping/page.tsx": {
       "comments": 29,
-      "lines": 482,
+      "lines": 504,
       "header": 20
     },
     "admin/src/admin/routes/shipping/types.ts": {
@@ -1233,12 +1233,12 @@
     },
     "backend/src/api/admin/shipping/[id]/route.ts": {
       "comments": 14,
-      "lines": 116,
+      "lines": 121,
       "header": 6
     },
     "backend/src/api/admin/shipping/route.ts": {
       "comments": 23,
-      "lines": 74,
+      "lines": 86,
       "header": 20
     },
     "backend/src/api/hooks/payment/[provider]/route.ts": {
@@ -1586,11 +1586,6 @@
       "lines": 343,
       "header": 5
     },
-    "backend/src/scripts/e2e-fixtures.ts": {
-      "comments": 27,
-      "lines": 211,
-      "header": 5
-    },
     "backend/src/scripts/flags.ts": {
       "comments": 17,
       "lines": 23,
@@ -1658,7 +1653,7 @@
     },
     "scripts/check-requirements-provas.mjs": {
       "comments": 13,
-      "lines": 82,
+      "lines": 85,
       "header": 8
     },
     "scripts/gen-content.mjs": {

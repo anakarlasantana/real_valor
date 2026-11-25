@@ -37,11 +37,16 @@ export const CANAL_ONLINE = "Loja Online Real Valor"
 
 /** A origem da cotação: `from_location.address.postal_code` (SuperFrete). */
 export const ENDERECO_ORIGEM = {
-  address_1: "Rua Luís Costa Filho, 388",
+  address_1: "Rua Luís Costa Filho",
+  address_2: "388",
   city: "Fortaleza",
   province: "CE",
   postal_code: "60352-680",
   country_code: "BR",
+  phone: "8530000000",
+  // O bairro e' o que a etiqueta imprime; sem ele o SuperFrete recusa o
+  // remetente, e o fallback do codigo usaria a UF (dado errado no papel).
+  metadata: { bairro: "Quintino Cunha" },
 } as const
 
 /** Os três serviços que nascem ligados; Jadlog, J&T e Loggi são escolha do lojista. */

@@ -22,18 +22,7 @@ export const PROVEDORES_DE_PAGAMENTO_E2E = [
  * -------------------------------------------------------------------------
  *   yarn e2e:fixtures        (via `scripts/e2e-stack.sh up`)
  *
- * Cria o que a jornada precisa e que **não** é dado de loja:
- *
- *   1. uma peça de teste, com preço, com perfil de envio, publicada e no canal
- *      online;
- *   2. uma opção de envio de **preço fixo** — a jornada não pode depender de
- *      saldo na transportadora.
- *
- * Idempotente: casa pelo `handle` da peça e pelo nome da opção.
- *
- * Por que no backend: criar peça exige os workflows do Medusa (perfil, zona,
- * preço); pela API do admin seriam meia dúzia de chamadas com ids no meio.
- */
+/* ENVIO_E2e - necessario */
 export const PRODUTO_E2E = {
   title: "[e2e] Vestido de Teste",
   handle: "e2e-vestido-de-teste",

@@ -179,6 +179,26 @@ export type Chamar = <T>(args: {
 
 export type ConfigDoEnvio = { token: string; ambiente: "sandbox" | "producao" }
 
+/**
+ * O `detalhe` do SuperFrete e' `{ campo: ["mensagem"] }`. Sem achatar, a tela
+ * mostra `[object Object]` e o lojista nao sabe o que corrigir.
+ */
+function textoDoDetalhe(detalhe: unknown): string {
+  if (!detalhe || typeof detalhe !== "object") {
+    return String(detalhe ?? "").trim()
+  }
+
+  const partes = Object.entries(detalhe as Record<string, unknown>).map(
+    ([campo, valor]) => {
+      const texto = Array.isArray(valor) ? valor.join(" ") : String(valor ?? "")
+
+      return texto ? `${campo}: ${texto}` : campo
+    }
+  )
+
+  return partes.join(" · ").slice(0, 300)
+}
+
 export async function emitirEtiqueta({
   pedido,
   caixa,
@@ -204,10 +224,15 @@ export async function emitirEtiqueta({
       corpo: corpoDoCarrinho(pedido, caixa),
     })
   } catch (erro: any) {
+    // O `detalhe` traz a recusa campo a campo do SuperFrete. Sem ele a tela
+    // mostra só "recusou os dados" e o lojista não sabe o que corrigir.
+    const base = String(erro?.message ?? "A SuperFrete não aceitou a etiqueta.")
+    const detalhe = textoDoDetalhe(erro?.detalhe)
+
     return {
       ok: false,
       status: Number(erro?.status) || 502,
-      mensagem: erro?.message ?? "A SuperFrete não aceitou a etiqueta.",
+      mensagem: detalhe && !base.includes(detalhe) ? `${base} (${detalhe})` : base,
     }
   }
 

@@ -47,16 +47,23 @@ export async function POST(req: MedusaRequest, res: MedusaResponse): Promise<voi
   }
 
   const orderService = req.scope.resolve("order") as {
-    updateOrders: (ids: string[], data: Record<string, unknown>) => Promise<unknown>
+    updateOrders: (
+      data: Array<{ id: string; metadata?: Record<string, unknown> }>
+    ) => Promise<unknown>
   }
 
-  await orderService.updateOrders([id], {
-    metadata: {
-      ...metadata,
-      superfrete_cancelada: etiqueta,
-      status_label: situacaoDaEtiqueta("cancelled"),
+  // O Medusa v2 recebe a lista de ATUALIZACOES, nao `(ids, dados)`: a forma
+  // antiga estourava em runtime e o cancelamento nunca gravava nada.
+  await orderService.updateOrders([
+    {
+      id,
+      metadata: {
+        ...metadata,
+        superfrete_cancelada: etiqueta,
+        status_label: situacaoDaEtiqueta("cancelled"),
+      },
     },
-  })
+  ])
 
   res.status(200).json({
     cancelada: etiqueta,

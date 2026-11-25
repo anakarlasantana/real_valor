@@ -961,8 +961,8 @@
         },
         {
           "id": "CA-2",
-          "texto": "Lista de envios mostra todos os pedidos com `ready_to_fulfill`.",
-          "prova": null
+          "texto": "A fila lista todo pedido e o separa em \"Aguardando envio\" e \"Já enviados\" pelo `envio.enviado`.",
+          "prova": "jornada:lojista@fila de envio mostra o pedido pago"
         },
         {
           "id": "CA-3",

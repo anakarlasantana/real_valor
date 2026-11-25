@@ -1584,7 +1584,8 @@ A tela de envios (`GET /admin/shipping`) e o formulário de registro (`POST /adm
 ### Critérios de aceite  
 1. `campoDoEnvio` retorna apenas o que mudou em relação ao atual (lógica de preservação).  
    prova: `unit:admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts`  
-2. Lista de envios mostra todos os pedidos com `ready_to_fulfill`.  
+2. A fila lista todo pedido e o separa em "Aguardando envio" e "Já enviados" pelo `envio.enviado`.  
+   prova: `jornada:lojista@fila de envio mostra o pedido pago`  
 3. Salvar com apenas `status_label` alterado não apaga `tracking_number`.  
    prova: `unit:admin/src/admin/routes/shipping/__tests__/envio-form.unit.spec.ts`
 
