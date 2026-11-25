@@ -1,6 +1,6 @@
 {
   "fonte": "docs/real-valor/04-requisitos-funcionais.md",
-  "total": 27,
+  "total": 28,
   "requisitos": [
     {
       "id": "RV-001",
@@ -1030,13 +1030,28 @@
       "criterios": [
         {
           "id": "CA-1",
-          "texto": "Erro na carteira mostra a mensagem e não exibe `R$ 0,00`.",
-          "prova": "jornada:lojista@carteira sem credencial mostra o motivo"
+          "texto": "A carteira mostra o saldo de verdade (em reais) quando a leitura responde, e a mensagem do backend quando não — nunca `R$ 0,00` por falha.",
+          "prova": "jornada:lojista@carteira mostra o saldo real"
         },
         {
           "id": "CA-2",
           "texto": "A tela de envios abre com o bloco da carteira visível.",
           "prova": "jornada:lojista@fila de envio mostra o pedido pago"
+        },
+        {
+          "id": "CA-3",
+          "texto": "Desligar **o último** serviço ativo é recusado antes de salvar: sem nenhum, a loja fica sem entrega.",
+          "prova": "unit:admin/src/admin/routes/frete/servicos/lib/__tests__/servicos-form.unit.spec.ts"
+        },
+        {
+          "id": "CA-4",
+          "texto": "A cotação de teste exige 8 dígitos no CEP e ao menos uma opção que diga qual serviço é.",
+          "prova": "unit:admin/src/admin/routes/frete/servicos/lib/__tests__/servicos-form.unit.spec.ts"
+        },
+        {
+          "id": "CA-5",
+          "texto": "A tela de serviços lista as opções e cada uma tem o liga/desliga.",
+          "prova": "jornada:lojista@servicos de frete abrem com a lista"
         }
       ]
     },
@@ -1058,8 +1073,36 @@
         },
         {
           "id": "CA-3",
+          "texto": "Com `SUPERFRETE_TOKEN` no stack, a fila oferece a etiqueta do pedido pago: a cotação e a carteira respondem.",
+          "prova": "jornada:lojista@carteira mostra o saldo real"
+        },
+        {
+          "id": "CA-4",
+          "texto": "A caixa sem nome não salva — a validação responde antes de qualquer POST.",
+          "prova": "jornada:lojista@pacotes abrem e o formulário valida"
+        },
+        {
+          "id": "CA-5",
           "texto": "A jornada termina sem 5xx e sem erro de console.",
           "prova": "jornada:lojista@evidência: sem 5xx e sem erro de console"
+        }
+      ]
+    },
+    {
+      "id": "RV-070",
+      "titulo": "Conteúdo da vitrine no painel",
+      "prioridade": "ALTA",
+      "estado": "pendente",
+      "criterios": [
+        {
+          "id": "CA-1",
+          "texto": "A tela abre com as três abas: Conteúdo Vitrine, Páginas Institucionais e Tema da Loja.",
+          "prova": "jornada:lojista@vitrine abre com as três abas"
+        },
+        {
+          "id": "CA-2",
+          "texto": "Trocar de aba não recarrega a página e a aba escolhida fica marcada.",
+          "prova": "jornada:lojista@vitrine abre com as três abas"
         }
       ]
     }

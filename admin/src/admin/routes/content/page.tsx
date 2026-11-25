@@ -86,7 +86,7 @@ const ContentPage = () => {
   }
 
   return (
-    <Container className="flex flex-col gap-y-6 p-6">
+    <Container className="flex flex-col gap-y-6 p-6" data-testid="content-page">
       {/* Barra de abas: o ícone e o rótulo de cada uma saem de `MAIN_NAVIGATION`,
           que é a única lista de modos da tela. */}
       <nav
@@ -100,6 +100,8 @@ const ContentPage = () => {
             onClick={() => setMode(nav.id)}
             disabled={loadingSchema}
             className="flex items-center gap-x-2"
+            data-testid={`content-aba-${nav.id}`}
+            aria-pressed={mode === nav.id}
           >
             <nav.icon className="h-4 w-4" aria-hidden="true" />
             {nav.label}

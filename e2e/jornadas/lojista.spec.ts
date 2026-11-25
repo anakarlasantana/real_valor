@@ -18,12 +18,14 @@ const PAINEL = "/painel"
 const ENVIOS = "/painel/shipping"
 const SERVICOS = "/painel/frete/servicos"
 const PACOTES = "/painel/frete/pacotes"
+const VITRINE = "/painel/content"
 
 /** O rotulo do item de menu de cada tela — o que o lojista clica. */
 const ROTULOS: Record<string, string> = {
   [ENVIOS]: "Envios",
   [SERVICOS]: "Serviços de frete",
   [PACOTES]: "Pacotes",
+  [VITRINE]: "Conteúdo da vitrine",
 }
 
 const EMAIL = process.env.E2E_ADMIN_EMAIL ?? "admin@realvalor.com.br"
@@ -93,16 +95,18 @@ test("lojista-envio: painel → fila → registro → etiqueta", async ({
     ).toBeVisible(LENTO)
   })
 
-  await test.step("carteira sem credencial mostra o motivo", async () => {
+  await test.step("carteira mostra o saldo real", async () => {
     const carteira = page.getByTestId("shipping-carteira")
     const erro = page.getByTestId("shipping-carteira-erro")
 
-    // Sem token do SuperFrete a leitura falha de proposito: o que se prova aqui
-    // e' que a falha vira MENSAGEM — zero esconderia o problema.
+    // O stack `rv_e2e` tem token de sandbox: o esperado e' o saldo em reais.
+    // Se a leitura falhar, o que se exige e' a MENSAGEM — `R$ 0,00` esconderia
+    // o problema, e e' justamente o que o RV-068 proibe.
     if (await erro.isVisible().catch(() => false)) {
       await expect(erro).not.toHaveText("")
+      await expect(carteira).not.toContainText("R$ 0,00")
     } else {
-      await expect(carteira).toContainText("Carteira SuperFrete")
+      await expect(carteira).toContainText(/R\$\s?[0-9]/)
     }
   })
 
@@ -158,6 +162,26 @@ test("lojista-envio: painel → fila → registro → etiqueta", async ({
 
     // Caixa sem nome nao salva: a validacao responde antes de qualquer POST.
     await expect(page.getByTestId("pacotes-page")).toBeVisible()
+  })
+
+  await test.step("vitrine abre com as três abas", async () => {
+    await irPara(page, VITRINE)
+    await expect(page.getByTestId("content-page")).toBeVisible(LENTO)
+
+    // As abas saem de `MAIN_NAVIGATION`; o id de cada uma e' o `ViewMode`.
+    for (const aba of ["vitrine", "pages", "theme"]) {
+      await expect(page.getByTestId(`content-aba-${aba}`)).toBeVisible(LENTO)
+    }
+
+    // Trocar de aba e' estado do cliente (nao navega): a aba escolhida fica
+    // marcada por `aria-pressed`, e `Trocar` nao pode recarregar a pagina.
+    await page.getByTestId("content-aba-theme").click()
+    await expect(page.getByTestId("content-aba-theme")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+      LENTO
+    )
+    await expect(page.getByTestId("content-page")).toBeVisible()
   })
 
   await test.step("evidência: sem 5xx e sem erro de console", async () => {

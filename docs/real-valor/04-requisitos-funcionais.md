@@ -51,6 +51,7 @@ Caminhos sem marcador já existem no repositório.
 | [RV-067](#rv-067--etiqueta-só-para-pedido-pago) | Etiqueta só para pedido pago | **ALTA** |
 | [RV-068](#rv-068--carteira-e-cotação-de-teste-no-painel) | Carteira e cotação de teste no painel | MÉDIA |
 | [RV-069](#rv-069--jornada-do-lojista-no-painel) | Jornada do lojista no painel | **ALTA** |
+| [RV-070](#rv-070--conteúdo-da-vitrine-no-painel) | Conteúdo da vitrine no painel | **ALTA** |
 
 > **Bloco de pedido e envio (RV-042 a RV-046):** o provedor de frete **está decidido e implementado** —
 > SuperFrete por API (F1b–F3: cotação, etiqueta e webhook). O provider `tabela` (RV-006) continua como
@@ -1656,10 +1657,16 @@ O lojista sabe, **antes** de tentar emitir, se a carteira do SuperFrete cobre o 
 3. Valor em centavos na API, formatado em reais na tela.
 
 ### Critérios de aceite
-1. Erro na carteira mostra a mensagem e não exibe `R$ 0,00`.
-   prova: `jornada:lojista@carteira sem credencial mostra o motivo`
+1. A carteira mostra o saldo de verdade (em reais) quando a leitura responde, e a mensagem do backend quando não — nunca `R$ 0,00` por falha.
+   prova: `jornada:lojista@carteira mostra o saldo real`
 2. A tela de envios abre com o bloco da carteira visível.
    prova: `jornada:lojista@fila de envio mostra o pedido pago`
+3. Desligar **o último** serviço ativo é recusado antes de salvar: sem nenhum, a loja fica sem entrega.
+   prova: `unit:admin/src/admin/routes/frete/servicos/lib/__tests__/servicos-form.unit.spec.ts`
+4. A cotação de teste exige 8 dígitos no CEP e ao menos uma opção que diga qual serviço é.
+   prova: `unit:admin/src/admin/routes/frete/servicos/lib/__tests__/servicos-form.unit.spec.ts`
+5. A tela de serviços lista as opções e cada uma tem o liga/desliga.
+   prova: `jornada:lojista@servicos de frete abrem com a lista`
 
 ## RV-069 — Jornada do lojista no painel
 
@@ -1670,7 +1677,7 @@ O lojista sabe, **antes** de tentar emitir, se a carteira do SuperFrete cobre o 
 Provar, no navegador e contra a stack `rv_e2e`, que o lojista consegue abrir o painel, ler a fila, registrar um envio sem perder o rastreio e não emitir etiqueta de pedido não pago.
 
 ### Descrição
-`e2e/jornadas/lojista.spec.ts`, uma jornada por spec (doc 20 §20.3), autenticada por `storageState` semeado com o JWT de `POST /auth/user/emailpass`. O pedido de teste vem de `backend/src/scripts/e2e-fixtures.ts`, não do spec.
+`e2e/jornadas/lojista.spec.ts`, uma jornada por spec (doc 20 §20.3). O login é feito na tela do painel com `waitUntil: "networkidle"`: o dashboard guarda a sessão em memória do SPA (nem cookie nem `localStorage` — medido), e um `storageState` semeado fora do navegador não sobrevive. O pedido de teste vem de `backend/src/scripts/e2e-fixtures.ts`, não do spec.
 
 ### Regras de negócio
 1. Toda asserção usa `getByTestId`/`getByRole`; sem seletor de estrutura e sem `waitForTimeout`.
@@ -1683,5 +1690,32 @@ Provar, no navegador e contra a stack `rv_e2e`, que o lojista consegue abrir o p
    prova: `jornada:lojista@admin abre`
 2. A fila mostra o pedido pago do fixture.
    prova: `jornada:lojista@fila de envio mostra o pedido pago`
-3. A jornada termina sem 5xx e sem erro de console.
+3. Com `SUPERFRETE_TOKEN` no stack, a fila oferece a etiqueta do pedido pago: a cotação e a carteira respondem.
+   prova: `jornada:lojista@carteira mostra o saldo real`
+4. A caixa sem nome não salva — a validação responde antes de qualquer POST.
+   prova: `jornada:lojista@pacotes abrem e o formulário valida`
+5. A jornada termina sem 5xx e sem erro de console.
    prova: `jornada:lojista@evidência: sem 5xx e sem erro de console`
+
+
+## RV-070 — Conteúdo da vitrine no painel
+
+**Prioridade:** ALTA · **Tipo:** funcional + CMS · **Complexidade:** média
+**Depende de:** RV-003 (contrato de conteúdo) · **Impacta:** lojista (edita a loja)
+
+### Objetivo
+O lojista abre a tela de conteúdo, vê as três abas (vitrine, páginas, tema) e as seções que a loja desenha hoje — sem depender de número de pedido nem de código.
+
+### Descrição
+`admin/src/admin/routes/content/page.tsx` monta a barra de abas a partir de `MAIN_NAVIGATION` (`lib/navigation.ts`) e cada painel busca as seções por superfície (`GET /admin/content?surface=home`). É a tela principal do lojista e a única que não tinha prova de ponta a ponta.
+
+### Regras de negócio
+1. As abas vêm de `MAIN_NAVIGATION`, não de constante no componente — acrescentar uma superfície no contrato não exige editar React.
+2. Falha ao carregar o schema vira mensagem na tela; nunca lista vazia silenciosa.
+3. O painel não decide rótulo nem campo: quem declara é o contrato (`packages/contrato`).
+
+### Critérios de aceite
+1. A tela abre com as três abas: Conteúdo Vitrine, Páginas Institucionais e Tema da Loja.
+   prova: `jornada:lojista@vitrine abre com as três abas`
+2. Trocar de aba não recarrega a página e a aba escolhida fica marcada.
+   prova: `jornada:lojista@vitrine abre com as três abas`
