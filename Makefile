@@ -24,7 +24,7 @@ else
   MODE_LABEL := DESENVOLVIMENTO
 endif
 
-.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check gen-requirements ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-lojista e2e-vitrine e2e-produto e2e-sacola e2e-conta e2e-checkout e2e-pos-venda e2e-resp e2e-test e2e-evidence
+.PHONY: help up down restart recreate logs logs-all ps build migrate seed seed-limpar check-schema clean-db shell-backend shell-frontend health logs-admin revalidate gen test check gen-requirements ready ready-full types build-admin doctor admin-password e2e e2e-up e2e-down e2e-cliente e2e-lojista e2e-vitrine e2e-produto e2e-sacola e2e-conta e2e-checkout e2e-pos-venda e2e-resp perf-up perf-down perf e2e-test e2e-evidence
 
 help:
 	@echo "Real Valor — comandos da stack Docker ($(MODE_LABEL))"
@@ -479,6 +479,24 @@ e2e-resp:
 	@mkdir -p "$(E2E_EVIDENCIA)"
 	@scripts/e2e-stack.sh warm || true
 	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project mobile-chrome 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
+
+# ---------------------------------------------------------------------------
+# Latencia: a TERCEIRA stack, a loja como ela vai ao ar
+# ---------------------------------------------------------------------------
+# O `make e2e` sobe `target: dev` + `yarn dev`: ali cada rota e' compilada sob
+# demanda e o numero medido seria o do compilador, nao o da loja. `perf-up` sobe
+# o estagio `runner` no projeto `rv_perf` (portas 8200/9200), e `perf` roda a
+# jornada contra ele. Apontada para o dev, a propria jornada recusa medir.
+perf-up:
+	@mkdir -p .run
+	@scripts/perf-stack.sh up
+
+perf-down:
+	@scripts/perf-stack.sh down
+
+perf:
+	@mkdir -p "$(E2E_EVIDENCIA)"
+	@bash -o pipefail -c 'E2E_BASE_URL="$${E2E_BASE_URL:-http://localhost:8200}" E2E_API_URL="$${E2E_API_URL:-http://localhost:9200}" E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project performance 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
 
 
 e2e-evidence:

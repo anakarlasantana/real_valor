@@ -1,8 +1,8 @@
 {
   "gerado_de": "spec/**/requisito.md",
-  "total_specs": 7,
-  "total_ca": 31,
-  "provados": 31,
+  "total_specs": 8,
+  "total_ca": 35,
+  "provados": 35,
   "specs": [
     {
       "id": "RV-006",
@@ -308,6 +308,53 @@
           "prova": "jornada:responsividade@os controles da compra têm área de toque",
           "tipo": "jornada",
           "alvo": "responsividade@os controles da compra têm área de toque",
+          "resolvido": true,
+          "motivo": null
+        }
+      ]
+    },
+    {
+      "id": "RV-075",
+      "pasta": "spec/RV-075-orcamento-de-latencia-da-loja-em-produca",
+      "estado": "rascunho",
+      "retroativo": false,
+      "aprovado_por": null,
+      "aprovado_sha": null,
+      "sha_atual": "6eed2656a74e98844cdd73c7f6191e285d4cb25f1066491ec8ded3364185f3d2",
+      "criterios": [
+        {
+          "ca": "CA-1",
+          "texto": "When a cliente carrega home e PDP, the loja shall registrar LCP, INP e CLS dentro do orçamento do doc 05 §5.3.1.",
+          "prova": "jornada:performance@home e PDP cabem no orçamento de vitals",
+          "tipo": "jornada",
+          "alvo": "performance@home e PDP cabem no orçamento de vitals",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-2",
+          "texto": "When a cliente recebe a home, the storefront shall enviar menos de 200 kB de JavaScript comprimido.",
+          "prova": "jornada:performance@o JavaScript inicial cabe no orçamento",
+          "tipo": "jornada",
+          "alvo": "performance@o JavaScript inicial cabe no orçamento",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-3",
+          "texto": "When a loja responde as rotas de catálogo e carrinho, the API shall manter o p95 abaixo do orçamento.",
+          "prova": "jornada:performance@o p95 das rotas de API cabe no orçamento",
+          "tipo": "jornada",
+          "alvo": "performance@o p95 das rotas de API cabe no orçamento",
+          "resolvido": true,
+          "motivo": null
+        },
+        {
+          "ca": "CA-4",
+          "texto": "When a medição roda fora do stack de produção, the jornada shall recusar-se a rodar em vez de reportar número inválido.",
+          "prova": "jornada:performance@a jornada recusa medir fora de produção",
+          "tipo": "jornada",
+          "alvo": "performance@a jornada recusa medir fora de produção",
           "resolvido": true,
           "motivo": null
         }

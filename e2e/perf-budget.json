@@ -1,0 +1,20 @@
+{
+  "note": "Orcamento de latencia. A GUARDA vive aqui e o teste compara contra estes numeros (com 20% de folga) para nao virar flake de maquina. Medido so' contra PROD (docker-compose.perf.yml): em dev o numero inclui a compilacao do next dev.",
+  "folga": 0.2,
+  "vitals": {
+    "lcp_ms": 2500,
+    "inp_ms": 200,
+    "cls": 0.1
+  },
+  "js_inicial_kb": 480,
+  "api_p95_ms": {
+    "/store/products": 400,
+    "/store/carts": 400,
+    "/health": 100
+  },
+  "amostras_api": 7,
+  "divida": {
+    "js_inicial_kb": "A meta do doc 05 §5.3.1 e' 200kB(gz); a home transfere ~390kB (medido em 25/11/2026 no rv_perf). O teto da guarda registra o valor real + folga para pegar REGRESSAO; baixar ate 200kB e' o criterio de aceite de quem otimizar. Chunk maior: 6656 (660kB descomprimido)."
+  }
+}
+

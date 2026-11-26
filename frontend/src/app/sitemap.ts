@@ -22,9 +22,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const country = process.env.NEXT_PUBLIC_DEFAULT_REGION || "br"
   const home = `${base}/${country}`
 
+  const catalogoVazio = { produtos: [], categorias: [], colecoes: [] }
+
   const [pages, catalogo] = await Promise.all([
     getLivePages(),
-    entradasDoCatalogo({ countryCode: country }),
+    entradasDoCatalogo({ countryCode: country }).catch(() => catalogoVazio),
   ])
 
   const produtos = produtosDoCatalogo(catalogo.produtos)

@@ -1,0 +1,69 @@
+# =============================================================================
+# Real Valor — overlay da MEDICAO DE LATENCIA (projeto `rv_perf`)
+# =============================================================================
+# Nao e' modo de desenvolvimento: e' a loja como ela vai ao ar.
+#
+# POR QUE ESTE ARQUIVO EXISTE
+#
+# O `make e2e` sobe `docker-compose.override.yml`, que constroi o estagio `dev`
+# e roda `yarn dev` (`next dev --turbopack`). Nesse modo cada rota e' compilada
+# sob demanda: o TTFB medido inclui o compilador, e nao a loja. Medir ali daria
+# um numero que nenhum cliente veria.
+#
+# Aqui o frontend sobe do estagio `runner` (build standalone) com `NODE_ENV`
+# de producao — a mesma imagem que o `make up PROD=1` usa. A medição roda contra
+# portas proprias (8200/9200) para nao encostar em dev (:8000/:9000) nem no e2e
+# (:8100/:9100).
+#
+# Uso (sempre pelo `scripts/perf-stack.sh`):
+#   docker compose -p rv_perf -f docker-compose.yml -f docker-compose.perf.yml up -d
+# =============================================================================
+
+services:
+  postgres:
+    container_name: rv_perf_pg
+    ports: !override
+      - "127.0.0.1:5441:5432"
+
+  redis:
+    container_name: rv_perf_cache
+    ports: !override
+      - "127.0.0.1:6384:6379"
+
+  backend:
+    container_name: rv_perf_api
+    ports: !override
+      - "9200:9000"
+    environment:
+      RUN_MIGRATIONS: "0"
+      MEDUSA_BACKEND_URL: http://localhost:9200
+      STORE_CORS: http://localhost:8200
+      ADMIN_CORS: http://localhost:9200
+      AUTH_CORS: http://localhost:8200,http://localhost:9200
+      FRONTEND_URL: http://frontend:8000
+
+  frontend:
+    container_name: rv_perf_web
+    # Sem `override`: aqui NAO se carrega o dev. O servico vem da base
+    # (`target: runner`) de proposito.
+    ports: !override
+      - "8200:8000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_BASE_URL: http://localhost:8200
+      MEDUSA_BACKEND_URL: http://backend:9000
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9200
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:-pk_test}
+
+volumes:
+  real_valor_pgdata:
+    name: rv_perf_pgdata
+  real_valor_redisdata:
+    name: rv_perf_redisdata
+  real_valor_uploads:
+    name: rv_perf_uploads
+
+networks:
+  real_valor_net:
+    name: rv_perf_net
+    driver: bridge

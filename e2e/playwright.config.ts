@@ -103,5 +103,12 @@ export default defineConfig({
       testMatch: /responsividade\.spec\.ts/,
       use: { ...devices["Pixel 7"] },
     },
+    {
+      // So' roda contra o stack de producao (`make perf-up`). Apontado para o
+      // dev, a propria jornada recusa medir e diz como subir o certo.
+      name: "performance",
+      testMatch: /performance\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 })
