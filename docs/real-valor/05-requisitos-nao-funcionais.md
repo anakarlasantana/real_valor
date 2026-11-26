@@ -114,6 +114,27 @@ Detalhado em RV-007. Situação verificada:
 - `Suspense` + skeletons em catálogo, PDP e carrinho.
 - `product-carousel` é uma **ilha** — reduz JS inicial.
 
+**A medição (25/11/2026).** Até esta data as metas da tabela acima eram **declaradas
+sem instrumento**: nada as media. A jornada `e2e/jornadas/performance.spec.ts`
+(`make perf`) passou a medir LCP, CLS, JS inicial e p95 de API **contra o stack de
+produção** (`make perf-up`, estágio `runner`) — medir no `next dev` incluiria a
+compilação e daria número falso. Resultado no `rv_perf`:
+
+| Métrica | Medido | Meta | Situação |
+| :--- | :--- | :--- | :--- |
+| LCP home | 108–140 ms | < 2.500 ms | ✅ |
+| LCP PDP | 180–216 ms | < 2.500 ms | ✅ |
+| CLS | 0 | < 0,1 | ✅ |
+| p95 da API | 3–5 ms | < 400 ms | ✅ |
+| **JS inicial da home** | **390 kB** | **< 200 kB (gz)** | ❌ **RV-077** |
+
+O JS está em ~2× a meta, e a causa é do pacote `@medusajs/ui`, não do nosso código:
+`sideEffects: false` declarado, mas `code-block.js` escreve em `global.Prism` no
+topo do módulo, o que impede o tree-shaking e arrasta o `prism-react-renderer`
+para toda rota. O diagnóstico completo, as duas tentativas descartadas com
+medição e as saídas estão em
+[`19-debito-tecnico.md`](19-debito-tecnico.md) §7 (RV-077).
+
 **A atenção — imagens:**
 - Imagens servidas do **backend local**, sem CDN nem otimização de tamanho.
 - `@medusajs/file-local` grava o arquivo original enviado.
