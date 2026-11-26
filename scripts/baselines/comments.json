@@ -5,24 +5,24 @@
   "headerMax": 5,
   "scopes": {
     "frontend/src": {
-      "lines": 40273,
+      "lines": 40281,
       "comments": 8814
     },
     "admin/src": {
-      "lines": 9909,
+      "lines": 9915,
       "comments": 1876
     },
     "backend/src": {
-      "lines": 26576,
-      "comments": 4659
+      "lines": 26653,
+      "comments": 4658
     },
     "packages/contrato/src": {
       "lines": 2840,
       "comments": 581
     },
     "scripts": {
-      "lines": 1937,
-      "comments": 330
+      "lines": 2061,
+      "comments": 340
     }
   },
   "files": {
@@ -123,7 +123,7 @@
     },
     "frontend/src/app/sitemap.ts": {
       "comments": 10,
-      "lines": 68,
+      "lines": 70,
       "header": 5
     },
     "frontend/src/lib/__tests__/theme.unit.spec.ts": {
@@ -923,7 +923,7 @@
     },
     "frontend/src/modules/tracking/templates/index.tsx": {
       "comments": 40,
-      "lines": 248,
+      "lines": 251,
       "header": 18
     },
     "frontend/src/styles/brand/01-tokens.css": {
@@ -1053,7 +1053,7 @@
     },
     "admin/src/admin/routes/content/components/PageAccordionItem.tsx": {
       "comments": 17,
-      "lines": 160,
+      "lines": 163,
       "header": 13
     },
     "admin/src/admin/routes/content/components/PageSectionsPanel.tsx": {
@@ -1078,7 +1078,7 @@
     },
     "admin/src/admin/routes/content/components/SurfaceSectionsPanel.tsx": {
       "comments": 36,
-      "lines": 178,
+      "lines": 181,
       "header": 17
     },
     "admin/src/admin/routes/content/components/__tests__/section-creator.unit.spec.ts": {

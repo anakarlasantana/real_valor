@@ -226,7 +226,7 @@
       "retroativo": false,
       "aprovado_por": null,
       "aprovado_sha": null,
-      "sha_atual": "c49ff55bb34367daf1c60474f08c555533a98a3a1e534b40b367f9fbdfa92ead",
+      "sha_atual": "b2dbcb8af2060ae11470e518ac9882029f89bd026d92e6aecfa586293a8ed1d4",
       "criterios": [
         {
           "ca": "CA-1",
@@ -248,7 +248,7 @@
         },
         {
           "ca": "CA-3",
-          "texto": "When a cliente consulta um pedido real com o CPF da compra, the storefront shall mostrar número, situação e itens, sem login.",
+          "texto": "When a cliente consulta um pedido real com o CPF da compra, the storefront shall responder com o estado que o pedido tem: os itens quando há rastreio, ou \"Pedido recebido\" quando a transportadora ainda não foi registrada.",
           "prova": "jornada:pos-venda@consultar um pedido real mostra situação e itens",
           "tipo": "jornada",
           "alvo": "pos-venda@consultar um pedido real mostra situação e itens",

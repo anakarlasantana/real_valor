@@ -377,6 +377,7 @@ check:
 	@node scripts/check-boundaries.mjs
 	@node scripts/check-comments.mjs
 	@node scripts/check-storefront-tests.mjs
+	@node scripts/check-testids.mjs
 	@echo ""
 	@echo "  Artefato, fronteira, camadas, comentario e convencao de teste e indice de requisitos e rastreabilidade conferidos."
 
@@ -468,10 +469,15 @@ e2e-checkout:
 	@scripts/e2e-stack.sh warm || true
 	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project checkout 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
 
+# A chave publicavel e' POR STACK: a do `.env` e' a de dev. Estes dois alvos
+# exportam a chave da base `rv_e2e` para o `E2E_PK`, que a jornada usa para
+# descobrir o `display_id` do pedido de teste (o numero muda por base).
+E2E_PK_E2E := $(shell docker exec rv_e2e_pg psql -U $$(sed -n 's/^POSTGRES_USER=//p' .env | head -1) -d $$(sed -n 's/^POSTGRES_DB=//p' .env | head -1) -tAc "select token from api_key where type='publishable' limit 1" 2>/dev/null | tr -d ' \r\n')
+
 e2e-pos-venda:
 	@mkdir -p "$(E2E_EVIDENCIA)"
 	@scripts/e2e-stack.sh warm || true
-	@bash -o pipefail -c 'E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project pos-venda 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
+	@bash -o pipefail -c 'E2E_PK="$(E2E_PK_E2E)" E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project pos-venda 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
 
 # A responsividade roda no projeto `mobile-chrome` (Pixel 7): o divisor
 # mobile/desktop do layout e' `small: 1024px`.
@@ -496,7 +502,8 @@ perf-down:
 
 perf:
 	@mkdir -p "$(E2E_EVIDENCIA)"
-	@bash -o pipefail -c 'E2E_BASE_URL="$${E2E_BASE_URL:-http://localhost:8200}" E2E_API_URL="$${E2E_API_URL:-http://localhost:9200}" E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project performance 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
+	@CHAVE="$$(docker exec rv_perf_pg psql -U "$$(sed -n 's/^POSTGRES_USER=//p' .env | head -1)" -d "$$(sed -n 's/^POSTGRES_DB=//p' .env | head -1)" -tAc "select token from api_key where type='publishable' limit 1" | tr -d ' \r\n')"; \
+	bash -o pipefail -c 'E2E_BASE_URL="$${E2E_BASE_URL:-http://localhost:8200}" E2E_API_URL="$${E2E_API_URL:-http://localhost:9200}" E2E_PK="'"$$CHAVE"'" E2E_EVIDENCE_DIR="$(E2E_EVIDENCIA)" npx playwright test --config e2e/playwright.config.ts --project performance 2>&1 | tee "$(E2E_EVIDENCIA)/runner.log"; code=$$?; scripts/e2e-evidence.sh "$(E2E_EVIDENCIA)"; exit $$code'
 
 
 e2e-evidence:

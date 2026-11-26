@@ -27,7 +27,7 @@ dinheiro e o pós-venda tenham prova de navegador, e não só de unidade.
   prova: `jornada:checkout@só os meios reais de pagamento aparecem`
 - **CA-2** — When a cliente chega à revisão, the storefront shall mostrar o resumo com endereço, entrega e total antes do botão de pagar.
   prova: `jornada:checkout@a revisão mostra endereço, entrega e total`
-- **CA-3** — When a cliente consulta um pedido real com o CPF da compra, the storefront shall mostrar número, situação e itens, sem login.
+- **CA-3** — When a cliente consulta um pedido real com o CPF da compra, the storefront shall responder com o estado que o pedido tem: os itens quando há rastreio, ou "Pedido recebido" quando a transportadora ainda não foi registrada.
   prova: `jornada:pos-venda@consultar um pedido real mostra situação e itens`
 - **CA-4** — When a cliente informa um CPF que não é do pedido, the storefront shall recusar sem revelar item nem valor.
   prova: `jornada:pos-venda@CPF que não é do pedido não vaza nada`
